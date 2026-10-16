@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incident Map · Base</title>
+<meta name="description" content="The base map for an incident: zones, priorities, units in the field, their photos and what they have cleared.">
+<meta name="theme-color" content="#1F4E79">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="">
+<link rel="stylesheet" href="css/shared.css">
+<link rel="stylesheet" href="css/base.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin=""></script>
+<script src="vendor/supabase-js-2.108.0.min.js"></script>
+<script src="config.js"></script>
+<script>
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    document.write('<script src="config.local.js" onerror="this.remove()"><\/script>');
+  }
+</script>
+<script src="supabase-client.js"></script>
+</head>
+<body>
+
+<div id="auth" class="auth" hidden>
+  <form id="auth-form" class="auth-card">
+    <img src="icons/icon-192.png" alt="" width="64" height="64">
+    <h1>Incident Map</h1>
+    <p class="muted">Operations base. Sign in with the account your agency gave you.</p>
+    <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
+    <label>Password <input id="auth-password" type="password" autocomplete="current-password" required minlength="8"></label>
+    <button type="submit" class="btn pri">Sign in</button>
+    <button type="button" id="auth-signup" class="btn link">Create account</button>
+    <p id="auth-msg" class="msg" role="status"></p>
+  </form>
+</div>
+
+<div id="pick" class="pick" hidden>
+  <div class="pick-wrap">
+    <header class="pick-head">
+      <h1>Incident Map · Base</h1>
+      <span id="pick-user" class="muted"></span>
+      <button class="btn sm" data-action="sign-out">Sign out</button>
+    </header>
+    <section class="card">
+      <h2>Your incidents</h2>
+      <div id="pick-list" class="pick-list"><p class="muted">Loading…</p></div>
+    </section>
+    <section class="card">
+      <h2>Open a new incident</h2>
+      <form id="new-incident" class="form">
+        <label>Name <input name="name" required placeholder="Cedar Fork Flooding"></label>
+        <label>Operational period <input name="period" placeholder="OP 1 · 07:00 to 19:00"></label>
+        <label>Base <input name="base" placeholder="Cedar Fork High School"></label>
+        <div class="row-2">
+          <label>Map center, latitude <input name="lat" type="number" step="any" placeholder="30.2672"></label>
+          <label>Longitude <input name="lng" type="number" step="any" placeholder="-97.7431"></label>
+        </div>
+        <div class="row-btns">
+          <button type="button" class="btn sm" data-action="use-my-location">Use my location</button>
+          <button type="submit" class="btn pri">Create incident</button>
+        </div>
+        <p class="msg" data-msg></p>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Join an incident with its code</h2>
+      <form id="join-form" class="form">
+        <label>Join code <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono"></label>
+        <div class="row-btns"><button type="submit" class="btn pri">Join as Operations</button></div>
+        <p class="msg" data-msg></p>
+      </form>
+    </section>
+  </div>
+</div>
+
+<div id="app" class="app" hidden>
+  <header class="top">
+    <div class="top-main">
+      <h1 id="inc-name">Incident</h1>
+      <span id="inc-sub" class="muted"></span>
+    </div>
+    <span class="pill mono" id="inc-code" title="Field phones join with this code">Join code</span>
+    <span class="pill" id="live-pill"><span class="dot" id="live-dot"></span><span id="live-text">connecting</span></span>
+    <span class="pill mono" id="clock"></span>
+    <button class="btn sm" data-action="switch-incident">Switch incident</button>
+    <button class="btn sm" data-action="sign-out">Sign out</button>
+  </header>
+
+  <div id="mayday" class="mayday" hidden></div>
+
+  <div class="body">
+    <div class="mapcol">
+      <div class="tools">
+        <button class="btn sm" data-action="draw-boundary" id="btn-boundary">Draw boundary</button>
+        <button class="btn sm" data-action="draw-zone" id="btn-zone">Draw zone</button>
+        <span class="hint" id="tool-hint">Click a zone, a unit or a photo pin to open it.</span>
+        <span id="draw-btns" hidden>
+          <button class="btn pri sm" data-action="finish-draw">Finish</button>
+          <button class="btn sm" data-action="cancel-draw">Cancel</button>
+        </span>
+      </div>
+      <div id="map" class="map" role="application" aria-label="Incident map"></div>
+      <div class="legend">
+        <span><span class="sw open"></span>Not started</span>
+        <span><span class="sw active"></span>In progress</span>
+        <span><span class="sw cleared"></span>Cleared</span>
+        <span><span class="sw haz"></span>Hazard reported</span>
+        <span><span class="sw bnd"></span>Incident boundary</span>
+        <span><span class="pb p1">1</span>Priority</span>
+        <span>Wedge: the way a photo faces</span>
+      </div>
+      <div class="log">
+        <div class="log-h">Activity log · ICS 214</div>
+        <div id="log"></div>
+        <form id="note-form" class="note-form">
+          <input name="text" placeholder="Add a note to the log" autocomplete="off">
+          <button class="btn sm">Add</button>
+        </form>
+      </div>
+    </div>
+    <aside class="side" aria-label="Zones and details">
+      <div class="side-h">Zones by priority</div>
+      <div id="zones" class="zlist"></div>
+      <div id="panel" class="panel"></div>
+    </aside>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script type="module" src="js/base/main.js"></script>
+</body>
+</html>

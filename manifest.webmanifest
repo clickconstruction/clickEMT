@@ -1,0 +1,15 @@
+{
+  "name": "Incident Map Base",
+  "short_name": "Base",
+  "description": "The base map for an incident: zones, priorities, units in the field, their photos and what they have cleared.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E9E7E1",
+  "theme_color": "#1F4E79",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

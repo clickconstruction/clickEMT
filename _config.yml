@@ -1,0 +1,8 @@
+# GitHub Pages: keep migrations and dev tools out of the published site.
+# Trailing slashes matter: Jekyll's exclude is a prefix match, so a bare
+# "supabase" would also drop supabase-client.js.
+exclude:
+  - supabase/
+  - dev/
+  - README.md
+  - CLAUDE.md

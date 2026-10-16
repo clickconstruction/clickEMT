@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Incident Map · Field</title>
+<meta name="description" content="The field app: your zone, your location, photos that know which way they face, and one tap to mark an address or a zone clear.">
+<meta name="theme-color" content="#1F4E79">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Field">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="">
+<link rel="stylesheet" href="../css/shared.css">
+<link rel="stylesheet" href="../css/field.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin=""></script>
+<script src="../vendor/supabase-js-2.108.0.min.js"></script>
+<script src="../config.js"></script>
+<script>
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    document.write('<script src="../config.local.js" onerror="this.remove()"><\/script>');
+  }
+</script>
+<script src="../supabase-client.js"></script>
+</head>
+<body>
+
+<div id="auth" class="auth" hidden>
+  <form id="auth-form" class="auth-card">
+    <img src="../icons/icon-192.png" alt="" width="64" height="64">
+    <h1>Field</h1>
+    <p class="muted">Sign in with the account your agency gave you. You will check in to the incident next.</p>
+    <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
+    <label>Password <input id="auth-password" type="password" autocomplete="current-password" required minlength="8"></label>
+    <button type="submit" class="btn pri">Sign in</button>
+    <button type="button" id="auth-signup" class="btn link">Create account</button>
+    <p id="auth-msg" class="msg" role="status"></p>
+  </form>
+</div>
+
+<div id="join" class="join" hidden>
+  <div class="join-wrap">
+    <header class="join-head">
+      <h1>Field</h1>
+      <span id="join-user" class="muted"></span>
+      <button class="btn sm" data-action="sign-out">Sign out</button>
+    </header>
+    <section class="card">
+      <h2>Check in to an incident</h2>
+      <form id="join-form" class="form">
+        <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
+        <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
+        <label>Crew <input name="crew" placeholder="Ramirez, Okafor"></label>
+        <div class="row-btns"><button type="submit" class="btn pri">Check in</button></div>
+        <p class="msg" data-msg></p>
+      </form>
+    </section>
+    <section class="card">
+      <h2>Incidents you are already in</h2>
+      <div id="join-list"><p class="muted">Loading…</p></div>
+    </section>
+  </div>
+</div>
+
+<div id="app" class="app" hidden>
+  <header class="p-head">
+    <div class="p-head-main">
+      <h1 id="me-name">Unit</h1>
+      <div class="crew" id="me-crew"></div>
+    </div>
+    <span class="live" id="gps-pill"><span class="dot"></span><span id="gps-text">Locating</span></span>
+    <button class="btn sm" data-action="menu" aria-label="Menu">Menu</button>
+  </header>
+
+  <div id="s-home" class="p-body">
+    <div id="banner"></div>
+    <div class="card" id="assignment"></div>
+    <div id="mini" class="mini" role="application" aria-label="Your zone"></div>
+    <div class="actions">
+      <button class="act photo" data-action="camera">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+        Take photo
+      </button>
+      <button class="act" data-action="addr-clear">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path><path d="M9 15l2 2 4-4"></path></svg>
+        Address clear
+      </button>
+      <button class="act clear" data-action="zone-clear">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"></path><path d="M8 12l3 3 5-6"></path></svg>
+        Zone clear
+      </button>
+      <button class="act" data-action="hazard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"></path><path d="M12 10v5"></path><path d="M12 18v.5"></path></svg>
+        Report hazard
+      </button>
+    </div>
+    <button class="help" data-action="help">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle><path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"></path></svg>
+      Need help now
+    </button>
+    <div class="p-foot"><span id="foot-left"></span><span id="foot-right"></span></div>
+  </div>
+  <input type="file" accept="image/*" capture="environment" id="camera-input" hidden>
+
+  <div id="s-photo" class="sheet" hidden>
+    <h2>Send photo</h2>
+    <div class="viewfinder"><img id="photo-preview" alt="The photo you took"><div class="facing" id="photo-facing"></div></div>
+    <div class="compass">
+      <div><div class="small">Facing</div><div class="big" id="photo-heading">—</div></div>
+      <div style="text-align:right"><div class="small">Position</div><div class="mono" id="photo-pos" style="font-size:13px">—</div><div class="small" id="photo-zone"></div></div>
+    </div>
+    <div class="k">What is this?</div>
+    <div class="chips" id="photo-chips"></div>
+    <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn pri" data-action="send-photo">Send</button></div>
+  </div>
+
+  <div id="s-clear" class="sheet" hidden>
+    <h2 id="clear-title">Mark zone clear</h2>
+    <p class="muted" id="clear-sub"></p>
+    <div class="k">People found who need help</div>
+    <div class="stepper"><button class="btn" data-action="victims-down" aria-label="Fewer">−</button><span class="num" id="victims">0</span><button class="btn" data-action="victims-up" aria-label="More">+</button></div>
+    <div class="k">Hazards still in the zone</div>
+    <div class="chips" id="clear-chips"></div>
+    <div class="k">Search marking to paint</div>
+    <div class="xcode">
+      <div class="xbox" role="img" aria-label="Search marking preview">
+        <svg viewBox="0 0 96 96" aria-hidden="true"><rect x="2" y="2" width="92" height="92" fill="#F1EFEA" stroke="#C9C5BB"></rect><path d="M24,24 L72,72 M72,24 L24,72" stroke="#D9822B" stroke-width="5" stroke-linecap="round"></path></svg>
+        <span class="xv top" id="x-out"></span><span class="xv left" id="x-team"></span><span class="xv right" id="x-haz"></span><span class="xv bottom" id="x-victims"></span>
+      </div>
+      <div class="xt"><span>Top: time out</span><span>Left: team</span><span>Right: hazards</span><span>Bottom: people found</span></div>
+    </div>
+    <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn green" data-action="confirm-clear">Confirm clear</button></div>
+  </div>
+
+  <div id="s-hazard" class="sheet" hidden>
+    <h2>Report hazard</h2>
+    <p class="muted" id="hazard-sub"></p>
+    <div class="k">What kind</div>
+    <div class="chips" id="hazard-chips"></div>
+    <label class="k" for="hazard-note" style="margin-top:4px">Anything else</label>
+    <input id="hazard-note" class="input" placeholder="Line across the road, sparking">
+    <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn pri" data-action="send-hazard">Send hazard</button></div>
+  </div>
+
+  <div id="s-help" class="sheet" hidden>
+    <h2 style="color:var(--danger)">Need help now</h2>
+    <p style="font-size:16px;margin:0">Sends an emergency alert to Operations with your live location and your zone. Every unit on the incident sees it.</p>
+    <div class="card"><div class="k">Will be sent</div><div class="kv" id="help-facts"></div></div>
+    <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn danger" data-action="send-alert">Send alert</button></div>
+  </div>
+
+  <div id="s-helpsent" class="sheet" hidden>
+    <h2 style="color:var(--danger)" id="helpsent-title">Alert sent</h2>
+    <div class="card" id="helpsent-card"></div>
+    <div class="sheet-btns"><button class="btn" data-action="stand-down">Stand down, all OK</button></div>
+  </div>
+
+  <div id="s-menu" class="sheet" hidden>
+    <h2>This incident</h2>
+    <div class="kv" id="menu-facts"></div>
+    <div class="k">Sending</div>
+    <div id="menu-outbox" class="muted">Nothing waiting</div>
+    <div class="k">Phone</div>
+    <div class="row-btns" style="justify-content:flex-start">
+      <button class="btn sm" data-action="compass">Enable compass</button>
+      <button class="btn sm" data-action="refresh">Reload data</button>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin:0">To keep this app on your phone: in Safari press Share, then Add to Home Screen. In Chrome use Install app.</p>
+    <div class="sheet-btns" style="flex-direction:column">
+      <button class="btn" data-action="home">Back</button>
+      <button class="btn" data-action="switch-incident">Switch incident</button>
+      <button class="btn" data-action="sign-out">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script type="module" src="../js/field/main.js"></script>
+</body>
+</html>

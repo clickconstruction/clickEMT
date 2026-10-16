@@ -19,10 +19,10 @@ Plain JavaScript ES modules, no build step. Leaflet with OpenStreetMap tiles. Su
 
 The repo is `clickconstruction/clickEMT` on GitHub, published with GitHub Pages from `main`:
 
-- Base: https://clickconstruction.com/clickEMT/
-- Field: https://clickconstruction.com/clickEMT/field/ (open it on the phone and add it to the home screen)
+- Base: https://clickemt.com/
+- Field: https://clickemt.com/field/ (open it on the phone and add it to the home screen)
 
-The org's Pages domain is clickconstruction.com, so the github.io address redirects there.
+The custom domain is set by the CNAME file at the repo root; the older clickconstruction.com/clickEMT/ and github.io addresses redirect here.
 
 A push to `main` deploys; bump `VERSION` in `sw.js` first when a shell file changed.
 

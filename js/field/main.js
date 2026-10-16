@@ -350,6 +350,9 @@ function drawAll() {
       <div class="zone-name">${esc(zone.code)} · ${esc(zone.name)}</div>
       <div class="badges"><span class="badge p${zone.priority}">Priority ${zone.priority}</span>${zone.structures ? `<span class="badge">${zone.structures} structures</span>` : ''}<span class="badge ${zone.status === 'cleared' ? 'cleared' : (zone.status === 'active' ? 'active' : '')}">${zone.status === 'cleared' ? 'Cleared ' + hhmm(zone.cleared_at) : (zone.status === 'active' ? 'In progress' : 'Not started')}</span>${zone.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div>
       ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}
+      ${zone.work_assignment ? `<div style="font-size:14px;margin-top:4px">${esc(zone.work_assignment)}</div>` : ''}
+      ${zone.instructions ? `<div class="muted" style="font-size:12.5px">${esc(zone.instructions)}</div>` : ''}
+      ${zone.channel || zone.supervisor ? `<div class="muted" style="font-size:12.5px">${zone.channel ? 'Radio ' + esc(zone.channel) : ''}${zone.channel && zone.supervisor ? ' · ' : ''}${zone.supervisor ? 'Supervisor ' + esc(zone.supervisor) : ''}</div>` : ''}
       ${zone.objective_id && data.objective(zone.objective_id) ? `<div class="muted" style="font-size:12.5px">Objective ${data.objective(zone.objective_id).number}: ${esc(data.objective(zone.objective_id).text)}</div>` : ''}`);
   } else {
     setCard(acard, 'card', `<div class="k">Your zone</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns zones from the base map. You can still send photos and hazards from where you stand.</div>`);

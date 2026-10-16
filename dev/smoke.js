@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -109,7 +109,7 @@ async function baseActions(check) {
 
   const before = $$('#map path').length;
   $('#btn-zone').click();
-  check('Draw zone arms the map and says what to do', $('#map').classList.contains('drawing') && has('#tool-hint', 'outline the zone') && !$('#draw-btns').hidden);
+  check('Draw zone arms the map and says what to do', $('#map').classList.contains('drawing') && has('#tool-hint', 'outline the division') && !$('#draw-btns').hidden);
   mapClick(-70, -40); mapClick(70, -40); mapClick(0, 50);
   check('three clicks on the map are three corners, drawn as a dashed outline with its dots', has('#tool-hint', '3 points') && $$('#map path').length === before + 4, `${$$('#map path').length - before} new paths · ${text('#tool-hint')}`);
   $('[data-action="finish-draw"]').click();
@@ -118,10 +118,10 @@ async function baseActions(check) {
   check('Finish opens the new-zone form with the next code in the last division', !!form && form.code.value === 'B-4' && !$('#map').classList.contains('drawing'), form && form.code.value);
   form.name.value = 'Smoke test zone'; form.structures.value = '5';
   form.requestSubmit();
-  await until(() => base.zoneByCode('B-4') && eventText(base, 'Zone B-4 drawn, priority 2'));
+  await until(() => base.zoneByCode('B-4') && eventText(base, 'Division B-4 drawn, priority 2'));
   const b4 = base.zoneByCode('B-4');
   check('the zone is saved with the drawn polygon, priority 2, 5 structures', !!b4 && ringToLatLngs(b4.polygon).length === 3 && b4.priority === 2 && b4.structures === 5 && b4.name === 'Smoke test zone' && b4.status === 'open');
-  check('it is selected, in the list, on the map, and in the log', has('#panel .title', 'b-4', 'smoke test zone') && $$('#zones .zr').length === 7 && $$('#map .zpill').length === 7 && /Zone B-4 drawn, priority 2/.test(logTexts()[0]), logTexts()[0]);
+  check('it is selected, in the list, on the map, and in the log', has('#panel .title', 'b-4', 'smoke test zone') && $$('#zones .zr').length === 7 && $$('#map .zpill').length === 7 && /Division B-4 drawn, priority 2/.test(logTexts()[0]), logTexts()[0]);
   check('the field client sees the new zone', await until(() => field.zoneByCode('B-4')));
 
   const p3 = M().ids.photos[2];
@@ -388,7 +388,7 @@ async function periods(check) {
 
   $('[data-action="briefing"]').click();
   await until(() => !$('#briefing').hidden && $('#briefing-page').textContent.includes('Objectives'));
-  check('the briefing opens with the incident, the period, objectives, zones, resources, hazards and the log', ['incident', 'operational period 2', 'jordan pike', 'night operations', 'objectives', '1. primary search', 'zones', '6 zones', 'resources', '6 people in the field', 'hazards still open', 'downed power line', 'needs attention', 'log of this period'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 300));
+  check('the briefing opens with the incident, the period, objectives, zones, resources, hazards and the log', ['incident', 'operational period 2', 'jordan pike', 'night operations', 'objectives', '1. primary search', 'divisions', '6 divisions', 'resources', '6 people in the field', 'hazards still open', 'downed power line', 'needs attention', 'log of this period'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 300));
   $('[data-action="close-briefing"]').click();
   check('and closes again', $('#briefing').hidden);
 
@@ -396,6 +396,38 @@ async function periods(check) {
   check('a unit cannot add objectives', !!e1 && e1.code === '42501', e1 && e1.message);
   const e2 = await (async () => { try { await field.startPeriod({}); return null; } catch (e) { return e; } })();
   check('a unit cannot start a period', !!e2 && /Only Operations/.test(e2.message), e2 && e2.message);
+}
+
+// The Division assignment (ICS 204): the words, the channel and the supervisor on the zone
+// panel, shown to the unit, printed as a 204, and the base speaks ICS.
+async function assignment(check) {
+  const a1 = ZONE('A-1'), b3 = ZONE('B-3');
+  check('the base says division where ICS does', has('#btn-zone', 'draw division') && has('.side-h', 'divisions by priority') && has('#inc-sub', '6 divisions') && /Division A-1 drawn/.test(logTexts().join(' ')), text('#inc-sub'));
+  $(`#zones .zr[data-id="${a1}"]`).click();
+  await until(() => has('#panel .title', 'division a-1'));
+  const f = $('#panel form[data-form="zone-edit"]');
+  check('the zone panel carries the 204 fields, seeded for A-1, and shows the channel and supervisor', f.work_assignment.value.startsWith('Primary search of every structure') && f.channel.value === 'TAC 2' && f.supervisor.value === 'Lt. Okafor' && has('#panel', 'radio tac 2', 'supervisor lt. okafor'), text('#panel'));
+  check('the unit sees its work assignment, instructions and channel', field.zone(a1).work_assignment.startsWith('Primary search') && field.zone(a1).channel === 'TAC 2');
+  $('#panel [data-action="print-204"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'division a-1 assignment'));
+  check('Print the 204 opens the assignment list with the resources, the work, the instructions, the hazards and the progress', ['assignment list, ics 204', 'division a-1 · riverside drive', 'division supervisor: lt. okafor', 'radio channel: tac 2', 'resources assigned', 'unit 1 (ramirez, okafor)', 'work assignment', 'primary search of every structure', 'special instructions', 'stay out of moving water', 'period safety message', 'known hazards', 'none reported', 'progress', 'in progress · unit 1 · 9 of 24'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 400));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+
+  $(`#zones .zr[data-id="${b3}"]`).click();
+  await until(() => has('#panel .title', 'division b-3'));
+  const g = $('#panel form[data-form="zone-edit"]');
+  g.work_assignment.value = 'Windshield survey of the fairgrounds, then primary search of the barns';
+  g.instructions.value = 'Livestock loose near the east gate';
+  g.channel.value = 'TAC 4';
+  g.supervisor.value = 'Capt. Reyes';
+  g.requestSubmit();
+  await until(() => base.zone(b3).channel === 'TAC 4');
+  const z = base.zone(b3);
+  check('saving the 204 fields keeps them all, and logs the change with the channel and supervisor', z.work_assignment.startsWith('Windshield survey') && z.instructions === 'Livestock loose near the east gate' && z.supervisor === 'Capt. Reyes' && !!eventText(base, 'B-3 assignment updated, channel TAC 4, supervisor Capt. Reyes'), logTexts()[0]);
+  check('the field sees the new assignment words', await until(() => field.zone(b3).work_assignment.startsWith('Windshield survey')));
+  await base.updateZone(b3, { instructions: 'Livestock loose near the east gate, gate now shut' });
+  check('a change to the words alone logs without channel or supervisor', await until(() => eventText(base, 'B-3 assignment updated')));
 }
 
 // A new unit checks in with the code; Operations can open a second incident.

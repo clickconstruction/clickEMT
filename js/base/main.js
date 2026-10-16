@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, esc } from './ui.js';
+import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, unitLabel as unitLabelOf } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.base.incident';
@@ -10,7 +10,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null };
 let map = null;
 let drawQueued = false;
 
@@ -151,7 +151,7 @@ function drawAll() {
   const inc = data.incident;
   $('#inc-name').textContent = inc.name;
   const cur = data.currentPeriod();
-  $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} zones, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
+  $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
   $('#inc-code').textContent = 'Join code ' + inc.code;
   map.render(data, state);
   $('#zones').innerHTML = zonesHtml(data, state);
@@ -176,11 +176,14 @@ function drawAll() {
 }
 
 function drawBriefing() {
-  const html = briefingHtml(data);
+  const z = state.printZone ? data.zone(state.printZone) : null;
+  const html = z ? form204Html(data, z) : briefingHtml(data);
   const page = $('#briefing-page');
   if (page.__html !== html) { page.__html = html; page.innerHTML = html; }
+  $('#briefing-title').textContent = z ? 'Division ' + z.code + ' assignment (ICS 204)' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
+function briefingAsText() { const z = state.printZone ? data.zone(state.printZone) : null; return z ? form204Text(data, z) : briefingText(data); }
 
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
@@ -257,10 +260,11 @@ document.addEventListener('click', async (e) => {
       case 'period-next-cancel': state.periodNext = false; queueDraw(); break;
       case 'objective-done': await data.updateObjective(id, { done_at: new Date().toISOString() }); break;
       case 'objective-undo': await data.updateObjective(id, { done_at: null }); break;
-      case 'briefing': $('#briefing').hidden = false; drawBriefing(); break;
-      case 'close-briefing': $('#briefing').hidden = true; break;
+      case 'briefing': state.printZone = null; $('#briefing').hidden = false; drawBriefing(); break;
+      case 'print-204': state.printZone = id; $('#briefing').hidden = false; drawBriefing(); break;
+      case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; break;
       case 'print-briefing': drawBriefing(); window.print(); break;
-      case 'copy-briefing': await navigator.clipboard.writeText(briefingText(data)); toast('Briefing copied as text'); break;
+      case 'copy-briefing': await navigator.clipboard.writeText(briefingAsText()); toast('Copied as text'); break;
       case 'start-par': {
         const r = data.recipientsFor(btn.dataset.target || 'all');
         if (!r.toUsers.length) { toast('Nobody to ask', true); break; }
@@ -275,7 +279,7 @@ document.addEventListener('click', async (e) => {
         $('#btn-boundary').classList.toggle('on', mode === 'boundary');
         $('#btn-zone').classList.toggle('on', mode === 'zone');
         $('#draw-btns').hidden = false;
-        $('#tool-hint').textContent = mode === 'boundary' ? 'Click the map to outline the incident area, then press Finish.' : 'Click the map to outline the zone, then press Finish.';
+        $('#tool-hint').textContent = mode === 'boundary' ? 'Click the map to outline the incident area, then press Finish.' : 'Click the map to outline the division, then press Finish.';
         if (state.selected) select(null);
         break;
       }
@@ -283,7 +287,7 @@ document.addEventListener('click', async (e) => {
         const mode = map.mode;
         const polygon = map.finishDraw();
         stopDraw();
-        if (!polygon) { toast('A zone needs at least three points', true); break; }
+        if (!polygon) { toast('A division needs at least three points', true); break; }
         if (mode === 'boundary') { await data.setBoundary(polygon); toast('Boundary saved'); }
         else { state.pendingPolygon = polygon; state.newZone = { code: nextZoneCode(data.zones()) }; select({ type: 'newzone' }); }
         break;
@@ -320,7 +324,7 @@ function stopDraw() {
   $('#btn-boundary').classList.remove('on');
   $('#btn-zone').classList.remove('on');
   $('#draw-btns').hidden = true;
-  $('#tool-hint').textContent = 'Click a zone, a unit or a photo pin to open it.';
+  $('#tool-hint').textContent = 'Click a division, a unit or a photo pin to open it.';
 }
 
 document.addEventListener('submit', async (e) => {
@@ -333,10 +337,11 @@ document.addEventListener('submit', async (e) => {
       const z = await data.addZone({ code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), priority: Number(form.priority.value), polygon: state.pendingPolygon, structures: Number(form.structures.value) || 0 });
       state.pendingPolygon = null; state.newZone = null;
       select({ type: 'zone', id: z.id });
-      toast('Zone ' + z.code + ' saved');
+      toast('Division ' + z.code + ' saved');
     } else if (form.dataset.form === 'zone-edit') {
-      await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0 });
+      await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0, work_assignment: form.work_assignment.value.trim(), instructions: form.instructions.value.trim(), channel: form.channel.value.trim(), supervisor: form.supervisor.value.trim() });
       toast('Saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'objective') {
       const text = form.text.value.trim();

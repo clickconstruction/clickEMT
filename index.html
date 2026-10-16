@@ -100,8 +100,8 @@
     <div class="mapcol">
       <div class="tools">
         <button class="btn sm" data-action="draw-boundary" id="btn-boundary">Draw boundary</button>
-        <button class="btn sm" data-action="draw-zone" id="btn-zone">Draw zone</button>
-        <span class="hint" id="tool-hint">Click a zone, a unit or a photo pin to open it.</span>
+        <button class="btn sm" data-action="draw-zone" id="btn-zone" title="A division is an area of the map given to a unit">Draw division</button>
+        <span class="hint" id="tool-hint">Click a division, a unit or a photo pin to open it.</span>
         <span id="draw-btns" hidden>
           <button class="btn pri sm" data-action="finish-draw">Finish</button>
           <button class="btn sm" data-action="cancel-draw">Cancel</button>
@@ -127,7 +127,7 @@
       </div>
     </div>
     <aside class="side" aria-label="Zones and details">
-      <div class="side-h">Zones by priority</div>
+      <div class="side-h" title="ICS calls an area of the map given to a unit a Division">Divisions by priority</div>
       <div id="zones" class="zlist"></div>
       <div id="panel" class="panel"></div>
     </aside>
@@ -136,7 +136,7 @@
 
 <div id="briefing" class="briefing" hidden>
   <div class="briefing-bar">
-    <strong>Shift-change briefing</strong>
+    <strong id="briefing-title">Shift-change briefing</strong>
     <span class="muted" id="briefing-when"></span>
     <span style="flex:1"></span>
     <button class="btn sm" data-action="copy-briefing">Copy as text</button>

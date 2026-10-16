@@ -11,7 +11,7 @@ function assignedLabel(data, z) { return z.assigned_to ? unitLabel(data.member(z
 export function zonesHtml(data, state) {
   const sel = state.selected || {};
   const zones = data.zones();
-  if (!zones.length) return '<p class="muted" style="padding:8px 14px">No zones yet. Press Draw zone and click the map to outline one.</p>';
+  if (!zones.length) return '<p class="muted" style="padding:8px 14px">No divisions yet. Press Draw division and click the map to outline one.</p>';
   return zones.map((z) => `
     <button class="zr${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}" data-action="select-zone" data-id="${z.id}">
       <span class="pb p${z.priority}">${z.priority}</span>
@@ -111,8 +111,8 @@ function zoneHtml(data, z, state) {
   const statusCls = z.status === 'cleared' ? 'cleared' : (z.status === 'active' ? 'active' : '');
   return `
     <button class="back" data-action="close-panel">Back to units</button>
-    <div class="title">${esc(z.code)} <span>${esc(z.name)}</span></div>
-    <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span></div>
+    <div class="title">Division ${esc(z.code)} <span>${esc(z.name)}</span></div>
+    <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>${z.channel ? `<span class="badge">Radio ${esc(z.channel)}</span>` : ''}${z.supervisor ? `<span class="muted" style="font-size:12px">Supervisor ${esc(z.supervisor)}</span>` : ''}</div>
     ${hazards.map((h) => `<div class="hazline">Hazard · ${esc(h.kind)}${h.note ? ' · ' + esc(h.note) : ''} · ${esc(unitLabel(data.member(h.user_id)))} at ${hhmm(h.created_at)}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>`).join('')}
     <div class="d-row"><span class="k">Priority</span>
       ${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}">Priority ${p}</button>`).join('')}
@@ -132,7 +132,13 @@ function zoneHtml(data, z, state) {
         <label>Structures <input name="structures" type="number" min="0" value="${z.structures}"></label>
       </div>
       <label>Name <input name="name" value="${esc(z.name)}" placeholder="What is here"></label>
-      <div class="row-btns"><button class="btn sm" type="submit">Save</button></div>
+      <label>Work assignment <textarea name="work_assignment" rows="2" placeholder="What the unit is to do here, in words">${esc(z.work_assignment || '')}</textarea></label>
+      <label>Special instructions <textarea name="instructions" rows="2" placeholder="Hazards, access, what to watch for">${esc(z.instructions || '')}</textarea></label>
+      <div class="row-2">
+        <label>Radio channel <input name="channel" value="${esc(z.channel || '')}" placeholder="TAC 2"></label>
+        <label>Division supervisor <input name="supervisor" value="${esc(z.supervisor || '')}" placeholder="Name"></label>
+      </div>
+      <div class="row-btns"><button class="btn sm" type="button" data-action="print-204" data-id="${z.id}">Print the 204</button><button class="btn sm" type="submit">Save</button></div>
     </form>
     <div class="k">Structures searched</div>
     <div class="bar"><div class="bar-fill" style="width:${pct(z)}%"></div></div>
@@ -215,7 +221,7 @@ function unitHtml(data, m, state) {
 function newZoneHtml(data, state) {
   const d = state.newZone || {};
   return `
-    <div class="title">New zone</div>
+    <div class="title">New division</div>
     <form class="inline-form" data-form="new-zone">
       <div class="row-2">
         <label>Code <input name="code" value="${esc(d.code || '')}" required placeholder="A-1"></label>
@@ -293,7 +299,7 @@ export function briefingSections(data) {
   if (p && p.notes) S.push({ title: 'Safety message and notes', lines: [p.notes] });
   S.push({ title: 'Objectives', lines: objectives.length ? objectives.map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ' (open)'}`) : ['None set'] });
   const cleared = zones.filter((z) => z.status === 'cleared').length, active = zones.filter((z) => z.status === 'active').length, open = zones.filter((z) => z.status === 'open').length;
-  S.push({ title: 'Zones', lines: [`${zones.length} zones: ${cleared} cleared, ${active} in progress, ${open} not started`].concat(zones.map((z) => {
+  S.push({ title: 'Divisions', lines: [`${zones.length} divisions: ${cleared} cleared, ${active} in progress, ${open} not started`].concat(zones.map((z) => {
     const o = z.objective_id ? data.objective(z.objective_id) : null;
     return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '')}${o ? ' · objective ' + o.number : ''}`;
   })) });
@@ -310,13 +316,36 @@ export function briefingSections(data) {
   return S;
 }
 
-export function briefingHtml(data) {
-  return briefingSections(data).map((s) => `<section><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</section>`).join('');
+// The Division assignment, ICS 204, for one zone: what paper goes in the truck.
+export function form204Sections(data, z) {
+  const inc = data.incident, p = data.currentPeriod();
+  const unit = z.assigned_to ? data.member(z.assigned_to) : null;
+  const o = z.objective_id ? data.objective(z.objective_id) : null;
+  const hazards = data.hazards().filter((h) => h.zone_id === z.id);
+  const S = [];
+  S.push({ title: 'Assignment list, ICS 204', lines: [
+    inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    'Division ' + z.code + (z.name ? ' · ' + z.name : '') + ' · priority ' + z.priority + (o ? ' · objective ' + o.number + ': ' + o.text : ''),
+    'Division supervisor: ' + (z.supervisor || 'not named'),
+    'Radio channel: ' + (z.channel || 'not set')
+  ] });
+  S.push({ title: 'Resources assigned', lines: unit ? [`${unitLabel(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`] : ['None yet'] });
+  S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
+  S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []) });
+  S.push({ title: 'Known hazards', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None reported'] });
+  S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '')].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
+  S.push({ title: 'Prepared', lines: ['By Operations, ' + new Date().toLocaleString()] });
+  return S;
 }
 
-export function briefingText(data) {
-  return briefingSections(data).map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n');
-}
+function sectionsHtml(S) { return S.map((s) => `<section><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</section>`).join(''); }
+function sectionsText(S) { return S.map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n'); }
+
+export function briefingHtml(data) { return sectionsHtml(briefingSections(data)); }
+export function briefingText(data) { return sectionsText(briefingSections(data)); }
+export function form204Html(data, z) { return sectionsHtml(form204Sections(data, z)); }
+export function form204Text(data, z) { return sectionsText(form204Sections(data, z)); }
 
 export function logHtml(data) {
   const events = data.events();

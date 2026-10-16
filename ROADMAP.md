@@ -31,9 +31,9 @@ Ticked when it is on `main`.
 
 ## 4. The Division assignment (ICS 204) and ICS vocabulary
 
-- [ ] `ic_zones`: work assignment (what to do, in words), special instructions, radio channel, division supervisor.
-- [ ] Base: those fields on the zone panel; Print the 204 for a division: resources assigned, the assignment, instructions, communications, known hazards, the map.
-- [ ] Vocabulary: the base says Division, Assigned, Available, Out of service, Operational period, Check-in, Emergency traffic, each with a plain hint. The field app stays plain.
+- [x] `ic_zones`: work assignment (what to do, in words), special instructions, radio channel, division supervisor. A change is logged.
+- [x] Base: those fields on the zone panel; Print the 204 for a division: the division and its objective, supervisor and channel, resources assigned, the work assignment, special instructions with the period's safety message, known hazards, progress. Printable or copied as text. The phone shows its division's words, channel and supervisor on the card.
+- [x] Vocabulary: the base says Division (with a hint), Assigned, Available, Out of service, Operational period, Check-in; the log says Division. The field app stays plain. (The map is not yet on the printed 204.)
 
 ## 5. Primary and secondary search, and structure records
 

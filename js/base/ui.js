@@ -439,6 +439,74 @@ export function form204Sections(data, z) {
   return S;
 }
 
+// The situation report, ICS 209: counts from the data, words from Operations on the period.
+export function sitrepSections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  const sr = (p && p.sitrep) || {};
+  const zones = data.zones(), units = data.units(), structs = data.structures();
+  const help = structs.reduce((n, s) => n + (s.people_needing_help || 0), 0);
+  const refused = structs.filter((s) => s.occupants === 'refused').length, sheltering = structs.filter((s) => s.occupants === 'sheltering').length;
+  const damaged = { major: structs.filter((s) => s.damage === 'major').length, destroyed: structs.filter((s) => s.damage === 'destroyed').length };
+  const S = [];
+  S.push({ title: 'Incident status summary, ICS 209', lines: [
+    inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
+    'Prepared by Operations, ' + new Date().toLocaleString()
+  ].filter(Boolean) });
+  S.push({ title: 'Situation', lines: [sr.summary || 'Not written yet'] });
+  S.push({ title: 'Progress', lines: [
+    `${zones.length} divisions: ${zones.filter((z) => z.status === 'cleared').length} cleared, ${zones.filter((z) => z.status === 'primary').length} primary search done, ${zones.filter((z) => z.status === 'active').length} in progress, ${zones.filter((z) => z.status === 'open').length} not started`,
+    `${structs.filter((s) => s.status === 'searched').length} of ${structs.length} structures on record searched`,
+    `People: ${help} needing help, ${sheltering} sheltering in place, ${refused} refused to leave`,
+    `Damage: ${damaged.major} major, ${damaged.destroyed} destroyed`,
+    `Hazards open: ${data.hazards().length} · emergencies open: ${data.alerts().length}`
+  ] });
+  S.push({ title: 'Objectives', lines: (p ? data.objectives(p.id) : []).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done)' : ' (open)'}`).concat([]).length ? data.objectives(p && p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done)' : ' (open)'}`) : ['None set'] });
+  S.push({ title: 'Resources', lines: [`${units.length} units checked in, ${data.activeUnits().length} on the incident, ${data.peopleInField()} people in the field`].concat(
+    ['assigned', 'available', 'out_of_service', 'checked_out'].map((st) => `${STATUS_LABEL[st]}: ${units.filter((u) => u.status === st).length}`),
+    [...new Set(units.map((u) => u.agency).filter(Boolean))].map((a) => { const n = units.filter((u) => u.agency === a).length; return `${a}: ${n} unit${n === 1 ? '' : 's'}`; })) });
+  S.push({ title: 'Resources needed', lines: [sr.needs || 'None stated'] });
+  S.push({ title: 'Outlook for the next period', lines: [sr.outlook || 'Not written yet'] });
+  S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => facilityLabel(f)) : ['None set'] });
+  return S;
+}
+
+// The Incident Action Plan: the forms stitched together for the briefing and the truck.
+export function iapSections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  const S = [];
+  S.push({ title: 'Incident Action Plan', lines: [
+    inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    'Prepared ' + new Date().toLocaleString()
+  ] });
+  S.push({ title: 'Objectives, ICS 202', lines: (p ? data.objectives(p.id) : []).length ? data.objectives(p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ''}`) : ['None set'] });
+  S.push({ title: 'Organization, ICS 203', lines: [
+    'Incident Commander: ' + ((p && p.ic_name) || 'not set'),
+    'Operations Section Chief: ' + ((p && p.ops_chief) || 'not set'),
+    'Safety Officer: ' + ((p && p.safety_officer) || 'not set')
+  ].concat(data.zones().filter((z) => z.supervisor).map((z) => `Division ${z.code} supervisor: ${z.supervisor}`), data.units().filter((u) => u.status !== 'checked_out').map((u) => `${unitLabel(u)}${u.crew ? ' (' + u.crew + ')' : ''}${u.agency ? ' · ' + u.agency : ''}`)) });
+  for (const z of data.zones()) {
+    const unit = z.assigned_to ? data.member(z.assigned_to) : null;
+    const o = z.objective_id ? data.objective(z.objective_id) : null;
+    S.push({ title: `Assignment, ICS 204 · Division ${z.code}${z.name ? ' · ' + z.name : ''}`, lines: [
+      `Priority ${z.priority}${o ? ' · objective ' + o.number : ''} · supervisor ${z.supervisor || 'not named'} · channel ${z.channel || 'not set'}`,
+      'Resources: ' + (unit ? unitLabel(unit) + (unit.crew ? ' (' + unit.crew + ')' : '') + (unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : '') : 'none yet'),
+      'Work assignment: ' + (z.work_assignment || 'not written yet'),
+      'Special instructions: ' + (z.instructions || 'none'),
+      'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : '')
+    ] });
+  }
+  const ch = data.channels();
+  S.push({ title: 'Communications, ICS 205', lines: ch.length ? ch.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
+  const med = data.facilities().filter((f) => f.kind === 'hospital');
+  S.push({ title: 'Medical, ICS 206', lines: (med.length ? med.map((f) => `${f.name || 'Hospital'}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`) : ['No hospital set']).concat(['Emergency traffic: ' + ((ch.find((c) => /emergency/i.test(c.use)) || {}).channel || 'not set') + '. A unit in trouble presses Need help now; Operations acknowledges.']) });
+  S.push({ title: 'Safety message, ICS 208', lines: [(p && p.notes) || 'Not written yet'] });
+  S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['None set'] });
+  return S;
+}
+
 function sectionsHtml(S) { return S.map((s) => `<section><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</section>`).join(''); }
 function sectionsText(S) { return S.map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n'); }
 
@@ -446,6 +514,24 @@ export function briefingHtml(data) { return sectionsHtml(briefingSections(data))
 export function briefingText(data) { return sectionsText(briefingSections(data)); }
 export function form204Html(data, z) { return sectionsHtml(form204Sections(data, z)); }
 export function form204Text(data, z) { return sectionsText(form204Sections(data, z)); }
+export function sitrepHtml(data) { return sectionsHtml(sitrepSections(data)); }
+export function sitrepText(data) { return sectionsText(sitrepSections(data)); }
+export function iapHtml(data) { return sectionsHtml(iapSections(data)); }
+export function iapText(data) { return sectionsText(iapSections(data)); }
+
+// The words of the situation report, edited above the report itself.
+export function sitrepFormHtml(data) {
+  const p = data.currentPeriod();
+  if (!p) return '<p class="muted">Start an operational period to write a situation report.</p>';
+  const sr = p.sitrep || {};
+  return `
+    <form class="inline-form no-print" data-form="sitrep-edit" data-id="${p.id}">
+      <label>Situation, what happened and where it stands <textarea name="summary" rows="2">${esc(sr.summary || '')}</textarea></label>
+      <label>Resources needed <textarea name="needs" rows="2">${esc(sr.needs || '')}</textarea></label>
+      <label>Outlook for the next period <textarea name="outlook" rows="2">${esc(sr.outlook || '')}</textarea></label>
+      <div class="row-btns"><button class="btn pri sm" type="submit">Save the words</button></div>
+    </form>`;
+}
 
 export function logHtml(data) {
   const events = data.events();

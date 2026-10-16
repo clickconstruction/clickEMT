@@ -49,8 +49,8 @@ Ticked when it is on `main`.
 
 ## 7. Situation report (ICS 209) and the printed IAP
 
-- [ ] A one-screen situation report assembled from the data: period, objectives, zones by state, structures searched, people found, hazards, units by status, alerts, resources needed; copy as text, print, send up to the EOC.
-- [ ] Print the Incident Action Plan: objectives (202), organization (203), every division's 204, communications (205), medical (206), the safety message (208), the map.
+- [x] A one-screen situation report assembled from the data: period, the situation in words, divisions by state, structures searched, people needing help, sheltering and refused, damage, hazards and emergencies open, objectives, resources by status and agency, resources needed, the outlook, facilities. The words live on the period and are edited above the report. Copy as text or print; sending to an EOC is copy and paste for now.
+- [x] Print the Incident Action Plan: objectives (202), organization (203), every division's 204, communications (205), medical (206), the safety message (208), facilities. (No map on the print yet.)
 
 ## 8. Agencies, public information, replay
 

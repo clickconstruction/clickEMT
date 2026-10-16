@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, esc } from './ui.js';
+import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, FACILITY_KINDS } from '../shared/rules.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
@@ -11,7 +11,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, placeZone: null, placeKind: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null };
 let map = null;
 let drawQueued = false;
 
@@ -169,15 +169,16 @@ async function placeFacility(lat, lng) {
   } catch (err) { toast(err.message || String(err), true); }
 }
 
-// Redraw once per frame. A background tab or a hidden pane gets no frames (and may not even say it
-// is hidden), so a short timer draws anyway, and the page is current the moment it is looked at.
+// Redraw once per frame while frames are coming. A background tab or a hidden pane gets no frames
+// (and may not even say it is hidden) and throttles its timers, so when no frame has come lately
+// the draw runs at once, and the page is current the moment it is looked at.
+let lastFrameAt = 0;
+(function tickFrames() { requestAnimationFrame(() => { lastFrameAt = Date.now(); tickFrames(); }); })();
 function queueDraw() {
   if (drawQueued) return;
+  if (Date.now() - lastFrameAt > 1500) { drawAll(); return; }
   drawQueued = true;
-  let done = false;
-  const go = () => { if (done) return; done = true; drawQueued = false; drawAll(); };
-  requestAnimationFrame(go);
-  setTimeout(go, 60);
+  requestAnimationFrame(() => { drawQueued = false; drawAll(); });
 }
 
 function drawAll() {
@@ -209,15 +210,24 @@ function drawAll() {
   drawLive();
 }
 
+// One overlay draws the briefing, a division's 204, the situation report or the whole IAP.
 function drawBriefing() {
+  if (!data.incident) return;
   const z = state.printZone ? data.zone(state.printZone) : null;
-  const html = z ? form204Html(data, z) : briefingHtml(data);
+  const kind = z ? '204' : (state.print || 'briefing');
+  const html = kind === '204' ? form204Html(data, z) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
   const page = $('#briefing-page');
-  if (page.__html !== html) { page.__html = html; page.innerHTML = html; }
-  $('#briefing-title').textContent = z ? 'Division ' + z.code + ' assignment (ICS 204)' : 'Shift-change briefing';
+  const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+  if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
+  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
-function briefingAsText() { const z = state.printZone ? data.zone(state.printZone) : null; return z ? form204Text(data, z) : briefingText(data); }
+function briefingAsText() {
+  const z = state.printZone ? data.zone(state.printZone) : null;
+  const kind = z ? '204' : (state.print || 'briefing');
+  return kind === '204' ? form204Text(data, z) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
+}
+function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); }
 
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
@@ -318,9 +328,11 @@ document.addEventListener('click', async (e) => {
       case 'period-next-cancel': state.periodNext = false; queueDraw(); break;
       case 'objective-done': await data.updateObjective(id, { done_at: new Date().toISOString() }); break;
       case 'objective-undo': await data.updateObjective(id, { done_at: null }); break;
-      case 'briefing': state.printZone = null; $('#briefing').hidden = false; drawBriefing(); break;
-      case 'print-204': state.printZone = id; $('#briefing').hidden = false; drawBriefing(); break;
-      case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; break;
+      case 'briefing': openOverlay('briefing'); break;
+      case 'print-204': openOverlay('204', id); break;
+      case 'sitrep': openOverlay('sitrep'); break;
+      case 'iap': openOverlay('iap'); break;
+      case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; break;
       case 'print-briefing': drawBriefing(); window.print(); break;
       case 'copy-briefing': await navigator.clipboard.writeText(briefingAsText()); toast('Copied as text'); break;
       case 'start-par': {
@@ -403,6 +415,11 @@ document.addEventListener('submit', async (e) => {
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
+    } else if (form.dataset.form === 'sitrep-edit') {
+      await data.updatePeriod(form.dataset.id, { sitrep: { summary: form.summary.value.trim(), needs: form.needs.value.trim(), outlook: form.outlook.value.trim() } });
+      toast('Situation report saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      drawBriefing();
     } else if (form.dataset.form === 'facility-edit') {
       await data.updateFacility(form.dataset.id, { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim() });
       toast('Saved');

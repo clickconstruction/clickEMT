@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -524,6 +524,30 @@ async function facilities(check) {
 
   const bad = await (async () => { try { await field.addFacility({ kind: 'other', lat: 30.26, lng: -97.74 }); return null; } catch (e) { return e; } })();
   check('a unit cannot place facilities', !!bad && bad.code === '42501', bad && bad.message);
+}
+
+// The situation report and the Incident Action Plan: assembled from the data, the report's words
+// edited and saved on the period, both copied as text.
+async function reports(check) {
+  $('[data-action="sitrep"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+  check('the situation report opens with the counts, the seeded words, resources by status and agency, and the facilities', ['incident status summary, ics 209', 'situation', 'cedar fork crested', 'progress', '6 divisions', '6 of 9 structures on record searched', 'people: 0 needing help', 'resources needed', 'swift-water team', 'outlook', 'resources', 'assigned: 3', 'cedar fork fire department: 2 units', 'travis county rescue: 1 unit', 'facilities', 'staging area: high school east lot'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
+  const sf = $('#briefing-page form[data-form="sitrep-edit"]');
+  check('the words are editable above the report', !!sf && sf.summary.value.startsWith('Cedar Fork crested'));
+  sf.needs.value = 'Two more boats and a fuel truck by 18:00';
+  sf.requestSubmit();
+  await until(() => base.currentPeriod().sitrep && base.currentPeriod().sitrep.needs.startsWith('Two more boats'));
+  check('saving the words keeps them on the period, logs it, and the report shows them', !!eventText(base, 'Situation report updated for operational period 1') && await until(() => has('#briefing-page', 'two more boats and a fuel truck')) && base.currentPeriod().sitrep.summary.startsWith('Cedar Fork crested'), logTexts()[0]);
+  check('the field sees the words', await until(() => field.currentPeriod().sitrep && field.currentPeriod().sitrep.needs.startsWith('Two more boats')));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+
+  $('[data-action="iap"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the IAP stitches the 202, 203, a 204 per division, the 205, 206 and 208 together', ['objectives, ics 202', '1. primary search', 'organization, ics 203', 'incident commander: dana ruiz', 'division a-1 supervisor: lt. okafor', 'unit 1 (ramirez, okafor)', 'assignment, ics 204 · division a-1', 'work assignment: primary search of every structure', 'assignment, ics 204 · division b-3', 'communications, ics 205', 'command: cmd 1', 'medical, ics 206', 'dell seton', 'emergency traffic: tac 9', 'safety message, ics 208', 'swift water everywhere'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
+  check('every division has its own 204 section', $$('#briefing-page h2').filter((h) => /ICS 204/.test(h.textContent)).length === 6);
+  $('[data-action="close-briefing"]').click();
+  check('and it closes', $('#briefing').hidden);
 }
 
 // A new unit checks in with the code; Operations can open a second incident.

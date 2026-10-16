@@ -303,13 +303,14 @@ function myZone() {
 }
 function myAlert() { return data.user ? data.alerts().find((a) => a.user_id === data.user.id) || null : null; }
 
+// Once per frame while frames come; at once when they have stopped (a background tab, a hidden pane).
+let lastFrameAt = 0;
+(function tickFrames() { requestAnimationFrame(() => { lastFrameAt = Date.now(); tickFrames(); }); })();
 function queueDraw() {
   if (drawQueued) return;
+  if (Date.now() - lastFrameAt > 1500) { drawAll(); return; }
   drawQueued = true;
-  let done = false;
-  const go = () => { if (done) return; done = true; drawQueued = false; drawAll(); };
-  requestAnimationFrame(go);
-  setTimeout(go, 60);
+  requestAnimationFrame(() => { drawQueued = false; drawAll(); });
 }
 
 function drawAll() {

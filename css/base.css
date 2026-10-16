@@ -71,7 +71,10 @@
 .briefing-page section { margin-bottom: 18px; }
 .briefing-page h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .briefing-page p { margin: 0 0 3px; font-size: 13.5px; }
+.briefing-page .inline-form { margin-bottom: 18px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #FBFAF8; }
+.briefing-page .inline-form textarea { font-size: 13.5px; }
 @media print {
+  .no-print { display: none !important; }
   body > *:not(#briefing) { display: none !important; }
   #briefing { position: static; background: #fff; }
   .briefing-bar { display: none !important; }

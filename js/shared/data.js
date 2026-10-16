@@ -1,13 +1,13 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities'];
 const BUCKET = 'ic-photos';
 const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map() };
 }
 
 function keyOf(table, row) {
@@ -93,7 +93,7 @@ export class Data {
   }
   async load(id) {
     const q = (t) => this.sb.from(t).select('*').eq('incident_id', id);
-    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures] = await Promise.all([
+    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities] = await Promise.all([
       this.sb.from('ic_incidents').select('*').eq('id', id).single(),
       q('ic_members'),
       q('ic_zones').order('code'),
@@ -106,15 +106,16 @@ export class Data {
       q('ic_message_acks'),
       q('ic_periods').order('number'),
       q('ic_objectives').order('number'),
-      q('ic_structures')
+      q('ic_structures'),
+      q('ic_facilities')
     ]);
-    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures]) if (r.error) throw r.error;
+    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities]) if (r.error) throw r.error;
     this.store.incident = inc.data;
     const put = (table, rows) => { const m = mapFor(this.store, table); for (const row of rows || []) m.set(keyOf(table, row), row); };
     put('ic_members', members.data); put('ic_zones', zones.data); put('ic_positions', positions.data);
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
-    put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data);
+    put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data);
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
@@ -198,6 +199,29 @@ export class Data {
     const patch = { status: pass === 'secondary' ? 'cleared' : 'primary', marking: marking || null, hazard: !!(z && z.hazard) || !!hazard };
     if (z && this.structures(zoneId).length === 0) patch.cleared = Math.max(z.structures, z.cleared);
     return this.updateZone(zoneId, patch);
+  }
+
+  // ---- facilities (ICS 205 and 206, light) and the communications plan
+  facilities(all) { return [...this.store.facilities.values()].filter((f) => all || !f.closed_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
+  facility(id) { return this.store.facilities.get(id) || null; }
+  channels() { const inc = this.store.incident; return Array.isArray(inc && inc.channels) ? inc.channels : []; }
+  async addFacility({ kind, name, lat, lng, notes, contact }) {
+    const { data, error } = await this.sb.from('ic_facilities').insert({ incident_id: this.store.incident.id, kind, name: name || '', lat, lng, notes: notes || '', contact: contact || '', created_by: this.user.id }).select().single();
+    if (error) throw error;
+    this.local('ic_facilities', data);
+    return data;
+  }
+  async updateFacility(id, patch) {
+    const { data, error } = await this.sb.from('ic_facilities').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_facilities', data);
+    return data;
+  }
+  async setChannels(channels) {
+    const { data, error } = await this.sb.from('ic_incidents').update({ channels }).eq('id', this.store.incident.id).select().single();
+    if (error) throw error;
+    this.store.incident = data; this.emit('change', { table: 'ic_incidents', row: data });
+    return data;
   }
 
   // ---- operational periods and objectives (ICS 202)

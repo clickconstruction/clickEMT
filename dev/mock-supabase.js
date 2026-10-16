@@ -32,6 +32,7 @@
   const PER = ID('1', 1);
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
   const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9)];
+  const FAC = [ID('4', 1), ID('4', 2), ID('4', 3), ID('4', 4), ID('4', 5)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
@@ -68,6 +69,7 @@
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
         center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER,
+        channels: [{ use: 'Command', channel: 'CMD 1' }, { use: 'Tactical, Division A', channel: 'TAC 2' }, { use: 'Tactical, Division B', channel: 'TAC 3' }, { use: 'Emergency traffic', channel: 'TAC 9' }],
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
       ic_periods: [
@@ -119,6 +121,13 @@
         structure(7, 'B-2', '105 Bee Creek Rd', 30.2592, -97.7478, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
         structure(8, 'B-2', '109 Bee Creek Rd', 30.2600, -97.7466, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) })
       ],
+      ic_facilities: [
+        { id: FAC[0], incident_id: INC, kind: 'icp', name: 'Cedar Fork High School, front office', lat: 30.2562, lng: -97.7415, notes: 'Incident command post, enter from Mill Street', contact: 'CMD 1', created_by: U.ops, created_at: ago(189), updated_at: ago(189), closed_at: null },
+        { id: FAC[1], incident_id: INC, kind: 'staging', name: 'High school east lot', lat: 30.2556, lng: -97.7400, notes: 'Units wait here between assignments', contact: 'CMD 1', created_by: U.ops, created_at: ago(188), updated_at: ago(188), closed_at: null },
+        { id: FAC[2], incident_id: INC, kind: 'shelter', name: 'High school gym', lat: 30.2566, lng: -97.7426, notes: 'Red Cross on site, pets in the ag barn', contact: 'Red Cross desk 512 555 0142', created_by: U.ops, created_at: ago(150), updated_at: ago(150), closed_at: null },
+        { id: FAC[3], incident_id: INC, kind: 'hospital', name: 'Dell Seton Medical Center', lat: 30.2780, lng: -97.7338, notes: 'Trauma center, 12 minutes from the base', contact: '512 555 0100', created_by: U.ops, created_at: ago(187), updated_at: ago(187), closed_at: null },
+        { id: FAC[4], incident_id: INC, kind: 'pod', name: 'Fairgrounds gate', lat: 30.2588, lng: -97.7352, notes: 'Water and ice from 14:00', contact: '', created_by: U.ops, created_at: ago(100), updated_at: ago(100), closed_at: null }
+      ],
       ic_messages: [
         { id: MSG[0], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'message', text: 'Shelter is open at the high school gym, send anyone who needs it there', created_at: ago(60) },
         { id: MSG[1], incident_id: INC, from_user: U.ops, to_users: [U.unit3], to_label: 'Unit 3', to_zone: Z['A-2'], kind: 'message', text: 'Watch the power line at the park entrance, the utility crew is 20 minutes out', created_at: ago(15) }
@@ -133,6 +142,12 @@
     ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1');
     ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan');
     for (const o of t.ic_objectives) ev(189 - o.number, U.ops, 'ops', 'Objective ' + o.number + ' set: ' + o.text, 'ic_objectives', o.id);
+    ev(189, U.ops, 'ops', 'Command post: Cedar Fork High School, front office opened', 'ic_facilities', FAC[0]);
+    ev(188, U.ops, 'ops', 'Staging area: High school east lot opened', 'ic_facilities', FAC[1]);
+    ev(187, U.ops, 'ops', 'Hospital: Dell Seton Medical Center opened', 'ic_facilities', FAC[3]);
+    ev(186, U.ops, 'ops', 'Communications plan updated: Command CMD 1, Tactical, Division A TAC 2, Tactical, Division B TAC 3, Emergency traffic TAC 9');
+    ev(150, U.ops, 'ops', 'Shelter: High school gym opened', 'ic_facilities', FAC[2]);
+    ev(100, U.ops, 'ops', 'Point of distribution: Fairgrounds gate opened', 'ic_facilities', FAC[4]);
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Division ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
     ev(170, U.unit1, 'ops', 'Unit 1 checked in with 2 people');
@@ -162,7 +177,8 @@
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null }),
+    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [] }),
+    ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', created_at: now() }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
@@ -199,6 +215,7 @@
       case 'ic_events': return op === 'insert' && row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid);
       case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
       case 'ic_structures': return isMember(row.incident_id, uid);
+      case 'ic_facilities': return isOps(row.incident_id, uid);
       case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
@@ -235,7 +252,14 @@
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
     if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
     if (table === 'ic_periods' && r.number == null) throw nn('number');
+    if (table === 'ic_facilities') {
+      if (!['icp', 'staging', 'base', 'shelter', 'pod', 'hospital', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
+      if (r.lat == null) throw nn('lat');
+      if (r.lng == null) throw nn('lng');
+    }
   }
+  const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helispot: 'Helispot', other: 'Facility' };
+  const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
 
   // ---- the triggers: the log (ic_events), updated_at, a hazard's flag on its zone
   const label = (inc, uid) => R.unitLabel(member(inc, uid));
@@ -270,6 +294,7 @@
   }
   function afterInsert(table, r, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
+    if (table === 'ic_facilities') log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' opened', 'ic_facilities', r.id);
     if (table === 'ic_zones') log(changes, r.incident_id, uid, 'ops', `Division ${r.code} drawn, priority ${r.priority}`, 'ic_zones', r.id);
     if (table === 'ic_photos') {
       log(changes, r.incident_id, r.user_id, 'photo', `${label(r.incident_id, r.user_id)} sent a photo from ${zoneCode(r.zone_id)}${r.heading == null ? '' : ', facing ' + R.compass(r.heading)}${r.note !== '' ? ': ' + r.note : ''}`, 'ic_photos', r.id);
@@ -311,6 +336,11 @@
   }
   function afterUpdate(table, r, old, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
+    if (table === 'ic_facilities') {
+      if (r.closed_at && !old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' closed', 'ic_facilities', r.id);
+      else if (!r.closed_at && old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' reopened', 'ic_facilities', r.id);
+      else if (r.name !== old.name || r.kind !== old.kind || r.contact !== old.contact) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' updated', 'ic_facilities', r.id);
+    }
     if (table === 'ic_objectives' && !quiet) {
       if (r.done_at && !old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} done: ${r.text}`, 'ic_objectives', r.id);
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
@@ -359,6 +389,7 @@
     }
     if (table === 'ic_incidents') {
       if (JSON.stringify(r.boundary ?? null) !== JSON.stringify(old.boundary ?? null)) log(changes, r.id, uid, 'ops', 'Incident boundary redrawn');
+      if (JSON.stringify(r.channels ?? []) !== JSON.stringify(old.channels ?? [])) log(changes, r.id, uid, 'ops', 'Communications plan updated: ' + ((r.channels || []).length ? r.channels.map((c) => (c.use || '') + ' ' + (c.channel || '')).join(', ') : 'no channels'));
       if (r.status === 'closed' && old.status !== 'closed') log(changes, r.id, uid, 'ops', 'Incident closed');
     }
   }
@@ -380,6 +411,7 @@
       return updateRow(table, existing, given, uid, changes);
     }
     const row = { ...(DEFAULTS[table] ? DEFAULTS[table]() : {}), ...given };
+    if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -407,6 +439,7 @@
         if (r.status === 'open' || r.status === 'active') r.cleared_at = null;
       }
     }
+    if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_structures') {   // ic_structure_before
       r.updated_at = now();
       if (r.status === 'searched' && (old.status !== 'searched' || !r.searched_at)) { r.searched_at = r.searched_at || now(); r.searched_by = r.searched_by || uid; }
@@ -721,7 +754,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC },
     ready: () => ready
   };
   window.supabase = Object.assign({}, window.supabase || {}, { createClient: () => makeClient(), mock: true });

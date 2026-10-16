@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
 const AGENCY_KEY = 'ic.field.agency';
@@ -365,6 +365,7 @@ function drawAll() {
   }
 
   drawMini(zone);
+  drawNearby();
 
   const al = myAlert();
   if (al) {
@@ -411,6 +412,9 @@ function drawMini(zone) {
     if (h.lat == null) continue;
     L.marker([h.lat, h.lng], { icon: icon('<span class="hmark"></span>'), interactive: false }).addTo(miniLayers.pins);
   }
+  for (const f of data.facilities()) {
+    L.marker([f.lat, f.lng], { icon: icon(`<span class="fmark fmark-${esc(f.kind)}">${esc(facilityKind(f.kind)[2])}</span>`), interactive: false }).addTo(miniLayers.pins);
+  }
   // the structures on record in this zone: tap one to search it
   for (const s of data.structures(zone ? zone.id : null)) {
     if (s.lat == null || s.lng == null) continue;
@@ -422,12 +426,26 @@ function drawMini(zone) {
   }
 }
 
+// The nearest staging area, shelter and hospital, with directions in the phone's own maps app.
+function drawNearby() {
+  const p = sensors.pos;
+  const rows = [];
+  for (const kind of ['staging', 'shelter', 'hospital']) {
+    const n = p ? nearestFacility(data.facilities(), kind, p.lat, p.lng) : null;
+    const f = n ? n.facility : data.facilities().find((x) => x.kind === kind);
+    if (!f) continue;
+    rows.push(`<div class="near"><span class="fmark fmark-${esc(f.kind)} inline">${esc(facilityKind(f.kind)[2])}</span><span class="near-main"><span class="near-name">${esc(f.name || facilityKind(f.kind)[1])}</span><span class="muted">${esc(facilityKind(f.kind)[1])}${n ? ' · ' + milesText(n.distance) : ''}${f.contact ? ' · ' + esc(f.contact) : ''}</span></span><a class="btn sm" href="${directionsUrl(f.lat, f.lng)}" target="_blank" rel="noopener">Directions</a></div>`);
+  }
+  setHtml($('#nearby'), rows.length ? `<div class="card"><div class="k">Nearby</div>${rows.join('')}</div>` : '');
+}
+
 function drawMenu() {
   const inc = data.incident, me = data.me(), per = data.currentPeriod();
   $('#menu-facts').innerHTML = `
     <span class="k">Incident</span><span>${esc(inc.name)}</span>
     <span class="k">Period</span><span>${per ? esc(periodLabel(per)) + (per.ic_name ? ', IC ' + esc(per.ic_name) : '') : esc(inc.period || 'not set')}</span>
     ${per && per.notes ? `<span class="k">Notes</span><span>${esc(per.notes)}</span>` : ''}
+    ${data.channels().length ? `<span class="k">Channels</span><span>${data.channels().map((c) => esc(c.use) + ' <strong>' + esc(c.channel) + '</strong>').join(' · ')}</span>` : ''}
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
     <span class="k">Code</span><span class="mono">${esc(inc.code)}</span>
     <span class="k">You</span><span>${esc(unitLabel(me))}${me && me.crew ? ' · ' + esc(me.crew) : ''}</span>

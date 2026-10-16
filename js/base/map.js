@@ -1,7 +1,7 @@
 // The base map: Leaflet over OpenStreetMap tiles, with the incident boundary, the zones and their
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
-import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel } from '../shared/rules.js';
+import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel } from '../shared/rules.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
 const TRAIL = 12;                 // positions kept per unit for the breadcrumb trail
@@ -34,7 +34,7 @@ export class BaseMap {
     this.map = L.map(el, { zoomControl: true, attributionControl: true, zoomSnap: 0.5 });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map);
     this.layers = {};
-    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'photos', 'labels', 'units', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
+    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'photos', 'labels', 'units', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
     this.unitMarkers = new Map();
     this.trails = new Map();
     this.mode = null;
@@ -42,6 +42,7 @@ export class BaseMap {
     this.map.on('click', (e) => {
       if (!this.mode) { this.cb.onBlank && this.cb.onBlank(); return; }
       if (this.mode === 'structures') { this.cb.onPlace && this.cb.onPlace(e.latlng.lat, e.latlng.lng); return; }
+      if (this.mode === 'facility') { this.cb.onPlaceFacility && this.cb.onPlaceFacility(e.latlng.lat, e.latlng.lng); return; }
       this.draft.push([e.latlng.lat, e.latlng.lng]);
       this.renderDraft();
       this.cb.onDraftChange && this.cb.onDraftChange(this.draft.length);
@@ -115,6 +116,15 @@ export class BaseMap {
       const m = L.circleMarker([s.lat, s.lng], { radius: picked ? 7 : 5, color: help ? '#B3261E' : '#fff', weight: help ? 3 : 1.5, fillColor: STRUCTURE_COLOR[s.status] || '#8F8B82', fillOpacity: 1, className: 'structure' }).addTo(this.layers.structures);
       m.bindTooltip((s.label || 'Structure') + ' · ' + (s.status === 'searched' ? 'searched' : s.status === 'in_progress' ? 'being searched' : 'not searched'), { direction: 'top', offset: [0, -6] });
       m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onStructure && this.cb.onStructure(s.id); });
+    }
+
+    this.layers.facilities.clearLayers();
+    for (const f of data.facilities(true)) {
+      const k = facilityKind(f.kind);
+      const picked = sel.type === 'facility' && sel.id === f.id;
+      const m = L.marker([f.lat, f.lng], { icon: icon(`<span class="fmark fmark-${esc(f.kind)}${f.closed_at ? ' closed' : ''}${picked ? ' sel' : ''}">${esc(k[2])}</span>`), keyboard: false, zIndexOffset: 500 }).addTo(this.layers.facilities);
+      m.bindTooltip(facilityLabel(f) + (f.closed_at ? ' (closed)' : ''), { direction: 'top', offset: [0, -14] });
+      m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onFacility && this.cb.onFacility(f.id); });
     }
 
     this.layers.hazards.clearLayers();

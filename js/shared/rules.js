@@ -8,6 +8,32 @@ export const WATER = [[0, 'Dry'], [20, 'Ankle'], [50, 'Knee'], [100, 'Waist'], [
 export const DAMAGE = [['unknown', 'Unknown'], ['affected', 'Affected'], ['minor', 'Minor'], ['major', 'Major'], ['destroyed', 'Destroyed']];
 export const STRUCTURE_STATUS = { not_searched: 'Not searched', in_progress: 'Being searched', searched: 'Searched' };
 
+// The places an incident runs from and sends people to, with the letter drawn on the map.
+export const FACILITY_KINDS = [['icp', 'Command post', 'CP'], ['staging', 'Staging area', 'S'], ['base', 'Base', 'B'], ['shelter', 'Shelter', 'SH'], ['pod', 'Point of distribution', 'POD'], ['hospital', 'Hospital', 'H'], ['helispot', 'Helispot', 'HL'], ['other', 'Facility', 'F']];
+export function facilityKind(kind) { return FACILITY_KINDS.find((k) => k[0] === kind) || FACILITY_KINDS[FACILITY_KINDS.length - 1]; }
+export function facilityLabel(f) { return facilityKind(f.kind)[1] + (f.name ? ': ' + f.name : ''); }
+
+export function milesText(m) {
+  if (m == null) return '';
+  const mi = m / 1609.344;
+  return mi < 0.1 ? Math.round(m * 3.28084) + ' ft' : mi.toFixed(mi < 10 ? 1 : 0) + ' mi';
+}
+
+// The nearest open facility of a kind to a point, with its distance in metres.
+export function nearestFacility(facilities, kind, lat, lng) {
+  if (lat == null || lng == null) return null;
+  let best = null;
+  for (const f of facilities) {
+    if (f.closed_at || (kind && f.kind !== kind) || f.lat == null) continue;
+    const d = distanceM([lat, lng], [f.lat, f.lng]);
+    if (!best || d < best.distance) best = { facility: f, distance: d };
+  }
+  return best;
+}
+
+// A link that opens the phone's own maps app with directions to a point.
+export function directionsUrl(lat, lng) { return 'https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng; }
+
 export function waterText(cm) {
   if (cm == null) return '';
   if (cm <= 0) return 'dry';

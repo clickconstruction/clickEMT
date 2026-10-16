@@ -45,6 +45,14 @@
 .safety .missing { color: var(--danger); font-weight: 600; }
 .log-row.log-status { border-left-color: #8CA6BF; }
 .badge.primary { background: #E3F2E8; color: #2F7A52; }
+.fmark { position: absolute; left: -13px; top: -13px; min-width: 26px; height: 26px; padding: 0 5px; border-radius: 6px; background: #3E3C36; color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); cursor: pointer; white-space: nowrap; }
+.fmark.inline { position: static; width: auto; height: 22px; font-size: 10px; flex: none; border-width: 1px; }
+.fmark-icp { background: #1F4E79; } .fmark-staging { background: #6B5DBF; } .fmark-base { background: #3E3C36; } .fmark-shelter { background: #2F7A52; }
+.fmark-pod { background: #B86E00; } .fmark-hospital { background: #B3261E; } .fmark-helispot { background: #1B6F8A; } .fmark-other { background: #6B6860; }
+.fmark.closed { opacity: .45; } .fmark.sel { outline: 2px solid var(--ink); }
+.chan { display: flex; gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.chan-use { flex: 1; min-width: 0; } .chan-ch { font-weight: 600; }
+.chan .btn { min-height: 26px; padding: 0 8px; }
 .sdot.primary { background: #8FCFA7; border-color: #3D8B5F; }
 .sw.primary { background: rgba(143,207,167,.6); border-color: #3D8B5F; }
 .d-status.primary { background: #E3F2E8; color: #2F7A52; }

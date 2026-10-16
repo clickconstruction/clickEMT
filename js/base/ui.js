@@ -1,6 +1,6 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -30,6 +30,7 @@ export function panelHtml(data, state) {
   if (sel.type === 'zone') { const z = data.zone(sel.id); if (z) return zoneHtml(data, z, state); }
   if (sel.type === 'photo') { const p = data.photo(sel.id); if (p) return photoHtml(data, p); }
   if (sel.type === 'structure') { const s = data.structure(sel.id); if (s) return structureHtml(data, s); }
+  if (sel.type === 'facility') { const f = data.facility(sel.id); if (f) return facilityHtml(data, f); }
   if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m, state); }
   return homeHtml(data);
 }
@@ -95,6 +96,8 @@ function homeHtml(data) {
     ${composerHtml(data, 'all')}
     <div class="k" style="margin-top:6px">Messages</div>
     ${messagesHtml(data, null, 8)}
+    ${facilitiesHtml(data)}
+    ${channelsHtml(data)}
     <div class="k" style="margin-top:6px">Incident</div>
     <div class="kv">
       <span class="k">Period</span><span>${esc(inc.period || 'not set')}</span>
@@ -182,6 +185,53 @@ function photoHtml(data, p) {
       <button class="btn sm" data-action="pan-to" data-lat="${p.lat}" data-lng="${p.lng}">Show on map</button>
       <a class="btn sm" data-photo-link target="_blank" rel="noopener" hidden>Open full size</a>
     </div>`;
+}
+
+// ---- facilities and the communications plan
+
+export function facilitiesHtml(data) {
+  const open = data.facilities(), closed = data.facilities(true).filter((f) => f.closed_at);
+  return `
+    <div class="d-row" style="margin-top:6px"><span class="k" style="width:auto;flex:1">Facilities</span>
+      <select class="sel" id="facility-kind" aria-label="Kind of facility to place">${FACILITY_KINDS.map(([v, label]) => `<option value="${v}"${v === 'staging' ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>
+      <button class="btn sm" data-action="place-facility">Place</button>
+    </div>
+    ${open.length ? open.map((f) => `<button class="ur" data-action="select-facility" data-id="${f.id}"><span class="fmark fmark-${esc(f.kind)} inline">${esc(facilityKind(f.kind)[2])}</span><span class="ur-main"><span class="ur-name">${esc(f.name || facilityKind(f.kind)[1])}</span><span class="ur-sub">${esc(facilityKind(f.kind)[1])}${f.contact ? ' · ' + esc(f.contact) : ''}</span></span></button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. Pick a kind and press Place, then click the map.</div>'}
+    ${closed.length ? `<div class="muted" style="font-size:12px">${closed.length} closed</div>` : ''}`;
+}
+
+export function channelsHtml(data) {
+  const ch = data.channels();
+  return `
+    <div class="k" style="margin-top:6px">Communications plan (ICS 205)</div>
+    ${ch.length ? ch.map((c, i) => `<div class="chan"><span class="chan-use">${esc(c.use)}</span><span class="mono chan-ch">${esc(c.channel)}</span>${c.notes ? `<span class="muted">${esc(c.notes)}</span>` : ''}<button class="btn sm" data-action="channel-remove" data-i="${i}" aria-label="Remove">×</button></div>`).join('') : '<div class="muted" style="font-size:12.5px">No channels yet. Command, one tactical per division, and emergency traffic is the usual set.</div>'}
+    <form class="composer" data-form="channel-add"><div class="composer-row"><input name="use" placeholder="Use, e.g. Tactical, Division A" required maxlength="60"><input name="channel" placeholder="Channel" required maxlength="24" style="flex:0 1 110px"><button class="btn pri sm" type="submit">Add</button></div></form>`;
+}
+
+function facilityHtml(data, f) {
+  const k = facilityKind(f.kind);
+  return `
+    <button class="back" data-action="close-panel">Back to units</button>
+    <div class="title">${esc(f.name || k[1])} <span>${esc(k[1])}${f.closed_at ? ' · closed ' + hhmm(f.closed_at) : ''}</span></div>
+    ${f.notes ? `<div class="d-sub">${esc(f.notes)}</div>` : ''}
+    <div class="kv">
+      <span class="k">Contact</span><span>${esc(f.contact) || 'not set'}</span>
+      <span class="k">Position</span><span class="mono">${esc(latLngText(f.lat, f.lng))}</span>
+      <span class="k">Opened</span><span>${esc(new Date(f.created_at).toLocaleString())}</span>
+    </div>
+    <form class="inline-form" data-form="facility-edit" data-id="${f.id}">
+      <div class="row-2">
+        <label>Kind <select name="kind" class="sel">${FACILITY_KINDS.map(([v, label]) => `<option value="${v}"${v === f.kind ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></label>
+        <label>Name <input name="name" value="${esc(f.name)}" placeholder="Where it is"></label>
+      </div>
+      <label>Contact <input name="contact" value="${esc(f.contact)}" placeholder="A channel or a phone number"></label>
+      <label>Notes <input name="notes" value="${esc(f.notes)}" placeholder="What the field should know"></label>
+      <div class="row-btns">
+        <button class="btn sm" type="button" data-action="pan-to" data-lat="${f.lat}" data-lng="${f.lng}">Show on map</button>
+        ${f.closed_at ? `<button class="btn sm" type="button" data-action="reopen-facility" data-id="${f.id}">Reopen</button>` : `<button class="btn sm" type="button" data-action="close-facility" data-id="${f.id}">Close</button>`}
+        <button class="btn pri sm" type="submit">Save</button>
+      </div>
+    </form>`;
 }
 
 function structureHtml(data, s) {
@@ -350,6 +400,10 @@ export function briefingSections(data) {
     return `${unitLabel(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`;
   })) });
   S.push({ title: 'Hazards still open', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · ${h.zone_id && data.zone(h.zone_id) ? data.zone(h.zone_id).code : 'outside the zones'} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None'] });
+  const facilities = data.facilities();
+  S.push({ title: 'Facilities', lines: facilities.length ? facilities.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`) : ['None set'] });
+  const channels = data.channels();
+  S.push({ title: 'Communications (ICS 205)', lines: channels.length ? channels.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
     .concat(waiting.map((m) => `${m.kind === 'par' ? 'PAR' : 'Safety message'} from ${hhmm(m.created_at)} still waiting on ${data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ')}`));
   S.push({ title: 'Needs attention', lines: attention.length ? attention : ['Nothing outstanding'] });
@@ -376,6 +430,10 @@ export function form204Sections(data, z) {
   S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
   S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []) });
   S.push({ title: 'Known hazards', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None reported'] });
+  const plan = data.channels();
+  S.push({ title: 'Communications', lines: ['Division channel: ' + (z.channel || 'not set')].concat(plan.length ? plan.map((c) => `${c.use}: ${c.channel}`) : ['No incident plan set']) });
+  const places = data.facilities().filter((f) => ['staging', 'shelter', 'hospital', 'icp'].includes(f.kind));
+  S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '')].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
   S.push({ title: 'Prepared', lines: ['By Operations, ' + new Date().toLocaleString()] });
   return S;

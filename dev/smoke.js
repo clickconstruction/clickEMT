@@ -8,7 +8,7 @@
 // reports are sent through a second Data instance signed in as Unit 3, the same module the field
 // app uses, and after each one the test reads what the base's Data sees and what the page draws.
 import { Data } from '../js/shared/data.js';
-import { markingFor, ringToLatLngs, nextPass } from '../js/shared/rules.js';
+import { markingFor, ringToLatLngs, nextPass, nearestFacility } from '../js/shared/rules.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s, root = document) => root.querySelector(s);
@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -480,6 +480,50 @@ async function search(check) {
   await until(() => base.zone(a2).status === 'active');
   check('reopening puts it back to in progress, still assigned, with the stamp cleared and a log line', base.zone(a2).assigned_to === u.unit3 && base.zone(a2).cleared_at === null && !!eventText(base, 'A-2 reopened'));
   check('the panel offers the primary pass again', await until(() => $('#panel [data-action="finish-pass"][data-pass="primary"]')));
+}
+
+// Facilities and the communications plan: the seeded places on the map and the panel, placing a
+// shelter from the base and naming it, closing it, editing the plan, the field finding the
+// nearest places, and the briefing carrying both.
+async function facilities(check) {
+  check('five facilities are seeded, drawn as lettered marks, and listed on the home panel with the plan', base.facilities().length === 5 && $$('#map .fmark').length === 5 && has('#panel', 'command post', 'high school east lot', 'staging area', 'dell seton', 'communications plan', 'cmd 1', 'tac 9') && $$('#panel .chan').length === 4, text('#panel'));
+  $('#facility-kind').value = 'shelter';
+  $('#panel [data-action="place-facility"]').click();
+  check('Place arms the map for a shelter', $('#map').classList.contains('drawing') && has('#tool-hint', 'shelter'), text('#tool-hint'));
+  mapClick(60, -60);
+  await until(() => base.facilities().length === 6);
+  const f = base.facilities()[5];
+  check('one click places it and opens it to be named, logged as opened', f.kind === 'shelter' && !$('#map').classList.contains('drawing') && await until(() => $('#panel form[data-form="facility-edit"]')) && !!eventText(base, 'Shelter opened'), logTexts()[0]);
+  const ff = $('#panel form[data-form="facility-edit"]');
+  ff.name.value = 'First Baptist hall'; ff.contact.value = 'TAC 5'; ff.notes.value = 'Cots for 40';
+  ff.requestSubmit();
+  await until(() => base.facility(f.id).name === 'First Baptist hall');
+  check('naming it saves and logs the update, and the field sees it', base.facility(f.id).contact === 'TAC 5' && !!eventText(base, 'Shelter: First Baptist hall updated') && await until(() => field.facility(f.id) && field.facility(f.id).name === 'First Baptist hall'));
+  check('the field finds the new hall as the nearest shelter to Unit 3, a few hundred metres away', (() => { const n = nearestFacility(field.facilities(), 'shelter', 30.2674, -97.7384); return n && n.facility.id === f.id && n.distance < 1000; })());
+  $('#panel [data-action="close-facility"]').click();
+  await until(() => base.facility(f.id).closed_at);
+  check('closing it logs it and drops it from the open list, keeping it in history', !!eventText(base, 'Shelter: First Baptist hall closed') && base.facilities().length === 5 && base.facilities(true).length === 6 && await until(() => $$('#map .fmark.closed').length === 1));
+  check('with the hall closed, the nearest open shelter is the gym again', await until(() => field.facility(f.id) && field.facility(f.id).closed_at) && (() => { const n = nearestFacility(field.facilities(), 'shelter', 30.2674, -97.7384); return n && n.facility.name === 'High school gym' && n.distance > 500 && n.distance < 3000; })());
+  $('#panel [data-action="reopen-facility"]').click();
+  check('and it can be reopened', await until(() => !base.facility(f.id).closed_at) && !!eventText(base, 'Shelter: First Baptist hall reopened'));
+
+  $('[data-action="close-panel"]').click();
+  await until(() => $('#panel form[data-form="channel-add"]'));
+  const cf = $('#panel form[data-form="channel-add"]');
+  cf.use.value = 'Air to ground'; cf.channel.value = 'AIR 1';
+  cf.requestSubmit();
+  await until(() => base.channels().length === 5);
+  check('adding a channel updates the plan on the incident and logs the whole plan', base.channels()[4].channel === 'AIR 1' && !!base.events().find((e) => /^Communications plan updated: .*Air to ground AIR 1$/.test(e.text)) && await until(() => field.channels().length === 5), logTexts()[0]);
+  $('#panel [data-action="channel-remove"][data-i="4"]').click();
+  check('removing it takes it back out', await until(() => base.channels().length === 4));
+
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden);
+  check('the briefing carries the facilities and the communications plan', has('#briefing-page', 'facilities', 'staging area: high school east lot', 'communications (ics 205)', 'command: cmd 1'), text('#briefing-page').slice(-400));
+  $('[data-action="close-briefing"]').click();
+
+  const bad = await (async () => { try { await field.addFacility({ kind: 'other', lat: 30.26, lng: -97.74 }); return null; } catch (e) { return e; } })();
+  check('a unit cannot place facilities', !!bad && bad.code === '42501', bad && bad.message);
 }
 
 // A new unit checks in with the code; Operations can open a second incident.

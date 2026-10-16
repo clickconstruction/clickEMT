@@ -3,14 +3,15 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf } from '../shared/rules.js';
+import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, FACILITY_KINDS } from '../shared/rules.js';
+const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, placeZone: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, placeZone: null, placeKind: null };
 let map = null;
 let drawQueued = false;
 
@@ -123,6 +124,8 @@ async function openIncident(id) {
       onUnit: (uid) => select({ type: 'unit', id: uid }),
       onStructure: (sid) => select({ type: 'structure', id: sid }),
       onPlace: (lat, lng) => placeStructure(lat, lng),
+      onFacility: (fid) => select({ type: 'facility', id: fid }),
+      onPlaceFacility: (lat, lng) => placeFacility(lat, lng),
       onHazard: (hid) => { const h = data.hazards(true).find((x) => x.id === hid); if (h && h.zone_id) select({ type: 'zone', id: h.zone_id }); },
       onBlank: () => { if (state.selected && state.selected.type !== 'newzone') select(null); },
       onDraftChange: (n) => { $('#tool-hint').textContent = n < 3 ? `${n} of at least 3 points. Click the map to add the next corner.` : `${n} points. Click to add more, or press Finish.`; }
@@ -154,6 +157,17 @@ async function placeStructure(lat, lng) {
   } catch (err) { toast(err.message || String(err), true); }
 }
 function zoneAtPoint(lat, lng) { return zoneAtRule(data.zones(), lat, lng); }
+
+// One click places the facility of the kind chosen, then opens it to name it.
+async function placeFacility(lat, lng) {
+  const kind = state.placeKind || 'staging';
+  stopDraw();
+  try {
+    const f = await data.addFacility({ kind, lat, lng });
+    select({ type: 'facility', id: f.id });
+    toast('Placed. Give it a name and a contact.');
+  } catch (err) { toast(err.message || String(err), true); }
+}
 
 // Redraw once per frame. A background tab or a hidden pane gets no frames (and may not even say it
 // is hidden), so a short timer draws anyway, and the page is current the moment it is looked at.
@@ -248,6 +262,19 @@ document.addEventListener('click', async (e) => {
       case 'select-photo': select({ type: 'photo', id }); break;
       case 'select-unit': select({ type: 'unit', id }); break;
       case 'select-structure': select({ type: 'structure', id }); break;
+      case 'select-facility': select({ type: 'facility', id }); break;
+      case 'place-facility': {
+        const sel = $('#facility-kind');
+        state.placeKind = sel ? sel.value : 'staging';
+        map.startDraw('facility');
+        $('#btn-boundary').classList.remove('on'); $('#btn-zone').classList.remove('on');
+        $('#draw-btns').hidden = false;
+        $('#tool-hint').textContent = 'Click the map where the ' + (data.facilities ? (FACILITY_LABEL[state.placeKind] || 'facility').toLowerCase() : 'facility') + ' is.';
+        break;
+      }
+      case 'close-facility': await data.updateFacility(id, { closed_at: new Date().toISOString() }); break;
+      case 'reopen-facility': await data.updateFacility(id, { closed_at: null }); break;
+      case 'channel-remove': { const ch = data.channels().slice(); ch.splice(Number(btn.dataset.i), 1); await data.setChannels(ch); break; }
       case 'place-structures': {
         state.placeZone = id;
         state.placeN = 0;
@@ -316,7 +343,7 @@ document.addEventListener('click', async (e) => {
       }
       case 'finish-draw': {
         const mode = map.mode;
-        if (mode === 'structures') { stopDraw(); break; }
+        if (mode === 'structures' || mode === 'facility') { stopDraw(); break; }
         const polygon = map.finishDraw();
         stopDraw();
         if (!polygon) { toast('A division needs at least three points', true); break; }
@@ -375,6 +402,18 @@ document.addEventListener('submit', async (e) => {
       await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0, work_assignment: form.work_assignment.value.trim(), instructions: form.instructions.value.trim(), channel: form.channel.value.trim(), supervisor: form.supervisor.value.trim() });
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'facility-edit') {
+      await data.updateFacility(form.dataset.id, { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim() });
+      toast('Saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'channel-add') {
+      const use = form.use.value.trim(), channel = form.channel.value.trim();
+      if (!use || !channel) return;
+      await data.setChannels(data.channels().concat([{ use, channel }]));
+      form.reset();
+      form.use.blur();
       queueDraw();
     } else if (form.dataset.form === 'structure-edit') {
       await data.updateStructure(form.dataset.id, { label: form.label.value.trim(), status: form.status.value, occupants: form.occupants.value, people_needing_help: Number(form.people.value) || 0, water_cm: form.water.value === '' ? null : Number(form.water.value), damage: form.damage.value, hazards: form.hazards.value.trim().toUpperCase(), notes: form.notes.value.trim() });

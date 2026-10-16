@@ -43,9 +43,9 @@ Ticked when it is on `main`.
 
 ## 6. Facilities and the communications plan (ICS 205, 206)
 
-- [ ] `ic_facilities`: command post, staging area, base, shelter, point of distribution, hospital, helispot; placed by clicking the map; each with notes and a contact.
-- [ ] `ic_incidents.channels`: the communications plan, which channel for command, tactical per division, emergency.
-- [ ] Field: the nearest staging area, shelter and hospital on the card, with directions; the channel for your division.
+- [x] `ic_facilities`: command post, staging area, base, shelter, point of distribution, hospital, helispot; placed by clicking the map; each with notes and a contact; closed and reopened, never deleted; every change logged. Lettered marks on both maps.
+- [x] `ic_incidents.channels`: the communications plan, which channel for command, tactical per division, emergency; edited on the base, on the briefing, the 204 and the phone's menu.
+- [x] Field: the nearest staging area, shelter and hospital under the mini map, with the distance and directions in the phone's own maps app; the division's channel on the card.
 
 ## 7. Situation report (ICS 209) and the printed IAP
 

@@ -55,6 +55,10 @@
         <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
         <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
         <label>Crew <input name="crew" placeholder="Ramirez, Okafor"></label>
+        <div class="row-2">
+          <label>People on the unit <input name="count" type="number" min="1" max="99" inputmode="numeric" placeholder="2"></label>
+          <label>Agency <input name="agency" placeholder="Cedar Fork Fire Department"></label>
+        </div>
         <div class="row-btns"><button type="submit" class="btn pri">Check in</button></div>
         <p class="msg" data-msg></p>
       </form>
@@ -162,7 +166,7 @@
   </div>
 
   <div id="s-safety" class="sheet safety-sheet" hidden>
-    <h2>Safety message</h2>
+    <h2 id="safety-title">Safety message</h2>
     <div id="safety-list"></div>
   </div>
 
@@ -184,6 +188,8 @@
   <div id="s-menu" class="sheet" hidden>
     <h2>This incident</h2>
     <div class="kv" id="menu-facts"></div>
+    <div class="k">Your status</div>
+    <div id="menu-status"></div>
     <div class="k">Sending</div>
     <div id="menu-outbox" class="muted">Nothing waiting</div>
     <div class="k">Phone</div>
@@ -194,6 +200,7 @@
     <p class="muted" style="font-size:12.5px;margin:0">To keep this app on your phone: in Safari press Share, then Add to Home Screen. In Chrome use Install app.</p>
     <div class="sheet-btns" style="flex-direction:column">
       <button class="btn" data-action="home">Back</button>
+      <button class="btn" data-action="check-out">Check out of this incident</button>
       <button class="btn" data-action="switch-incident">Switch incident</button>
       <button class="btn" data-action="sign-out">Sign out</button>
     </div>

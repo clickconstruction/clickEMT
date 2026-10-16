@@ -1,8 +1,10 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+// "live" is right for a position; for something sent, say "just now".
+const since = (iso) => { const a = ago(iso); return a === 'live' ? 'just now' : a; };
 
 function assignedLabel(data, z) { return z.assigned_to ? unitLabel(data.member(z.assigned_to)) : ''; }
 
@@ -26,33 +28,67 @@ export function panelHtml(data, state) {
   if (sel.type === 'newzone') return newZoneHtml(data, state);
   if (sel.type === 'zone') { const z = data.zone(sel.id); if (z) return zoneHtml(data, z, state); }
   if (sel.type === 'photo') { const p = data.photo(sel.id); if (p) return photoHtml(data, p); }
-  if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m); }
+  if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m, state); }
   return homeHtml(data);
+}
+
+function statusDetail(data, m) {
+  const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active') || data.zones().find((z) => z.assigned_to === m.user_id);
+  if (m.status === 'assigned') return zone ? 'Assigned to ' + esc(zone.code) : 'Assigned';
+  if (m.status === 'available') return 'Available' + (zone ? ', last in ' + esc(zone.code) : '');
+  if (m.status === 'out_of_service') return 'Out of service' + (m.status_note ? ': ' + esc(m.status_note) : '');
+  return 'Checked out' + (m.checked_out_at ? ' at ' + hhmm(m.checked_out_at) : '');
+}
+
+function unitRowHtml(data, m, now) {
+  const pos = data.position(m.user_id);
+  const sos = data.alerts().some((a) => a.user_id === m.user_id);
+  const where = m.status === 'checked_out' ? '' : (pos ? ' · ' + ago(pos.at, now) + (pos.heading != null ? ', ' + compass(pos.heading) : '') : ' · no position yet');
+  const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
+  return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
+      <span class="udot2 ${dot}"></span>
+      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(m.crew || '')}${m.crew_count != null ? ' · ' + m.crew_count : ''}</span></span>
+      <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}</span></span>
+    </button>`;
+}
+
+// The resources board: units by status, the ICS T-card rack in a list.
+export function resourcesHtml(data) {
+  const units = data.units();
+  if (!units.length) return '<p class="muted">No units have joined yet.</p>';
+  const now = Date.now();
+  const groups = ['assigned', 'available', 'out_of_service', 'checked_out'];
+  return `<div class="muted" style="font-size:12.5px">${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</div>` +
+    groups.map((s) => {
+      const rows = units.filter((u) => u.status === s);
+      if (!rows.length) return '';
+      return `<div class="grp"><span class="badge st-${s}">${STATUS_LABEL[s]}</span><span class="muted">${rows.length}</span></div>` + rows.map((m) => unitRowHtml(data, m, now)).join('');
+    }).join('');
+}
+
+// The PAR: who has answered the latest one, and with what.
+export function parHtml(data) {
+  const par = data.lastPar();
+  const head = `<div class="d-row"><span class="k" style="width:auto;flex:1">Accountability (PAR)</span><button class="btn sm" data-action="start-par" data-target="all">Start PAR</button></div>`;
+  if (!par) return head + '<div class="muted" style="font-size:12.5px">A PAR asks every unit for a head count. Each unit answers with one tap.</div>';
+  const waiting = data.waitingOn(par);
+  const rows = (par.to_users || []).map((u) => {
+    const a = data.ack(par.id, u);
+    const cls = a ? (a.reply === 'Missing someone' ? 'bad' : 'ok') : 'wait';
+    return `<div class="par-row ${cls}"><span>${esc(unitLabel(data.member(u)))}</span><span>${a ? esc(a.reply) + (a.count != null ? ' (' + a.count + ')' : '') + ' · ' + hhmm(a.acked_at) : 'waiting, sent ' + since(par.created_at)}</span></div>`;
+  }).join('');
+  return head + `<div class="muted" style="font-size:12.5px">Started ${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${waiting.length ? waiting.length + ' still to answer' : 'everyone answered'}</div>${rows}`;
 }
 
 function homeHtml(data) {
   const inc = data.incident;
-  const units = data.units();
-  const alerts = data.alerts();
-  const now = Date.now();
-  const unitRows = units.map((m) => {
-    const pos = data.position(m.user_id);
-    const zone = data.zones().find((z) => z.assigned_to === m.user_id);
-    const sos = alerts.some((a) => a.user_id === m.user_id);
-    const where = pos ? ago(pos.at, now) + (pos.heading != null ? ', ' + compass(pos.heading) : '') : 'no position yet';
-    const dot = sos ? 'sos' : (!pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
-    return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
-      <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(m.crew || '')}</span></span>
-      <span class="ur-sub">${zone ? 'Assigned to ' + esc(zone.code) : 'No assignment'} · ${esc(where)}</span></span>
-    </button>`;
-  }).join('');
   return `
     <div class="k">Join code for field phones</div>
     <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
     <div class="muted" style="font-size:12.5px">A unit opens the field app, signs in, and types this code with its unit name.</div>
-    <div class="k" style="margin-top:6px">Units</div>
-    ${unitRows || '<p class="muted">No units have joined yet.</p>'}
+    <div class="k" style="margin-top:6px">Resources</div>
+    ${resourcesHtml(data)}
+    ${parHtml(data)}
     <div class="k" style="margin-top:6px">Message the field</div>
     ${composerHtml(data, 'all')}
     <div class="k" style="margin-top:6px">Messages</div>
@@ -97,6 +133,7 @@ function zoneHtml(data, z, state) {
     ${marking ? `<div class="k">Search marking painted</div><div class="muted" style="font-size:12.5px">Team ${esc(marking.team)} · out at ${esc(marking.out)} · hazards ${esc(marking.haz)} · people found ${esc(marking.victims)}</div>` : ''}
     <div class="d-row">
       <button class="btn sm" data-action="zoom-zone" data-id="${z.id}">Zoom to zone</button>
+      ${z.assigned_to ? `<button class="btn sm" data-action="start-par" data-target="zone:${z.id}">PAR</button>` : ''}
       ${z.status === 'cleared' ? `<button class="btn sm" data-action="reopen-zone" data-id="${z.id}">Reopen</button>` : `<button class="btn sm green" data-action="clear-zone" data-id="${z.id}">Mark cleared from base</button>`}
     </div>
     <div class="k">Photos from this zone</div>
@@ -128,17 +165,28 @@ function photoHtml(data, p) {
     </div>`;
 }
 
-function unitHtml(data, m) {
+function unitHtml(data, m, state) {
   const pos = data.position(m.user_id);
   const zone = data.zones().find((z) => z.assigned_to === m.user_id);
   const here = pos ? zoneAt(data.zones(), pos.lat, pos.lng) : null;
   const photos = data.photos().filter((p) => p.user_id === m.user_id);
   const alert = data.alerts().find((a) => a.user_id === m.user_id);
+  const oos = state && state.oosFor === m.user_id;
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${esc(unitLabel(m))} <span>${esc(m.crew || '')}</span></div>
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
+    <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
+    <div class="d-row"><span class="k">Set status</span>
+      <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
+      <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>
+      ${m.status === 'checked_out' ? `<button class="btn sm" data-action="set-status" data-id="${m.user_id}" data-status="available">Check back in</button>` : `<button class="btn sm" data-action="check-out" data-id="${m.user_id}">Check out</button>`}
+      <button class="btn sm" data-action="start-par" data-target="user:${m.user_id}">PAR</button>
+    </div>
+    ${oos ? `<form class="inline-form" data-form="oos" data-id="${m.user_id}"><div class="chips">${OOS_REASONS.map((r, i) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="radio" name="reason" value="${esc(r)}"${i === 0 ? ' checked' : ''}> ${esc(r)}</label>`).join('')}</div><div class="row-btns"><button class="btn sm" type="button" data-action="oos-cancel">Cancel</button><button class="btn pri sm" type="submit">Out of service</button></div></form>` : ''}
     <div class="kv">
+      <span class="k">Agency</span><span>${esc(m.agency) || 'not set'}</span>
+      <span class="k">People</span><span>${m.crew_count != null ? m.crew_count : 'not set'}</span>
       <span class="k">Assigned</span><span>${zone ? esc(zone.code + ' · ' + zone.name) : 'nothing yet'}</span>
       <span class="k">Standing in</span><span>${here ? esc(here.code) : 'no zone'}</span>
       <span class="k">Position</span><span class="mono">${pos ? esc(latLngText(pos.lat, pos.lng)) : 'none yet'}</span>
@@ -245,8 +293,15 @@ export function messagesHtml(data, filter, limit) {
   return rows.length ? rows.map((m) => messageRowHtml(data, m)).join('') : '<div class="muted" style="font-size:12.5px">No messages yet</div>';
 }
 
-// The yellow bar: safety messages still waiting on someone.
+// The yellow bar: safety messages and PARs still waiting on someone, and anyone reporting a missing person.
 export function safetyHtml(data) {
-  const open = data.openSafety().filter((m) => m.kind === 'safety');
-  return open.map((m) => `<span><strong>SAFETY</strong> · ${esc(m.text)} · sent ${hhmm(m.created_at)} by ${esc(unitLabel(data.member(m.from_user)))} · waiting on ${data.waitingOn(m).map((u) => esc(unitLabel(data.member(u)))).join(', ')}</span>`).join('<span style="flex-basis:100%"></span>');
+  const parts = [];
+  for (const m of data.openSafety()) {
+    const waiting = data.waitingOn(m).map((u) => esc(unitLabel(data.member(u)))).join(', ');
+    if (m.kind === 'safety') parts.push(`<span><strong>SAFETY</strong> · ${esc(m.text)} · sent ${hhmm(m.created_at)} by ${esc(unitLabel(data.member(m.from_user)))} · waiting on ${waiting}</span>`);
+    else if (m.kind === 'par') parts.push(`<span><strong>PAR</strong> · started ${hhmm(m.created_at)} to ${esc(m.to_label || 'everyone')} · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} (${esc(since(m.created_at))})</span>`);
+  }
+  const par = data.lastPar();
+  if (par) for (const a of data.acksFor(par.id)) if (a.reply === 'Missing someone') parts.push(`<span class="missing"><strong>MISSING</strong> · ${esc(unitLabel(data.member(a.user_id)))} reports someone missing${a.count != null ? ', ' + a.count + ' accounted for' : ''} · ${hhmm(a.acked_at)}</span>`);
+  return parts.join('<span style="flex-basis:100%"></span>');
 }

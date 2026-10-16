@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -267,6 +267,77 @@ async function messages(check) {
   check('a message must carry the sender\'s own user id', forged.error && forged.error.code === '42501' && !base.messages().some((m) => m.text === 'Forged'), JSON.stringify(forged.error));
 }
 
+// Accountability: status from the field and from the base, assignment setting status, the PAR
+// with head counts and a missing report, and check-out giving zones back.
+async function accountability(check) {
+  const u = USERS();
+  check('the resources board groups the three units as assigned, six people in the field', has('#panel', '6 people in the field on 3 units') && $$('#panel .grp').length === 1 && has('#panel .grp', 'assigned'), text('#panel'));
+
+  await field.setStatus(u.unit3, 'out_of_service', 'Fuel');
+  await until(() => base.member(u.unit3).status === 'out_of_service');
+  check('Unit 3 out of service for fuel: grouped apart, four people left, and logged as a status line', await until(() => has('#panel', 'out of service: fuel', '4 people in the field')) && !!eventText(base, 'Unit 3 is out of service: Fuel') && eventText(base, 'Unit 3 is out of service: Fuel').kind === 'status', text('#panel'));
+  await field.setStatus(u.unit3, 'assigned');
+  await until(() => base.member(u.unit3).status === 'assigned');
+  check('back on the zone clears the reason and logs it', base.member(u.unit3).status_note === '' && !!eventText(base, 'Unit 3 is assigned'));
+  await field.updateMe({ crew_count: 3 });
+  check('a unit can change its head count, and the board shows it', await until(() => base.member(u.unit3).crew_count === 3 && has('#panel', '7 people in the field')), text('#panel'));
+
+  $(`#panel [data-action="select-unit"][data-id="${u.unit2}"]`).click();
+  await until(() => has('#panel .title', 'unit 2'));
+  $('#panel [data-action="set-status"][data-status="available"]').click();
+  await until(() => base.member(u.unit2).status === 'available' && eventText(base, 'Unit 2 is available'));
+  check('Operations sets Unit 2 available from its panel, with the agency and head count shown', has('#panel', 'available', 'travis county rescue'), text('#panel'));
+  $(`#zones .zr[data-id="${ZONE('B-2')}"]`).click();
+  await until(() => has('#panel .title', 'b-2'));
+  $(`#panel [data-action="assign"][data-user="${u.unit2}"]`).click();
+  await until(() => base.zone(ZONE('B-2')).assigned_to === u.unit2 && base.member(u.unit2).status === 'assigned');
+  check('assigning a zone makes an available unit assigned, and logs it', !!eventText(base, 'Unit 2 is assigned'));
+  $(`#panel [data-action="assign"][data-user="${u.unit2}"]`).click();
+  await until(() => base.zone(ZONE('B-2')).assigned_to === null);
+  await wait(80);
+  check('releasing it leaves Unit 2 assigned, since B-1 is still its zone', base.member(u.unit2).status === 'assigned');
+  await base.updateZone(ZONE('B-1'), { assigned_to: null });
+  check('releasing its last zone makes it available', await until(() => base.member(u.unit2).status === 'available') && base.events().filter((e) => e.text === 'Unit 2 is available').length === 2);
+  $(`#panel [data-action="close-panel"]`) && $(`#panel [data-action="close-panel"]`).click();
+  await until(() => $(`#panel [data-action="select-unit"][data-id="${u.unit2}"]`));
+  $(`#panel [data-action="select-unit"][data-id="${u.unit2}"]`).click();
+  await until(() => has('#panel .title', 'unit 2'));
+  $('#panel [data-action="set-status"][data-status="out_of_service"]').click();
+  await until(() => $('#panel form[data-form="oos"]'));
+  $('#panel form[data-form="oos"] input[value="Medical"]').checked = true;
+  $('#panel form[data-form="oos"]').requestSubmit();
+  await until(() => base.member(u.unit2).status === 'out_of_service');
+  check('out of service from the base asks for a reason first', base.member(u.unit2).status_note === 'Medical' && !!eventText(base, 'Unit 2 is out of service: Medical'));
+  const bad = await (async () => { try { await field.setStatus(u.unit1, 'available'); return null; } catch (e) { return e; } })();
+  check('a unit cannot set another unit\'s status', !!bad && bad.code === '42501' && base.member(u.unit1).status === 'assigned', bad && bad.message);
+
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => $('#panel [data-action="start-par"][data-target="all"]'));
+  $('#panel [data-action="start-par"][data-target="all"]').click();
+  await until(() => base.lastPar());
+  const par = base.lastPar();
+  check('Start PAR sends a PAR to the three units, and the bar shows it waiting on all of them', par.kind === 'par' && par.to_users.length === 3 && await until(() => !$('#safety').hidden && has('#safety', 'par', '0 of 3 answered')), text('#safety'));
+  check('the log has the PAR', !!eventText(base, 'PAR, Operations to everyone: PAR: is everyone accounted for?'));
+  check('Unit 3 gets it as unanswered', await until(() => field.myUnanswered().some((m) => m.id === par.id)));
+  await field.answerPar(par.id, true, 3);
+  check('Unit 3 answers all accounted for with 3: the panel and the bar say so, and the log has the count', await until(() => has('#panel', 'unit 3', 'all accounted for (3)') && has('#safety', '1 of 3 answered')) && !!eventText(base, 'Unit 3: All accounted for (3)'), text('#safety'));
+  const c1 = window.supabase.createClient();
+  await c1.auth.signInWithPassword({ email: 'unit1@mock.local', password: 'any' });
+  const d1 = new Data(c1);
+  await d1.init(); await d1.open(INC());
+  await d1.answerPar(par.id, false, 1);
+  check('Unit 1 reports someone missing: the bar says MISSING and the log has it', await until(() => has('#safety', 'missing', 'unit 1 reports someone missing')) && !!eventText(base, 'Unit 1: Missing someone (1)') && has('#panel', 'missing someone (1)'), text('#safety'));
+  d1.close();
+
+  await field.setStatus(u.unit3, 'checked_out');
+  await until(() => base.member(u.unit3).status === 'checked_out' && base.zone(ZONE('A-2')).assigned_to === null);
+  check('Unit 3 checks out: A-2 goes back to not started, it is listed as checked out, and the log says both', base.zone(ZONE('A-2')).status === 'open' && !!base.member(u.unit3).checked_out_at && !!eventText(base, 'Unit 3 checked out') && !!eventText(base, 'A-2 released from Unit 3') && await until(() => has('#panel', 'checked out')), text('#panel'));
+  check('a checked-out unit is not messaged and not counted', !base.recipientsFor('all').toUsers.includes(u.unit3) && base.activeUnits().length === 2);
+  const inc = await field.join('CEDAR7', 'unit', 'Unit 3', 'Hale, Dominguez', 2, 'Cedar Fork Fire Department');
+  await until(() => base.member(u.unit3).status === 'available');
+  check('checking in again makes it available with its head count, and logs it', inc.id === INC() && base.member(u.unit3).checked_out_at === null && base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Unit 3 checked in with 2 people'));
+}
+
 // A new unit checks in with the code; Operations can open a second incident.
 async function checkIn(check) {
   const c = window.supabase.createClient();
@@ -279,7 +350,7 @@ async function checkIn(check) {
   const inc = await d.join(' cedar7 ', 'unit', 'Unit 4', 'Smoke');
   check('the code, trimmed and upper-cased, joins the incident', inc && inc.id === INC());
   await until(() => base.units().some((u) => u.unit_name === 'Unit 4') && eventText(base, 'Unit 4 checked in'));
-  check('the base sees Unit 4 join, in its unit list and in the log', base.units().some((u) => u.unit_name === 'Unit 4' && u.crew === 'Smoke') && !!eventText(base, 'Unit 4 checked in') && has('#panel', 'unit 4', 'no assignment'), text('#panel'));
+  check('the base sees Unit 4 join, available in its resources list and in the log', base.units().some((u) => u.unit_name === 'Unit 4' && u.crew === 'Smoke' && u.status === 'available') && !!eventText(base, 'Unit 4 checked in') && has('#panel', 'unit 4', 'available'), text('#panel'));
   await d.open(INC());
   check('Unit 4 can read the incident it joined', d.me().unit_name === 'Unit 4' && d.zones().length === 6);
   const made = await d.createIncident({ name: 'Smoke drill', period: 'OP 1', base: 'Depot', lat: 30.3, lng: -97.7, zoom: 14 });

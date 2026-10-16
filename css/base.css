@@ -35,6 +35,15 @@
 .mrow-state { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
 .ack.ok { color: var(--cleared); }
 .ack.wait { color: var(--hazard-ink); }
+.grp { display: flex; align-items: center; gap: 8px; padding: 8px 0 2px; }
+.badge.st-assigned { background: #E0EAF6; color: var(--active); }
+.badge.st-available { background: #DDF0E4; color: var(--cleared); }
+.badge.st-out_of_service { background: #FBE9D6; color: var(--hazard-ink); }
+.badge.st-checked_out { background: var(--soft); color: var(--muted); }
+.par-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 3px 8px; border-left: 3px solid #D8D5CD; margin-bottom: 3px; }
+.par-row.ok { border-left-color: var(--cleared-fill); } .par-row.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-row.wait { border-left-color: var(--hazard); }
+.safety .missing { color: var(--danger); font-weight: 600; }
+.log-row.log-status { border-left-color: #8CA6BF; }
 .log-row.log-msg { border-left-color: #6B8FC2; } .log-row.log-safety { border-left-color: #F2B134; background: #FDF5E3; } .log-row.log-par { border-left-color: #6B5DBF; }
 .body { flex: 1; min-height: 0; display: flex; }
 .mapcol { flex: 1; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }

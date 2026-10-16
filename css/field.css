@@ -41,6 +41,16 @@ body { background: #F7F6F2; }
 .safety-sheet .mrow { background: #fff; border-left-color: var(--danger); }
 .safety-sheet .mrow-text { font-size: 20px; font-weight: 600; }
 .safety-sheet .mrow-btns .btn { background: var(--danger); color: #fff; border-color: var(--danger); min-height: 56px; font-size: 17px; }
+.safety-sheet .mrow.par .mrow-btns .btn.green { background: var(--cleared-fill); border-color: var(--cleared-fill); }
+.par-count { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 14px; }
+.par-count .btn { width: 48px; min-height: 44px; font-size: 20px; padding: 0; }
+.par-count .num { font-size: 20px; font-weight: 600; width: 28px; text-align: center; }
+.status-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status-row .btn { min-height: 44px; }
+.badge.st-assigned { background: #E0EAF6; color: var(--active); }
+.badge.st-available { background: #DDF0E4; color: var(--cleared); }
+.badge.st-out_of_service { background: #FBE9D6; color: var(--hazard-ink); }
+.badge.st-checked_out { background: var(--soft); color: var(--muted); }
 .p-body { flex: 1; min-height: 0; overflow: auto; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 .card .zone-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }

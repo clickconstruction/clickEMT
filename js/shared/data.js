@@ -66,8 +66,8 @@ export class Data {
     if (error) throw error;
     return data;
   }
-  async join(code, role, unitName, crew) {
-    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null });
+  async join(code, role, unitName, crew, crewCount, agency) {
+    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null });
     if (error) throw error;
     return data;
   }
@@ -151,6 +151,13 @@ export class Data {
   member(userId) { return this.store.members.get(userId) || null; }
   members() { return [...this.store.members.values()]; }
   units() { return this.members().filter((m) => m.role === 'unit').sort((a, b) => (a.unit_name || '').localeCompare(b.unit_name || '')); }
+  // units still on the incident: everyone but the checked out
+  activeUnits() { return this.units().filter((u) => u.status !== 'checked_out'); }
+  // people in the field: the head counts of units that are assigned or available
+  peopleInField() { return this.activeUnits().filter((u) => u.status !== 'out_of_service').reduce((n, u) => n + (u.crew_count || 0), 0); }
+  // the PAR still waiting on someone, newest first
+  openPars() { return this.messages().filter((m) => m.kind === 'par' && this.waitingOn(m).length > 0); }
+  lastPar() { return this.messages().find((m) => m.kind === 'par') || null; }
   zones() { return [...this.store.zones.values()].sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code)); }
   zone(id) { return this.store.zones.get(id) || null; }
   zoneByCode(code) { return this.zones().find((z) => z.code === code) || null; }
@@ -294,10 +301,19 @@ export class Data {
     this.local('ic_message_acks', data || { ...row, acked_at: new Date().toISOString() });
     return data || row;
   }
-  async updateMe(patch) {
-    const { data, error } = await this.sb.from('ic_members').update(patch).eq('incident_id', this.store.incident.id).eq('user_id', this.user.id).select().single();
+  async updateMe(patch) { return this.updateMember(this.user.id, patch); }
+  async updateMember(userId, patch) {
+    const { data, error } = await this.sb.from('ic_members').update(patch).eq('incident_id', this.store.incident.id).eq('user_id', userId).select().single();
     if (error) throw error;
     this.local('ic_members', data);
     return data;
   }
+  // resource status, as ICS names it: assigned, available, out_of_service (with a reason), checked_out
+  async setStatus(userId, status, note) { return this.updateMember(userId, { status, status_note: note || '' }); }
+  // the PAR: a message of kind 'par'; each unit answers with a head count, or that someone is missing
+  async startPar(target, text) {
+    const r = this.recipientsFor(target || 'all');
+    return this.sendMessage(null, { toUsers: r.toUsers, toLabel: r.toLabel, toZone: r.toZone, kind: 'par', text: text || 'PAR: is everyone accounted for?' });
+  }
+  async answerPar(messageId, allAccounted, count) { return this.ackMessage(messageId, allAccounted ? 'All accounted for' : 'Missing someone', count); }
 }

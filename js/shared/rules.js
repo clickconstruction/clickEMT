@@ -2,6 +2,9 @@
 // all agree on what a heading is called, which zone a point is in, and what a status means.
 
 export const STATUS_TEXT = { open: 'Not started', active: 'In progress', cleared: 'Cleared' };
+// A unit's resource status, as ICS names it.
+export const STATUS_LABEL = { assigned: 'Assigned', available: 'Available', out_of_service: 'Out of service', checked_out: 'Checked out' };
+export const OOS_REASONS = ['Rest', 'Fuel', 'Equipment', 'Medical', 'Weather', 'Other'];
 export const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 // What a field unit can say a photo shows, one tap each.

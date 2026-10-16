@@ -3,14 +3,14 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid } from '../shared/rules.js';
+import { nextZoneCode, hhmm, centroid, unitLabel as unitLabelOf } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.base.incident';
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null };
 let map = null;
 let drawQueued = false;
 
@@ -231,6 +231,25 @@ document.addEventListener('click', async (e) => {
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', cleared_at: null, marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
       case 'ack-message': await data.ackMessage(id, btn.dataset.reply || 'Copy'); break;
+      case 'set-status': {
+        if (btn.dataset.status === 'out_of_service') { state.oosFor = id; queueDraw(); break; }
+        state.oosFor = null;
+        await data.setStatus(id, btn.dataset.status);
+        break;
+      }
+      case 'oos-cancel': state.oosFor = null; queueDraw(); break;
+      case 'check-out': {
+        const m = data.member(id);
+        if (m && confirm(`Check ${unitLabelOf(m)} out? Its zones go back to not started.`)) await data.setStatus(id, 'checked_out');
+        break;
+      }
+      case 'start-par': {
+        const r = data.recipientsFor(btn.dataset.target || 'all');
+        if (!r.toUsers.length) { toast('Nobody to ask', true); break; }
+        await data.startPar(btn.dataset.target || 'all');
+        toast('PAR sent to ' + r.toLabel);
+        break;
+      }
       case 'draw-boundary': case 'draw-zone': {
         const mode = act === 'draw-boundary' ? 'boundary' : 'zone';
         if (map.mode === mode) { stopDraw(); break; }
@@ -282,6 +301,10 @@ document.addEventListener('submit', async (e) => {
     } else if (form.dataset.form === 'zone-edit') {
       await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0 });
       toast('Saved');
+      queueDraw();
+    } else if (form.dataset.form === 'oos') {
+      await data.setStatus(form.dataset.id, 'out_of_service', form.reason.value);
+      state.oosFor = null;
       queueDraw();
     } else if (form.dataset.form === 'message') {
       const text = form.text.value.trim();

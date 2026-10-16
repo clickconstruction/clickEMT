@@ -59,10 +59,10 @@
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
       ic_members: [
-        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190) },
-        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170) },
-        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168) },
-        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165) }
+        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null },
+        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null },
+        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null },
+        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null }
       ],
       ic_zones: [
         zone(1, 'A-1', 'Riverside Drive, east', 1, 'active', U.unit1, 24, 9, { updated_at: ago(45), polygon: ring([[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]]) }),
@@ -100,9 +100,9 @@
     ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding');
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Zone ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
-    ev(170, U.unit1, 'ops', 'Unit 1 checked in');
-    ev(168, U.unit2, 'ops', 'Unit 2 checked in');
-    ev(165, U.unit3, 'ops', 'Unit 3 checked in');
+    ev(170, U.unit1, 'ops', 'Unit 1 checked in with 2 people');
+    ev(168, U.unit2, 'ops', 'Unit 2 checked in with 2 people');
+    ev(165, U.unit3, 'ops', 'Unit 3 checked in with 2 people');
     ev(160, U.ops, 'ops', 'A-1 assigned to Unit 1', 'ic_zones', Z['A-1']);
     ev(159, U.ops, 'ops', 'A-3 assigned to Unit 2', 'ic_zones', Z['A-3']);
     ev(158, U.ops, 'ops', 'A-2 assigned to Unit 3', 'ic_zones', Z['A-2']);
@@ -126,7 +126,7 @@
   // ---- column defaults, as the schema's
   const DEFAULTS = {
     ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now() }),
-    ic_members: () => ({ unit_name: null, crew: null, joined_at: now() }),
+    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', taken_at: now(), created_at: now() }),
@@ -150,7 +150,7 @@
     if (!uid) return false;
     switch (table) {
       case 'ic_incidents': return op === 'update' && isOps(row.id, uid);
-      case 'ic_members': return op === 'update' && row.user_id === uid;
+      case 'ic_members': return op === 'update' && (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_zones': return op === 'insert' ? isOps(row.incident_id, uid) : isMember(row.incident_id, uid);
       case 'ic_positions': return row.user_id === uid && isMember(row.incident_id, uid);
       case 'ic_photos': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
@@ -172,7 +172,11 @@
       if (!['open', 'active', 'cleared'].includes(r.status)) throw chk('ic_zones_status_check');
     }
     if (table === 'ic_incidents' && !['active', 'closed'].includes(r.status)) throw chk('ic_incidents_status_check');
-    if (table === 'ic_members' && !['ops', 'unit'].includes(r.role)) throw chk('ic_members_role_check');
+    if (table === 'ic_members') {
+      if (!['ops', 'unit'].includes(r.role)) throw chk('ic_members_role_check');
+      if (!['assigned', 'available', 'out_of_service', 'checked_out'].includes(r.status)) throw chk('ic_members_status_check');
+      if (r.crew_count != null && !(r.crew_count >= 0 && r.crew_count <= 99)) throw chk('ic_members_crew_count_check');
+    }
     if (table === 'ic_messages') {
       if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
       if (r.text == null) throw nn('text');
@@ -215,8 +219,34 @@
       log(changes, r.incident_id, r.user_id, kind, text, 'ic_messages', r.message_id);
     }
   }
+  // ic_zone_sets_status: a zone's assignment or clearing sets its unit's status
+  function zoneSetsStatus(r, old, uid, changes) {
+    const setStatus = (user, status, only) => {
+      const m = member(r.incident_id, user);
+      if (m && only.includes(m.status) && m.status !== status) updateRow('ic_members', m, { status }, uid, changes, true);
+    };
+    const newA = r.assigned_to || null, oldA = old.assigned_to || null;
+    if (newA !== oldA && newA) setStatus(newA, 'assigned', ['available']);
+    if (oldA && (newA !== oldA || (r.status === 'cleared' && old.status !== 'cleared'))) {
+      const other = tables.ic_zones.some((z) => z.incident_id === r.incident_id && z.assigned_to === oldA && z.status === 'active' && z.id !== r.id);
+      if (!other && !(newA === oldA && r.status === 'active')) setStatus(oldA, 'available', ['assigned']);
+    }
+  }
   function afterUpdate(table, r, old, uid, changes) {
+    if (table === 'ic_members' && r.status !== old.status) {
+      const who = label(r.incident_id, r.user_id);
+      const text = r.status === 'available' ? `${who} is available${old.status === 'out_of_service' ? ', back in service' : ''}`
+        : r.status === 'out_of_service' ? `${who} is out of service${r.status_note ? ': ' + r.status_note : ''}`
+        : r.status === 'checked_out' ? `${who} checked out` : `${who} is assigned`;
+      log(changes, r.incident_id, uid, 'status', text);
+      if (r.status === 'checked_out') {
+        for (const z of tables.ic_zones.filter((z) => z.incident_id === r.incident_id && z.assigned_to === r.user_id)) {
+          updateRow('ic_zones', z, z.status === 'active' ? { assigned_to: null, status: 'open' } : { assigned_to: null }, uid, changes, true);
+        }
+      }
+    }
     if (table === 'ic_zones') {
+      zoneSetsStatus(r, old, uid, changes);
       const put = (kind, text) => log(changes, r.incident_id, uid, kind, text, 'ic_zones', r.id);
       if (r.status === 'cleared' && old.status !== 'cleared') {
         const victims = r.marking && r.marking.victims != null ? r.marking.victims : 0;
@@ -273,6 +303,11 @@
     if (!system && !allowed(table, 'update', next, uid)) throw rlsError(table);
     Object.assign(r, next);
     if (table === 'ic_zones') r.updated_at = now();   // ic_touch
+    if (table === 'ic_members' && r.status !== old.status) {   // ic_member_before
+      r.status_at = now();
+      r.checked_out_at = r.status === 'checked_out' ? now() : null;
+      if (r.status !== 'out_of_service') r.status_note = '';
+    }
     changes.push(['UPDATE', table, r, old]);
     afterUpdate(table, r, old, uid, changes);
     return r;
@@ -409,7 +444,7 @@
         do { code = ''; for (let i = 0; i < 6; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; } while (tables.ic_incidents.some((i) => i.code === code));
         const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period), base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid };
         tables.ic_incidents.push(inc); changes.push(['INSERT', 'ic_incidents', inc, null]);
-        const m = { incident_id: inc.id, user_id: uid, role: 'ops', unit_name: 'Operations', crew: null, joined_at: now() };
+        const m = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: 'ops', unit_name: 'Operations' };
         tables.ic_members.push(m); changes.push(['INSERT', 'ic_members', m, null]);
         log(changes, inc.id, uid, 'ops', 'Incident opened: ' + inc.name);
         out = copy(inc);
@@ -419,11 +454,19 @@
         const code = String(a.p_code || '').trim().toUpperCase();
         const inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
         if (!inc) throw dbError('No active incident has the code ' + code);
-        const unit = trim(a.p_unit_name), crew = trim(a.p_crew);
+        const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count);
         const m = member(inc.id, uid);
-        if (m) { const old = copy(m); m.role = a.p_role; m.unit_name = unit ?? m.unit_name; m.crew = crew ?? m.crew; changes.push(['UPDATE', 'ic_members', m, old]); }
-        else { const nm = { incident_id: inc.id, user_id: uid, role: a.p_role, unit_name: unit, crew, joined_at: now() }; tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]); }
-        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in');
+        if (m) {
+          const old = copy(m);
+          m.role = a.p_role; m.unit_name = unit ?? m.unit_name; m.crew = crew ?? m.crew; m.crew_count = count ?? m.crew_count; m.agency = agency || m.agency;
+          if (m.status === 'checked_out') { m.status = 'available'; m.status_at = now(); }
+          m.checked_out_at = null;
+          changes.push(['UPDATE', 'ic_members', m, old]);
+        } else {
+          const nm = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: a.p_role, unit_name: unit, crew, crew_count: count, agency: agency || '' };
+          tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]);
+        }
+        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + (count != null ? ' with ' + count + (count === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
       } else throw dbError(`Could not find the function public.${name} in the schema cache`, 'PGRST202');
     } catch (e) {

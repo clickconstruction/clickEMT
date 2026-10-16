@@ -18,10 +18,10 @@ Ticked when it is on `main`.
 
 ## 2. Accountability (resource status, check-out, PAR)
 
-- [ ] `ic_members.status` as ICS names it: assigned, available (at staging), out of service (with a reason), checked out; `crew_count`; `agency`.
-- [ ] Field: set your status from the menu; check out at the end of the shift.
-- [ ] Base: units grouped by status (the T-card board); a checked-out unit is not shown as missing.
-- [ ] PAR, the Personnel Accountability Report: one button on the base sends a PAR to everyone or to a division; each unit answers with one tap, all accounted for with a head count, or missing someone, which raises an alert; the base shows who has not answered and for how long.
+- [x] `ic_members.status` as ICS names it: assigned, available (at staging), out of service (with a reason), checked out; `crew_count`; `agency`. Assigning a zone makes a unit assigned; releasing or clearing its last zone makes it available; checking out gives its zones back. Every change is a status line in the log.
+- [x] Field: set your status from the menu; change the head count; check out at the end of the shift. Check-in asks for the head count and the agency.
+- [x] Base: units grouped by status (the T-card board) with the people in the field; Operations can set a unit's status, with a reason for out of service, and check it out.
+- [x] PAR, the Personnel Accountability Report: one button on the base sends a PAR to everyone, a division or one unit; each unit answers with one tap, all accounted for with a head count, or missing someone, which raises an alert; the base shows who has not answered and for how long, and a missing report stays on the bar.
 
 ## 3. Operational periods and objectives (ICS 202, transfer of command)
 

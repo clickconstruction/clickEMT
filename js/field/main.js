@@ -4,16 +4,17 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
+const AGENCY_KEY = 'ic.field.agency';
 const SEEN_ZONE = 'ic.field.seen.';
 const POSITION_EVERY_MS = 10000;
 const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0 };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null };
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?', 'Other'];
 const REPLIES = ['Copy', 'Will do', 'Cannot'];
 let mini = null, miniLayers = null, miniZoneId = null;
@@ -47,7 +48,8 @@ const outbox = new Outbox({
   alert: (p) => data.raiseAlert(p.id, p),
   standdown: (p) => data.standDown(p.id),
   message: (p) => data.sendMessage(p.id, p),
-  ack: (p) => data.ackMessage(p.messageId, p.reply, p.count)
+  ack: (p) => data.ackMessage(p.messageId, p.reply, p.count),
+  status: (p) => data.setStatus(p.userId, p.status, p.note)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -109,6 +111,7 @@ $('#auth-signup').addEventListener('click', async () => {
 async function showJoin() {
   show('join');
   $('#join-user').textContent = data.user ? data.user.email : '';
+  try { const f = $('#join-form'); if (!f.agency.value) f.agency.value = localStorage.getItem(AGENCY_KEY) || ''; } catch (e) { /* storage blocked */ }
   const list = $('#join-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
   try {
@@ -126,7 +129,8 @@ $('#join-form').addEventListener('submit', async (e) => {
   const f = e.target, msg = f.querySelector('[data-msg]');
   msg.textContent = 'Checking in…';
   try {
-    const inc = await data.join(f.code.value, 'unit', f.unit.value, f.crew.value);
+    const inc = await data.join(f.code.value, 'unit', f.unit.value, f.crew.value, f.count.value, f.agency.value);
+    try { localStorage.setItem(AGENCY_KEY, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
     f.reset(); msg.textContent = '';
     await openIncident(inc.id);
   } catch (err) { msg.textContent = err.message || String(err); }
@@ -170,12 +174,15 @@ function messageRow(m, big) {
   let state_ = '';
   if (mine) state_ = to.length ? (waiting.length ? 'Waiting on ' + waiting.map((u) => esc(unitLabel(data.member(u)))).join(', ') : 'Acknowledged by ' + data.acksFor(m.id).map((a) => esc(unitLabel(data.member(a.user_id))) + (a.reply && a.reply !== 'Copy' ? ' (' + esc(a.reply) + ')' : '')).join(', ')) : '';
   else if (acked) state_ = 'You answered ' + esc(acked.reply || 'Acknowledged') + ' at ' + hhmm(acked.acked_at);
-  const btns = !mine && !acked ? (m.kind === 'safety'
-    ? `<div class="mrow-btns"><button class="btn" data-action="ack" data-id="${m.id}" data-reply="Acknowledged">Acknowledge</button></div>`
-    : `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`) : '';
+  let btns = '';
+  if (!mine && !acked) {
+    if (m.kind === 'safety') btns = `<div class="mrow-btns"><button class="btn" data-action="ack" data-id="${m.id}" data-reply="Acknowledged">Acknowledge</button></div>`;
+    else if (m.kind === 'par') btns = `<div class="par-count"><span>People with you</span><button class="btn" data-action="par-less" data-id="${m.id}" aria-label="Fewer">−</button><span class="num">${parCount(m.id)}</span><button class="btn" data-action="par-more" data-id="${m.id}" aria-label="More">+</button></div><div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}">Missing someone</button></div>`;
+    else btns = `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`;
+  }
   return `
     <div class="mrow ${esc(m.kind)}${mine ? ' mine' : ''}">
-      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${mine ? 'You' : esc(unitLabel(data.member(m.from_user)))}</span><span>to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}</div>
+      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${mine ? 'You' : esc(unitLabel(data.member(m.from_user)))}</span><span>to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}</div>
       <div class="mrow-text">${esc(m.text)}</div>
       ${state_ ? `<div class="mrow-state">${state_}</div>` : ''}
       ${btns}
@@ -221,8 +228,67 @@ async function ackMessage(id, reply) {
 }
 
 function drawSafety() {
-  const open = data.myUnanswered().filter((m) => m.kind === 'safety');
+  const open = data.myUnanswered().filter((m) => m.kind === 'safety' || m.kind === 'par');
+  const hasPar = open.some((m) => m.kind === 'par'), hasSafety = open.some((m) => m.kind === 'safety');
+  $('#safety-title').textContent = hasPar && hasSafety ? 'Safety message and head count' : hasPar ? 'Head count (PAR)' : 'Safety message';
   setHtml($('#safety-list'), open.map((m) => messageRow(m, true)).join(''));
+}
+
+// ---- accountability: the PAR answer, your status, check-out
+function parCount(id) {
+  if (!state.parCounts.has(id)) { const me = data.me(); state.parCounts.set(id, me && me.crew_count != null ? me.crew_count : 1); }
+  return state.parCounts.get(id);
+}
+async function answerPar(id, allAccounted) {
+  const m = data.message(id);
+  if (!m || data.ack(id, data.user.id)) return;
+  const count = parCount(id);
+  const reply = allAccounted ? 'All accounted for' : 'Missing someone';
+  data.local('ic_message_acks', { message_id: id, incident_id: data.incident.id, user_id: data.user.id, reply, count, acked_at: new Date().toISOString() });
+  await outbox.add('ack', { messageId: id, reply, count });
+  state.lastSentAt = Date.now();
+  if (!allAccounted && !myAlert()) await sendAlert();
+  else { if (state.screen === 'safety') drawSafety(); toast('Head count sent: ' + count); }
+  queueDraw();
+}
+async function setMyStatus(status, note) {
+  const me = data.me();
+  if (!me) return;
+  data.local('ic_members', Object.assign({}, me, { status, status_note: note || '', status_at: new Date().toISOString() }));
+  await outbox.add('status', { userId: me.user_id, status, note: note || '' });
+  state.oosPick = null;
+  toast(STATUS_LABEL[status] + (note ? ': ' + note : ''));
+  drawMenu();
+  queueDraw();
+}
+async function checkOut() {
+  const me = data.me();
+  if (!me || !confirm('Check out of ' + data.incident.name + '? Your zone goes back to Operations and your location stops sharing.')) return;
+  try { await data.setStatus(me.user_id, 'checked_out'); }
+  catch (e) { toast('Could not check out: ' + (e.message || e), true); return; }
+  sensors.stop();
+  data.close();
+  localStorage.removeItem(LAST_INCIDENT);
+  screen('home');
+  await showJoin();
+  toast('Checked out');
+}
+function drawStatus() {
+  const me = data.me();
+  if (!me) return;
+  const st = me.status || 'available';
+  const onZone = data.myZones().some((z) => z.status === 'active');
+  const btn = (status, label) => `<button class="btn" data-action="status" data-status="${status}">${label}</button>`;
+  const html = `
+    <div class="status-row"><span class="badge st-${esc(st)}">${STATUS_LABEL[st]}${me.status_note ? ': ' + esc(me.status_note) : ''}</span><span class="muted" style="font-size:12px">since ${hhmm(me.status_at)}</span></div>
+    <div class="status-row" style="margin-top:8px">
+      ${st !== 'available' ? btn('available', 'Available at staging') : ''}
+      ${st === 'out_of_service' && onZone ? btn('assigned', 'Back on my zone') : ''}
+      ${st !== 'out_of_service' ? `<button class="btn" data-action="oos-pick">Out of service</button>` : ''}
+    </div>
+    ${state.oosPick != null ? `<div class="chips" style="margin-top:8px">${OOS_REASONS.map((r, i) => `<button class="chip${state.oosPick === i ? ' on' : ''}" data-action="oos" data-i="${i}">${esc(r)}</button>`).join('')}</div><div class="status-row" style="margin-top:8px"><button class="btn pri" data-action="oos-go">Go out of service</button><button class="btn" data-action="oos-cancel">Cancel</button></div>` : ''}
+    <div class="par-count"><span>People on the unit</span><button class="btn" data-action="crew-less" aria-label="Fewer">−</button><span class="num">${me.crew_count != null ? me.crew_count : '?'}</span><button class="btn" data-action="crew-more" aria-label="More">+</button></div>`;
+  setHtml($('#menu-status'), html);
 }
 
 function myZone() {
@@ -245,7 +311,7 @@ function drawAll() {
   if (!data.incident || $('#app').hidden) return;
   const me = data.me();
   $('#me-name').textContent = unitLabel(me);
-  $('#me-crew').textContent = [me && me.crew, data.incident.name].filter(Boolean).join(' · ');
+  $('#me-crew').textContent = [me && me.crew, me && STATUS_LABEL[me.status], data.incident.name].filter(Boolean).join(' · ');
 
   const gps = $('#gps-pill');
   if (sensors.error) { gps.className = 'live bad'; $('#gps-text').textContent = 'No GPS'; }
@@ -258,11 +324,11 @@ function drawAll() {
   const badge = $('#inbox-badge');
   badge.hidden = unanswered.length === 0;
   badge.textContent = unanswered.length;
-  const safetyOpen = unanswered.filter((m) => m.kind === 'safety');
+  const safetyOpen = unanswered.filter((m) => m.kind === 'safety' || m.kind === 'par');
   if (safetyOpen.length && state.screen !== 'helpsent' && state.screen !== 'safety') screen('safety');
   if (state.screen === 'safety') { if (!safetyOpen.length) screen('home'); else drawSafety(); }
   const card = $('#inbox-card');
-  const newest = unanswered.filter((m) => m.kind !== 'safety')[0];
+  const newest = unanswered.filter((m) => m.kind === 'message')[0];
   setHtml(card, newest ? `<div class="inbox-card"><div class="k">Message from ${esc(unitLabel(data.member(newest.from_user)))}${unanswered.length > 1 ? ' · ' + (unanswered.length - 1) + ' more in the inbox' : ''}</div>${messageRow(newest)}</div>` : '');
   if (state.screen === 'inbox') drawInbox();
 
@@ -351,6 +417,7 @@ function drawMenu() {
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
   $('#menu-outbox').textContent = state.outbox ? `${state.outbox} report${state.outbox === 1 ? '' : 's'} waiting for signal${state.outboxError ? ': ' + (state.outboxError.message || state.outboxError) : ''}` : 'Nothing waiting, everything is sent';
+  drawStatus();
 }
 
 // ---- photo
@@ -524,6 +591,24 @@ document.addEventListener('click', async (e) => {
       case 'send-alert': await sendAlert(); break;
       case 'stand-down': await standDown(); break;
       case 'inbox': screen('inbox'); drawInbox(); break;
+      case 'par-less': state.parCounts.set(btn.dataset.id, Math.max(0, parCount(btn.dataset.id) - 1)); drawSafety(); drawInbox(); break;
+      case 'par-more': state.parCounts.set(btn.dataset.id, Math.min(99, parCount(btn.dataset.id) + 1)); drawSafety(); drawInbox(); break;
+      case 'par-ok': await answerPar(btn.dataset.id, true); break;
+      case 'par-missing': if (confirm('Report someone missing? Operations gets an emergency alert with your position.')) await answerPar(btn.dataset.id, false); break;
+      case 'status': await setMyStatus(btn.dataset.status); break;
+      case 'oos-pick': state.oosPick = 0; drawStatus(); break;
+      case 'oos': state.oosPick = Number(btn.dataset.i); drawStatus(); break;
+      case 'oos-cancel': state.oosPick = null; drawStatus(); break;
+      case 'oos-go': await setMyStatus('out_of_service', OOS_REASONS[state.oosPick || 0]); break;
+      case 'crew-less': case 'crew-more': {
+        const me = data.me();
+        const n = Math.max(0, Math.min(99, (me.crew_count || 0) + (act === 'crew-more' ? 1 : -1)));
+        data.local('ic_members', Object.assign({}, me, { crew_count: n }));
+        drawStatus();
+        try { await data.updateMe({ crew_count: n }); } catch (err) { toast(err.message || String(err), true); }
+        break;
+      }
+      case 'check-out': await checkOut(); break;
       case 'compose': state.composeI = 0; screen('compose'); drawCompose(); break;
       case 'cmp': state.composeI = Number(btn.dataset.i); drawCompose(); break;
       case 'send-compose': await sendCompose(); break;

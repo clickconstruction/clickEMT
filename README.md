@@ -32,6 +32,20 @@ python3 -m http.server 8766 --bind 127.0.0.1
 
 Then open `http://localhost:8766/` for the base and `http://localhost:8766/field/` for the field app. The camera, GPS and compass need HTTPS on a phone; localhost counts, a plain `http://` address on the LAN does not. The deployed site (GitHub Pages) is HTTPS.
 
+### Mock mode: no account, no network
+
+Add `?mock` to either address on localhost (`http://localhost:8766/?mock`, `http://localhost:8766/field/?mock`) and `dev/mock-supabase.js` stands in for Supabase: an in-memory copy of the tables, the triggers that write the log, the row-level security rules, Realtime and the photo bucket, seeded with one incident, Cedar Fork Flooding: six zones around a river town, three units with positions, three photos with headings, a hazard and a morning of log lines. The base tab is signed in as Operations and the field tab as Unit 3, both open on the incident, and the field tab gets a pretend GPS that stands in A-2 and drifts a few metres at a time. Open both in the same browser and what one does shows on the other within a second: mark the zone clear on the field tab and it turns green on the base.
+
+The data lives in the tabs' memory. A tab that opens while another mock tab is open copies that tab's data, so to start over close every mock tab, or run `window.__mock.reset()` in the console and reload the incident. `window.__mock.tables` is the data, `window.__mock.ids` the seeded ids, `window.__mock.geo` the pretend phone's position (set `drift: false` to hold it still). Sign out and sign in with any email and password: a seeded address (`ops@mock.local`, `unit1@mock.local` to `unit3@mock.local`) is that person, anything else is someone new, who can check in with the code `CEDAR7`.
+
+**Smoke test:** open `http://localhost:8766/?mock` in a window at least 1100 px wide, with no other mock tab open, and run this in the browser console:
+
+```js
+const { run } = await import('/dev/smoke.js'); await run()
+```
+
+It drives the base through the page (select a zone, set a priority, assign a unit, draw a zone and the boundary on the map, open a photo, acknowledge an alert, add a note) and the field through a second copy of the data module signed in as Unit 3 (a photo with a heading, an address clear, the zone clear with its marking, a hazard, an alert and standing down), and after each step checks what the base sees and what went into the log. It takes about 20 seconds and returns `{ passed, total, failed }`. `run({ only: ['fieldReports'] })` runs one suite; the suites are `seeded`, `baseActions`, `boundary`, `fieldReports`, `emergency`, `checkIn` and `permissions`.
+
 ## First run
 
 1. Sign in on the base (email and password; "Create account" makes one if sign-ups are enabled on the Supabase project).
@@ -48,5 +62,6 @@ js/shared/                rules.js (no DOM: headings, zone codes, polygons), dat
 css/                      shared.css, base.css, field.css
 supabase/migrations/      the schema: tables, RLS, the triggers that write the log
 sw.js, manifest.webmanifest, field/manifest.webmanifest, icons/
-dev/sbq.py                runs SQL on the project with the Supabase CLI's login; dev/make-icons.py draws the icons
+dev/                      mock-supabase.js (the in-memory Supabase behind ?mock), smoke.js (the browser smoke test), test-rules.mjs,
+                          sbq.py (runs SQL on the project with the Supabase CLI's login), make-icons.py (draws the icons)
 ```

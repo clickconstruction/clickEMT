@@ -4,6 +4,7 @@ Two views of one incident, for floods and other large-scale emergencies:
 
 - **Base** (`index.html`): the map at the base or forward operating base. Operations draws the incident boundary and the zones, sets each zone's priority, assigns units, and watches units move, photos arrive (with the direction each one faces) and zones turn green as the field marks them clear. The activity log is an ICS 214 in all but name.
 - **Field** (`field/`): the phone app a unit installs. It shares the unit's location, takes photos tagged with the compass heading, marks addresses and the zone clear with the search marking the team paints, reports hazards, and has one red button for "need help now". Reports are kept on the phone until there is signal.
+- **Messages** both ways, the ICS 213: Operations writes to one unit, the unit in a zone or everyone; each recipient acknowledges with one tap (Copy, Will do, Cannot). A safety message takes over every phone it is sent to until acknowledged, and stays on the base's yellow bar until the last one answers. Units can message Operations with quick chips or in their own words. ROADMAP.md lists what comes next.
 
 The vocabulary follows the Incident Command System: zones are divisions, priorities are the operational period's objectives, assignments are the ICS 204, the log is the ICS 214.
 

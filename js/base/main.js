@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, logHtml, maydayHtml, esc } from './ui.js';
+import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.base.incident';
@@ -166,6 +166,10 @@ function drawAll() {
   md.hidden = !mh;
   md.innerHTML = mh;
   md.classList.toggle('ack', !!mh && data.alerts().every((a) => a.acknowledged_at));
+  const sf = $('#safety');
+  const sh = safetyHtml(data);
+  sf.hidden = !sh;
+  sf.innerHTML = sh;
   drawLive();
 }
 
@@ -226,6 +230,7 @@ document.addEventListener('click', async (e) => {
       }
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', cleared_at: null, marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
+      case 'ack-message': await data.ackMessage(id, btn.dataset.reply || 'Copy'); break;
       case 'draw-boundary': case 'draw-zone': {
         const mode = act === 'draw-boundary' ? 'boundary' : 'zone';
         if (map.mode === mode) { stopDraw(); break; }
@@ -277,6 +282,18 @@ document.addEventListener('submit', async (e) => {
     } else if (form.dataset.form === 'zone-edit') {
       await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0 });
       toast('Saved');
+      queueDraw();
+    } else if (form.dataset.form === 'message') {
+      const text = form.text.value.trim();
+      if (!text) return;
+      const r = data.recipientsFor(form.to.value);
+      if (!r.toUsers.length) { toast('Nobody to send that to', true); return; }
+      const safety = !!(form.safety && form.safety.checked);
+      await data.sendMessage(null, { toUsers: r.toUsers, toLabel: r.toLabel, toZone: r.toZone, kind: safety ? 'safety' : 'message', text });
+      form.text.value = '';
+      if (form.safety) form.safety.checked = false;
+      form.text.blur();
+      toast((safety ? 'Safety message' : 'Message') + ' sent to ' + r.toLabel);
       queueDraw();
     }
   } catch (err) { toast(err.message || String(err), true); }

@@ -13,11 +13,16 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0 };
+const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?', 'Other'];
+const REPLIES = ['Copy', 'Will do', 'Cannot'];
 let mini = null, miniLayers = null, miniZoneId = null;
 let drawQueued = false;
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+// Live updates redraw often; only touch the DOM when the words changed, so a tap never lands on a button that was just replaced.
+function setHtml(el, html) { if (el.__html !== html) { el.__html = html; el.innerHTML = html; } }
+function setCard(el, cls, html) { if (el.className !== cls) el.className = cls; setHtml(el, html); }
 function uuid() { return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }); }
 
 function toast(msg, bad) {
@@ -29,7 +34,7 @@ function toast(msg, bad) {
 function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
 function screen(name) {
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose']) $('#s-' + s).hidden = name !== s;
   if (name === 'home') { state.pending = null; if (mini) setTimeout(() => mini.invalidateSize(), 50); }
 }
 
@@ -40,7 +45,9 @@ const outbox = new Outbox({
   clear: (p) => data.updateZone(p.zoneId, p.patch),
   hazard: (p) => data.addHazard(p.id, p),
   alert: (p) => data.raiseAlert(p.id, p),
-  standdown: (p) => data.standDown(p.id)
+  standdown: (p) => data.standDown(p.id),
+  message: (p) => data.sendMessage(p.id, p),
+  ack: (p) => data.ackMessage(p.messageId, p.reply, p.count)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -138,9 +145,84 @@ async function openIncident(id) {
     mini.setView([30.2672, -97.7431], 13);
   }
   miniZoneId = null;
+  state.seenMsgs = new Set(data.myInbox().map((m) => m.id));
   sensors.start();
   outbox.flush();
   drawAll();
+}
+
+// ---- messages: the inbox, the card on the home screen, the safety takeover
+function noticeNewMessages() {
+  if (!state.seenMsgs) return;
+  let fresh = null;
+  for (const m of data.myUnanswered()) if (!state.seenMsgs.has(m.id)) { state.seenMsgs.add(m.id); fresh = fresh || m; }
+  if (!fresh) return;
+  if (navigator.vibrate) navigator.vibrate(fresh.kind === 'safety' ? [200, 100, 200, 100, 400] : [120, 60, 120]);
+  if (fresh.kind !== 'safety') toast('Message from ' + unitLabel(data.member(fresh.from_user)));
+}
+
+function messageRow(m, big) {
+  const me = data.user.id;
+  const mine = m.from_user === me;
+  const acked = data.ack(m.id, me);
+  const to = m.to_users || [];
+  const waiting = data.waitingOn(m);
+  let state_ = '';
+  if (mine) state_ = to.length ? (waiting.length ? 'Waiting on ' + waiting.map((u) => esc(unitLabel(data.member(u)))).join(', ') : 'Acknowledged by ' + data.acksFor(m.id).map((a) => esc(unitLabel(data.member(a.user_id))) + (a.reply && a.reply !== 'Copy' ? ' (' + esc(a.reply) + ')' : '')).join(', ')) : '';
+  else if (acked) state_ = 'You answered ' + esc(acked.reply || 'Acknowledged') + ' at ' + hhmm(acked.acked_at);
+  const btns = !mine && !acked ? (m.kind === 'safety'
+    ? `<div class="mrow-btns"><button class="btn" data-action="ack" data-id="${m.id}" data-reply="Acknowledged">Acknowledge</button></div>`
+    : `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`) : '';
+  return `
+    <div class="mrow ${esc(m.kind)}${mine ? ' mine' : ''}">
+      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${mine ? 'You' : esc(unitLabel(data.member(m.from_user)))}</span><span>to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}</div>
+      <div class="mrow-text">${esc(m.text)}</div>
+      ${state_ ? `<div class="mrow-state">${state_}</div>` : ''}
+      ${btns}
+    </div>`;
+}
+
+function drawInbox() {
+  const me = data.user.id;
+  const rows = data.messages().filter((m) => m.from_user === me || (m.to_users || []).includes(me));
+  setHtml($('#inbox-list'), rows.length ? rows.map((m) => messageRow(m)).join('') : '<p class="muted">No messages yet. Operations will see anything you send.</p>');
+}
+
+function drawCompose() {
+  $('#compose-chips').innerHTML = QUICK.map((c, i) => `<button class="chip${state.composeI === i ? ' on' : ''}" data-action="cmp" data-i="${i}">${esc(c)}</button>`).join('');
+}
+
+async function sendCompose() {
+  const words = $('#compose-text').value.trim();
+  const quick = QUICK[state.composeI] === 'Other' ? '' : QUICK[state.composeI];
+  const text = [quick, words].filter(Boolean).join('. ');
+  if (!text) { toast('Say something first', true); return; }
+  const r = data.recipientsFor('ops');
+  if (!r.toUsers.length) { toast('Nobody at Operations to send to', true); return; }
+  const id = uuid();
+  data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, created_at: new Date().toISOString() });
+  await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text });
+  state.lastSentAt = Date.now();
+  $('#compose-text').value = ''; state.composeI = 0;
+  screen('inbox'); drawInbox();
+  toast(navigator.onLine ? 'Sent to Operations' : 'Kept, it sends when there is signal');
+  queueDraw();
+}
+
+async function ackMessage(id, reply) {
+  const m = data.message(id);
+  if (!m || data.ack(id, data.user.id)) return;
+  data.local('ic_message_acks', { message_id: id, incident_id: data.incident.id, user_id: data.user.id, reply, count: null, acked_at: new Date().toISOString() });
+  await outbox.add('ack', { messageId: id, reply });
+  state.lastSentAt = Date.now();
+  if (state.screen === 'inbox') drawInbox();
+  if (state.screen === 'safety') drawSafety();
+  queueDraw();
+}
+
+function drawSafety() {
+  const open = data.myUnanswered().filter((m) => m.kind === 'safety');
+  setHtml($('#safety-list'), open.map((m) => messageRow(m, true)).join(''));
 }
 
 function myZone() {
@@ -166,34 +248,44 @@ function drawAll() {
   $('#me-crew').textContent = [me && me.crew, data.incident.name].filter(Boolean).join(' · ');
 
   const gps = $('#gps-pill');
-  if (sensors.error) { gps.className = 'live bad'; $('#gps-text').textContent = 'No location'; }
+  if (sensors.error) { gps.className = 'live bad'; $('#gps-text').textContent = 'No GPS'; }
   else if (!sensors.pos) { gps.className = 'live off'; $('#gps-text').textContent = 'Locating'; }
-  else if (!navigator.onLine) { gps.className = 'live off'; $('#gps-text').textContent = 'Offline, keeping your reports'; }
-  else { gps.className = 'live'; $('#gps-text').textContent = 'Sharing location'; }
+  else if (!navigator.onLine) { gps.className = 'live off'; $('#gps-text').textContent = 'Offline'; }
+  else { gps.className = 'live'; $('#gps-text').textContent = 'Live'; }
+
+  noticeNewMessages();
+  const unanswered = data.myUnanswered();
+  const badge = $('#inbox-badge');
+  badge.hidden = unanswered.length === 0;
+  badge.textContent = unanswered.length;
+  const safetyOpen = unanswered.filter((m) => m.kind === 'safety');
+  if (safetyOpen.length && state.screen !== 'helpsent' && state.screen !== 'safety') screen('safety');
+  if (state.screen === 'safety') { if (!safetyOpen.length) screen('home'); else drawSafety(); }
+  const card = $('#inbox-card');
+  const newest = unanswered.filter((m) => m.kind !== 'safety')[0];
+  setHtml(card, newest ? `<div class="inbox-card"><div class="k">Message from ${esc(unitLabel(data.member(newest.from_user)))}${unanswered.length > 1 ? ' · ' + (unanswered.length - 1) + ' more in the inbox' : ''}</div>${messageRow(newest)}</div>` : '');
+  if (state.screen === 'inbox') drawInbox();
 
   const zone = myZone();
   const assigned = data.myZones().filter((z) => z.status !== 'cleared')[0] || null;
   const seenKey = SEEN_ZONE + data.incident.id;
   const banner = $('#banner');
   if (assigned && localStorage.getItem(seenKey) !== assigned.id) {
-    banner.innerHTML = `<div class="banner"><div class="k">New assignment from Operations</div><div style="font-size:16px;font-weight:600">${esc(assigned.code)} · ${esc(assigned.name)} · priority ${assigned.priority}${assigned.structures ? ' · ' + assigned.structures + ' structures' : ''}</div><button class="btn" data-action="accept" data-id="${assigned.id}">Accept</button></div>`;
-  } else banner.innerHTML = '';
+    setHtml(banner, `<div class="banner"><div class="k">New assignment from Operations</div><div style="font-size:16px;font-weight:600">${esc(assigned.code)} · ${esc(assigned.name)} · priority ${assigned.priority}${assigned.structures ? ' · ' + assigned.structures + ' structures' : ''}</div><button class="btn" data-action="accept" data-id="${assigned.id}">Accept</button></div>`);
+  } else setHtml(banner, '');
 
-  const card = $('#assignment');
+  const acard = $('#assignment');
   if (state.justCleared && (!zone || zone.id === state.justCleared.id)) {
-    card.className = 'card done-card';
-    card.innerHTML = `<div class="big">${esc(state.justCleared.code)} marked clear</div><div class="muted">Sent ${hhmm(state.justCleared.at)}. Operations sees the zone in green. Waiting for your next assignment.</div>`;
+    setCard(acard, 'card done-card', `<div class="big">${esc(state.justCleared.code)} marked clear</div><div class="muted">Sent ${hhmm(state.justCleared.at)}. Operations sees the zone in green. Waiting for your next assignment.</div>`);
   } else if (zone) {
     const isAssigned = zone.assigned_to === data.user.id;
-    card.className = 'card';
-    card.innerHTML = `
+    setCard(acard, 'card', `
       <div class="k">${isAssigned ? 'Your zone' : 'You are standing in'}</div>
       <div class="zone-name">${esc(zone.code)} · ${esc(zone.name)}</div>
       <div class="badges"><span class="badge p${zone.priority}">Priority ${zone.priority}</span>${zone.structures ? `<span class="badge">${zone.structures} structures</span>` : ''}<span class="badge ${zone.status === 'cleared' ? 'cleared' : (zone.status === 'active' ? 'active' : '')}">${zone.status === 'cleared' ? 'Cleared ' + hhmm(zone.cleared_at) : (zone.status === 'active' ? 'In progress' : 'Not started')}</span>${zone.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div>
-      ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}`;
+      ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}`);
   } else {
-    card.className = 'card';
-    card.innerHTML = `<div class="k">Your zone</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns zones from the base map. You can still send photos and hazards from where you stand.</div>`;
+    setCard(acard, 'card', `<div class="k">Your zone</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns zones from the base map. You can still send photos and hazards from where you stand.</div>`);
   }
 
   drawMini(zone);
@@ -202,9 +294,9 @@ function drawAll() {
   if (al) {
     if (state.screen !== 'helpsent') screen('helpsent');
     $('#helpsent-title').textContent = 'Alert sent ' + hhmm(al.created_at);
-    $('#helpsent-card').innerHTML = al.acknowledged_at
+    setHtml($('#helpsent-card'), al.acknowledged_at
       ? `<div class="k" style="color:var(--cleared)">Operations acknowledged at ${hhmm(al.acknowledged_at)}</div><div class="muted">Stay put if you can. Your location keeps sending.</div>`
-      : `<div class="k">Waiting for Operations</div><div class="muted">Your location keeps sending every few seconds.</div>`;
+      : `<div class="k">Waiting for Operations</div><div class="muted">Your location keeps sending every few seconds.</div>`);
     $('#helpsent-card').style.borderColor = al.acknowledged_at ? 'var(--cleared-fill)' : '';
   } else if (state.screen === 'helpsent') screen('home');
 
@@ -431,6 +523,11 @@ document.addEventListener('click', async (e) => {
       case 'help': openHelp(); break;
       case 'send-alert': await sendAlert(); break;
       case 'stand-down': await standDown(); break;
+      case 'inbox': screen('inbox'); drawInbox(); break;
+      case 'compose': state.composeI = 0; screen('compose'); drawCompose(); break;
+      case 'cmp': state.composeI = Number(btn.dataset.i); drawCompose(); break;
+      case 'send-compose': await sendCompose(); break;
+      case 'ack': await ackMessage(btn.dataset.id, btn.dataset.reply || 'Copy'); break;
     }
   } catch (err) { console.error(err); toast(err.message || String(err), true); }
 });

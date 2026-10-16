@@ -28,6 +28,7 @@
   const Z = { 'A-1': ID('e', 1), 'A-2': ID('e', 2), 'A-3': ID('e', 3), 'B-1': ID('e', 4), 'B-2': ID('e', 5), 'B-3': ID('e', 6) };
   const P = [ID('f', 1), ID('f', 2), ID('f', 3)];
   const H1 = ID('b', 1);
+  const MSG = [ID('d', 1), ID('d', 2)];
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
     { id: U.unit2, email: 'unit2@mock.local' }, { id: U.unit3, email: 'unit3@mock.local' }
@@ -85,6 +86,14 @@
         { id: H1, incident_id: INC, user_id: U.unit3, zone_id: Z['A-2'], kind: 'Downed power line', note: 'Line across the park entrance', lat: 30.2668, lng: -97.7396, created_at: ago(20), resolved_at: null }
       ],
       ic_alerts: [],
+      ic_messages: [
+        { id: MSG[0], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'message', text: 'Shelter is open at the high school gym, send anyone who needs it there', created_at: ago(60) },
+        { id: MSG[1], incident_id: INC, from_user: U.ops, to_users: [U.unit3], to_label: 'Unit 3', to_zone: Z['A-2'], kind: 'message', text: 'Watch the power line at the park entrance, the utility crew is 20 minutes out', created_at: ago(15) }
+      ],
+      ic_message_acks: [
+        { message_id: MSG[0], incident_id: INC, user_id: U.unit1, reply: 'Copy', count: null, acked_at: ago(59) },
+        { message_id: MSG[0], incident_id: INC, user_id: U.unit2, reply: 'Copy', count: null, acked_at: ago(58) }
+      ],
       ic_events: []
     };
     const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min) });
@@ -102,7 +111,11 @@
     ev(40, U.unit2, 'clear', 'A-3 marked clear (6 of 6)', 'ic_zones', Z['A-3']);
     ev(39, U.ops, 'ops', 'A-3 released from Unit 2', 'ic_zones', Z['A-3']);
     ev(38, U.ops, 'ops', 'B-1 assigned to Unit 2', 'ic_zones', Z['B-1']);
+    ev(60, U.ops, 'msg', 'Operations to everyone: Shelter is open at the high school gym, send anyone who needs it there', 'ic_messages', MSG[0]);
+    ev(59, U.unit1, 'msg', 'Unit 1 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
+    ev(58, U.unit2, 'msg', 'Unit 2 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
     ev(20, U.unit3, 'hazard', 'Hazard in A-2: downed power line (Line across the park entrance), reported by Unit 3', 'ic_hazards', H1);
+    ev(15, U.ops, 'msg', 'Operations to Unit 3: Watch the power line at the park entrance, the utility crew is 20 minutes out', 'ic_messages', MSG[1]);
     ev(9, U.unit3, 'clear', 'Structure cleared in A-2 (6 of 18)', 'ic_zones', Z['A-2']);
     ev(5, U.ops, 'note', 'Shelter open at Cedar Fork High School gym, Red Cross on site');
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
@@ -119,7 +132,9 @@
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', taken_at: now(), created_at: now() }),
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
-    ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now() })
+    ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now() }),
+    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', created_at: now() }),
+    ic_message_acks: () => ({ reply: '', count: null, acked_at: now() })
   };
 
   function dbError(message, code) { const e = new Error(message); e.db = { message, code: code || 'P0001', details: null, hint: null }; return e; }
@@ -142,6 +157,8 @@
       case 'ic_hazards': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isMember(row.incident_id, uid);
       case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_events': return op === 'insert' && row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid);
+      case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
+      case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
       default: return false;
     }
   }
@@ -156,6 +173,12 @@
     }
     if (table === 'ic_incidents' && !['active', 'closed'].includes(r.status)) throw chk('ic_incidents_status_check');
     if (table === 'ic_members' && !['ops', 'unit'].includes(r.role)) throw chk('ic_members_role_check');
+    if (table === 'ic_messages') {
+      if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
+      if (r.text == null) throw nn('text');
+      if (!r.from_user) throw nn('from_user');
+    }
+    if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
   }
 
   // ---- the triggers: the log (ic_events), updated_at, a hazard's flag on its zone
@@ -178,6 +201,19 @@
       if (z && !z.hazard) updateRow('ic_zones', z, { hazard: true }, uid, changes, true);
     }
     if (table === 'ic_alerts') log(changes, r.incident_id, r.user_id, 'help', `EMERGENCY, ${label(r.incident_id, r.user_id)} needs help in ${zoneCode(r.zone_id)}`, 'ic_alerts', r.id);
+    if (table === 'ic_messages') {
+      const kind = r.kind === 'safety' ? 'safety' : r.kind === 'par' ? 'par' : 'msg';
+      const lead = r.kind === 'safety' ? 'SAFETY MESSAGE, ' : r.kind === 'par' ? 'PAR, ' : '';
+      log(changes, r.incident_id, r.from_user, kind, `${lead}${label(r.incident_id, r.from_user)} to ${r.to_label || 'everyone'}: ${r.text}`, 'ic_messages', r.id);
+    }
+    if (table === 'ic_message_acks') {
+      const m = tables.ic_messages.find((x) => x.id === r.message_id) || { kind: 'message', from_user: null };
+      const kind = m.kind === 'safety' ? 'safety' : m.kind === 'par' ? 'par' : 'msg';
+      const text = m.kind === 'par'
+        ? `${label(r.incident_id, r.user_id)}: ${r.reply || 'answered'}${r.count != null ? ' (' + r.count + ')' : ''}`
+        : `${label(r.incident_id, r.user_id)} acknowledged ${label(r.incident_id, m.from_user)}${r.reply ? ': ' + r.reply : ''}`;
+      log(changes, r.incident_id, r.user_id, kind, text, 'ic_messages', r.message_id);
+    }
   }
   function afterUpdate(table, r, old, uid, changes) {
     if (table === 'ic_zones') {
@@ -208,6 +244,7 @@
   function conflictRow(table, given) {
     const rows = tables[table];
     if (table === 'ic_positions' || table === 'ic_members') return rows.find((r) => r.incident_id === given.incident_id && r.user_id === given.user_id) || null;
+    if (table === 'ic_message_acks') return rows.find((r) => r.message_id === given.message_id && r.user_id === given.user_id) || null;
     return given.id ? rows.find((r) => r.id === given.id) || null : null;
   }
   function insertRow(table, p, uid, changes, onConflict) {
@@ -244,7 +281,7 @@
   // ---- live updates: this tab's channels, then the other tabs over the BroadcastChannel
   const channels = new Set();
   const bc = 'BroadcastChannel' in window ? new BroadcastChannel('ic-mock') : null;
-  const pk = (table, row) => (table === 'ic_positions' || table === 'ic_members' ? { incident_id: row.incident_id, user_id: row.user_id } : { id: row.id });
+  const pk = (table, row) => (table === 'ic_positions' || table === 'ic_members' ? { incident_id: row.incident_id, user_id: row.user_id } : table === 'ic_message_acks' ? { message_id: row.message_id, user_id: row.user_id } : { id: row.id });
   function deliver(c) {
     const subject = c.type === 'DELETE' ? c.old : c.row;
     for (const ch of [...channels]) {
@@ -265,7 +302,7 @@
   function absorb(table, type, row) {
     const rows = tables[table];
     if (!rows) return;
-    const same = (r) => (table === 'ic_positions' || table === 'ic_members' ? r.incident_id === row.incident_id && r.user_id === row.user_id : r.id === row.id);
+    const same = (r) => (table === 'ic_positions' || table === 'ic_members' ? r.incident_id === row.incident_id && r.user_id === row.user_id : table === 'ic_message_acks' ? r.message_id === row.message_id && r.user_id === row.user_id : r.id === row.id);
     const i = rows.findIndex(same);
     if (type === 'DELETE') { if (i >= 0) rows.splice(i, 1); } else if (i >= 0) rows[i] = row; else rows.push(row);
   }
@@ -505,7 +542,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1 },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG },
     ready: () => ready
   };
   window.supabase = Object.assign({}, window.supabase || {}, { createClient: () => makeClient(), mock: true });

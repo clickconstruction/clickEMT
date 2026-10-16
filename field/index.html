@@ -73,13 +73,14 @@
       <div class="crew" id="me-crew"></div>
     </div>
     <span class="live" id="gps-pill"><span class="dot"></span><span id="gps-text">Locating</span></span>
+    <button class="btn sm inbox-btn" data-action="inbox">Inbox<span id="inbox-badge" class="nbadge" hidden></span></button>
     <button class="btn sm" data-action="menu" aria-label="Menu">Menu</button>
   </header>
 
   <div id="s-home" class="p-body">
     <div id="banner"></div>
+    <div id="inbox-card"></div>
     <div class="card" id="assignment"></div>
-    <div id="mini" class="mini" role="application" aria-label="Your zone"></div>
     <div class="actions">
       <button class="act photo" data-action="camera">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
@@ -102,6 +103,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle><path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"></path></svg>
       Need help now
     </button>
+    <div id="mini" class="mini" role="application" aria-label="Your zone"></div>
     <div class="p-foot"><span id="foot-left"></span><span id="foot-right"></span></div>
   </div>
   <input type="file" accept="image/*" capture="environment" id="camera-input" hidden>
@@ -157,6 +159,26 @@
     <h2 style="color:var(--danger)" id="helpsent-title">Alert sent</h2>
     <div class="card" id="helpsent-card"></div>
     <div class="sheet-btns"><button class="btn" data-action="stand-down">Stand down, all OK</button></div>
+  </div>
+
+  <div id="s-safety" class="sheet safety-sheet" hidden>
+    <h2>Safety message</h2>
+    <div id="safety-list"></div>
+  </div>
+
+  <div id="s-inbox" class="sheet" hidden>
+    <div class="sheet-head"><h2>Messages</h2><button class="btn sm" data-action="compose">Message Operations</button></div>
+    <div id="inbox-list"></div>
+    <div class="sheet-btns"><button class="btn" data-action="home">Back</button></div>
+  </div>
+
+  <div id="s-compose" class="sheet" hidden>
+    <h2>Message Operations</h2>
+    <div class="k">Say</div>
+    <div class="chips" id="compose-chips"></div>
+    <label class="k" for="compose-text" style="margin-top:4px">In your words</label>
+    <input id="compose-text" class="input" placeholder="What Operations should know" maxlength="500">
+    <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="send-compose">Send</button></div>
   </div>
 
   <div id="s-menu" class="sheet" hidden>

@@ -11,10 +11,10 @@ Ticked when it is on `main`.
 
 ## 1. Messages with acknowledgement (ICS 213, safety messages)
 
-- [ ] `ic_messages` (from, to one unit / the unit in a zone / everyone, kind message | safety | par, text) and `ic_message_acks` (who, when, the reply). Recipients are fixed when the message is sent.
-- [ ] Base: a composer on the home panel, the unit panel and the zone panel; a list of recent messages with who has and has not acknowledged; a safety message (stop work, pull back, evacuate) stays on a yellow bar until every recipient has acknowledged.
-- [ ] Field: an inbox with an unread badge; one-tap acknowledgement with a reply (Copy, Will do, Cannot); a safety message takes over the screen until acknowledged; the unit can message Operations with quick chips or text.
-- [ ] Log: every message and acknowledgement is a line in the ICS 214, safety messages marked.
+- [x] `ic_messages` (from, to one unit / the unit in a zone / everyone, kind message | safety | par, text) and `ic_message_acks` (who, when, the reply). Recipients are fixed when the message is sent.
+- [x] Base: a composer on the home panel, the unit panel and the zone panel; a list of recent messages with who has and has not acknowledged; a safety message (stop work, pull back, evacuate) stays on a yellow bar until every recipient has acknowledged.
+- [x] Field: an inbox with an unread badge; one-tap acknowledgement with a reply (Copy, Will do, Cannot); a safety message takes over the screen until acknowledged; the unit can message Operations with quick chips or text.
+- [x] Log: every message and acknowledgement is a line in the ICS 214, safety messages marked.
 
 ## 2. Accountability (resource status, check-out, PAR)
 

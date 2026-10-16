@@ -1,15 +1,17 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks'];
 const BUCKET = 'ic-photos';
 const EVENTS_LIMIT = 400;
+const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map() };
 }
 
 function keyOf(table, row) {
+  if (table === 'ic_message_acks') return row.message_id + ':' + row.user_id;
   return (table === 'ic_positions' || table === 'ic_members') ? row.user_id : row.id;
 }
 
@@ -90,7 +92,7 @@ export class Data {
   }
   async load(id) {
     const q = (t) => this.sb.from(t).select('*').eq('incident_id', id);
-    const [inc, members, zones, positions, photos, hazards, alerts, events] = await Promise.all([
+    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks] = await Promise.all([
       this.sb.from('ic_incidents').select('*').eq('id', id).single(),
       q('ic_members'),
       q('ic_zones').order('code'),
@@ -98,13 +100,16 @@ export class Data {
       q('ic_photos').order('taken_at', { ascending: false }),
       q('ic_hazards').order('created_at', { ascending: false }),
       q('ic_alerts').order('created_at', { ascending: false }),
-      q('ic_events').order('at', { ascending: false }).limit(EVENTS_LIMIT)
+      q('ic_events').order('at', { ascending: false }).limit(EVENTS_LIMIT),
+      q('ic_messages').order('created_at', { ascending: false }).limit(MESSAGES_LIMIT),
+      q('ic_message_acks')
     ]);
-    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events]) if (r.error) throw r.error;
+    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks]) if (r.error) throw r.error;
     this.store.incident = inc.data;
     const put = (table, rows) => { const m = mapFor(this.store, table); for (const row of rows || []) m.set(keyOf(table, row), row); };
     put('ic_members', members.data); put('ic_zones', zones.data); put('ic_positions', positions.data);
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
+    put('ic_messages', messages.data); put('ic_message_acks', acks.data);
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
@@ -157,6 +162,35 @@ export class Data {
   alerts(all) { return [...this.store.alerts.values()].filter((a) => all || !a.stood_down_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
   events() { return [...this.store.events.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : b.id - a.id)); }
   myZones() { return this.user ? this.zones().filter((z) => z.assigned_to === this.user.id) : []; }
+
+  // ---- messages (ICS 213): who was addressed is fixed on the message; acks are one row per recipient
+  messages() { return [...this.store.messages.values()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
+  message(id) { return this.store.messages.get(id) || null; }
+  acksFor(messageId) { return [...this.store.message_acks.values()].filter((a) => a.message_id === messageId); }
+  ack(messageId, userId) { return this.store.message_acks.get(messageId + ':' + userId) || null; }
+  // recipients who have not answered yet
+  waitingOn(message) { return (message.to_users || []).filter((u) => !this.ack(message.id, u)); }
+  myInbox() { return this.user ? this.messages().filter((m) => (m.to_users || []).includes(this.user.id)) : []; }
+  myUnanswered() { return this.myInbox().filter((m) => !this.ack(m.id, this.user.id)); }
+  // safety messages and PARs still waiting on someone: the base keeps them up until everyone has answered
+  openSafety() { return this.messages().filter((m) => m.kind !== 'message' && this.waitingOn(m).length > 0); }
+  // who a message goes to: 'all' (every unit), 'ops' (Operations), 'zone:<id>' (the unit assigned there), 'user:<id>'
+  recipientsFor(target) {
+    const me = this.user ? this.user.id : null;
+    const units = this.units().filter((u) => u.user_id !== me && u.status !== 'checked_out');
+    if (target === 'all') return { toUsers: units.map((u) => u.user_id), toLabel: 'everyone', toZone: null };
+    if (target === 'ops') return { toUsers: this.members().filter((m) => m.role === 'ops' && m.user_id !== me).map((m) => m.user_id), toLabel: 'Operations', toZone: null };
+    if (target.startsWith('zone:')) {
+      const z = this.zone(target.slice(5));
+      const who = z && z.assigned_to ? [z.assigned_to] : [];
+      return { toUsers: who, toLabel: z ? z.code : '', toZone: z ? z.id : null };
+    }
+    if (target.startsWith('user:')) {
+      const m = this.member(target.slice(5));
+      return { toUsers: m ? [m.user_id] : [], toLabel: m ? (m.role === 'ops' ? 'Operations' : (m.unit_name || 'a unit')) : '', toZone: null };
+    }
+    return { toUsers: [], toLabel: '', toZone: null };
+  }
 
   // ---- writes
   async setBoundary(polygon) {
@@ -244,6 +278,21 @@ export class Data {
     if (error) throw error;
     this.local('ic_events', data);
     return data;
+  }
+  async sendMessage(id, { toUsers, toLabel, toZone, kind, text }) {
+    if (!toUsers || !toUsers.length) throw new Error('Nobody to send that to');
+    const row = { id: id || (crypto.randomUUID ? crypto.randomUUID() : undefined), incident_id: this.store.incident.id, from_user: this.user.id, to_users: toUsers, to_label: toLabel || '', to_zone: toZone || null, kind: kind || 'message', text };
+    const { data, error } = await this.sb.from('ic_messages').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_messages', data || row);
+    return data || row;
+  }
+  async ackMessage(messageId, reply, count) {
+    const row = { message_id: messageId, incident_id: this.store.incident.id, user_id: this.user.id, reply: reply || '', count: count ?? null };
+    const { data, error } = await this.sb.from('ic_message_acks').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_message_acks', data || { ...row, acked_at: new Date().toISOString() });
+    return data || row;
   }
   async updateMe(patch) {
     const { data, error } = await this.sb.from('ic_members').update(patch).eq('incident_id', this.store.incident.id).eq('user_id', this.user.id).select().single();

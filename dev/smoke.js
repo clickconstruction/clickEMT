@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -209,6 +209,62 @@ async function emergency(check) {
   await field.standDown(aid);
   await until(() => $('#mayday').hidden && eventText(base, 'Unit 3 stood down, all OK'));
   check('standing down clears the bar, keeps the alert in history, and logs it', $('#mayday').hidden && base.alerts().length === 0 && base.alerts(true).length === 1 && !!eventText(base, 'Unit 3 stood down, all OK') && $$('#map .umark.sos').length === 0);
+}
+
+// Messages (ICS 213): Operations messages Unit 3 and gets a reply, a safety message to everyone
+// stays on the yellow bar until all three units acknowledge, and Unit 3 messages Operations.
+async function messages(check) {
+  const u = USERS();
+  const composer = () => $('#panel form[data-form="message"]');
+  check('the home panel shows the seeded messages, both still waiting on Unit 3', $$('#panel .mrow').length === 2 && $$('#panel .mrow .ack.wait').every((e) => /waiting on unit 3/i.test(e.textContent)), text('#panel'));
+  check('Unit 3 has two unanswered messages in its inbox', field.myUnanswered().length === 2 && field.myInbox().length === 2);
+  check('the composer offers everyone, the three assigned zones and the three units', (() => { const o = $$('option', composer()).map((x) => x.value); return o[0] === 'all' && o.filter((v) => v.startsWith('zone:')).length === 3 && o.filter((v) => v.startsWith('user:')).length === 3; })(), $$('option', composer()).map((x) => x.textContent).join(' | '));
+
+  composer().to.value = 'user:' + u.unit3;
+  composer().text.value = 'Hold at the bridge until Unit 2 arrives';
+  composer().requestSubmit();
+  await until(() => base.messages()[0] && base.messages()[0].text === 'Hold at the bridge until Unit 2 arrives');
+  const m1 = base.messages()[0];
+  check('the message is saved to Unit 3 only, as a plain message from Operations', m1.from_user === u.ops && m1.to_users.length === 1 && m1.to_users[0] === u.unit3 && m1.to_label === 'Unit 3' && m1.kind === 'message');
+  check('the panel lists it waiting on Unit 3, the composer is cleared, the log has it', await until(() => has(`#panel .mrow[data-message="${m1.id}"]`, 'waiting on unit 3')) && composer().text.value === '' && !!eventText(base, 'Operations to Unit 3: Hold at the bridge until Unit 2 arrives') && eventText(base, 'Operations to Unit 3: Hold at the bridge until Unit 2 arrives').kind === 'msg', logTexts()[0]);
+  check('Unit 3 sees it in its inbox, unanswered', await until(() => field.message(m1.id)) && field.myUnanswered().some((m) => m.id === m1.id));
+  await field.ackMessage(m1.id, 'Will do');
+  await until(() => base.ack(m1.id, u.unit3));
+  check('Unit 3 answers Will do: the panel says acknowledged with the reply, and the log has it', await until(() => has(`#panel .mrow[data-message="${m1.id}"]`, 'all 1 acknowledged', 'unit 3: will do')) && !!eventText(base, 'Unit 3 acknowledged Operations: Will do') && base.waitingOn(m1).length === 0, text(`#panel .mrow[data-message="${m1.id}"]`));
+  check('answering twice is harmless', (await field.ackMessage(m1.id, 'Will do')) && base.acksFor(m1.id).length === 1);
+
+  composer().to.value = 'all';
+  composer().safety.checked = true;
+  composer().text.value = 'Stop work, water rising at the low-water crossing';
+  composer().requestSubmit();
+  await until(() => base.messages()[0] && base.messages()[0].kind === 'safety');
+  const s1 = base.messages()[0];
+  check('a safety message goes to all three units', s1.to_users.length === 3 && s1.to_label === 'everyone' && s1.text === 'Stop work, water rising at the low-water crossing');
+  check('the yellow bar shows it, waiting on all three', await until(() => !$('#safety').hidden && has('#safety', 'safety', 'stop work', 'waiting on unit 1, unit 2, unit 3')), text('#safety'));
+  check('the log marks it as a safety message', !!eventText(base, 'SAFETY MESSAGE, Operations to everyone: Stop work, water rising at the low-water crossing') && eventText(base, 'SAFETY MESSAGE, Operations to everyone: Stop work, water rising at the low-water crossing').kind === 'safety');
+  check('Unit 3 has it as an unanswered safety message', await until(() => field.myUnanswered().some((m) => m.id === s1.id && m.kind === 'safety')));
+  await field.ackMessage(s1.id, 'Acknowledged');
+  check('after Unit 3 answers, the bar waits on Unit 1 and Unit 2', await until(() => has('#safety', 'waiting on unit 1, unit 2') && !has('#safety', 'unit 3')), text('#safety'));
+  for (const email of ['unit1@mock.local', 'unit2@mock.local']) {
+    const c = window.supabase.createClient();
+    await c.auth.signInWithPassword({ email, password: 'any' });
+    const d = new Data(c);
+    await d.init(); await d.open(INC());
+    await d.ackMessage(s1.id, 'Acknowledged');
+    d.close();
+  }
+  check('once every unit has answered, the bar goes away and the log has each acknowledgement', await until(() => $('#safety').hidden) && !!eventText(base, 'Unit 1 acknowledged Operations: Acknowledged') && !!eventText(base, 'Unit 2 acknowledged Operations: Acknowledged') && base.openSafety().length === 0);
+
+  const mid = uuid();
+  await field.sendMessage(mid, { ...field.recipientsFor('ops'), kind: 'message', text: 'Need more hands at the park' });
+  await until(() => base.message(mid));
+  const row = () => $(`#panel .mrow[data-message="${mid}"]`);
+  check('Unit 3 can message Operations, and the base panel shows it with an Acknowledge button', await until(() => row() && has(`#panel .mrow[data-message="${mid}"]`, 'unit 3', 'to operations', 'need more hands')) && !!$('[data-action="ack-message"]', row()), text('#panel'));
+  $('[data-action="ack-message"]', row()).click();
+  await until(() => base.ack(mid, u.ops));
+  check('Operations acknowledges it from the panel, and the unit sees the acknowledgement', await until(() => has(`#panel .mrow[data-message="${mid}"]`, 'all 1 acknowledged')) && !!eventText(base, 'Operations acknowledged Unit 3: Copy') && await until(() => field.ack(mid, u.ops)));
+  const forged = await field.sb.from('ic_messages').insert({ id: uuid(), incident_id: INC(), from_user: u.unit1, to_users: [u.ops], to_label: 'Operations', kind: 'message', text: 'Forged' }).select().single();
+  check('a message must carry the sender\'s own user id', forged.error && forged.error.code === '42501' && !base.messages().some((m) => m.text === 'Forged'), JSON.stringify(forged.error));
 }
 
 // A new unit checks in with the code; Operations can open a second incident.

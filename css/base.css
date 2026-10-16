@@ -73,12 +73,17 @@
 .briefing-page p { margin: 0 0 3px; font-size: 13.5px; }
 .briefing-page .inline-form { margin-bottom: 18px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #FBFAF8; }
 .briefing-page .inline-form textarea { font-size: 13.5px; }
+/* the division's map on the 204 and the IAP: an inline SVG that scales to the page */
+.briefing-page figure.pmap { margin: 8px 0 4px; }
+.briefing-page svg.pmap { display: block; width: 100%; height: auto; background: #F3F1EC; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 @media print {
   .no-print { display: none !important; }
   body > *:not(#briefing) { display: none !important; }
   #briefing { position: static; background: #fff; }
   .briefing-bar { display: none !important; }
   .briefing-page { max-width: none; padding: 0; }
+  .briefing-page section.has-map { break-inside: avoid; page-break-inside: avoid; }
+  .briefing-page.kind-iap section.has-map { break-before: page; page-break-before: always; }
 }
 .log-row.log-msg { border-left-color: #6B8FC2; } .log-row.log-safety { border-left-color: #F2B134; background: #FDF5E3; } .log-row.log-par { border-left-color: #6B5DBF; }
 .body { flex: 1; min-height: 0; display: flex; }

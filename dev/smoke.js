@@ -411,6 +411,16 @@ async function assignment(check) {
   $('#panel [data-action="print-204"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'division a-1 assignment'));
   check('Print the 204 opens the assignment list with the resources, the work, the instructions, the hazards and the progress', ['assignment list, ics 204', 'division a-1 · riverside drive', 'division supervisor: lt. okafor', 'radio channel: tac 2', 'resources assigned', 'unit 1 (ramirez, okafor)', 'work assignment', 'primary search of every structure', 'special instructions', 'stay out of moving water', 'period safety message', 'known hazards', 'none reported', 'progress', 'in progress · unit 1 · 9 of 24'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 400));
+  const pm = $('#briefing-page section.has-map svg.pmap');
+  check('the 204 carries the division\'s map: OpenStreetMap tiles, the outline, its label, the north arrow, the scale bar, the credit and the legend', !!pm && $$('image', pm).length >= 4 && $$('image', pm).every((i) => /^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/.test(i.getAttribute('href'))) && !!$('.pm-division', pm) && $('.pm-label', pm).textContent.includes('A-1') && !!$('.pm-north', pm) && !!$('.pm-scale', pm) && pm.textContent.includes('© OpenStreetMap contributors') && pm.textContent.includes('Division A-1 · In progress'), pm ? pm.textContent.slice(0, 200) : 'no map');
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $(`#zones .zr[data-id="${ZONE('B-2')}"]`).click();
+  await until(() => has('#panel .title', 'division b-2'));
+  $('#panel [data-action="print-204"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'division b-2 assignment'));
+  const pm2 = $('#briefing-page svg.pmap');
+  check('B-2\'s map has its three houses by address, the neighbour B-1, and the staging area, command post, shelter and hospital off the map with the way there and the distance', !!pm2 && $$('.pm-structure', pm2).length === 3 && ['101 Bee Creek Rd', '105 Bee Creek Rd', '109 Bee Creek Rd', 'B-1'].every((t) => pm2.textContent.includes(t)) && $$('.pm-offmap', pm2).length === 4 && ['S', 'CP', 'SH', 'H'].every((l) => $$('.pm-offmap text', pm2).some((t) => t.textContent === l)) && $$('.pm-offmap text', pm2).filter((t) => / (ft|mi)$/.test(t.textContent)).length === 4, pm2 ? $$('.pm-offmap', pm2).map((g) => g.textContent).join(' ') : 'no map');
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
 
@@ -546,6 +556,7 @@ async function reports(check) {
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
   check('the IAP stitches the 202, 203, a 204 per division, the 205, 206 and 208 together', ['objectives, ics 202', '1. primary search', 'organization, ics 203', 'incident commander: dana ruiz', 'division a-1 supervisor: lt. okafor', 'unit 1 (ramirez, okafor)', 'assignment, ics 204 · division a-1', 'work assignment: primary search of every structure', 'assignment, ics 204 · division b-3', 'communications, ics 205', 'command: cmd 1', 'medical, ics 206', 'dell seton', 'emergency traffic: tac 9', 'safety message, ics 208', 'swift water everywhere'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
   check('every division has its own 204 section', $$('#briefing-page h2').filter((h) => /ICS 204/.test(h.textContent)).length === 6);
+  check('each division\'s 204 in the IAP carries its map, on a page of its own when printed', $$('#briefing-page section.has-map svg.pmap').length === 6 && $$('#briefing-page svg.pmap').map((m) => m.getAttribute('aria-label')).join(', ') === 'Map of Division A-1, Map of Division A-2, Map of Division A-3, Map of Division B-1, Map of Division B-2, Map of Division B-3' && $('#briefing-page').classList.contains('kind-iap'), $$('#briefing-page svg.pmap').map((m) => m.getAttribute('aria-label')).join(', '));
   $('[data-action="close-briefing"]').click();
   check('and it closes', $('#briefing').hidden);
 }

@@ -220,6 +220,7 @@ function drawBriefing() {
   const page = $('#briefing-page');
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
+  page.className = 'briefing-page kind-' + kind;
   $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
@@ -227,6 +228,14 @@ function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
   return kind === '204' ? form204Text(data, z) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
+}
+// The maps' tiles are plain <image>s; give them a moment to arrive before the print dialog
+// takes a picture of the page.
+function mapsReady(root, ms = 3000) {
+  const urls = [...new Set([...root.querySelectorAll('svg.pmap image')].map((i) => i.getAttribute('href')))];
+  if (!urls.length) return Promise.resolve();
+  const one = (src) => new Promise((done) => { const im = new Image(); im.onload = im.onerror = () => done(); im.src = src; });
+  return Promise.race([Promise.all(urls.map(one)), new Promise((done) => setTimeout(done, ms))]);
 }
 function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); }
 
@@ -421,7 +430,7 @@ document.addEventListener('click', async (e) => {
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
       case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; break;
-      case 'print-briefing': drawBriefing(); window.print(); break;
+      case 'print-briefing': drawBriefing(); await mapsReady($('#briefing-page')); window.print(); break;
       case 'copy-briefing': await navigator.clipboard.writeText(briefingAsText()); toast('Copied as text'); break;
       case 'start-par': {
         const r = data.recipientsFor(btn.dataset.target || 'all');

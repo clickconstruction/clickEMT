@@ -1,5 +1,6 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
+import { divisionMapHtml } from './print-map.js';
 import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -454,7 +455,7 @@ export function form204Sections(data, z) {
     'Division ' + z.code + (z.name ? ' · ' + z.name : '') + ' · priority ' + z.priority + (o ? ' · objective ' + o.number + ': ' + o.text : ''),
     'Division supervisor: ' + (z.supervisor || 'not named'),
     'Radio channel: ' + (z.channel || 'not set')
-  ] });
+  ], figure: divisionMapHtml(data, z) });
   S.push({ title: 'Resources assigned', lines: unit ? [`${unitLabel(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`] : ['None yet'] });
   S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
   S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []) });
@@ -529,7 +530,7 @@ export function iapSections(data) {
       'Work assignment: ' + (z.work_assignment || 'not written yet'),
       'Special instructions: ' + (z.instructions || 'none'),
       'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : '')
-    ] });
+    ], figure: divisionMapHtml(data, z) });
   }
   const ch = data.channels();
   S.push({ title: 'Communications, ICS 205', lines: ch.length ? ch.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
@@ -540,7 +541,9 @@ export function iapSections(data) {
   return S;
 }
 
-function sectionsHtml(S) { return S.map((s) => `<section><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</section>`).join(''); }
+// A section is its title and lines; one may also carry a figure (the division's map, already
+// HTML), which the page draws after the lines and the text leaves out.
+function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}${s.figure || ''}</section>`).join(''); }
 function sectionsText(S) { return S.map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n'); }
 
 export function briefingHtml(data) { return sectionsHtml(briefingSections(data)); }

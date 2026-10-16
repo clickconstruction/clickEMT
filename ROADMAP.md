@@ -33,7 +33,8 @@ Ticked when it is on `main`.
 
 - [x] `ic_zones`: work assignment (what to do, in words), special instructions, radio channel, division supervisor. A change is logged.
 - [x] Base: those fields on the zone panel; Print the 204 for a division: the division and its objective, supervisor and channel, resources assigned, the work assignment, special instructions with the period's safety message, known hazards, progress. Printable or copied as text. The phone shows its division's words, channel and supervisor on the card.
-- [x] Vocabulary: the base says Division (with a hint), Assigned, Available, Out of service, Operational period, Check-in; the log says Division. The field app stays plain. (The map is not yet on the printed 204.)
+- [x] Vocabulary: the base says Division (with a hint), Assigned, Available, Out of service, Operational period, Check-in; the log says Division. The field app stays plain.
+- [x] The map on the paper: the printed 204 carries the division drawn over OpenStreetMap tiles, with its structures by address, open hazards, facilities, the neighbouring divisions, a north arrow, a scale bar and a chip at the edge for each place the crew goes to that is off the map, with the way there and the distance.
 
 ## 5. Primary and secondary search, and structure records
 
@@ -50,7 +51,7 @@ Ticked when it is on `main`.
 ## 7. Situation report (ICS 209) and the printed IAP
 
 - [x] A one-screen situation report assembled from the data: period, the situation in words, divisions by state, structures searched, people needing help, sheltering and refused, damage, hazards and emergencies open, objectives, resources by status and agency, resources needed, the outlook, facilities. The words live on the period and are edited above the report. Copy as text or print; sending to an EOC is copy and paste for now.
-- [x] Print the Incident Action Plan: objectives (202), organization (203), every division's 204, communications (205), medical (206), the safety message (208), facilities. (No map on the print yet.)
+- [x] Print the Incident Action Plan: objectives (202), organization (203), every division's 204, communications (205), medical (206), the safety message (208), facilities. Each division's 204 in it carries its map, on a page of its own when printed.
 
 ## 8. Agencies, public information, replay
 

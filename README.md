@@ -11,6 +11,17 @@ The vocabulary follows the Incident Command System: zones are divisions, priorit
 
 Plain JavaScript ES modules, no build step. Leaflet with OpenStreetMap tiles. Supabase (Postgres, Realtime, Storage) in the shared charity-tooling project, where every table carries the `ic_` prefix. Hosted as a static site; the field app is a PWA.
 
+## Live
+
+The repo is `clickconstruction/clickEMT` on GitHub, published with GitHub Pages from `main`:
+
+- Base: https://clickconstruction.com/clickEMT/
+- Field: https://clickconstruction.com/clickEMT/field/ (open it on the phone and add it to the home screen)
+
+The org's Pages domain is clickconstruction.com, so the github.io address redirects there.
+
+A push to `main` deploys; bump `VERSION` in `sw.js` first when a shell file changed.
+
 ## Run it
 
 Any static server works. From the repo root:

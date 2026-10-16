@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct } from '../js/shared/rules.js';
+import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -66,3 +66,28 @@ t('zones sort by priority then code, and status text reads well', () => {
 });
 
 console.log(n + ' checks passed');
+
+t('the command line names the lead agency and the unified command', () => {
+  assert.equal(commandText({ lead_agency: '' }, { unified: '' }), '');
+  assert.equal(commandText({ lead_agency: 'Cedar Fork FD' }, null), 'Cedar Fork FD (lead)');
+  assert.equal(commandText({ lead_agency: 'Cedar Fork FD' }, { unified: 'Travis County SO' }), 'Cedar Fork FD (lead), unified command with Travis County SO');
+  assert.equal(commandText({ lead_agency: '' }, { unified: 'Travis County SO' }), 'unified command with Travis County SO');
+});
+
+t('agencies on scene count units and people, biggest first, no agency last', () => {
+  const rows = agenciesOn([{ agency: 'B', crew_count: 2 }, { agency: 'A', crew_count: 3 }, { agency: 'B', crew_count: null }, { agency: '', crew_count: 4 }]);
+  assert.deepEqual(rows.map(agencyLine), ['B: 2 units, 2 people', 'A: 1 unit, 3 people', 'No agency named: 1 unit, 4 people']);
+});
+
+t('a replay finds the sample at a moment and the crumbs before it', () => {
+  const at = (s) => new Date(Date.UTC(2026, 0, 1, 12, 0, s)).toISOString();
+  const by = replayIndex([{ user_id: 'u', lat: 3, lng: 0, at: at(30) }, { user_id: 'u', lat: 1, lng: 0, at: at(0) }, { user_id: 'u', lat: 2, lng: 0, at: at(10) }, { user_id: 'v', lat: 9, lng: 0, at: at(5) }]);
+  const list = by.get('u');
+  assert.deepEqual(list.map((s) => s.lat), [1, 2, 3], 'sorted by time');
+  const ms = (s) => new Date(at(s)).getTime();
+  assert.equal(sampleAt(list, ms(0) - 1), null, 'nothing before the first report');
+  assert.equal(sampleAt(list, ms(0)).lat, 1);
+  assert.equal(sampleAt(list, ms(15)).lat, 2);
+  assert.equal(sampleAt(list, ms(99)).lat, 3);
+  assert.deepEqual(samplesBefore(list, ms(30), 25000).map((s) => s.lat), [2, 3]);
+});

@@ -3,7 +3,7 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, FACILITY_KINDS } from '../shared/rules.js';
+import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
@@ -11,7 +11,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null };
 let map = null;
 let drawQueued = false;
 
@@ -113,6 +113,7 @@ $('#join-form').addEventListener('submit', async (e) => {
 
 // ---- the open incident
 async function openIncident(id) {
+  if (state.replay) closeReplay();
   const inc = await data.open(id);
   localStorage.setItem(LAST_INCIDENT, id);
   state.selected = null; state.newZone = null; state.pendingPolygon = null;
@@ -229,6 +230,89 @@ function briefingAsText() {
 }
 function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); }
 
+// ---- replay: the day played back from the position history (ic_tracks), on a slider under the map.
+// The samples are fetched once per range; the slider and Play only move the moment shown.
+const REPLAY_TICK_MS = 100;
+const REPLAY_MAX_SAMPLES = 2000;   // per unit, so a whole day comes back in one read
+let replayTimer = null;
+
+function replayRange(kind) {
+  const inc = data.incident, p = data.currentPeriod();
+  const now = Date.now(), opened = new Date(inc.created_at).getTime();
+  if (kind === 'hour') return [now - 3600000, now];
+  if (kind === 'all') return [opened, now];
+  return [p ? new Date(p.starts_at).getTime() : opened, p && p.closed_at ? new Date(p.closed_at).getTime() : now];
+}
+async function openReplay(kind) {
+  stopReplayPlay();
+  const [from, to] = replayRange(kind || $('#replay-range').value);
+  const every = Math.max(10, Math.ceil((to - from) / 1000 / REPLAY_MAX_SAMPLES));
+  const r = { from, to, t: from, by: new Map(), playing: false, every, loading: true };
+  state.replay = r;
+  $('#replay').hidden = false;
+  $('#btn-replay').classList.add('on');
+  $('#replay-log').textContent = 'Loading the positions…';
+  try {
+    const samples = await data.replay(new Date(from).toISOString(), new Date(to).toISOString(), every);
+    if (state.replay !== r) return;   // closed or reopened on another range meanwhile
+    r.by = replayIndex(samples);
+    r.loading = false;
+    // start where the first report of the range was made, so there is something to see at once
+    const first = Math.min(...[...r.by.values()].map((l) => new Date(l[0].at).getTime()));
+    r.t = Number.isFinite(first) ? Math.min(to, Math.max(from, first)) : from;
+    map.setReplay(r.by);
+    drawReplay();
+  } catch (err) { toast(err.message || String(err), true); closeReplay(); }
+}
+function drawReplay() {
+  const r = state.replay;
+  if (!r) return;
+  const span = Math.max(1, r.to - r.from);
+  $('#replay-slider').value = String(Math.round((r.t - r.from) / span * 1000));
+  $('#replay-time').textContent = hhmm(new Date(r.t));
+  $('#replay-play').textContent = r.playing ? 'Pause' : (r.t >= r.to ? 'Replay' : 'Play');
+  const seen = [...r.by.values()].filter((l) => sampleAt(l, r.t)).length;
+  const e = data.events().find((ev) => new Date(ev.at).getTime() <= r.t);   // newest first, so the first at or before the moment is the latest then
+  $('#replay-log').textContent = (r.loading ? 'Loading the positions… ' : '') + `${seen} unit${seen === 1 ? '' : 's'} on the map` + (e ? ` · ${hhmm(e.at)} ${e.text}` : '');
+  map.renderReplay(data, state);
+}
+function playReplay() {
+  const r = state.replay;
+  if (!r || r.loading) return;
+  if (r.t >= r.to) r.t = r.from;
+  r.playing = true;
+  let last = Date.now();
+  replayTimer = setInterval(() => {
+    const now = Date.now();
+    r.t = Math.min(r.to, r.t + (now - last) * (Number($('#replay-speed').value) || 60));
+    last = now;
+    if (r.t >= r.to) stopReplayPlay();
+    drawReplay();
+  }, REPLAY_TICK_MS);
+  drawReplay();
+}
+function stopReplayPlay() {
+  if (replayTimer) clearInterval(replayTimer);
+  replayTimer = null;
+  if (state.replay) state.replay.playing = false;
+}
+function closeReplay() {
+  stopReplayPlay();
+  state.replay = null;
+  if (map) map.setReplay(null);
+  $('#replay').hidden = true;
+  $('#btn-replay').classList.remove('on');
+  queueDraw();
+}
+$('#replay-slider').addEventListener('input', (e) => {
+  const r = state.replay;
+  if (!r) return;
+  stopReplayPlay();
+  r.t = r.from + (r.to - r.from) * Number(e.target.value) / 1000;
+  drawReplay();
+});
+$('#replay-range').addEventListener('change', (e) => { if (state.replay) openReplay(e.target.value); });
+
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
   $('#live-dot').className = 'dot ' + (ok ? 'on' : (data.realtime === 'off' ? '' : 'bad'));
@@ -261,7 +345,7 @@ document.addEventListener('click', async (e) => {
     switch (act) {
       case 'sign-out': localStorage.removeItem(LAST_INCIDENT); await data.signOut(); show('auth'); break;
       case 'open-incident': await openIncident(id); break;
-      case 'switch-incident': data.close(); localStorage.removeItem(LAST_INCIDENT); await showPicker(); break;
+      case 'switch-incident': closeReplay(); data.close(); localStorage.removeItem(LAST_INCIDENT); await showPicker(); break;
       case 'use-my-location': {
         const f = $('#new-incident');
         navigator.geolocation.getCurrentPosition((pos) => { f.lat.value = pos.coords.latitude.toFixed(5); f.lng.value = pos.coords.longitude.toFixed(5); }, (err) => toast('Location: ' + err.message, true), { enableHighAccuracy: true, timeout: 10000 });
@@ -270,6 +354,10 @@ document.addEventListener('click', async (e) => {
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
       case 'select-zone': select({ type: 'zone', id }); break;
       case 'select-photo': select({ type: 'photo', id }); break;
+      case 'photo-public': await data.setPhotoPublic(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Cleared for public information' : 'Withdrawn from public information'); break;
+      case 'replay': if (state.replay) closeReplay(); else await openReplay(); break;
+      case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
+      case 'replay-close': closeReplay(); break;
       case 'select-unit': select({ type: 'unit', id }); break;
       case 'select-structure': select({ type: 'structure', id }); break;
       case 'select-facility': select({ type: 'facility', id }); break;
@@ -444,12 +532,18 @@ document.addEventListener('submit', async (e) => {
       form.text.value = '';
       form.text.blur();
       queueDraw();
+    } else if (form.dataset.form === 'incident-edit') {
+      await data.setLeadAgency(form.lead_agency.value);
+      toast('Saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
     } else if (form.dataset.form === 'period-edit') {
-      await data.updatePeriod(form.dataset.id, { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value) });
+      await data.updatePeriod(form.dataset.id, { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim() });
       toast('Period saved');
       queueDraw();
     } else if (form.dataset.form === 'period-start') {
       const p = await data.startPeriod({ endsAt: timeToIso(form.ends.value), ic: form.ic.value, ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked });
+      if (form.unified.value.trim()) await data.updatePeriod(p.id, { unified: form.unified.value.trim() });
       state.periodNext = false;
       toast('Operational period ' + p.number + ' started');
       queueDraw();

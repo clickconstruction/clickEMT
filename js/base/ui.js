@@ -1,6 +1,6 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -98,13 +98,38 @@ function homeHtml(data) {
     ${messagesHtml(data, null, 8)}
     ${facilitiesHtml(data)}
     ${channelsHtml(data)}
+    ${agenciesHtml(data)}
+    ${publicHtml(data)}
     <div class="k" style="margin-top:6px">Incident</div>
     <div class="kv">
       <span class="k">Period</span><span>${esc(inc.period || 'not set')}</span>
       <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
       <span class="k">Opened</span><span>${esc(new Date(inc.created_at).toLocaleString())}</span>
       <span class="k">Zones</span><span>${data.zones().length} · ${data.zones().filter((z) => z.status === 'cleared').length} cleared</span>
-    </div>`;
+    </div>
+    <form class="inline-form" data-form="incident-edit">
+      <label>Lead agency <input name="lead_agency" value="${esc(inc.lead_agency || '')}" placeholder="Cedar Fork Fire Department" maxlength="120"></label>
+      <div class="row-btns"><button class="btn sm" type="submit">Save</button></div>
+    </form>`;
+}
+
+// Who is on scene from where (ICS 203): the command, then units and head counts by agency.
+export function agenciesHtml(data) {
+  const rows = agenciesOn(data.activeUnits());
+  const cmd = commandText(data.incident, data.currentPeriod());
+  return `
+    <div class="k" style="margin-top:6px">Agencies on scene</div>
+    ${cmd ? `<div style="font-size:13px">${esc(cmd)}</div>` : '<div class="muted" style="font-size:12.5px">No lead agency named yet. Name it under Incident below; the period names the unified command.</div>'}
+    ${rows.length ? rows.map((r) => `<div class="agency-row"><span>${esc(r.agency || 'No agency named')}</span><span class="muted">${r.units} unit${r.units === 1 ? '' : 's'}${r.people ? ' · ' + r.people + ' people' : ''}</span></div>`).join('') : ''}`;
+}
+
+// The Public Information Officer's set: photos Operations has cleared. Nothing is public by default.
+export function publicHtml(data) {
+  const pub = data.publicPhotos();
+  return `
+    <div class="k" style="margin-top:6px">Public information</div>
+    <div class="muted" style="font-size:12.5px">${pub.length ? pub.length + ' photo' + (pub.length === 1 ? '' : 's') + ' cleared for the public. Open a photo to clear or withdraw it.' : 'No photo is cleared for the public. Open a photo to clear it for the Public Information Officer.'}</div>
+    ${pub.slice(0, 6).map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.zone_id && data.zone(p.zone_id) ? ' · ' + esc(data.zone(p.zone_id).code) : ''}${p.note ? ' · ' + esc(p.note) : ''}</button>`).join('')}`;
 }
 
 function zoneHtml(data, z, state) {
@@ -159,7 +184,7 @@ function zoneHtml(data, z, state) {
     <div class="d-row"><span class="k" style="width:auto;flex:1">Structures on record · ${structs.length}</span><button class="btn sm" data-action="place-structures" data-id="${z.id}">Place structures</button></div>
     ${structs.length ? structs.slice(-8).reverse().map((s) => `<button class="plink" data-action="select-structure" data-id="${s.id}">${esc(s.label || 'Structure')} · ${STRUCTURE_STATUS[s.status] || s.status}${structureSummary(s) ? ' · ' + esc(structureSummary(s)) : ''}${s.searched_at ? ' · ' + hhmm(s.searched_at) : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. The field adds one with every address it clears; you can place the ones you know in advance.</div>'}
     <div class="k">Photos from this zone</div>
-    ${photos.length ? photos.map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.heading != null ? ' · facing ' + compass(p.heading) : ''}${p.note ? ' · ' + esc(p.note) : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet</div>'}
+    ${photos.length ? photos.map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.heading != null ? ' · facing ' + compass(p.heading) : ''}${p.note ? ' · ' + esc(p.note) : ''}${p.public_ok ? ' · public' : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet</div>'}
     ${z.assigned_to ? `<div class="k">Message ${esc(unitLabel(data.member(z.assigned_to)))} in ${esc(z.code)}</div>${composerHtml(data, 'zone:' + z.id)}${messagesHtml(data, (m) => m.to_zone === z.id, 4)}` : ''}`;
 }
 
@@ -167,7 +192,7 @@ function photoHtml(data, p) {
   const z = p.zone_id ? data.zone(p.zone_id) : null;
   return `
     <button class="back" data-action="close-panel">Back to units</button>
-    <div class="title">Photo <span>${esc(unitLabel(data.member(p.user_id)))} · ${hhmm(p.taken_at)}</span></div>
+    <div class="title">Photo <span>${esc(unitLabel(data.member(p.user_id)))} · ${hhmm(p.taken_at)}</span>${p.public_ok ? ' <span class="badge pub">Public</span>' : ''}</div>
     <div class="photo-box" data-photo-box="${esc(p.storage_path)}">
       <img alt="Field photo${p.note ? ': ' + esc(p.note) : ''}" hidden>
       <div class="muted" style="padding:40px 12px;text-align:center" data-photo-wait>Loading photo…</div>
@@ -180,10 +205,12 @@ function photoHtml(data, p) {
       <span class="k">Facing</span><span>${p.heading != null ? compass(p.heading) : 'unknown'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(p.lat, p.lng)) || 'unknown'}</span>
       <span class="k">Note</span><span>${esc(p.note) || '—'}</span>
+      <span class="k">Public</span><span>${p.public_ok ? 'Cleared for public information' : 'Not public'}</span>
     </div>
     <div class="d-row">
       <button class="btn sm" data-action="pan-to" data-lat="${p.lat}" data-lng="${p.lng}">Show on map</button>
       <a class="btn sm" data-photo-link target="_blank" rel="noopener" hidden>Open full size</a>
+      <button class="btn sm${p.public_ok ? '' : ' green'}" data-action="photo-public" data-id="${p.id}" data-ok="${p.public_ok ? '0' : '1'}" title="Nothing is public until Operations clears it. The Public Information Officer takes only cleared photos.">${p.public_ok ? 'Withdraw from public' : 'Clear for public information'}</button>
     </div>`;
 }
 
@@ -330,7 +357,7 @@ function newZoneHtml(data, state) {
 function timeValue(iso) { if (!iso) return ''; const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
 
 function periodFormHtml(p, next, state) {
-  const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()) } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at) };
+  const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()), unified: p ? p.unified || '' : '' } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at), unified: p.unified || '' };
   return `
     <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
       <div class="row-2">
@@ -341,6 +368,7 @@ function periodFormHtml(p, next, state) {
         <label>Safety Officer <input name="safety" value="${esc(d.safety)}"></label>
         <label>Planned end <input name="ends" type="time" value="${esc(d.ends)}"></label>
       </div>
+      <label>Unified command <input name="unified" value="${esc(d.unified)}" placeholder="The other agencies' Incident Commanders, if more than one agency is in charge" maxlength="200"></label>
       <label>Safety message and notes for the period <textarea name="notes" rows="2">${esc(d.notes)}</textarea></label>
       ${next ? `<label class="chk"><input type="checkbox" name="carry" checked> Carry open objectives and assignments into the new period</label>` : ''}
       <div class="row-btns">${next ? '<button class="btn sm" type="button" data-action="period-next-cancel">Cancel</button>' : ''}<button class="btn pri sm" type="submit">${next ? 'Start period ' + ((p ? p.number : 0) + 1) : 'Save'}</button></div>
@@ -384,6 +412,7 @@ export function briefingSections(data) {
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
     p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set')].join(' · ') : null,
+    commandText(inc, p) || null,
     'Briefing made ' + new Date().toLocaleString()
   ].filter(Boolean) });
   if (p && p.notes) S.push({ title: 'Safety message and notes', lines: [p.notes] });
@@ -395,7 +424,7 @@ export function briefingSections(data) {
     const o = z.objective_id ? data.objective(z.objective_id) : null;
     return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '')}${o ? ' · objective ' + o.number : ''}`;
   })) });
-  S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(units.map((m) => {
+  S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(agenciesOn(data.activeUnits()).map(agencyLine), units.map((m) => {
     const zone = zones.find((z) => z.assigned_to === m.user_id && z.status === 'active');
     return `${unitLabel(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`;
   })) });
@@ -452,6 +481,7 @@ export function sitrepSections(data) {
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
     p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
+    commandText(inc, p) || null,
     'Prepared by Operations, ' + new Date().toLocaleString()
   ].filter(Boolean) });
   S.push({ title: 'Situation', lines: [sr.summary || 'Not written yet'] });
@@ -465,10 +495,12 @@ export function sitrepSections(data) {
   S.push({ title: 'Objectives', lines: (p ? data.objectives(p.id) : []).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done)' : ' (open)'}`).concat([]).length ? data.objectives(p && p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done)' : ' (open)'}`) : ['None set'] });
   S.push({ title: 'Resources', lines: [`${units.length} units checked in, ${data.activeUnits().length} on the incident, ${data.peopleInField()} people in the field`].concat(
     ['assigned', 'available', 'out_of_service', 'checked_out'].map((st) => `${STATUS_LABEL[st]}: ${units.filter((u) => u.status === st).length}`),
-    [...new Set(units.map((u) => u.agency).filter(Boolean))].map((a) => { const n = units.filter((u) => u.agency === a).length; return `${a}: ${n} unit${n === 1 ? '' : 's'}`; })) });
+    agenciesOn(units).map(agencyLine)) });
   S.push({ title: 'Resources needed', lines: [sr.needs || 'None stated'] });
   S.push({ title: 'Outlook for the next period', lines: [sr.outlook || 'Not written yet'] });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => facilityLabel(f)) : ['None set'] });
+  const pub = data.publicPhotos().length;
+  S.push({ title: 'Public information', lines: [pub ? `${pub} photo${pub === 1 ? '' : 's'} cleared for public release` : 'No photos cleared for public release'] });
   return S;
 }
 
@@ -483,6 +515,7 @@ export function iapSections(data) {
   ] });
   S.push({ title: 'Objectives, ICS 202', lines: (p ? data.objectives(p.id) : []).length ? data.objectives(p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ''}`) : ['None set'] });
   S.push({ title: 'Organization, ICS 203', lines: [
+    'Command: ' + (commandText(inc, p) || 'lead agency not set'),
     'Incident Commander: ' + ((p && p.ic_name) || 'not set'),
     'Operations Section Chief: ' + ((p && p.ops_chief) || 'not set'),
     'Safety Officer: ' + ((p && p.safety_officer) || 'not set')

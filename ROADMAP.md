@@ -54,9 +54,9 @@ Ticked when it is on `main`.
 
 ## 8. Agencies, public information, replay
 
-- [ ] Mutual aid: an agency on every unit and on the incident; unified command names more than one Incident Commander.
-- [ ] A public-safe flag on photos for the Public Information Officer; nothing is public by default.
-- [ ] `ic_tracks`: position history, so the base can replay the day with a time slider, for the Documentation Unit and the after-action review.
+- [x] Mutual aid: an agency on every unit and on the incident (`ic_incidents.lead_agency`); the period names the unified command (`ic_periods.unified`); the base, the briefing, the situation report and the IAP's 203 say who is in charge and who is on scene from where.
+- [x] A public-safe flag on photos for the Public Information Officer (`ic_photos.public_ok`, ops only, logged); nothing is public by default. The home panel lists the cleared set; the situation report counts it.
+- [x] `ic_tracks`: every position a unit reports, written by a trigger; `ic_replay` thins it to one sample per unit per step, and the base's Replay bar plays the period, the last hour or the whole incident back on a slider, the photos appearing as they were taken.
 
 ## Left out on purpose
 

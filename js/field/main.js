@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
 const AGENCY_KEY = 'ic.field.agency';
@@ -445,6 +445,7 @@ function drawMenu() {
   $('#menu-facts').innerHTML = `
     <span class="k">Incident</span><span>${esc(inc.name)}</span>
     <span class="k">Period</span><span>${per ? esc(periodLabel(per)) + (per.ic_name ? ', IC ' + esc(per.ic_name) : '') : esc(inc.period || 'not set')}</span>
+    ${commandText(inc, per) ? `<span class="k">Command</span><span>${esc(commandText(inc, per))}</span>` : ''}
     ${per && per.notes ? `<span class="k">Notes</span><span>${esc(per.notes)}</span>` : ''}
     ${data.channels().length ? `<span class="k">Channels</span><span>${data.channels().map((c) => esc(c.use) + ' <strong>' + esc(c.channel) + '</strong>').join(' · ')}</span>` : ''}
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>

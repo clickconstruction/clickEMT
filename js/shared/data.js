@@ -217,8 +217,11 @@ export class Data {
     this.local('ic_facilities', data);
     return data;
   }
-  async setChannels(channels) {
-    const { data, error } = await this.sb.from('ic_incidents').update({ channels }).eq('id', this.store.incident.id).select().single();
+  async setChannels(channels) { return this.updateIncident({ channels }); }
+  // the agency in charge (ICS 203); a period names the others under unified command
+  async setLeadAgency(leadAgency) { return this.updateIncident({ lead_agency: (leadAgency || '').trim() }); }
+  async updateIncident(patch) {
+    const { data, error } = await this.sb.from('ic_incidents').update(patch).eq('id', this.store.incident.id).select().single();
     if (error) throw error;
     this.store.incident = data; this.emit('change', { table: 'ic_incidents', row: data });
     return data;
@@ -271,6 +274,14 @@ export class Data {
     return data;
   }
 
+  // ---- replay: the position history (ic_tracks) between two moments, one sample per unit per
+  // `every` seconds, in one read. Not kept in the store: the base asks when the slider opens.
+  async replay(fromIso, toIso, every = 60) {
+    const { data, error } = await this.sb.rpc('ic_replay', { p_incident: this.store.incident.id, p_from: fromIso, p_to: toIso, p_every: every });
+    if (error) throw error;
+    return data || [];
+  }
+
   // ---- messages (ICS 213): who was addressed is fixed on the message; acks are one row per recipient
   messages() { return [...this.store.messages.values()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
   message(id) { return this.store.messages.get(id) || null; }
@@ -301,12 +312,7 @@ export class Data {
   }
 
   // ---- writes
-  async setBoundary(polygon) {
-    const { data, error } = await this.sb.from('ic_incidents').update({ boundary: polygon }).eq('id', this.store.incident.id).select().single();
-    if (error) throw error;
-    this.store.incident = data; this.emit('change', { table: 'ic_incidents', row: data });
-    return data;
-  }
+  async setBoundary(polygon) { return this.updateIncident({ boundary: polygon }); }
   async addZone({ code, name, priority, polygon, structures }) {
     const { data, error } = await this.sb.from('ic_zones').insert({ incident_id: this.store.incident.id, code, name: name || '', priority: priority || 2, polygon, structures: structures || 0 }).select().single();
     if (error) throw error;
@@ -340,6 +346,14 @@ export class Data {
     if (error && error.code !== '23505') throw error;
     this.local('ic_photos', data || row);
     return data || row;
+  }
+  // the photos Operations has cleared for public information (the PIO's set), newest first
+  publicPhotos() { return this.photos().filter((p) => p.public_ok); }
+  async setPhotoPublic(id, ok) {
+    const { data, error } = await this.sb.from('ic_photos').update({ public_ok: !!ok }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_photos', data);
+    return data;
   }
   async photoUrl(path) {
     const hit = this.urlCache.get(path);

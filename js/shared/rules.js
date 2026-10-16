@@ -203,3 +203,55 @@ export function latLngText(lat, lng) {
   if (lat == null || lng == null) return '';
   return Number(lat).toFixed(5) + ', ' + Number(lng).toFixed(5);
 }
+
+// ---- agencies and command (ICS 203): who is in charge, and who is on scene from where
+// "Cedar Fork Fire Department (lead), with Travis County Rescue under unified command"
+export function commandText(incident, period) {
+  const lead = incident && incident.lead_agency ? incident.lead_agency : '';
+  const unified = period && period.unified ? period.unified : '';
+  if (!lead && !unified) return '';
+  if (!unified) return lead + ' (lead)';
+  return (lead ? lead + ' (lead), ' : '') + 'unified command with ' + unified;
+}
+
+// Units and head counts by agency, biggest first, the units with no agency named last.
+export function agenciesOn(units) {
+  const by = new Map();
+  for (const u of units) {
+    const key = u.agency || '';
+    const row = by.get(key) || { agency: key, units: 0, people: 0 };
+    row.units += 1;
+    row.people += u.crew_count || 0;
+    by.set(key, row);
+  }
+  return [...by.values()].sort((a, b) => (a.agency === '') - (b.agency === '') || b.units - a.units || a.agency.localeCompare(b.agency));
+}
+export function agencyLine(row) {
+  return (row.agency || 'No agency named') + ': ' + row.units + (row.units === 1 ? ' unit' : ' units') + (row.people ? ', ' + row.people + ' people' : '');
+}
+
+// ---- replay: where each unit was at a moment, from the samples ic_replay returns
+// Samples come grouped by unit, each group in time order. The sample at a moment is the last one
+// at or before it; a unit with none yet is not on the map yet.
+export function replayIndex(samples) {
+  const by = new Map();
+  for (const s of samples) {
+    const list = by.get(s.user_id) || [];
+    list.push(s);
+    by.set(s.user_id, list);
+  }
+  for (const list of by.values()) list.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return by;
+}
+export function sampleAt(list, atMs) {
+  let lo = 0, hi = list.length - 1, hit = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (new Date(list[mid].at).getTime() <= atMs) { hit = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return hit < 0 ? null : list[hit];
+}
+// The samples inside the trailing window before a moment, oldest first, for the breadcrumb.
+export function samplesBefore(list, atMs, windowMs) {
+  return list.filter((s) => { const t = new Date(s.at).getTime(); return t <= atMs && t >= atMs - windowMs; });
+}

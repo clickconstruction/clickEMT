@@ -1,10 +1,11 @@
 // The base map: Leaflet over OpenStreetMap tiles, with the incident boundary, the zones and their
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
-import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel } from '../shared/rules.js';
+import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, sampleAt, samplesBefore } from '../shared/rules.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
 const TRAIL = 12;                 // positions kept per unit for the breadcrumb trail
+const REPLAY_TRAIL_MS = 15 * 60 * 1000;   // how far behind a replayed unit its breadcrumb reaches
 
 const ZONE_STYLE = {
   open: { color: '#7A776F', weight: 2, fillColor: '#CFCAC0', fillOpacity: 0.35, dashArray: null },
@@ -34,7 +35,8 @@ export class BaseMap {
     this.map = L.map(el, { zoomControl: true, attributionControl: true, zoomSnap: 0.5 });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map);
     this.layers = {};
-    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'photos', 'labels', 'units', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
+    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
+    this.replay = null;   // samples by unit while the base is replaying, else null
     this.unitMarkers = new Map();
     this.trails = new Map();
     this.mode = null;
@@ -134,9 +136,19 @@ export class BaseMap {
       m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onHazard && this.cb.onHazard(h.id); });
     }
 
+    this.renderPhotos(data, state);
+    if (this.replay) this.renderReplayUnits(data, state);
+    else this.renderUnits(data, state);
+  }
+
+  // the photo pins; while replaying, only the ones taken by the moment shown
+  renderPhotos(data, state) {
+    const sel = state.selected || {};
+    const replayAt = this.replay && state.replay ? state.replay.t : null;
     this.layers.photos.clearLayers();
     for (const p of data.photos()) {
       if (p.lat == null || p.lng == null) continue;
+      if (replayAt != null && new Date(p.taken_at).getTime() > replayAt) continue;
       const fresh = Date.now() - new Date(p.created_at || p.taken_at).getTime() < 20000;
       const html = `<span class="ppin${sel.type === 'photo' && sel.id === p.id ? ' sel' : ''}${fresh ? ' fresh' : ''}">` +
         (p.heading == null ? '' : `<svg class="wedge" viewBox="-40 -40 80 80" style="transform:rotate(${Math.round(p.heading)}deg)" aria-hidden="true"><path d="${WEDGE}"></path></svg>`) +
@@ -144,8 +156,43 @@ export class BaseMap {
       const m = L.marker([p.lat, p.lng], { icon: icon(html), keyboard: false }).addTo(this.layers.photos);
       m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onPhoto(p.id); });
     }
+  }
 
-    this.renderUnits(data, state);
+  // ---- replay: the units where they were at a moment, from the samples the base fetched
+  setReplay(byUnit) {
+    this.replay = byUnit || null;
+    this.layers.replay.clearLayers();
+    if (this.replay) {
+      for (const m of this.unitMarkers.values()) this.layers.units.removeLayer(m);
+      this.unitMarkers.clear();
+      this.layers.trails.clearLayers();
+    }
+  }
+  // what changes from one moment to the next: the photos taken by then and where the units were
+  renderReplay(data, state) {
+    this.renderPhotos(data, state);
+    this.renderReplayUnits(data, state);
+  }
+  renderReplayUnits(data, state) {
+    const g = this.layers.replay;
+    g.clearLayers();
+    const r = state.replay;
+    if (!this.replay || !r) return;
+    const sel = state.selected || {};
+    for (const [userId, list] of this.replay) {
+      const member = data.member(userId);
+      if (!member || member.role !== 'unit') continue;
+      const s = sampleAt(list, r.t);
+      if (!s) continue;
+      const crumbs = samplesBefore(list, r.t, REPLAY_TRAIL_MS).map((x) => [x.lat, x.lng]);
+      if (crumbs.length > 1) L.polyline(crumbs, { className: 'rtrail', interactive: false }).addTo(g);
+      const cls = ['umark', 'ghost'];
+      if (sel.type === 'unit' && sel.id === userId) cls.push('sel');
+      const label = esc(unitLabel(member).replace(/^Unit /, 'U'));
+      const html = `<span class="${cls.join(' ')}"><span class="udot"></span><span class="uhead" style="transform:rotate(${Math.round(s.heading || 0)}deg)"></span><span class="ulab">${label}</span></span>`;
+      const m = L.marker([s.lat, s.lng], { icon: icon(html), keyboard: false, zIndexOffset: 1000 }).addTo(g);
+      m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onUnit(userId); });
+    }
   }
 
   renderUnits(data, state) {

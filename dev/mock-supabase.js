@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 7;
+  const SEED_VERSION = 8;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -36,6 +36,7 @@
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
   const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9)];
   const FAC = [ID('4', 1), ID('4', 2), ID('4', 3), ID('4', 4), ID('4', 5)];
+  let trackId = 0;   // ic_tracks ids: an identity column
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
@@ -64,19 +65,28 @@
       water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: U.ops, created_at: ago(60), updated_at: ago(60), ...extra
     });
     const sevenPm = new Date(); sevenPm.setHours(19, 0, 0, 0);
-    const photo = (i, user, zone, lat, lng, heading, note, min) => ({
-      id: P[i], incident_id: INC, user_id: user, zone_id: Z[zone], lat, lng, heading, note,
+    const photo = (i, user, zone, lat, lng, heading, note, min, publicOk) => ({
+      id: P[i], incident_id: INC, user_id: user, zone_id: Z[zone], lat, lng, heading, note, public_ok: !!publicOk,
       storage_path: INC + '/' + user + '/' + P[i] + '.jpg', taken_at: ago(min), created_at: ago(min)
     });
+    // an hour of positions per unit, a point every two minutes, walking from where it started to where it is now
+    const walk = (user, from, to, minutes, headingTo) => {
+      const rows = [];
+      for (let m = minutes; m >= 0; m -= 2) {
+        const f = 1 - m / minutes, wobble = Math.sin(m) * 0.00012;
+        rows.push({ id: ++trackId, incident_id: INC, user_id: user, lat: from[0] + (to[0] - from[0]) * f + wobble, lng: from[1] + (to[1] - from[1]) * f - wobble, heading: (headingTo + Math.sin(m / 3) * 40 + 360) % 360, at: ago(m) });
+      }
+      return rows;
+    };
     const t = {
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
-        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER,
+        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department',
         channels: [{ use: 'Command', channel: 'CMD 1' }, { use: 'Tactical, Division A', channel: 'TAC 2' }, { use: 'Tactical, Division B', channel: 'TAC 3' }, { use: 'Emergency traffic', channel: 'TAC 9' }],
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
       ic_periods: [
-        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190),
+        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '',
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
       ],
       ic_objectives: [
@@ -104,10 +114,15 @@
         { incident_id: INC, user_id: U.unit3, lat: 30.2674, lng: -97.7384, heading: 180, accuracy: 5, at: ago(0.2) }
       ],
       ic_photos: [
-        photo(0, U.unit1, 'A-1', 30.2678, -97.7325, 95, 'Water over road', 50),
+        photo(0, U.unit1, 'A-1', 30.2678, -97.7325, 95, 'Water over road', 50, true),
         photo(1, U.unit2, 'B-1', 30.2610, -97.7415, 300, 'Waterline on structure', 30),
         photo(2, U.unit3, 'A-2', 30.2671, -97.7390, 180, 'Blocked access', 12)
       ],
+      ic_tracks: [].concat(
+        walk(U.unit1, [30.2690, -97.7340], [30.2681, -97.7318], 60, 95),
+        walk(U.unit2, [30.2566, -97.7400], [30.2614, -97.7420], 60, 300),
+        walk(U.unit3, [30.2688, -97.7360], [30.2674, -97.7384], 60, 180)
+      ),
       ic_hazards: [
         { id: H1, incident_id: INC, user_id: U.unit3, zone_id: Z['A-2'], kind: 'Downed power line', note: 'Line across the park entrance', lat: 30.2668, lng: -97.7396, created_at: ago(20), resolved_at: null }
       ],
@@ -144,6 +159,7 @@
     };
     const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min) });
     ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1');
+    ev(190, U.ops, 'ops', 'Lead agency: Cedar Fork Fire Department');
     ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan');
     for (const o of t.ic_objectives) ev(189 - o.number, U.ops, 'ops', 'Objective ' + o.number + ' set: ' + o.text, 'ic_objectives', o.id);
     ev(189, U.ops, 'ops', 'Command post: Cedar Fork High School, front office opened', 'ic_facilities', FAC[0]);
@@ -166,6 +182,7 @@
     ev(40, U.unit2, 'clear', 'A-3 marked clear (6 of 6)', 'ic_zones', Z['A-3']);
     ev(39, U.ops, 'ops', 'A-3 released from Unit 2', 'ic_zones', Z['A-3']);
     ev(38, U.ops, 'ops', 'B-1 assigned to Unit 2', 'ic_zones', Z['B-1']);
+    ev(48, U.ops, 'ops', 'Photo from Unit 1 cleared for public information', 'ic_photos', P[0]);
     ev(60, U.ops, 'msg', 'Operations to everyone: Shelter is open at the high school gym, send anyone who needs it there', 'ic_messages', MSG[0]);
     ev(59, U.unit1, 'msg', 'Unit 1 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
     ev(58, U.unit2, 'msg', 'Unit 2 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
@@ -177,19 +194,20 @@
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
     return t;
   }
-  function reset() { tables = seed(); n = 0; }
+  function reset() { trackId = 0; tables = seed(); n = 0; }
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [] }),
+    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '' }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null }),
-    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, created_at: now() }),
+    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', created_at: now() }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
-    ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', taken_at: now(), created_at: now() }),
+    ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, taken_at: now(), created_at: now() }),
+    ic_tracks: () => ({ id: eventId(), heading: null, at: now() }),   // unique across tabs, as ic_events
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now() }),
@@ -213,7 +231,8 @@
       case 'ic_members': return op === 'update' && (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_zones': return op === 'insert' ? isOps(row.incident_id, uid) : isMember(row.incident_id, uid);
       case 'ic_positions': return row.user_id === uid && isMember(row.incident_id, uid);
-      case 'ic_photos': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
+      case 'ic_photos': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isOps(row.incident_id, uid);
+      case 'ic_tracks': return false;
       case 'ic_hazards': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isMember(row.incident_id, uid);
       case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_events': return op === 'insert' && row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid);
@@ -296,8 +315,16 @@
       log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · ${what}`, 'ic_structures', r.id);
     }
   }
+  // ic_track_position: every reported position is kept, except a repeat of the same spot within a minute
+  function trackPosition(r, old, uid, changes) {
+    if (old && old.lat === r.lat && old.lng === r.lng && new Date(r.at) - new Date(old.at) <= 60000) return;
+    const t = { ...DEFAULTS.ic_tracks(), incident_id: r.incident_id, user_id: r.user_id, lat: r.lat, lng: r.lng, heading: r.heading ?? null, at: r.at };
+    tables.ic_tracks.push(t);
+    changes.push(['INSERT', 'ic_tracks', t, null]);
+  }
   function afterInsert(table, r, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
+    if (table === 'ic_positions') trackPosition(r, null, uid, changes);
     if (table === 'ic_facilities') log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' opened', 'ic_facilities', r.id);
     if (table === 'ic_zones') log(changes, r.incident_id, uid, 'ops', `Division ${r.code} drawn, priority ${r.priority}`, 'ic_zones', r.id);
     if (table === 'ic_photos') {
@@ -340,6 +367,8 @@
   }
   function afterUpdate(table, r, old, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
+    if (table === 'ic_positions') trackPosition(r, old, uid, changes);
+    if (table === 'ic_photos' && !!r.public_ok !== !!old.public_ok) log(changes, r.incident_id, uid, 'ops', `Photo from ${label(r.incident_id, r.user_id)} ${r.public_ok ? 'cleared for public information' : 'withdrawn from public information'}`, 'ic_photos', r.id);
     if (table === 'ic_facilities') {
       if (r.closed_at && !old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' closed', 'ic_facilities', r.id);
       else if (!r.closed_at && old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' reopened', 'ic_facilities', r.id);
@@ -350,11 +379,12 @@
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
       else if (r.text !== old.text) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} is now: ${r.text}`, 'ic_objectives', r.id);
     }
-    if (table === 'ic_periods' && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null))) {
+    if (table === 'ic_periods' && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || ''))) {
       log(changes, r.incident_id, uid, 'ops', `Operational period ${r.number} updated`
         + (r.ic_name !== old.ic_name ? ', Incident Commander ' + (r.ic_name || 'not set') : '')
         + (r.ops_chief !== old.ops_chief ? ', Operations ' + (r.ops_chief || 'not set') : '')
-        + (r.safety_officer !== old.safety_officer ? ', Safety ' + (r.safety_officer || 'not set') : ''));
+        + (r.safety_officer !== old.safety_officer ? ', Safety ' + (r.safety_officer || 'not set') : '')
+        + ((r.unified || '') !== (old.unified || '') ? ', unified command ' + (r.unified || 'cleared') : ''));
     }
     if (table === 'ic_periods' && JSON.stringify(r.sitrep ?? {}) !== JSON.stringify(old.sitrep ?? {})) log(changes, r.incident_id, uid, 'ops', `Situation report updated for operational period ${r.number}`);
     if (table === 'ic_members' && r.status !== old.status) {
@@ -395,6 +425,7 @@
     if (table === 'ic_incidents') {
       if (JSON.stringify(r.boundary ?? null) !== JSON.stringify(old.boundary ?? null)) log(changes, r.id, uid, 'ops', 'Incident boundary redrawn');
       if (JSON.stringify(r.channels ?? []) !== JSON.stringify(old.channels ?? [])) log(changes, r.id, uid, 'ops', 'Communications plan updated: ' + ((r.channels || []).length ? r.channels.map((c) => (c.use || '') + ' ' + (c.channel || '')).join(', ') : 'no channels'));
+      if ((r.lead_agency || '') !== (old.lead_agency || '')) log(changes, r.id, uid, 'ops', 'Lead agency: ' + (r.lead_agency || 'not set'));
       if (r.status === 'closed' && old.status !== 'closed') log(changes, r.id, uid, 'ops', 'Incident closed');
     }
   }
@@ -642,6 +673,22 @@
         }
         log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + (count != null ? ' with ' + count + (count === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
+      } else if (name === 'ic_replay') {
+        if (!isMember(a.p_incident, uid)) out = [];
+        else {
+          const every = Math.max(1, Number(a.p_every) || 60) * 1000;
+          const from = new Date(a.p_from).getTime(), to = new Date(a.p_to).getTime();
+          const last = new Map();   // the last sample of each unit in each slice of `every`
+          for (const t of tables.ic_tracks) {
+            if (t.incident_id !== a.p_incident) continue;
+            const at = new Date(t.at).getTime();
+            if (at < from || at > to) continue;
+            const key = t.user_id + ':' + Math.floor(at / every);
+            const cur = last.get(key);
+            if (!cur || cur.at < t.at) last.set(key, t);
+          }
+          out = [...last.values()].sort((x, y) => (x.user_id < y.user_id ? -1 : x.user_id > y.user_id ? 1 : x.at < y.at ? -1 : 1)).map((t) => ({ user_id: t.user_id, lat: t.lat, lng: t.lng, heading: t.heading, at: t.at }));
+        }
       } else throw dbError(`Could not find the function public.${name} in the schema cache`, 'PGRST202');
     } catch (e) {
       if (!e.db) throw e;
@@ -760,6 +807,7 @@
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
     ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC },
+    tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };
   window.supabase = Object.assign({}, window.supabase || {}, { createClient: () => makeClient(), mock: true });

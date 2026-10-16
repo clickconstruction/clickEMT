@@ -91,6 +91,7 @@
     <button class="btn sm" data-action="briefing">Briefing</button>
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
+    <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
     <button class="btn sm" data-action="switch-incident">Switch incident</button>
     <button class="btn sm" data-action="sign-out">Sign out</button>
   </header>
@@ -110,6 +111,23 @@
         </span>
       </div>
       <div id="map" class="map" role="application" aria-label="Incident map"></div>
+      <div id="replay" class="replay" hidden>
+        <button class="btn sm pri" data-action="replay-play" id="replay-play">Play</button>
+        <input type="range" id="replay-slider" min="0" max="1000" value="0" step="1" aria-label="Moment to show">
+        <span class="mono replay-time" id="replay-time">--:--</span>
+        <select class="sel" id="replay-range" aria-label="How far back to replay">
+          <option value="hour">Last hour</option>
+          <option value="period" selected>This period</option>
+          <option value="all">Whole incident</option>
+        </select>
+        <select class="sel" id="replay-speed" aria-label="Replay speed">
+          <option value="10">10×</option>
+          <option value="60" selected>60×</option>
+          <option value="600">600×</option>
+        </select>
+        <span class="hint" id="replay-log"></span>
+        <button class="btn sm" data-action="replay-close">Close</button>
+      </div>
       <div class="legend">
         <span><span class="sw open"></span>Not started</span>
         <span><span class="sw active"></span>In progress</span>

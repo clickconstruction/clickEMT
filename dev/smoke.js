@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -602,4 +602,109 @@ async function permissions(check) {
   s.close();
   const note = await field.addNote('A note from the field');
   check('a unit can add a note', note.kind === 'note' && note.user_id === USERS().unit3 && await until(() => eventText(base, 'A note from the field')));
+}
+
+// Slice 8: the lead agency, the unified command, and who is on scene from where (ICS 203).
+async function agencies(check) {
+  check('the home panel names the lead agency and the agencies on scene with their head counts', has('#panel', 'agencies on scene', 'cedar fork fire department (lead)', '2 units · 4 people', 'travis county rescue', '1 unit · 2 people'), text('#panel'));
+  const f = $('#panel form[data-form="incident-edit"]');
+  check('the lead agency is editable under Incident', !!f && f.lead_agency.value === 'Cedar Fork Fire Department');
+  f.lead_agency.value = 'Travis County Office of Emergency Management';
+  f.requestSubmit();
+  await until(() => base.incident.lead_agency === 'Travis County Office of Emergency Management');
+  check('saving it logs the change and the field sees it', !!eventText(base, 'Lead agency: Travis County Office of Emergency Management') && await until(() => field.incident.lead_agency === 'Travis County Office of Emergency Management'), logTexts()[0]);
+  $('[data-action="period"]').click();
+  await until(() => $('#panel form[data-form="period-edit"]'));
+  const pf = $('#panel form[data-form="period-edit"]');
+  check('the period form has a unified command field, empty to start', !!pf.unified && pf.unified.value === '');
+  pf.unified.value = 'Cedar Fork Fire Department (Chief Ruiz), Travis County Sheriff (Lt. Ortiz)';
+  pf.requestSubmit();
+  await until(() => (base.currentPeriod().unified || '').startsWith('Cedar Fork Fire Department (Chief Ruiz)'));
+  check('the unified command is on the period and in the log', !!eventText(base, 'Operational period 1 updated, unified command Cedar Fork Fire Department (Chief Ruiz), Travis County Sheriff (Lt. Ortiz)'), logTexts()[0]);
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'briefing'));
+  check('the briefing names the command and the agencies', has('#briefing-page', 'travis county office of emergency management (lead), unified command with cedar fork fire department (chief ruiz)', 'cedar fork fire department: 2 units, 4 people', 'travis county rescue: 1 unit, 2 people'), text('#briefing-page').slice(0, 600));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="iap"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the IAP\'s 203 opens with the command line', has('#briefing-page', 'organization, ics 203', 'command: travis county office of emergency management (lead), unified command with'), text('#briefing-page').slice(0, 600));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  const e1 = await (async () => { try { await field.setLeadAgency('Nope'); return null; } catch (e) { return e; } })();
+  check('a unit cannot change the lead agency', !!e1 && e1.code === '42501' && base.incident.lead_agency !== 'Nope', e1 && e1.message);
+}
+
+// Slice 8: the Public Information Officer's set. Nothing is public until Operations clears it.
+async function publicInfo(check) {
+  const P = M().ids.photos;
+  check('one seeded photo is cleared for the public and the home panel says so', base.publicPhotos().length === 1 && base.publicPhotos()[0].id === P[0] && has('#panel', 'public information', '1 photo cleared for the public'), text('#panel'));
+  $(`#panel [data-action="select-photo"][data-id="${P[0]}"]`).click();
+  await until(() => has('#panel .title', 'photo') && $('#panel .badge.pub'));
+  check('the cleared photo shows its Public badge and offers to withdraw it', has('#panel', 'cleared for public information') && $('#panel [data-action="photo-public"]').textContent === 'Withdraw from public');
+  $('#panel [data-action="photo-public"]').click();
+  await until(() => !base.photo(P[0]).public_ok);
+  check('withdrawing it logs the change', !!eventText(base, 'Photo from Unit 1 withdrawn from public information') && await until(() => !$('#panel .badge.pub')), logTexts()[0]);
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => has('#panel', 'no photo is cleared for the public'));
+  check('the home panel says so', has('#panel', 'no photo is cleared for the public'));
+  $(`#zones .zr[data-id="${ZONE('A-2')}"]`).click();
+  await until(() => has('#panel .title', 'a-2'));
+  $(`#panel [data-action="select-photo"][data-id="${P[2]}"]`).click();
+  await until(() => has('#panel .title', 'photo') && $('#panel [data-action="photo-public"]'));
+  $('#panel [data-action="photo-public"]').click();
+  await until(() => base.photo(P[2]).public_ok);
+  check('clearing Unit 3\'s photo logs it, the badge shows, and the field sees the flag', !!eventText(base, 'Photo from Unit 3 cleared for public information') && await until(() => $('#panel .badge.pub')) && await until(() => field.photo(P[2]).public_ok), logTexts()[0]);
+  $(`#zones .zr[data-id="${ZONE('A-2')}"]`).click();
+  await until(() => has('#panel .title', 'a-2'));
+  check('the zone\'s photo list marks it public', has('#panel', 'blocked access · public'), text('#panel'));
+  const e1 = await (async () => { try { await field.setPhotoPublic(P[1], true); return null; } catch (e) { return e; } })();
+  check('a unit cannot clear a photo for the public', !!e1 && e1.code === '42501' && !base.photo(P[1]).public_ok, e1 && e1.message);
+  const pid = uuid();
+  await field.addPhoto(pid, await tinyJpeg(), { lat: 30.2674, lng: -97.7384, heading: 90, note: 'People here', zoneId: ZONE('A-2') });
+  await until(() => base.photo(pid));
+  check('a new photo is not public', base.photo(pid).public_ok === false);
+  $('[data-action="sitrep"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+  check('the situation report counts the cleared photos', has('#briefing-page', 'public information', '1 photo cleared for public release'), text('#briefing-page').slice(-300));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+}
+
+// Slice 8: the replay. Every position a unit reports is kept in ic_tracks; the base plays the day back.
+async function replay(check) {
+  const U3 = USERS().unit3;
+  const samples = await base.replay(new Date(Date.now() - 3600000 - 1000).toISOString(), new Date().toISOString(), 60);
+  check('the position history comes back as one sample per unit per minute, grouped by unit in time order', samples.length >= 90 && samples.filter((s) => s.user_id === U3).length >= 30 && samples.every((s, i) => i === 0 || s.user_id !== samples[i - 1].user_id || s.at > samples[i - 1].at), samples.length);
+  await field.upsertPosition({ lat: 30.2680, lng: -97.7380, heading: 10, accuracy: 5 });
+  await field.upsertPosition({ lat: 30.2680, lng: -97.7380, heading: 10, accuracy: 5 });
+  await field.upsertPosition({ lat: 30.2681, lng: -97.7381, heading: 12, accuracy: 5 });
+  const mine = M().tracksFor(U3);
+  check('every position a unit reports is kept; a repeat of the same spot within a minute is not', mine.length === 33 && mine[mine.length - 1].lat === 30.2681, mine.length);
+  const r1 = await field.sb.from('ic_tracks').insert({ incident_id: INC(), user_id: U3, lat: 1, lng: 1 }).select().single();
+  check('tracks cannot be written by hand', !!r1.error && r1.error.code === '42501', JSON.stringify(r1.error));
+  $('[data-action="replay"]').click();
+  await until(() => !$('#replay').hidden && $('#btn-replay').classList.contains('on') && $$('#map .umark.ghost').length === 3, 6000);
+  check('Replay opens the bar on this period and draws the three units where they were an hour ago, the live markers gone', !$('#replay').hidden && $$('#map .umark.ghost').length === 3 && $$('#map .umark:not(.ghost)').length === 0 && has('#replay-log', '3 units on the map'), text('#replay-log'));
+  const slider = $('#replay-slider');
+  check('it starts at the first report of the range, before any photo of the hour was taken', $$('#map .ppin').length === 0 && $('#replay-time').textContent !== '--:--' && Number(slider.value) > 0 && Number(slider.value) < 1000, slider.value + ' ' + $('#replay-time').textContent);
+  slider.value = '1000'; slider.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => $$('#map .ppin').length === 3);
+  check('at the end of the range the three photos are back and the latest log line shows', $$('#map .umark.ghost').length === 3 && has('#replay-log', '3 units on the map', logTexts()[0].slice(0, 30)), text('#replay-log'));
+  slider.value = '0'; slider.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => $$('#map .umark.ghost').length === 0);
+  check('at the start of the period nobody had reported yet', $$('#map .umark.ghost').length === 0 && $$('#map .ppin').length === 0 && has('#replay-log', '0 units on the map'), text('#replay-log'));
+  $('#replay-play').click();
+  await wait(1500);
+  const moved = Number(slider.value);
+  check('Play moves the moment forward', $('#replay-play').textContent === 'Pause' && moved > 0, moved);
+  $('#replay-play').click();
+  await wait(250);
+  check('…and Pause holds it', $('#replay-play').textContent === 'Play' && Number(slider.value) >= moved);
+  $('#replay-range').value = 'hour'; $('#replay-range').dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => has('#replay-log', '3 units on the map') && !has('#replay-log', 'loading'), 6000);
+  check('the last hour replays too', $$('#map .umark.ghost').length === 3);
+  $('[data-action="replay-close"]').click();
+  await until(() => $('#replay').hidden && $$('#map .umark:not(.ghost)').length === 3);
+  check('Close puts the live units and photos back', $$('#map .umark.ghost').length === 0 && $$('#map .ppin').length === 3 && !$('#btn-replay').classList.contains('on'));
 }

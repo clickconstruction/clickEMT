@@ -29,7 +29,7 @@ export class BaseMap {
   constructor(el, cb) {
     this.el = el;
     this.cb = cb;
-    this.map = L.map(el, { zoomControl: true, attributionControl: true });
+    this.map = L.map(el, { zoomControl: true, attributionControl: true, zoomSnap: 0.5 });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map);
     this.layers = {};
     for (const name of ['boundary', 'zones', 'trails', 'hazards', 'photos', 'labels', 'units', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);

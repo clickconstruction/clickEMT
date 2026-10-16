@@ -14,7 +14,7 @@
 
 .app { height: 100%; display: flex; flex-direction: column; }
 .top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
-.top-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.top-main { display: flex; flex-direction: column; min-width: 240px; flex: 1; }
 .top h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top .muted { font-size: 12.5px; }
 .mayday { background: var(--danger); color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-weight: 600; }
@@ -131,6 +131,8 @@
 .code-big { font-size: 28px; letter-spacing: .12em; font-weight: 600; }
 .inline-form { display: flex; flex-direction: column; gap: 8px; }
 .inline-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.inline-form label.chip { flex-direction: row; align-items: center; gap: 6px; font-size: 14px; color: var(--ink); }
+.inline-form label.chip input { margin: 0; accent-color: var(--accent); }
 .inline-form input { border: 1px solid #C9C5BB; border-radius: 6px; padding: 6px 8px; font-size: 14px; min-height: 36px; }
 
 /* markers */
@@ -162,6 +164,8 @@
 .trail { fill: var(--accent); fill-opacity: .35; stroke: none; }
 
 @media (max-width: 900px) {
+  .top-main { flex-basis: 100%; }
+  .top h1 { white-space: normal; }
   .body { flex-direction: column; overflow: auto; }
   .mapcol { border-right: 0; border-bottom: 1px solid var(--line); flex: none; }
   .map { height: 60vh; }

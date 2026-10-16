@@ -57,7 +57,8 @@ export class Data {
 
   // ---- incidents
   async myIncidents() {
-    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, joined_at, incident:ic_incidents(*)').order('joined_at', { ascending: false });
+    if (!this.user) return [];
+    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, joined_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
     if (error) throw error;
     return (data || []).filter((r) => r.incident).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew }));
   }

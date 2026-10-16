@@ -3,14 +3,14 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, periodLabel, unitLabel as unitLabelOf } from '../shared/rules.js';
+import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.base.incident';
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, placeZone: null };
 let map = null;
 let drawQueued = false;
 
@@ -121,6 +121,8 @@ async function openIncident(id) {
       onZone: (zid) => select({ type: 'zone', id: zid }),
       onPhoto: (pid) => select({ type: 'photo', id: pid }),
       onUnit: (uid) => select({ type: 'unit', id: uid }),
+      onStructure: (sid) => select({ type: 'structure', id: sid }),
+      onPlace: (lat, lng) => placeStructure(lat, lng),
       onHazard: (hid) => { const h = data.hazards(true).find((x) => x.id === hid); if (h && h.zone_id) select({ type: 'zone', id: h.zone_id }); },
       onBlank: () => { if (state.selected && state.selected.type !== 'newzone') select(null); },
       onDraftChange: (n) => { $('#tool-hint').textContent = n < 3 ? `${n} of at least 3 points. Click the map to add the next corner.` : `${n} points. Click to add more, or press Finish.`; }
@@ -140,10 +142,28 @@ function select(sel) {
   if (sel && sel.type === 'photo') loadPhoto(sel.id);
 }
 
+// Operations places a structure it knows about, not searched yet, into the zone under the click.
+async function placeStructure(lat, lng) {
+  const zone = (state.placeZone && data.zone(state.placeZone)) || zoneAtPoint(lat, lng);
+  // number on from what is on record, counting the ones placed a moment ago that have not landed yet
+  const n = Math.max(data.structures(zone ? zone.id : null).length, state.placeN || 0) + 1;
+  state.placeN = n;
+  try {
+    await data.addStructure(crypto.randomUUID(), { zone_id: zone ? zone.id : null, lat, lng, status: 'not_searched', label: '#' + n });
+    toast((zone ? zone.code + ': ' : '') + 'structure #' + n + ' placed');
+  } catch (err) { toast(err.message || String(err), true); }
+}
+function zoneAtPoint(lat, lng) { return zoneAtRule(data.zones(), lat, lng); }
+
+// Redraw once per frame. A background tab or a hidden pane gets no frames (and may not even say it
+// is hidden), so a short timer draws anyway, and the page is current the moment it is looked at.
 function queueDraw() {
   if (drawQueued) return;
   drawQueued = true;
-  requestAnimationFrame(() => { drawQueued = false; drawAll(); });
+  let done = false;
+  const go = () => { if (done) return; done = true; drawQueued = false; drawAll(); };
+  requestAnimationFrame(go);
+  setTimeout(go, 60);
 }
 
 function drawAll() {
@@ -227,20 +247,31 @@ document.addEventListener('click', async (e) => {
       case 'select-zone': select({ type: 'zone', id }); break;
       case 'select-photo': select({ type: 'photo', id }); break;
       case 'select-unit': select({ type: 'unit', id }); break;
+      case 'select-structure': select({ type: 'structure', id }); break;
+      case 'place-structures': {
+        state.placeZone = id;
+        state.placeN = 0;
+        map.startDraw('structures');
+        $('#btn-boundary').classList.remove('on'); $('#btn-zone').classList.remove('on');
+        $('#draw-btns').hidden = false;
+        $('#tool-hint').textContent = 'Click the map once per structure to place it in ' + (data.zone(id) ? data.zone(id).code : 'the division under the click') + ', then press Finish.';
+        break;
+      }
+      case 'finish-pass': {
+        const z = data.zone(id);
+        if (!z) break;
+        const pass = btn.dataset.pass;
+        if (!confirm(`${pass === 'secondary' ? 'Mark ' + z.code + ' clear (secondary search complete)' : 'Mark the primary search of ' + z.code + ' complete'} from the base? Normally the unit in the division does this from the field.`)) break;
+        await data.finishPass(id, pass, { marking: markingFor('BASE', new Date(), [], 0) });
+        break;
+      }
       case 'close-panel': select(null); break;
       case 'set-priority': await data.updateZone(id, { priority: Number(btn.dataset.p) }); break;
       case 'assign': { const z = data.zone(id); await data.assignZone(id, z && z.assigned_to === btn.dataset.user ? null : btn.dataset.user); break; }
       case 'resolve-hazard': await data.resolveHazard(id); break;
       case 'zoom-zone': { const z = data.zone(id); if (z) map.fitPolygon(z.polygon); break; }
       case 'pan-to': map.panTo(Number(btn.dataset.lat), Number(btn.dataset.lng)); break;
-      case 'clear-zone': {
-        const z = data.zone(id);
-        if (z && confirm(`Mark ${z.code} clear from the base? Normally the unit in the zone does this from the field.`)) {
-          await data.updateZone(id, { status: 'cleared', cleared: z.structures, cleared_at: new Date().toISOString(), marking: { team: 'BASE', out: hhmm(new Date()), haz: 'none', victims: 0 } });
-        }
-        break;
-      }
-      case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', cleared_at: null, marking: null }); break; }
+      case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
       case 'ack-message': await data.ackMessage(id, btn.dataset.reply || 'Copy'); break;
       case 'set-status': {
@@ -285,6 +316,7 @@ document.addEventListener('click', async (e) => {
       }
       case 'finish-draw': {
         const mode = map.mode;
+        if (mode === 'structures') { stopDraw(); break; }
         const polygon = map.finishDraw();
         stopDraw();
         if (!polygon) { toast('A division needs at least three points', true); break; }
@@ -321,6 +353,7 @@ document.addEventListener('change', async (e) => {
 
 function stopDraw() {
   map.cancelDraw();
+  state.placeZone = null;
   $('#btn-boundary').classList.remove('on');
   $('#btn-zone').classList.remove('on');
   $('#draw-btns').hidden = true;
@@ -340,6 +373,11 @@ document.addEventListener('submit', async (e) => {
       toast('Division ' + z.code + ' saved');
     } else if (form.dataset.form === 'zone-edit') {
       await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0, work_assignment: form.work_assignment.value.trim(), instructions: form.instructions.value.trim(), channel: form.channel.value.trim(), supervisor: form.supervisor.value.trim() });
+      toast('Saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'structure-edit') {
+      await data.updateStructure(form.dataset.id, { label: form.label.value.trim(), status: form.status.value, occupants: form.occupants.value, people_needing_help: Number(form.people.value) || 0, water_cm: form.water.value === '' ? null : Number(form.water.value), damage: form.damage.value, hazards: form.hazards.value.trim().toUpperCase(), notes: form.notes.value.trim() });
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();

@@ -31,6 +31,7 @@
   const MSG = [ID('d', 1), ID('d', 2)];
   const PER = ID('1', 1);
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
+  const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
@@ -51,7 +52,12 @@
       id: Z[code], incident_id: INC, code, name, priority, status, hazard: false, assigned_to: assigned, structures, cleared,
       cleared_at: null, marking: null, polygon: null, objective_id: code[0] === 'A' ? OBJ[0] : code === 'B-3' ? null : OBJ[1],
       work_assignment: '', instructions: '', channel: code[0] === 'A' ? 'TAC 2' : code === 'B-3' ? '' : 'TAC 3', supervisor: '',
+      primary_done_at: null, secondary_done_at: null,
       created_at: ago(183 - i), updated_at: ago(183 - i), ...extra
+    });
+    const structure = (i, zone, label, lat, lng, extra) => ({
+      id: ST[i], incident_id: INC, zone_id: Z[zone], label, lat, lng, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0,
+      water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: U.ops, created_at: ago(60), updated_at: ago(60), ...extra
     });
     const sevenPm = new Date(); sevenPm.setHours(19, 0, 0, 0);
     const photo = (i, user, zone, lat, lng, heading, note, min) => ({
@@ -81,7 +87,7 @@
       ic_zones: [
         zone(1, 'A-1', 'Riverside Drive, east', 1, 'active', U.unit1, 24, 9, { updated_at: ago(45), supervisor: 'Lt. Okafor', work_assignment: 'Primary search of every structure, paint the marking on each, report waterlines and anyone who refuses to leave', instructions: 'Stay out of moving water. The utility crew for the line at the park entrance is on its way.', polygon: ring([[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]]) }),
         zone(2, 'A-2', 'Pecan Mobile Home Park', 1, 'active', U.unit3, 18, 6, { hazard: true, updated_at: ago(9), polygon: ring([[30.2660, -97.7410], [30.2662, -97.7355], [30.2690, -97.7352], [30.2691, -97.7405]]) }),
-        zone(3, 'A-3', 'Cedar Fork Elementary', 2, 'cleared', null, 6, 6, { cleared_at: ago(40), marking: { team: 'U2', out: hhmm(ago(40)), haz: 'none', victims: 0 }, updated_at: ago(39), polygon: ring([[30.2695, -97.7420], [30.2696, -97.7380], [30.2722, -97.7382], [30.2720, -97.7422]]) }),
+        zone(3, 'A-3', 'Cedar Fork Elementary', 2, 'cleared', null, 6, 6, { cleared_at: ago(40), primary_done_at: ago(40), secondary_done_at: ago(40), marking: { team: 'U2', out: hhmm(ago(40)), haz: 'none', victims: 0 }, updated_at: ago(39), polygon: ring([[30.2695, -97.7420], [30.2696, -97.7380], [30.2722, -97.7382], [30.2720, -97.7422]]) }),
         zone(4, 'B-1', 'Mill Street bridge approach', 2, 'active', U.unit2, 15, 2, { updated_at: ago(38), work_assignment: 'Hold the bridge approach closed and turn traffic back at Mill and 3rd', polygon: ring([[30.2600, -97.7440], [30.2602, -97.7395], [30.2632, -97.7398], [30.2630, -97.7443]]) }),
         zone(5, 'B-2', 'Bee Creek low-water crossing', 2, 'open', null, 9, 0, { polygon: ring([[30.2578, -97.7500], [30.2582, -97.7450], [30.2616, -97.7452], [30.2612, -97.7502]]) }),
         zone(6, 'B-3', 'Fairgrounds', 3, 'open', null, 4, 0, { polygon: ring([[30.2568, -97.7380], [30.2572, -97.7320], [30.2606, -97.7322], [30.2602, -97.7384]]) })
@@ -100,6 +106,19 @@
         { id: H1, incident_id: INC, user_id: U.unit3, zone_id: Z['A-2'], kind: 'Downed power line', note: 'Line across the park entrance', lat: 30.2668, lng: -97.7396, created_at: ago(20), resolved_at: null }
       ],
       ic_alerts: [],
+      ic_structures: [
+        // A-3, the school: six buildings searched by Unit 2 this morning
+        structure(0, 'A-3', 'Main building', 30.2708, -97.7410, { occupants: 'none', water_cm: 20, damage: 'affected', searched_by: U.unit2, searched_at: ago(70), created_by: U.unit2, created_at: ago(70), updated_at: ago(70) }),
+        structure(1, 'A-3', 'Gym', 30.2712, -97.7398, { occupants: 'none', water_cm: 0, damage: 'unknown', searched_by: U.unit2, searched_at: ago(66), created_by: U.unit2, created_at: ago(66), updated_at: ago(66) }),
+        structure(2, 'A-3', 'Portable 1', 30.2702, -97.7392, { occupants: 'none', water_cm: 50, damage: 'minor', searched_by: U.unit2, searched_at: ago(60), created_by: U.unit2, created_at: ago(60), updated_at: ago(60) }),
+        structure(3, 'A-3', 'Portable 2', 30.2700, -97.7386, { occupants: 'none', water_cm: 50, damage: 'minor', searched_by: U.unit2, searched_at: ago(56), created_by: U.unit2, created_at: ago(56), updated_at: ago(56) }),
+        structure(4, 'A-3', 'Cafeteria', 30.2716, -97.7412, { occupants: 'evacuated', water_cm: 20, damage: 'affected', searched_by: U.unit2, searched_at: ago(50), created_by: U.unit2, created_at: ago(50), updated_at: ago(50) }),
+        structure(5, 'A-3', 'Bus barn', 30.2698, -97.7416, { occupants: 'none', water_cm: 100, damage: 'major', hazards: 'ELEC', searched_by: U.unit2, searched_at: ago(42), created_by: U.unit2, created_at: ago(42), updated_at: ago(42) }),
+        // B-2, the low-water crossing: three houses Operations placed for the next unit
+        structure(6, 'B-2', '101 Bee Creek Rd', 30.2585, -97.7490, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
+        structure(7, 'B-2', '105 Bee Creek Rd', 30.2592, -97.7478, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
+        structure(8, 'B-2', '109 Bee Creek Rd', 30.2600, -97.7466, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) })
+      ],
       ic_messages: [
         { id: MSG[0], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'message', text: 'Shelter is open at the high school gym, send anyone who needs it there', created_at: ago(60) },
         { id: MSG[1], incident_id: INC, from_user: U.ops, to_users: [U.unit3], to_label: 'Unit 3', to_zone: Z['A-2'], kind: 'message', text: 'Watch the power line at the park entrance, the utility crew is 20 minutes out', created_at: ago(15) }
@@ -124,6 +143,7 @@
     ev(158, U.ops, 'ops', 'A-2 assigned to Unit 3', 'ic_zones', Z['A-2']);
     for (const p of t.ic_photos) ev((Date.now() - new Date(p.taken_at)) / 60000, p.user_id, 'photo', R.unitLabel(t.ic_members.find((m) => m.user_id === p.user_id)) + ' sent a photo from ' + t.ic_zones.find((z) => z.id === p.zone_id).code + ', facing ' + R.compass(p.heading) + ': ' + p.note, 'ic_photos', p.id);
     ev(45, U.unit1, 'clear', 'Structure cleared in A-1 (9 of 24)', 'ic_zones', Z['A-1']);
+    ev(42, U.unit2, 'clear', 'A-3: Bus barn · water waist deep · major damage · hazards ELEC', 'ic_structures', ST[5]);
     ev(40, U.unit2, 'clear', 'A-3 marked clear (6 of 6)', 'ic_zones', Z['A-3']);
     ev(39, U.ops, 'ops', 'A-3 released from Unit 2', 'ic_zones', Z['A-3']);
     ev(38, U.ops, 'ops', 'B-1 assigned to Unit 2', 'ic_zones', Z['B-1']);
@@ -146,7 +166,8 @@
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', created_at: now() }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
-    ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', created_at: now(), updated_at: now() }),
+    ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
+    ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', taken_at: now(), created_at: now() }),
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
@@ -177,6 +198,7 @@
       case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_events': return op === 'insert' && row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid);
       case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
+      case 'ic_structures': return isMember(row.incident_id, uid);
       case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
@@ -190,7 +212,14 @@
       if (!r.code) throw nn('code');
       if (!r.polygon) throw nn('polygon');
       if (!(r.priority >= 1 && r.priority <= 3)) throw chk('ic_zones_priority_check');
-      if (!['open', 'active', 'cleared'].includes(r.status)) throw chk('ic_zones_status_check');
+      if (!['open', 'active', 'primary', 'cleared'].includes(r.status)) throw chk('ic_zones_status_check');
+    }
+    if (table === 'ic_structures') {
+      if (!['not_searched', 'in_progress', 'searched'].includes(r.status)) throw chk('ic_structures_status_check');
+      if (!['primary', 'secondary'].includes(r.pass)) throw chk('ic_structures_pass_check');
+      if (!['unknown', 'none', 'evacuated', 'sheltering', 'refused'].includes(r.occupants)) throw chk('ic_structures_occupants_check');
+      if (!['unknown', 'affected', 'minor', 'major', 'destroyed'].includes(r.damage)) throw chk('ic_structures_damage_check');
+      if (!(r.people_needing_help >= 0 && r.people_needing_help <= 999)) throw chk('ic_structures_people_needing_help_check');
     }
     if (table === 'ic_incidents' && !['active', 'closed'].includes(r.status)) throw chk('ic_incidents_status_check');
     if (table === 'ic_members') {
@@ -217,7 +246,30 @@
     changes.push(['INSERT', 'ic_events', e, null]);
     return e;
   }
+  // ic_structure_after: a zone's counts follow its records, and a notable structure is logged
+  const waterText = (cm) => (cm == null ? '' : cm <= 0 ? 'dry' : cm < 35 ? 'water ankle deep' : cm < 75 ? 'water knee deep' : cm < 150 ? 'water waist deep' : 'water over head');
+  function structureAfter(r, old, uid, changes) {
+    let z = null;
+    if (r.zone_id) {
+      const rows = tables.ic_structures.filter((s) => s.zone_id === r.zone_id);
+      const nAll = rows.length, nDone = rows.filter((s) => s.status === 'searched').length;
+      z = tables.ic_zones.find((x) => x.id === r.zone_id) || null;
+      if (z && (z.cleared !== nDone || z.structures < nAll)) updateRow('ic_zones', z, { cleared: nDone, structures: Math.max(z.structures, nAll) }, uid, changes, true);
+    }
+    const becameSearched = r.status === 'searched' && (!old || old.status !== 'searched');
+    if (becameSearched && (r.people_needing_help > 0 || r.occupants === 'sheltering' || r.occupants === 'refused' || r.damage === 'major' || r.damage === 'destroyed' || r.hazards !== '')) {
+      const what = [
+        r.people_needing_help > 0 ? r.people_needing_help + ' need help' : null,
+        r.occupants === 'sheltering' ? 'sheltering in place' : r.occupants === 'refused' ? 'refused to leave' : null,
+        waterText(r.water_cm) || null,
+        r.damage === 'major' || r.damage === 'destroyed' ? r.damage + ' damage' : null,
+        r.hazards !== '' ? 'hazards ' + r.hazards : null
+      ].filter(Boolean).join(' · ');
+      log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · ${what}`, 'ic_structures', r.id);
+    }
+  }
   function afterInsert(table, r, uid, changes) {
+    if (table === 'ic_structures') structureAfter(r, null, uid, changes);
     if (table === 'ic_zones') log(changes, r.incident_id, uid, 'ops', `Division ${r.code} drawn, priority ${r.priority}`, 'ic_zones', r.id);
     if (table === 'ic_photos') {
       log(changes, r.incident_id, r.user_id, 'photo', `${label(r.incident_id, r.user_id)} sent a photo from ${zoneCode(r.zone_id)}${r.heading == null ? '' : ', facing ' + R.compass(r.heading)}${r.note !== '' ? ': ' + r.note : ''}`, 'ic_photos', r.id);
@@ -249,14 +301,16 @@
       const m = member(r.incident_id, user);
       if (m && only.includes(m.status) && m.status !== status) updateRow('ic_members', m, { status }, uid, changes, true);
     };
+    const done = (s) => s === 'primary' || s === 'cleared';
     const newA = r.assigned_to || null, oldA = old.assigned_to || null;
     if (newA !== oldA && newA) setStatus(newA, 'assigned', ['available']);
-    if (oldA && (newA !== oldA || (r.status === 'cleared' && old.status !== 'cleared'))) {
+    if (oldA && (newA !== oldA || (done(r.status) && !done(old.status)))) {
       const other = tables.ic_zones.some((z) => z.incident_id === r.incident_id && z.assigned_to === oldA && z.status === 'active' && z.id !== r.id);
       if (!other && !(newA === oldA && r.status === 'active')) setStatus(oldA, 'available', ['assigned']);
     }
   }
   function afterUpdate(table, r, old, uid, changes) {
+    if (table === 'ic_structures') structureAfter(r, old, uid, changes);
     if (table === 'ic_objectives' && !quiet) {
       if (r.done_at && !old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} done: ${r.text}`, 'ic_objectives', r.id);
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
@@ -283,11 +337,12 @@
     if (table === 'ic_zones') {
       zoneSetsStatus(r, old, uid, changes);
       const put = (kind, text) => log(changes, r.incident_id, uid, kind, text, 'ic_zones', r.id);
-      if (r.status === 'cleared' && old.status !== 'cleared') {
-        const victims = r.marking && r.marking.victims != null ? r.marking.victims : 0;
-        put('clear', `${r.code} marked clear (${r.structures} of ${r.structures})${Number(victims) > 0 ? ', ' + victims + ' found needing help' : ''}`);
-      } else if (r.cleared !== old.cleared && r.status !== 'cleared') put('clear', `Structure cleared in ${r.code} (${r.cleared} of ${r.structures})`);
-      else if (r.status === 'open' && old.status === 'cleared') put('ops', `${r.code} reopened`);
+      const victims = r.marking && r.marking.victims != null && Number(r.marking.victims) > 0 ? ', ' + r.marking.victims + ' found needing help' : '';
+      const done = (s) => s === 'primary' || s === 'cleared';
+      if (r.status === 'primary' && old.status !== 'primary') put('clear', `${r.code} primary search complete (${r.cleared} of ${r.structures})${victims}`);
+      else if (r.status === 'cleared' && old.status !== 'cleared') put('clear', `${r.code} ${old.status === 'primary' ? 'secondary search complete, zone clear' : 'marked clear'} (${r.cleared} of ${r.structures})${victims}`);
+      else if (r.cleared !== old.cleared && !done(r.status)) put('clear', `Structure cleared in ${r.code} (${r.cleared} of ${r.structures})`);
+      else if (!done(r.status) && done(old.status)) put('ops', `${r.code} reopened`);
       if (r.priority !== old.priority) put('ops', `${r.code} priority set to ${r.priority}`);
       if ((r.assigned_to || null) !== (old.assigned_to || null)) {
         put('ops', r.assigned_to == null ? `${r.code} released from ${label(r.incident_id, old.assigned_to)}` : `${r.code} assigned to ${label(r.incident_id, r.assigned_to)}`);
@@ -325,6 +380,10 @@
       return updateRow(table, existing, given, uid, changes);
     }
     const row = { ...(DEFAULTS[table] ? DEFAULTS[table]() : {}), ...given };
+    if (table === 'ic_structures') {   // ic_structure_before
+      row.created_by = row.created_by || uid;
+      if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
+    }
     constraints(table, row);
     if (table === 'ic_zones' && tables.ic_zones.some((z) => z.incident_id === row.incident_id && z.code === row.code)) throw dbError('duplicate key value violates unique constraint "ic_zones_incident_id_code_key"', '23505');
     if (!allowed(table, 'insert', row, uid)) throw rlsError(table);
@@ -340,7 +399,18 @@
     constraints(table, next);
     if (!system && !allowed(table, 'update', next, uid)) throw rlsError(table);
     Object.assign(r, next);
-    if (table === 'ic_zones') r.updated_at = now();   // ic_touch
+    if (table === 'ic_zones') {
+      r.updated_at = now();   // ic_touch
+      if (r.status !== old.status) {   // ic_zone_stamps
+        if (r.status === 'primary') { r.primary_done_at = now(); r.cleared_at = now(); }
+        if (r.status === 'cleared') { r.secondary_done_at = now(); r.cleared_at = now(); if (!r.primary_done_at) r.primary_done_at = now(); }
+        if (r.status === 'open' || r.status === 'active') r.cleared_at = null;
+      }
+    }
+    if (table === 'ic_structures') {   // ic_structure_before
+      r.updated_at = now();
+      if (r.status === 'searched' && (old.status !== 'searched' || !r.searched_at)) { r.searched_at = r.searched_at || now(); r.searched_by = r.searched_by || uid; }
+    }
     if (table === 'ic_members' && r.status !== old.status) {   // ic_member_before
       r.status_at = now();
       r.checked_out_at = r.status === 'checked_out' ? now() : null;
@@ -651,7 +721,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST },
     ready: () => ready
   };
   window.supabase = Object.assign({}, window.supabase || {}, { createClient: () => makeClient(), mock: true });

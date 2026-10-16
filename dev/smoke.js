@@ -8,7 +8,7 @@
 // reports are sent through a second Data instance signed in as Unit 3, the same module the field
 // app uses, and after each one the test reads what the base's Data sees and what the page draws.
 import { Data } from '../js/shared/data.js';
-import { markingFor, ringToLatLngs } from '../js/shared/rules.js';
+import { markingFor, ringToLatLngs, nextPass } from '../js/shared/rules.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s, root = document) => root.querySelector(s);
@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -428,6 +428,58 @@ async function assignment(check) {
   check('the field sees the new assignment words', await until(() => field.zone(b3).work_assignment.startsWith('Windshield survey')));
   await base.updateZone(b3, { instructions: 'Livestock loose near the east gate, gate now shut' });
   check('a change to the words alone logs without channel or supervisor', await until(() => eventText(base, 'B-3 assignment updated')));
+}
+
+// Primary and secondary search with structure records: a structure searched from the field with
+// its details, counts that follow the records, placing structures from the base, the primary
+// pass, the secondary pass, and reopening.
+async function search(check) {
+  const u = USERS(), a2 = ZONE('A-2'), b2 = ZONE('B-2'), a3 = ZONE('A-3');
+  check('the seed has six searched structures in A-3 and three placed in B-2, all drawn on the map', base.structures(a3).length === 6 && base.structures(b2).length === 3 && base.structures(b2).every((s) => s.status === 'not_searched') && $$('#map path.structure').length === 9, $$('#map path.structure').length);
+
+  const sid = uuid();
+  await field.addStructure(sid, { zone_id: a2, lat: 30.2670, lng: -97.7380, status: 'searched', label: '12 Pecan Ln', occupants: 'sheltering', people_needing_help: 2, water_cm: 50, damage: 'major', hazards: 'ELEC', notes: 'Elderly couple upstairs' });
+  await until(() => base.structure(sid) && base.zone(a2).cleared === 1);
+  check('A-2 now counts its records, 1 of 18 searched, and the old count gives way', base.zone(a2).cleared === 1 && base.zone(a2).structures === 18 && await until(() => has(`#zones .zr[data-id="${a2}"]`, '1 of 18')), text(`#zones .zr[data-id="${a2}"]`));
+  check('the structure is logged with its details', !!eventText(base, 'A-2: 12 Pecan Ln · 2 need help · sheltering in place · water knee deep · major damage · hazards ELEC'), logTexts()[0]);
+  check('a red-ringed dot appears for people needing help', await until(() => $$('#map path.structure[stroke="#B3261E"]').length === 1));
+  $(`#zones .zr[data-id="${a2}"]`).click();
+  await until(() => has('#panel', 'structures on record · 1'));
+  check('the zone panel lists it', has('#panel', '12 pecan ln', 'searched', '2 need help'), text('#panel'));
+  $(`#panel [data-action="select-structure"][data-id="${sid}"]`).click();
+  await until(() => has('#panel .title', '12 pecan ln'));
+  check('the structure panel shows who searched it and the facts', has('#panel', 'unit 3', 'sheltering in place', 'water knee deep', 'major damage', 'elderly couple'), text('#panel'));
+  const f = $('#panel form[data-form="structure-edit"]');
+  f.people.value = '3';
+  f.requestSubmit();
+  check('the base can correct a record', await until(() => base.structure(sid).people_needing_help === 3));
+
+  $(`#zones .zr[data-id="${b2}"]`).click();
+  await until(() => has('#panel .title', 'division b-2'));
+  $('#panel [data-action="place-structures"]').click();
+  check('Place structures arms the map', $('#map').classList.contains('drawing') && has('#tool-hint', 'place it in b-2'), text('#tool-hint'));
+  mapClick(-30, 10);
+  mapClick(30, 10);
+  await until(() => base.structures(b2).length === 5);
+  $('[data-action="finish-draw"]').click();
+  check('two clicks place two structures in B-2, not searched, numbered on, and the count stays 9', base.structures(b2).length === 5 && base.structures(b2).slice(-1)[0].status === 'not_searched' && base.structures(b2).slice(-1)[0].label === '#5' && base.zone(b2).structures === 9 && !$('#map').classList.contains('drawing'), base.structures(b2).map((s) => s.label).join(','));
+  const placed = base.structures(b2)[0];
+  await field.updateStructure(placed.id, { status: 'searched', occupants: 'evacuated', water_cm: 20 });
+  check('searching a placed structure counts it, 1 of 9, stamped with who and when', await until(() => base.zone(b2).cleared === 1) && base.structure(placed.id).searched_by === u.unit3 && !!base.structure(placed.id).searched_at);
+
+  await field.finishPass(a2, 'primary', { marking: markingFor('U3', new Date(), [], 0) });
+  await until(() => base.zone(a2).status === 'primary');
+  check('the primary pass leaves A-2 light green with its own log line, and frees Unit 3', !!base.zone(a2).primary_done_at && !base.zone(a2).secondary_done_at && await until(() => $$('#map path[fill="#8FCFA7"]').length === 1) && !!eventText(base, 'A-2 primary search complete (1 of 18)') && await until(() => base.member(u.unit3).status === 'available') && await until(() => has(`#zones .zr[data-id="${a2}"]`, 'primary search done', 'secondary pending')), text(`#zones .zr[data-id="${a2}"]`));
+  check('the field sees the pass and knows the next one is secondary', await until(() => field.zone(a2).status === 'primary') && nextPass(field.zone(a2)) === 'secondary');
+  await field.finishPass(a2, 'secondary', { marking: markingFor('U3', new Date(), ['GAS'], 1) });
+  await until(() => base.zone(a2).status === 'cleared');
+  check('the secondary pass clears it, dark green, with its line and the people found', !!base.zone(a2).secondary_done_at && await until(() => $$('#map path[fill="#8FCFA7"]').length === 0) && !!eventText(base, 'A-2 secondary search complete, zone clear (1 of 18), 1 found needing help'), logTexts()[0]);
+  $(`#zones .zr[data-id="${a2}"]`).click();
+  await until(() => $('#panel [data-action="reopen-zone"]'));
+  $('#panel [data-action="reopen-zone"]').click();
+  await until(() => base.zone(a2).status === 'active');
+  check('reopening puts it back to in progress, still assigned, with the stamp cleared and a log line', base.zone(a2).assigned_to === u.unit3 && base.zone(a2).cleared_at === null && !!eventText(base, 'A-2 reopened'));
+  check('the panel offers the primary pass again', await until(() => $('#panel [data-action="finish-pass"][data-pass="primary"]')));
 }
 
 // A new unit checks in with the code; Operations can open a second incident.

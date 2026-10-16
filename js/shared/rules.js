@@ -1,7 +1,36 @@
 // Rules both views share. No DOM and no network here, so the base, the field app and tests
 // all agree on what a heading is called, which zone a point is in, and what a status means.
 
-export const STATUS_TEXT = { open: 'Not started', active: 'In progress', cleared: 'Cleared' };
+export const STATUS_TEXT = { open: 'Not started', active: 'In progress', primary: 'Primary search done', cleared: 'Cleared' };
+// A structure record: who was there and what state it is in.
+export const OCCUPANTS = [['unknown', 'Unknown'], ['none', 'Nobody home'], ['evacuated', 'Evacuated'], ['sheltering', 'Sheltering in place'], ['refused', 'Refused to leave']];
+export const WATER = [[0, 'Dry'], [20, 'Ankle'], [50, 'Knee'], [100, 'Waist'], [200, 'Over head']];
+export const DAMAGE = [['unknown', 'Unknown'], ['affected', 'Affected'], ['minor', 'Minor'], ['major', 'Major'], ['destroyed', 'Destroyed']];
+export const STRUCTURE_STATUS = { not_searched: 'Not searched', in_progress: 'Being searched', searched: 'Searched' };
+
+export function waterText(cm) {
+  if (cm == null) return '';
+  if (cm <= 0) return 'dry';
+  if (cm < 35) return 'water ankle deep';
+  if (cm < 75) return 'water knee deep';
+  if (cm < 150) return 'water waist deep';
+  return 'water over head';
+}
+
+// One line about a structure, the same words the database puts in the log.
+export function structureSummary(s) {
+  const parts = [];
+  if (s.people_needing_help > 0) parts.push(s.people_needing_help + ' need help');
+  const occ = OCCUPANTS.find((o) => o[0] === s.occupants);
+  if (s.occupants === 'sheltering') parts.push('sheltering in place');
+  else if (s.occupants === 'refused') parts.push('refused to leave');
+  else if (occ && s.occupants !== 'unknown') parts.push(occ[1].toLowerCase());
+  const w = waterText(s.water_cm);
+  if (w) parts.push(w);
+  if (s.damage && s.damage !== 'unknown') parts.push(s.damage + ' damage');
+  if (s.hazards) parts.push('hazards ' + s.hazards);
+  return parts.join(' · ');
+}
 // A unit's resource status, as ICS names it.
 export const STATUS_LABEL = { assigned: 'Assigned', available: 'Available', out_of_service: 'Out of service', checked_out: 'Checked out' };
 export const OOS_REASONS = ['Rest', 'Fuel', 'Equipment', 'Medical', 'Weather', 'Other'];
@@ -50,11 +79,16 @@ export function pct(zone) {
 export function zoneStatusText(zone, assignedLabel) {
   let t;
   if (zone.status === 'cleared') t = 'Cleared' + (zone.cleared_at ? ' at ' + hhmm(zone.cleared_at) : '') + ' · ' + zone.structures + ' of ' + zone.structures;
+  else if (zone.status === 'primary') t = 'Primary search done' + (zone.primary_done_at ? ' at ' + hhmm(zone.primary_done_at) : '') + ' · ' + zone.cleared + ' of ' + zone.structures + ' · secondary pending';
   else if (zone.status === 'active') t = 'In progress · ' + (assignedLabel || 'assigned') + ' · ' + zone.cleared + ' of ' + zone.structures;
   else t = 'Not started · ' + zone.structures + ' structures';
   if (zone.hazard) t += ' · hazard';
   return t;
 }
+
+// which pass the next "zone clear" from the field completes
+export function nextPass(zone) { return zone && zone.status === 'primary' ? 'secondary' : 'primary'; }
+export function passDone(zone) { return zone && (zone.status === 'primary' || zone.status === 'cleared'); }
 
 // Zone codes are a division letter and a number: A-1, A-2, B-1. The next free number in a division.
 export function nextZoneCode(zones, division) {

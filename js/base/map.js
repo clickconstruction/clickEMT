@@ -9,8 +9,10 @@ const TRAIL = 12;                 // positions kept per unit for the breadcrumb 
 const ZONE_STYLE = {
   open: { color: '#7A776F', weight: 2, fillColor: '#CFCAC0', fillOpacity: 0.35, dashArray: null },
   active: { color: '#24588F', weight: 2, fillColor: '#2F6FB3', fillOpacity: 0.28, dashArray: null },
+  primary: { color: '#3D8B5F', weight: 2, fillColor: '#8FCFA7', fillOpacity: 0.45, dashArray: null },
   cleared: { color: '#1F6B42', weight: 2, fillColor: '#2E8B57', fillOpacity: 0.42, dashArray: null }
 };
+const STRUCTURE_COLOR = { searched: '#2E8B57', in_progress: '#D9822B', not_searched: '#8F8B82' };
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -32,13 +34,14 @@ export class BaseMap {
     this.map = L.map(el, { zoomControl: true, attributionControl: true, zoomSnap: 0.5 });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map);
     this.layers = {};
-    for (const name of ['boundary', 'zones', 'trails', 'hazards', 'photos', 'labels', 'units', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
+    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'photos', 'labels', 'units', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
     this.unitMarkers = new Map();
     this.trails = new Map();
     this.mode = null;
     this.draft = [];
     this.map.on('click', (e) => {
       if (!this.mode) { this.cb.onBlank && this.cb.onBlank(); return; }
+      if (this.mode === 'structures') { this.cb.onPlace && this.cb.onPlace(e.latlng.lat, e.latlng.lng); return; }
       this.draft.push([e.latlng.lat, e.latlng.lng]);
       this.renderDraft();
       this.cb.onDraftChange && this.cb.onDraftChange(this.draft.length);
@@ -102,6 +105,16 @@ export class BaseMap {
       const c = centroid(z.polygon);
       const label = L.marker(c, { icon: icon(`<button class="zpill${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}" type="button" aria-label="Zone ${esc(z.code)}"><span class="pb p${z.priority}">${z.priority}</span>${esc(z.code)}</button>`), interactive: true, keyboard: false }).addTo(this.layers.labels);
       label.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onZone(z.id); });
+    }
+
+    this.layers.structures.clearLayers();
+    for (const s of data.structures()) {
+      if (s.lat == null || s.lng == null) continue;
+      const picked = sel.type === 'structure' && sel.id === s.id;
+      const help = s.people_needing_help > 0;
+      const m = L.circleMarker([s.lat, s.lng], { radius: picked ? 7 : 5, color: help ? '#B3261E' : '#fff', weight: help ? 3 : 1.5, fillColor: STRUCTURE_COLOR[s.status] || '#8F8B82', fillOpacity: 1, className: 'structure' }).addTo(this.layers.structures);
+      m.bindTooltip((s.label || 'Structure') + ' · ' + (s.status === 'searched' ? 'searched' : s.status === 'in_progress' ? 'being searched' : 'not searched'), { direction: 'top', offset: [0, -6] });
+      m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onStructure && this.cb.onStructure(s.id); });
     }
 
     this.layers.hazards.clearLayers();

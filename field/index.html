@@ -127,6 +127,8 @@
   <div id="s-clear" class="sheet" hidden>
     <h2 id="clear-title">Mark zone clear</h2>
     <p class="muted" id="clear-sub"></p>
+    <div class="k">Which search is complete</div>
+    <div class="chips" id="pass-chips"></div>
     <div class="k">People found who need help</div>
     <div class="stepper"><button class="btn" data-action="victims-down" aria-label="Fewer">−</button><span class="num" id="victims">0</span><button class="btn" data-action="victims-up" aria-label="More">+</button></div>
     <div class="k">Hazards still in the zone</div>
@@ -140,6 +142,26 @@
       <div class="xt"><span>Top: time out</span><span>Left: team</span><span>Right: hazards</span><span>Bottom: people found</span></div>
     </div>
     <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn green" data-action="confirm-clear">Confirm clear</button></div>
+  </div>
+
+  <div id="s-structure" class="sheet" hidden>
+    <h2 id="structure-title">Address clear</h2>
+    <p class="muted" id="structure-sub"></p>
+    <label class="k" for="structure-label">Address or what it is</label>
+    <input id="structure-label" class="input" placeholder="123 Pecan Ln" maxlength="120">
+    <div class="k">Occupants</div>
+    <div class="chips" id="occ-chips"></div>
+    <div class="k">People needing help</div>
+    <div class="stepper"><button class="btn" data-action="help-down" aria-label="Fewer">−</button><span class="num" id="help-count">0</span><button class="btn" data-action="help-up" aria-label="More">+</button></div>
+    <div class="k">Water at the structure</div>
+    <div class="chips" id="water-chips"></div>
+    <div class="k">Damage</div>
+    <div class="chips" id="damage-chips"></div>
+    <div class="k">Hazards left there</div>
+    <div class="chips" id="shaz-chips"></div>
+    <label class="k" for="structure-notes">Notes for the next crew</label>
+    <input id="structure-notes" class="input" placeholder="Dog inside, gas shut off at the meter" maxlength="300">
+    <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn green" data-action="save-structure">Searched, save</button></div>
   </div>
 
   <div id="s-hazard" class="sheet" hidden>

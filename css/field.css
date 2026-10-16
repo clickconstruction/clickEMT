@@ -51,6 +51,8 @@ body { background: #F7F6F2; }
 .badge.st-available { background: #DDF0E4; color: var(--cleared); }
 .badge.st-out_of_service { background: #FBE9D6; color: var(--hazard-ink); }
 .badge.st-checked_out { background: var(--soft); color: var(--muted); }
+.badge.primary { background: #E3F2E8; color: #2F7A52; }
+.chip.dim { opacity: .5; }
 .p-body { flex: 1; min-height: 0; overflow: auto; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 .card .zone-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }

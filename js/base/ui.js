@@ -1,6 +1,6 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -29,6 +29,7 @@ export function panelHtml(data, state) {
   if (sel.type === 'period') return periodHtml(data, state);
   if (sel.type === 'zone') { const z = data.zone(sel.id); if (z) return zoneHtml(data, z, state); }
   if (sel.type === 'photo') { const p = data.photo(sel.id); if (p) return photoHtml(data, p); }
+  if (sel.type === 'structure') { const s = data.structure(sel.id); if (s) return structureHtml(data, s); }
   if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m, state); }
   return homeHtml(data);
 }
@@ -108,7 +109,8 @@ function zoneHtml(data, z, state) {
   const photos = data.photos().filter((p) => p.zone_id === z.id);
   const hazards = data.hazards().filter((h) => h.zone_id === z.id);
   const marking = z.marking || null;
-  const statusCls = z.status === 'cleared' ? 'cleared' : (z.status === 'active' ? 'active' : '');
+  const statusCls = z.status === 'cleared' ? 'cleared' : z.status === 'primary' ? 'primary' : (z.status === 'active' ? 'active' : '');
+  const structs = data.structures(z.id);
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">Division ${esc(z.code)} <span>${esc(z.name)}</span></div>
@@ -147,8 +149,12 @@ function zoneHtml(data, z, state) {
     <div class="d-row">
       <button class="btn sm" data-action="zoom-zone" data-id="${z.id}">Zoom to zone</button>
       ${z.assigned_to ? `<button class="btn sm" data-action="start-par" data-target="zone:${z.id}">PAR</button>` : ''}
-      ${z.status === 'cleared' ? `<button class="btn sm" data-action="reopen-zone" data-id="${z.id}">Reopen</button>` : `<button class="btn sm green" data-action="clear-zone" data-id="${z.id}">Mark cleared from base</button>`}
+      ${z.status === 'cleared' ? `<button class="btn sm" data-action="reopen-zone" data-id="${z.id}">Reopen</button>`
+        : z.status === 'primary' ? `<button class="btn sm green" data-action="finish-pass" data-id="${z.id}" data-pass="secondary">Secondary done, clear</button><button class="btn sm" data-action="reopen-zone" data-id="${z.id}">Reopen</button>`
+        : `<button class="btn sm green" data-action="finish-pass" data-id="${z.id}" data-pass="primary">Primary search done</button><button class="btn sm" data-action="finish-pass" data-id="${z.id}" data-pass="secondary">Mark cleared</button>`}
     </div>
+    <div class="d-row"><span class="k" style="width:auto;flex:1">Structures on record · ${structs.length}</span><button class="btn sm" data-action="place-structures" data-id="${z.id}">Place structures</button></div>
+    ${structs.length ? structs.slice(-8).reverse().map((s) => `<button class="plink" data-action="select-structure" data-id="${s.id}">${esc(s.label || 'Structure')} · ${STRUCTURE_STATUS[s.status] || s.status}${structureSummary(s) ? ' · ' + esc(structureSummary(s)) : ''}${s.searched_at ? ' · ' + hhmm(s.searched_at) : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. The field adds one with every address it clears; you can place the ones you know in advance.</div>'}
     <div class="k">Photos from this zone</div>
     ${photos.length ? photos.map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.heading != null ? ' · facing ' + compass(p.heading) : ''}${p.note ? ' · ' + esc(p.note) : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet</div>'}
     ${z.assigned_to ? `<div class="k">Message ${esc(unitLabel(data.member(z.assigned_to)))} in ${esc(z.code)}</div>${composerHtml(data, 'zone:' + z.id)}${messagesHtml(data, (m) => m.to_zone === z.id, 4)}` : ''}`;
@@ -176,6 +182,40 @@ function photoHtml(data, p) {
       <button class="btn sm" data-action="pan-to" data-lat="${p.lat}" data-lng="${p.lng}">Show on map</button>
       <a class="btn sm" data-photo-link target="_blank" rel="noopener" hidden>Open full size</a>
     </div>`;
+}
+
+function structureHtml(data, s) {
+  const z = s.zone_id ? data.zone(s.zone_id) : null;
+  const opt = (list, v) => list.map(([val, label]) => `<option value="${val}"${String(val) === String(v) ? ' selected' : ''}>${esc(label)}</option>`).join('');
+  const water = s.water_cm == null ? '' : String(WATER.reduce((best, w) => (Math.abs(w[0] - s.water_cm) < Math.abs(best - s.water_cm) ? w[0] : best), WATER[0][0]));
+  return `
+    <button class="back" data-action="${z ? 'select-zone' : 'close-panel'}"${z ? ` data-id="${z.id}"` : ''}>${z ? 'Back to ' + esc(z.code) : 'Back to units'}</button>
+    <div class="title">${esc(s.label || 'Structure')} <span>${z ? esc(z.code) : 'outside the divisions'}</span></div>
+    <div class="d-row"><span class="badge ${s.status === 'searched' ? 'cleared' : s.status === 'in_progress' ? 'active' : ''}">${STRUCTURE_STATUS[s.status] || s.status}${s.searched_at ? ' ' + hhmm(s.searched_at) : ''}</span>${s.people_needing_help > 0 ? `<span class="badge" style="background:var(--danger);color:#fff">${s.people_needing_help} need help</span>` : ''}</div>
+    ${structureSummary(s) ? `<div class="d-sub">${esc(structureSummary(s))}</div>` : ''}
+    <div class="kv">
+      <span class="k">Searched by</span><span>${s.searched_by ? esc(unitLabel(data.member(s.searched_by))) : 'nobody yet'}</span>
+      <span class="k">Position</span><span class="mono">${esc(latLngText(s.lat, s.lng)) || 'unknown'}</span>
+      ${s.marking ? `<span class="k">Marking</span><span>team ${esc(s.marking.team)} · out ${esc(s.marking.out)} · hazards ${esc(s.marking.haz)} · people ${esc(s.marking.victims)}</span>` : ''}
+      ${s.notes ? `<span class="k">Notes</span><span>${esc(s.notes)}</span>` : ''}
+    </div>
+    <form class="inline-form" data-form="structure-edit" data-id="${s.id}">
+      <label>Label <input name="label" value="${esc(s.label)}" placeholder="Address or what it is"></label>
+      <div class="row-2">
+        <label>Status <select name="status" class="sel">${opt(Object.entries(STRUCTURE_STATUS), s.status)}</select></label>
+        <label>Occupants <select name="occupants" class="sel">${opt(OCCUPANTS, s.occupants)}</select></label>
+      </div>
+      <div class="row-2">
+        <label>People needing help <input name="people" type="number" min="0" max="999" value="${s.people_needing_help}"></label>
+        <label>Water <select name="water" class="sel"><option value=""${water === '' ? ' selected' : ''}>Not noted</option>${opt(WATER, water)}</select></label>
+      </div>
+      <div class="row-2">
+        <label>Damage <select name="damage" class="sel">${opt(DAMAGE, s.damage)}</select></label>
+        <label>Hazards <input name="hazards" value="${esc(s.hazards)}" placeholder="ELEC GAS"></label>
+      </div>
+      <label>Notes <input name="notes" value="${esc(s.notes)}"></label>
+      <div class="row-btns">${s.lat != null ? `<button class="btn sm" type="button" data-action="pan-to" data-lat="${s.lat}" data-lng="${s.lng}">Show on map</button>` : ''}<button class="btn pri sm" type="submit">Save</button></div>
+    </form>`;
 }
 
 function unitHtml(data, m, state) {
@@ -298,8 +338,10 @@ export function briefingSections(data) {
   ].filter(Boolean) });
   if (p && p.notes) S.push({ title: 'Safety message and notes', lines: [p.notes] });
   S.push({ title: 'Objectives', lines: objectives.length ? objectives.map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ' (open)'}`) : ['None set'] });
-  const cleared = zones.filter((z) => z.status === 'cleared').length, active = zones.filter((z) => z.status === 'active').length, open = zones.filter((z) => z.status === 'open').length;
-  S.push({ title: 'Divisions', lines: [`${zones.length} divisions: ${cleared} cleared, ${active} in progress, ${open} not started`].concat(zones.map((z) => {
+  const cleared = zones.filter((z) => z.status === 'cleared').length, primary = zones.filter((z) => z.status === 'primary').length, active = zones.filter((z) => z.status === 'active').length, open = zones.filter((z) => z.status === 'open').length;
+  const structs = data.structures();
+  const help = structs.reduce((n, s) => n + (s.people_needing_help || 0), 0);
+  S.push({ title: 'Divisions', lines: [`${zones.length} divisions: ${cleared} cleared, ${primary} primary search done, ${active} in progress, ${open} not started`, `${structs.filter((s) => s.status === 'searched').length} of ${structs.length} structures on record searched${help ? ', ' + help + ' people needing help' : ''}`].concat(zones.map((z) => {
     const o = z.objective_id ? data.objective(z.objective_id) : null;
     return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '')}${o ? ' · objective ' + o.number : ''}`;
   })) });

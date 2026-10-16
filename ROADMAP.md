@@ -37,9 +37,9 @@ Ticked when it is on `main`.
 
 ## 5. Primary and secondary search, and structure records
 
-- [ ] Zone status gains the search pass: not started, in progress, primary complete, secondary complete. Two shades of green on the map. Marking the zone clear from the field asks which pass is done.
-- [ ] `ic_structures`: one record per address the field touches: where, searched by whom and when, occupants (evacuated, sheltering in place, refused, none, unknown), people needing help, water depth and waterline, damage class (affected, minor, major, destroyed), hazards, the marking painted. Address clear creates one at the unit's position.
-- [ ] Base: structure dots on the map colored by state; the zone's progress counts records when it has them; a structure panel.
+- [x] Zone status gains the search pass: not started, in progress, primary complete, secondary complete. Two shades of green on the map. "Zone clear" from the field asks which pass is done; a finished pass frees the unit. The base can finish a pass or reopen.
+- [x] `ic_structures`: one record per address the field touches: where, searched by whom and when, occupants (evacuated, sheltering in place, refused, none, unknown), people needing help, water depth, damage class (affected, minor, major, destroyed), hazards, the marking painted, notes. Address clear opens the record at the unit's position; a structure Operations placed is tapped on the mini map. A notable one is logged with its details.
+- [x] Base: structure dots on the map colored by state, red-ringed when people need help; Place structures puts the ones Operations knows about into a division; the zone's progress counts records once it has them; a structure panel edits the record. (Waterline height is not recorded yet, only depth.)
 
 ## 6. Facilities and the communications plan (ICS 205, 206)
 

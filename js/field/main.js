@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
 const AGENCY_KEY = 'ic.field.agency';
@@ -14,7 +14,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary' };
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?', 'Other'];
 const REPLIES = ['Copy', 'Will do', 'Cannot'];
 let mini = null, miniLayers = null, miniZoneId = null;
@@ -35,7 +35,7 @@ function toast(msg, bad) {
 function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
 function screen(name) {
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure']) $('#s-' + s).hidden = name !== s;
   if (name === 'home') { state.pending = null; if (mini) setTimeout(() => mini.invalidateSize(), 50); }
 }
 
@@ -49,7 +49,9 @@ const outbox = new Outbox({
   standdown: (p) => data.standDown(p.id),
   message: (p) => data.sendMessage(p.id, p),
   ack: (p) => data.ackMessage(p.messageId, p.reply, p.count),
-  status: (p) => data.setStatus(p.userId, p.status, p.note)
+  status: (p) => data.setStatus(p.userId, p.status, p.note),
+  structure: (p) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, p.fields)),
+  pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -304,7 +306,10 @@ function myAlert() { return data.user ? data.alerts().find((a) => a.user_id === 
 function queueDraw() {
   if (drawQueued) return;
   drawQueued = true;
-  requestAnimationFrame(() => { drawQueued = false; drawAll(); });
+  let done = false;
+  const go = () => { if (done) return; done = true; drawQueued = false; drawAll(); };
+  requestAnimationFrame(go);
+  setTimeout(go, 60);
 }
 
 function drawAll() {
@@ -342,13 +347,14 @@ function drawAll() {
 
   const acard = $('#assignment');
   if (state.justCleared && (!zone || zone.id === state.justCleared.id)) {
-    setCard(acard, 'card done-card', `<div class="big">${esc(state.justCleared.code)} marked clear</div><div class="muted">Sent ${hhmm(state.justCleared.at)}. Operations sees the zone in green. Waiting for your next assignment.</div>`);
+    const jc = state.justCleared;
+    setCard(acard, 'card done-card', `<div class="big">${esc(jc.code)} ${jc.pass === 'secondary' ? 'marked clear' : 'primary search complete'}</div><div class="muted">Sent ${hhmm(jc.at)}. Operations sees the zone in green${jc.pass === 'secondary' ? '' : ', lighter until the secondary search'}. Waiting for your next assignment.</div>`);
   } else if (zone) {
     const isAssigned = zone.assigned_to === data.user.id;
     setCard(acard, 'card', `
       <div class="k">${isAssigned ? 'Your zone' : 'You are standing in'}</div>
       <div class="zone-name">${esc(zone.code)} · ${esc(zone.name)}</div>
-      <div class="badges"><span class="badge p${zone.priority}">Priority ${zone.priority}</span>${zone.structures ? `<span class="badge">${zone.structures} structures</span>` : ''}<span class="badge ${zone.status === 'cleared' ? 'cleared' : (zone.status === 'active' ? 'active' : '')}">${zone.status === 'cleared' ? 'Cleared ' + hhmm(zone.cleared_at) : (zone.status === 'active' ? 'In progress' : 'Not started')}</span>${zone.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div>
+      <div class="badges"><span class="badge p${zone.priority}">Priority ${zone.priority}</span>${zone.structures ? `<span class="badge">${zone.structures} structures</span>` : ''}<span class="badge ${zone.status === 'cleared' ? 'cleared' : zone.status === 'primary' ? 'primary' : (zone.status === 'active' ? 'active' : '')}">${zone.status === 'cleared' ? 'Cleared ' + hhmm(zone.cleared_at) : zone.status === 'primary' ? 'Primary done ' + hhmm(zone.primary_done_at) + ', secondary next' : (zone.status === 'active' ? 'In progress' : 'Not started')}</span>${zone.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div>
       ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}
       ${zone.work_assignment ? `<div style="font-size:14px;margin-top:4px">${esc(zone.work_assignment)}</div>` : ''}
       ${zone.instructions ? `<div class="muted" style="font-size:12.5px">${esc(zone.instructions)}</div>` : ''}
@@ -392,7 +398,7 @@ function drawMini(zone) {
   miniLayers.me.clearLayers();
   const p = sensors.pos;
   if (zone) {
-    const style = zone.status === 'cleared' ? { color: '#1F6B42', fillColor: '#2E8B57', fillOpacity: 0.4 } : zone.status === 'active' ? { color: '#24588F', fillColor: '#2F6FB3', fillOpacity: 0.25 } : { color: '#7A776F', fillColor: '#CFCAC0', fillOpacity: 0.35 };
+    const style = zone.status === 'cleared' ? { color: '#1F6B42', fillColor: '#2E8B57', fillOpacity: 0.4 } : zone.status === 'primary' ? { color: '#3D8B5F', fillColor: '#8FCFA7', fillOpacity: 0.45 } : zone.status === 'active' ? { color: '#24588F', fillColor: '#2F6FB3', fillOpacity: 0.25 } : { color: '#7A776F', fillColor: '#CFCAC0', fillOpacity: 0.35 };
     if (zone.hazard) { style.color = '#D9822B'; style.dashArray = '7 4'; }
     L.polygon(ringToLatLngs(zone.polygon), Object.assign({ weight: 2 }, style)).addTo(miniLayers.zone);
     if (miniZoneId !== zone.id) { miniZoneId = zone.id; mini.fitBounds(L.latLngBounds(ringToLatLngs(zone.polygon)), { padding: [16, 16] }); }
@@ -404,6 +410,12 @@ function drawMini(zone) {
   for (const h of data.hazards()) {
     if (h.lat == null) continue;
     L.marker([h.lat, h.lng], { icon: icon('<span class="hmark"></span>'), interactive: false }).addTo(miniLayers.pins);
+  }
+  // the structures on record in this zone: tap one to search it
+  for (const s of data.structures(zone ? zone.id : null)) {
+    if (s.lat == null || s.lng == null) continue;
+    const m = L.circleMarker([s.lat, s.lng], { radius: 7, color: s.people_needing_help > 0 ? '#B3261E' : '#fff', weight: 2, fillColor: s.status === 'searched' ? '#2E8B57' : s.status === 'in_progress' ? '#D9822B' : '#8F8B82', fillOpacity: 1 }).addTo(miniLayers.pins);
+    m.on('click', () => openStructure(s.id));
   }
   if (p) {
     L.marker([p.lat, p.lng], { icon: icon(`<span class="umark"><span class="upulse"></span><span class="udot"></span><span class="uhead" style="transform:rotate(${Math.round(sensors.heading || 0)}deg)"></span></span>`), interactive: false }).addTo(miniLayers.me);
@@ -466,18 +478,81 @@ async function sendPhoto() {
   queueDraw();
 }
 
+// ---- a structure: who was there and what state it is in
+function openStructure(id) {
+  const existing = id ? data.structure(id) : null;
+  const p = sensors.pos;
+  const zone = existing && existing.zone_id ? data.zone(existing.zone_id) : (p ? zoneAt(data.zones(), p.lat, p.lng) : null) || myZone();
+  if (!existing && !zone) { toast('No zone here to count against', true); return; }
+  if (zone && zone.status === 'cleared') { toast(zone.code + ' is already clear'); return; }
+  const haz = new Set();
+  if (existing && existing.hazards) existing.hazards.split(' ').forEach((code) => { const i = CLEAR_HAZARDS.findIndex((h) => h[1] === code); if (i >= 0) haz.add(i); });
+  state.st = {
+    id: existing ? existing.id : null, zoneId: zone ? zone.id : null,
+    lat: existing && existing.lat != null ? existing.lat : (p ? p.lat : null), lng: existing && existing.lng != null ? existing.lng : (p ? p.lng : null),
+    occ: existing ? existing.occupants : 'unknown', help: existing ? existing.people_needing_help : 0,
+    water: existing ? existing.water_cm : null, damage: existing ? existing.damage : 'unknown', haz
+  };
+  $('#structure-title').textContent = existing ? (existing.label || 'Structure') : 'Address clear';
+  $('#structure-sub').textContent = (zone ? zone.code + (nextPass(zone) === 'secondary' ? ', secondary search' : '') : 'Outside the divisions') + (state.st.lat != null ? ' · ' + latLngText(state.st.lat, state.st.lng) : ' · no GPS fix yet') + '. Save marks it searched and counts it for the zone.';
+  $('#structure-label').value = existing ? existing.label : '';
+  $('#structure-notes').value = existing ? existing.notes : '';
+  screen('structure');
+  drawStructure();
+}
+function drawStructure() {
+  const st = state.st;
+  if (!st) return;
+  setHtml($('#occ-chips'), OCCUPANTS.map(([v, label]) => `<button class="chip${st.occ === v ? ' on' : ''}" data-action="occ" data-v="${v}">${esc(label)}</button>`).join(''));
+  $('#help-count').textContent = st.help;
+  setHtml($('#water-chips'), WATER.map(([cm, label]) => `<button class="chip${st.water === cm ? ' on' : ''}" data-action="water" data-v="${cm}">${esc(label)}</button>`).join(''));
+  setHtml($('#damage-chips'), DAMAGE.map(([v, label]) => `<button class="chip${st.damage === v ? ' on' : ''}" data-action="damage" data-v="${v}">${esc(label)}</button>`).join(''));
+  setHtml($('#shaz-chips'), CLEAR_HAZARDS.map(([label], i) => `<button class="chip${st.haz.has(i) ? ' on' : ''}" data-action="shaz" data-i="${i}">${esc(label)}</button>`).join(''));
+}
+async function saveStructure() {
+  const st = state.st;
+  if (!st) return;
+  const zone = st.zoneId ? data.zone(st.zoneId) : null;
+  const me = data.me();
+  const codes = [...st.haz].map((i) => CLEAR_HAZARDS[i][1]);
+  const now = new Date();
+  const fields = {
+    zone_id: st.zoneId, lat: st.lat, lng: st.lng, status: 'searched', pass: nextPass(zone), label: $('#structure-label').value.trim(),
+    occupants: st.occ, people_needing_help: st.help, water_cm: st.water, damage: st.damage, hazards: codes.join(' '),
+    marking: markingFor(unitLabel(me).replace(/^Unit /, 'U'), now, codes, st.help), notes: $('#structure-notes').value.trim(),
+    searched_by: data.user.id, searched_at: now.toISOString()
+  };
+  const id = st.id || uuid();
+  const existing = st.id ? data.structure(st.id) : null;
+  data.local('ic_structures', Object.assign({ id, incident_id: data.incident.id, created_by: data.user.id, created_at: now.toISOString(), updated_at: now.toISOString() }, existing || {}, fields));
+  if (zone) {
+    const recs = data.structures(zone.id);
+    data.local('ic_zones', Object.assign({}, zone, { cleared: recs.filter((s) => s.status === 'searched').length, structures: Math.max(zone.structures, recs.length) }));
+  }
+  await outbox.add('structure', { id, update: !!st.id, fields });
+  state.lastSentAt = Date.now();
+  state.st = null;
+  screen('home');
+  const z = zone ? data.zone(zone.id) : null;
+  if (z && z.structures && z.cleared >= z.structures) { openClear(); toast('That was the last structure. Is the search of ' + z.code + ' complete?'); }
+  else toast((fields.label || 'Structure') + ' searched' + (z ? ' · ' + z.cleared + ' of ' + z.structures : ''));
+  queueDraw();
+}
+
 // ---- clear
 function openClear() {
   const z = myZone();
   if (!z) { toast('No zone to mark clear', true); return; }
   if (z.status === 'cleared') { toast(z.code + ' is already clear'); return; }
-  state.victims = 0; state.clearHaz = new Set();
-  $('#clear-title').textContent = 'Mark ' + z.code + ' clear';
-  $('#clear-sub').textContent = `Sends ${z.code} ${z.name} to Operations as searched and clear.` + (z.structures ? ` All ${z.structures} structures are marked searched.` : '');
+  state.victims = 0; state.clearHaz = new Set(); state.pass = nextPass(z);
+  $('#clear-title').textContent = state.pass === 'secondary' ? 'Mark ' + z.code + ' clear' : 'Finish the search of ' + z.code;
+  $('#clear-sub').textContent = `Sends ${z.code} ${z.name} to Operations.` + (z.structures && !data.structures(z.id).length ? ` All ${z.structures} structures are marked searched.` : '');
   screen('clear');
   drawClear();
 }
 function drawClear() {
+  const z = myZone();
+  setHtml($('#pass-chips'), [['primary', 'Primary search done'], ['secondary', 'Secondary search done, zone clear']].map(([v, label]) => `<button class="chip${state.pass === v ? ' on' : ''}${z && z.status === 'primary' && v === 'primary' ? ' dim' : ''}" data-action="pass" data-v="${v}">${label}</button>`).join(''));
   $('#victims').textContent = state.victims;
   $('#clear-chips').innerHTML = CLEAR_HAZARDS.map(([label], i) => `<button class="chip${state.clearHaz.has(i) ? ' on' : ''}" data-action="clear-haz" data-i="${i}">${esc(label)}</button>`).join('');
   const me = data.me();
@@ -489,34 +564,22 @@ async function confirmClear() {
   if (!z) { screen('home'); return; }
   const me = data.me();
   const now = new Date();
+  const pass = state.pass;
   const marking = markingFor(unitLabel(me).replace(/^Unit /, 'U'), now, [...state.clearHaz].map((i) => CLEAR_HAZARDS[i][1]), state.victims);
-  const patch = { status: 'cleared', cleared: Math.max(z.structures, z.cleared), cleared_at: now.toISOString(), marking, hazard: z.hazard || state.clearHaz.size > 0 };
-  data.local('ic_zones', Object.assign({}, z, patch));
-  await outbox.add('clear', { zoneId: z.id, patch });
-  state.justCleared = { id: z.id, code: z.code, at: now };
+  const hasRecords = data.structures(z.id).length > 0;
+  const local = { status: pass === 'secondary' ? 'cleared' : 'primary', cleared: hasRecords ? z.cleared : Math.max(z.structures, z.cleared), cleared_at: now.toISOString(), marking, hazard: z.hazard || state.clearHaz.size > 0 };
+  if (pass === 'secondary') local.secondary_done_at = now.toISOString(); else local.primary_done_at = now.toISOString();
+  data.local('ic_zones', Object.assign({}, z, local));
+  await outbox.add('pass', { zoneId: z.id, pass, opts: { marking, hazard: state.clearHaz.size > 0 } });
+  state.justCleared = { id: z.id, code: z.code, at: now, pass };
   state.lastSentAt = Date.now();
   screen('home');
-  toast(navigator.onLine ? z.code + ' marked clear' : z.code + ' kept as clear, it sends when there is signal');
+  const said = pass === 'secondary' ? z.code + ' marked clear' : 'Primary search of ' + z.code + ' complete';
+  toast(navigator.onLine ? said : said + ', it sends when there is signal');
   queueDraw();
 }
-async function addrClear() {
-  const z = myZone();
-  if (!z) { toast('No zone here to count against', true); return; }
-  if (z.status === 'cleared') { toast(z.code + ' is already clear'); return; }
-  const cleared = z.cleared + 1;
-  if (z.structures && cleared >= z.structures) {
-    data.local('ic_zones', Object.assign({}, z, { cleared: z.structures }));
-    await outbox.add('addr', { zoneId: z.id, cleared: z.structures });
-    openClear();
-    toast('That was the last structure. Mark the zone clear?');
-    return;
-  }
-  data.local('ic_zones', Object.assign({}, z, { cleared }));
-  await outbox.add('addr', { zoneId: z.id, cleared });
-  state.lastSentAt = Date.now();
-  toast(z.structures ? `${cleared} of ${z.structures} cleared` : `${cleared} cleared in ${z.code}`);
-  queueDraw();
-}
+// "Address clear": one structure record at the unit's position
+async function addrClear() { openStructure(null); }
 
 // ---- hazard and help
 function openHazard() {
@@ -585,6 +648,14 @@ document.addEventListener('click', async (e) => {
       case 'send-photo': await sendPhoto(); break;
       case 'addr-clear': await addrClear(); break;
       case 'zone-clear': openClear(); break;
+      case 'pass': state.pass = btn.dataset.v; { const z = myZone(); $('#clear-title').textContent = state.pass === 'secondary' ? 'Mark ' + (z ? z.code : '') + ' clear' : 'Finish the search of ' + (z ? z.code : ''); } drawClear(); break;
+      case 'occ': state.st.occ = btn.dataset.v; drawStructure(); break;
+      case 'water': state.st.water = state.st.water === Number(btn.dataset.v) ? null : Number(btn.dataset.v); drawStructure(); break;
+      case 'damage': state.st.damage = btn.dataset.v; drawStructure(); break;
+      case 'shaz': { const i = Number(btn.dataset.i); if (state.st.haz.has(i)) state.st.haz.delete(i); else state.st.haz.add(i); drawStructure(); break; }
+      case 'help-up': state.st.help = Math.min(999, state.st.help + 1); drawStructure(); break;
+      case 'help-down': state.st.help = Math.max(0, state.st.help - 1); drawStructure(); break;
+      case 'save-structure': await saveStructure(); break;
       case 'victims-up': state.victims += 1; drawClear(); break;
       case 'victims-down': state.victims = Math.max(0, state.victims - 1); drawClear(); break;
       case 'clear-haz': { const i = Number(btn.dataset.i); if (state.clearHaz.has(i)) state.clearHaz.delete(i); else state.clearHaz.add(i); drawClear(); break; }

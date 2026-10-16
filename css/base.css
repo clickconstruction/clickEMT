@@ -44,6 +44,11 @@
 .par-row.ok { border-left-color: var(--cleared-fill); } .par-row.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-row.wait { border-left-color: var(--hazard); }
 .safety .missing { color: var(--danger); font-weight: 600; }
 .log-row.log-status { border-left-color: #8CA6BF; }
+.badge.primary { background: #E3F2E8; color: #2F7A52; }
+.sdot.primary { background: #8FCFA7; border-color: #3D8B5F; }
+.sw.primary { background: rgba(143,207,167,.6); border-color: #3D8B5F; }
+.d-status.primary { background: #E3F2E8; color: #2F7A52; }
+.inline-form select.sel { min-height: 36px; }
 .sel { border: 1px solid #C9C5BB; border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: #fff; max-width: 100%; }
 .inline-form textarea { border: 1px solid #C9C5BB; border-radius: 6px; padding: 6px 8px; font-size: 13px; font-family: inherit; resize: vertical; }
 .inline-form .chk { flex-direction: row; align-items: center; gap: 6px; font-size: 12.5px; }

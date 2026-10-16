@@ -11,6 +11,9 @@
   'use strict';
   const FIELD = /\/field\//.test(location.pathname);
   const TAB = Math.random().toString(36).slice(2, 10);
+  // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
+  // so a tab left open on older code cannot hand this one tables it does not understand.
+  const SEED_VERSION = 7;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -475,7 +478,7 @@
     if (!changes.length) return;
     const batch = changes.map(([type, table, row, old]) => ({ type, table, row: copy(row), old: old ? copy(old) : null }));
     setTimeout(() => batch.forEach(deliver), 0);
-    if (bc) bc.postMessage({ kind: 'change', from: TAB, changes: batch });
+    if (bc) bc.postMessage({ kind: 'change', from: TAB, version: SEED_VERSION, changes: batch });
   }
   function absorb(table, type, row) {
     const rows = tables[table];
@@ -491,12 +494,12 @@
   if (bc) {
     bc.onmessage = (e) => {
       const m = e.data || {};
-      if (m.kind === 'hello' && settled) bc.postMessage({ kind: 'state', to: m.from, tables, files: [...files] });
-      else if (m.kind === 'state' && m.to === TAB && !settled && !adopted) { adopted = m; resolveHello(); }
-      else if (m.kind === 'change' && settled) for (const c of m.changes) { absorb(c.table, c.type, c.row); deliver(c); }
+      if (m.kind === 'hello' && settled && m.version === SEED_VERSION) bc.postMessage({ kind: 'state', to: m.from, version: SEED_VERSION, tables, files: [...files] });
+      else if (m.kind === 'state' && m.to === TAB && m.version === SEED_VERSION && !settled && !adopted) { adopted = m; resolveHello(); }
+      else if (m.kind === 'change' && settled && m.version === SEED_VERSION) for (const c of m.changes) { absorb(c.table, c.type, c.row); deliver(c); }
       else if (m.kind === 'file') files.set(m.path, m.blob);
     };
-    bc.postMessage({ kind: 'hello', from: TAB });
+    bc.postMessage({ kind: 'hello', from: TAB, version: SEED_VERSION });
     setTimeout(resolveHello, 250);
   } else resolveHello();
   const ready = Promise.all([import(RULES_URL), hello]).then(([m]) => {

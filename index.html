@@ -87,6 +87,8 @@
     <span class="pill mono" id="inc-code" title="Field phones join with this code">Join code</span>
     <span class="pill" id="live-pill"><span class="dot" id="live-dot"></span><span id="live-text">connecting</span></span>
     <span class="pill mono" id="clock"></span>
+    <button class="btn sm" data-action="period">Period</button>
+    <button class="btn sm" data-action="briefing">Briefing</button>
     <button class="btn sm" data-action="switch-incident">Switch incident</button>
     <button class="btn sm" data-action="sign-out">Sign out</button>
   </header>
@@ -130,6 +132,18 @@
       <div id="panel" class="panel"></div>
     </aside>
   </div>
+</div>
+
+<div id="briefing" class="briefing" hidden>
+  <div class="briefing-bar">
+    <strong>Shift-change briefing</strong>
+    <span class="muted" id="briefing-when"></span>
+    <span style="flex:1"></span>
+    <button class="btn sm" data-action="copy-briefing">Copy as text</button>
+    <button class="btn sm" data-action="print-briefing">Print</button>
+    <button class="btn sm" data-action="close-briefing">Close</button>
+  </div>
+  <div class="briefing-page" id="briefing-page"></div>
 </div>
 
 <div id="toast" class="toast" hidden></div>

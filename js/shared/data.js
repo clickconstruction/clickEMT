@@ -1,13 +1,13 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives'];
 const BUCKET = 'ic-photos';
 const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map() };
 }
 
 function keyOf(table, row) {
@@ -92,7 +92,7 @@ export class Data {
   }
   async load(id) {
     const q = (t) => this.sb.from(t).select('*').eq('incident_id', id);
-    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks] = await Promise.all([
+    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives] = await Promise.all([
       this.sb.from('ic_incidents').select('*').eq('id', id).single(),
       q('ic_members'),
       q('ic_zones').order('code'),
@@ -102,14 +102,17 @@ export class Data {
       q('ic_alerts').order('created_at', { ascending: false }),
       q('ic_events').order('at', { ascending: false }).limit(EVENTS_LIMIT),
       q('ic_messages').order('created_at', { ascending: false }).limit(MESSAGES_LIMIT),
-      q('ic_message_acks')
+      q('ic_message_acks'),
+      q('ic_periods').order('number'),
+      q('ic_objectives').order('number')
     ]);
-    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks]) if (r.error) throw r.error;
+    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives]) if (r.error) throw r.error;
     this.store.incident = inc.data;
     const put = (table, rows) => { const m = mapFor(this.store, table); for (const row of rows || []) m.set(keyOf(table, row), row); };
     put('ic_members', members.data); put('ic_zones', zones.data); put('ic_positions', positions.data);
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
+    put('ic_periods', periods.data); put('ic_objectives', objectives.data);
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
@@ -169,6 +172,53 @@ export class Data {
   alerts(all) { return [...this.store.alerts.values()].filter((a) => all || !a.stood_down_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
   events() { return [...this.store.events.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : b.id - a.id)); }
   myZones() { return this.user ? this.zones().filter((z) => z.assigned_to === this.user.id) : []; }
+
+  // ---- operational periods and objectives (ICS 202)
+  periods() { return [...this.store.periods.values()].sort((a, b) => a.number - b.number); }
+  period(id) { return this.store.periods.get(id) || null; }
+  currentPeriod() {
+    const inc = this.store.incident;
+    const cur = inc && inc.current_period_id ? this.period(inc.current_period_id) : null;
+    return cur || this.periods().filter((p) => !p.closed_at).slice(-1)[0] || null;
+  }
+  objectives(periodId) {
+    const pid = periodId || (this.currentPeriod() && this.currentPeriod().id);
+    return [...this.store.objectives.values()].filter((o) => o.period_id === pid).sort((a, b) => a.number - b.number);
+  }
+  objective(id) { return this.store.objectives.get(id) || null; }
+  // the events that fall inside a period
+  eventsIn(period) {
+    if (!period) return this.events();
+    const from = period.starts_at, to = period.closed_at || null;
+    return this.events().filter((e) => e.at >= from && (!to || e.at <= to));
+  }
+  async startPeriod({ endsAt, ic, ops, safety, notes, carry }) {
+    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false });
+    if (error) throw error;
+    this.local('ic_periods', data);
+    return data;
+  }
+  async updatePeriod(id, patch) {
+    const { data, error } = await this.sb.from('ic_periods').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_periods', data);
+    return data;
+  }
+  async addObjective(text) {
+    const p = this.currentPeriod();
+    if (!p) throw new Error('Start an operational period first');
+    const number = this.objectives(p.id).reduce((n, o) => Math.max(n, o.number), 0) + 1;
+    const { data, error } = await this.sb.from('ic_objectives').insert({ incident_id: this.store.incident.id, period_id: p.id, number, text }).select().single();
+    if (error) throw error;
+    this.local('ic_objectives', data);
+    return data;
+  }
+  async updateObjective(id, patch) {
+    const { data, error } = await this.sb.from('ic_objectives').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_objectives', data);
+    return data;
+  }
 
   // ---- messages (ICS 213): who was addressed is fixed on the message; acks are one row per recipient
   messages() { return [...this.store.messages.values()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }

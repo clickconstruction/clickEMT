@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
 const AGENCY_KEY = 'ic.field.agency';
@@ -349,7 +349,8 @@ function drawAll() {
       <div class="k">${isAssigned ? 'Your zone' : 'You are standing in'}</div>
       <div class="zone-name">${esc(zone.code)} · ${esc(zone.name)}</div>
       <div class="badges"><span class="badge p${zone.priority}">Priority ${zone.priority}</span>${zone.structures ? `<span class="badge">${zone.structures} structures</span>` : ''}<span class="badge ${zone.status === 'cleared' ? 'cleared' : (zone.status === 'active' ? 'active' : '')}">${zone.status === 'cleared' ? 'Cleared ' + hhmm(zone.cleared_at) : (zone.status === 'active' ? 'In progress' : 'Not started')}</span>${zone.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div>
-      ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}`);
+      ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}
+      ${zone.objective_id && data.objective(zone.objective_id) ? `<div class="muted" style="font-size:12.5px">Objective ${data.objective(zone.objective_id).number}: ${esc(data.objective(zone.objective_id).text)}</div>` : ''}`);
   } else {
     setCard(acard, 'card', `<div class="k">Your zone</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns zones from the base map. You can still send photos and hazards from where you stand.</div>`);
   }
@@ -407,10 +408,11 @@ function drawMini(zone) {
 }
 
 function drawMenu() {
-  const inc = data.incident, me = data.me();
+  const inc = data.incident, me = data.me(), per = data.currentPeriod();
   $('#menu-facts').innerHTML = `
     <span class="k">Incident</span><span>${esc(inc.name)}</span>
-    <span class="k">Period</span><span>${esc(inc.period || 'not set')}</span>
+    <span class="k">Period</span><span>${per ? esc(periodLabel(per)) + (per.ic_name ? ', IC ' + esc(per.ic_name) : '') : esc(inc.period || 'not set')}</span>
+    ${per && per.notes ? `<span class="k">Notes</span><span>${esc(per.notes)}</span>` : ''}
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
     <span class="k">Code</span><span class="mono">${esc(inc.code)}</span>
     <span class="k">You</span><span>${esc(unitLabel(me))}${me && me.crew ? ' · ' + esc(me.crew) : ''}</span>

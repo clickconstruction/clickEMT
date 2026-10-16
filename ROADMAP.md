@@ -25,9 +25,9 @@ Ticked when it is on `main`.
 
 ## 3. Operational periods and objectives (ICS 202, transfer of command)
 
-- [ ] `ic_periods` (number, start, end, Incident Commander, Operations Section Chief, Safety Officer, notes) and `ic_objectives` (per period, numbered, text, done). A zone can point at the objective it serves, which is what its priority means.
-- [ ] Base: the period in the header; a Period panel with its objectives; Start next period carries open objectives and open assignments forward and closes the old one.
-- [ ] The shift-change briefing, assembled from the data: objectives and their state, zones cleared and open, hazards still live, units in the field and their status, open alerts, the last hour of the log. Printable. This is the ICS transfer-of-command checklist.
+- [x] `ic_periods` (number, start, planned end, Incident Commander, Operations Section Chief, Safety Officer, notes) and `ic_objectives` (per period, numbered, text, done). A zone can point at the objective it serves, which is what its priority means. A new incident opens in period 1.
+- [x] Base: the period and the IC in the header; a Period panel with the command names, the period's safety message, its objectives (add, tick done) and the zones each serves; Start next period closes the old one and carries open objectives forward, moving the zones with them. The phone shows the objective its zone serves and the period's notes.
+- [x] The shift-change briefing, assembled from the data: incident and command, the safety message, objectives and their state, every zone's state, resources by status, hazards still open, what needs attention, the log of the period. Printable, and copied as plain text for radio or email.
 
 ## 4. The Division assignment (ICS 204) and ICS vocabulary
 

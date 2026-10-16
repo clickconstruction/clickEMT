@@ -29,6 +29,9 @@
   const P = [ID('f', 1), ID('f', 2), ID('f', 3)];
   const H1 = ID('b', 1);
   const MSG = [ID('d', 1), ID('d', 2)];
+  const PER = ID('1', 1);
+  const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
+  let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
     { id: U.unit2, email: 'unit2@mock.local' }, { id: U.unit3, email: 'unit3@mock.local' }
@@ -46,8 +49,9 @@
     const ring = (pts) => ({ type: 'Polygon', coordinates: [pts.map(([lat, lng]) => [lng, lat]).concat([[pts[0][1], pts[0][0]]])] });
     const zone = (i, code, name, priority, status, assigned, structures, cleared, extra) => ({
       id: Z[code], incident_id: INC, code, name, priority, status, hazard: false, assigned_to: assigned, structures, cleared,
-      cleared_at: null, marking: null, polygon: null, created_at: ago(183 - i), updated_at: ago(183 - i), ...extra
+      cleared_at: null, marking: null, polygon: null, objective_id: code[0] === 'A' ? OBJ[0] : code === 'B-3' ? null : OBJ[1], created_at: ago(183 - i), updated_at: ago(183 - i), ...extra
     });
+    const sevenPm = new Date(); sevenPm.setHours(19, 0, 0, 0);
     const photo = (i, user, zone, lat, lng, heading, note, min) => ({
       id: P[i], incident_id: INC, user_id: user, zone_id: Z[zone], lat, lng, heading, note,
       storage_path: INC + '/' + user + '/' + P[i] + '.jpg', taken_at: ago(min), created_at: ago(min)
@@ -55,9 +59,17 @@
     const t = {
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
-        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190),
+        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER,
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
+      ic_periods: [
+        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190) }
+      ],
+      ic_objectives: [
+        { id: OBJ[0], incident_id: INC, period_id: PER, number: 1, text: 'Primary search of every structure north of the river by 19:00', done_at: null, created_at: ago(188) },
+        { id: OBJ[1], incident_id: INC, period_id: PER, number: 2, text: 'Keep the Mill Street bridge approach closed and watched', done_at: null, created_at: ago(187) },
+        { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), created_at: ago(186) }
+      ],
       ic_members: [
         { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null },
         { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null },
@@ -97,7 +109,9 @@
       ic_events: []
     };
     const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min) });
-    ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding');
+    ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1');
+    ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan');
+    for (const o of t.ic_objectives) ev(189 - o.number, U.ops, 'ops', 'Objective ' + o.number + ' set: ' + o.text, 'ic_objectives', o.id);
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Zone ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
     ev(170, U.unit1, 'ops', 'Unit 1 checked in with 2 people');
@@ -117,6 +131,7 @@
     ev(20, U.unit3, 'hazard', 'Hazard in A-2: downed power line (Line across the park entrance), reported by Unit 3', 'ic_hazards', H1);
     ev(15, U.ops, 'msg', 'Operations to Unit 3: Watch the power line at the park entrance, the utility crew is 20 minutes out', 'ic_messages', MSG[1]);
     ev(9, U.unit3, 'clear', 'Structure cleared in A-2 (6 of 18)', 'ic_zones', Z['A-2']);
+    ev(5, U.ops, 'ops', 'Objective 3 done: Shelter open and staffed at the high school', 'ic_objectives', OBJ[2]);
     ev(5, U.ops, 'note', 'Shelter open at Cedar Fork High School gym, Red Cross on site');
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
     return t;
@@ -125,9 +140,11 @@
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now() }),
+    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null }),
+    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', created_at: now() }),
+    ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
-    ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, created_at: now(), updated_at: now() }),
+    ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', taken_at: now(), created_at: now() }),
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
@@ -157,6 +174,8 @@
       case 'ic_hazards': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isMember(row.incident_id, uid);
       case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_events': return op === 'insert' && row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid);
+      case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
+      case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
       default: return false;
@@ -183,6 +202,8 @@
       if (!r.from_user) throw nn('from_user');
     }
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
+    if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
+    if (table === 'ic_periods' && r.number == null) throw nn('number');
   }
 
   // ---- the triggers: the log (ic_events), updated_at, a hazard's flag on its zone
@@ -205,6 +226,7 @@
       if (z && !z.hazard) updateRow('ic_zones', z, { hazard: true }, uid, changes, true);
     }
     if (table === 'ic_alerts') log(changes, r.incident_id, r.user_id, 'help', `EMERGENCY, ${label(r.incident_id, r.user_id)} needs help in ${zoneCode(r.zone_id)}`, 'ic_alerts', r.id);
+    if (table === 'ic_objectives' && !quiet) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} set: ${r.text}`, 'ic_objectives', r.id);
     if (table === 'ic_messages') {
       const kind = r.kind === 'safety' ? 'safety' : r.kind === 'par' ? 'par' : 'msg';
       const lead = r.kind === 'safety' ? 'SAFETY MESSAGE, ' : r.kind === 'par' ? 'PAR, ' : '';
@@ -233,6 +255,17 @@
     }
   }
   function afterUpdate(table, r, old, uid, changes) {
+    if (table === 'ic_objectives' && !quiet) {
+      if (r.done_at && !old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} done: ${r.text}`, 'ic_objectives', r.id);
+      else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
+      else if (r.text !== old.text) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} is now: ${r.text}`, 'ic_objectives', r.id);
+    }
+    if (table === 'ic_periods' && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null))) {
+      log(changes, r.incident_id, uid, 'ops', `Operational period ${r.number} updated`
+        + (r.ic_name !== old.ic_name ? ', Incident Commander ' + (r.ic_name || 'not set') : '')
+        + (r.ops_chief !== old.ops_chief ? ', Operations ' + (r.ops_chief || 'not set') : '')
+        + (r.safety_officer !== old.safety_officer ? ', Safety ' + (r.safety_officer || 'not set') : ''));
+    }
     if (table === 'ic_members' && r.status !== old.status) {
       const who = label(r.incident_id, r.user_id);
       const text = r.status === 'available' ? `${who} is available${old.status === 'out_of_service' ? ', back in service' : ''}`
@@ -442,12 +475,40 @@
         if (!nm) throw dbError('the incident needs a name');
         let code;
         do { code = ''; for (let i = 0; i < 6; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; } while (tables.ic_incidents.some((i) => i.code === code));
-        const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period), base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid };
+        const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period) || 'OP 1', base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid };
         tables.ic_incidents.push(inc); changes.push(['INSERT', 'ic_incidents', inc, null]);
         const m = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: 'ops', unit_name: 'Operations' };
         tables.ic_members.push(m); changes.push(['INSERT', 'ic_members', m, null]);
-        log(changes, inc.id, uid, 'ops', 'Incident opened: ' + inc.name);
+        const p1 = { ...DEFAULTS.ic_periods(), incident_id: inc.id, number: 1 };
+        tables.ic_periods.push(p1); changes.push(['INSERT', 'ic_periods', p1, null]);
+        inc.current_period_id = p1.id;
+        log(changes, inc.id, uid, 'ops', 'Incident opened: ' + inc.name + ', operational period 1');
         out = copy(inc);
+      } else if (name === 'ic_start_period') {
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations starts a period');
+        const cur = tables.ic_periods.filter((p) => p.incident_id === a.p_incident && !p.closed_at).sort((x, y) => y.number - x.number)[0] || null;
+        const maxN = tables.ic_periods.filter((p) => p.incident_id === a.p_incident).reduce((n, p) => Math.max(n, p.number), 0);
+        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '' };
+        tables.ic_periods.push(np); changes.push(['INSERT', 'ic_periods', np, null]);
+        let n = 0;
+        if (cur) {
+          const old = copy(cur); cur.closed_at = now(); changes.push(['UPDATE', 'ic_periods', cur, old]);
+          if (a.p_carry !== false) {
+            quiet = true;
+            try {
+              for (const o of tables.ic_objectives.filter((x) => x.period_id === cur.id && !x.done_at).sort((x, y) => x.number - y.number)) {
+                n += 1;
+                const no = { ...DEFAULTS.ic_objectives(), incident_id: a.p_incident, period_id: np.id, number: n, text: o.text };
+                tables.ic_objectives.push(no); changes.push(['INSERT', 'ic_objectives', no, null]);
+                for (const z of tables.ic_zones.filter((z) => z.objective_id === o.id)) updateRow('ic_zones', z, { objective_id: no.id }, uid, changes, true);
+              }
+            } finally { quiet = false; }
+          }
+        }
+        const inc = tables.ic_incidents.find((i) => i.id === a.p_incident);
+        const oldInc = copy(inc); inc.current_period_id = np.id; inc.period = 'OP ' + np.number; changes.push(['UPDATE', 'ic_incidents', inc, oldInc]);
+        log(changes, a.p_incident, uid, 'ops', `Operational period ${np.number} started${np.ic_name ? ', Incident Commander ' + np.ic_name : ''}${n ? ', ' + n + ' objective' + (n === 1 ? '' : 's') + ' carried over' : ''}`);
+        out = copy(np);
       } else if (name === 'ic_join') {
         if (!uid) throw dbError('not signed in');
         if (!['ops', 'unit'].includes(a.p_role)) throw dbError('role must be ops or unit');
@@ -585,7 +646,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ },
     ready: () => ready
   };
   window.supabase = Object.assign({}, window.supabase || {}, { createClient: () => makeClient(), mock: true });

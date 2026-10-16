@@ -2,15 +2,15 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, unitLabel as unitLabelOf } from '../shared/rules.js';
+import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, esc } from './ui.js';
+import { nextZoneCode, hhmm, centroid, periodLabel, unitLabel as unitLabelOf } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.base.incident';
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false };
 let map = null;
 let drawQueued = false;
 
@@ -150,12 +150,13 @@ function drawAll() {
   if (!data.incident || $('#app').hidden) return;
   const inc = data.incident;
   $('#inc-name').textContent = inc.name;
-  $('#inc-sub').textContent = [inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.units().length} units`, `${data.zones().length} zones, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
+  const cur = data.currentPeriod();
+  $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} zones, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
   $('#inc-code').textContent = 'Join code ' + inc.code;
   map.render(data, state);
   $('#zones').innerHTML = zonesHtml(data, state);
   const panel = $('#panel');
-  const focused = document.activeElement && panel.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
+  const focused = document.activeElement && panel.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
   if (!focused) {
     panel.innerHTML = panelHtml(data, state);
     if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
@@ -166,11 +167,19 @@ function drawAll() {
   md.hidden = !mh;
   md.innerHTML = mh;
   md.classList.toggle('ack', !!mh && data.alerts().every((a) => a.acknowledged_at));
+  if (!$('#briefing').hidden) drawBriefing();
   const sf = $('#safety');
   const sh = safetyHtml(data);
   sf.hidden = !sh;
   sf.innerHTML = sh;
   drawLive();
+}
+
+function drawBriefing() {
+  const html = briefingHtml(data);
+  const page = $('#briefing-page');
+  if (page.__html !== html) { page.__html = html; page.innerHTML = html; }
+  $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
 
 function drawLive() {
@@ -243,6 +252,15 @@ document.addEventListener('click', async (e) => {
         if (m && confirm(`Check ${unitLabelOf(m)} out? Its zones go back to not started.`)) await data.setStatus(id, 'checked_out');
         break;
       }
+      case 'period': state.periodNext = false; select({ type: 'period' }); break;
+      case 'period-next': state.periodNext = true; select({ type: 'period' }); break;
+      case 'period-next-cancel': state.periodNext = false; queueDraw(); break;
+      case 'objective-done': await data.updateObjective(id, { done_at: new Date().toISOString() }); break;
+      case 'objective-undo': await data.updateObjective(id, { done_at: null }); break;
+      case 'briefing': $('#briefing').hidden = false; drawBriefing(); break;
+      case 'close-briefing': $('#briefing').hidden = true; break;
+      case 'print-briefing': drawBriefing(); window.print(); break;
+      case 'copy-briefing': await navigator.clipboard.writeText(briefingText(data)); toast('Briefing copied as text'); break;
       case 'start-par': {
         const r = data.recipientsFor(btn.dataset.target || 'all');
         if (!r.toUsers.length) { toast('Nobody to ask', true); break; }
@@ -279,6 +297,24 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+// "19:00" today, or tomorrow when that time has passed, as an ISO timestamp
+function timeToIso(hhmmValue) {
+  if (!hhmmValue) return null;
+  const [h, m] = hhmmValue.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  if (d.getTime() < Date.now() - 60000) d.setDate(d.getDate() + 1);
+  return d.toISOString();
+}
+
+document.addEventListener('change', async (e) => {
+  const sel = e.target.closest('[data-select]');
+  if (!sel) return;
+  try {
+    if (sel.dataset.select === 'zone-objective') { await data.updateZone(sel.dataset.id, { objective_id: sel.value || null }); sel.blur(); queueDraw(); }
+  } catch (err) { toast(err.message || String(err), true); }
+});
+
 function stopDraw() {
   map.cancelDraw();
   $('#btn-boundary').classList.remove('on');
@@ -301,6 +337,22 @@ document.addEventListener('submit', async (e) => {
     } else if (form.dataset.form === 'zone-edit') {
       await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0 });
       toast('Saved');
+      queueDraw();
+    } else if (form.dataset.form === 'objective') {
+      const text = form.text.value.trim();
+      if (!text) return;
+      await data.addObjective(text);
+      form.text.value = '';
+      form.text.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'period-edit') {
+      await data.updatePeriod(form.dataset.id, { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value) });
+      toast('Period saved');
+      queueDraw();
+    } else if (form.dataset.form === 'period-start') {
+      const p = await data.startPeriod({ endsAt: timeToIso(form.ends.value), ic: form.ic.value, ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked });
+      state.periodNext = false;
+      toast('Operational period ' + p.number + ' started');
       queueDraw();
     } else if (form.dataset.form === 'oos') {
       await data.setStatus(form.dataset.id, 'out_of_service', form.reason.value);

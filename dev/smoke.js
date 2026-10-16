@@ -59,7 +59,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -338,6 +338,66 @@ async function accountability(check) {
   check('checking in again makes it available with its head count, and logs it', inc.id === INC() && base.member(u.unit3).checked_out_at === null && base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Unit 3 checked in with 2 people'));
 }
 
+// Operational periods and objectives: the header names the period and the IC, the Period panel
+// lists objectives and adds one, a zone is pointed at an objective, the next period starts and
+// carries the open objectives and the zones with them, and the briefing assembles the picture.
+async function periods(check) {
+  const per = M().ids.period, obj = M().ids.objectives;
+  check('the header names operational period 1 and the Incident Commander', has('#inc-sub', 'op 1', 'ic dana ruiz'), text('#inc-sub'));
+  check('the data has period 1 with three objectives, one done', base.currentPeriod().id === per && base.objectives().length === 3 && !!base.objectives()[2].done_at);
+  $('[data-action="period"]').click();
+  await until(() => has('#panel .title', 'operational period 1'));
+  check('the Period panel shows the names and the three objectives, with the zones each serves', $('#panel form[data-form="period-edit"] input[name="ic"]').value === 'Dana Ruiz' && $('#panel form[data-form="period-edit"] input[name="safety"]').value === 'Priya Natarajan' && has('#panel', 'primary search of every structure', 'a-1, a-2, a-3', 'mill street bridge approach', 'b-1, b-2') && $$('#panel .obj.done').length === 1, text('#panel'));
+  const of = $('#panel form[data-form="objective"]');
+  of.text.value = 'Secondary search of A-3 before dark';
+  of.requestSubmit();
+  await until(() => base.objectives().length === 4);
+  const o4 = base.objectives()[3];
+  check('adding an objective numbers it 4 and logs it', o4.number === 4 && o4.text === 'Secondary search of A-3 before dark' && !!eventText(base, 'Objective 4 set: Secondary search of A-3 before dark') && await until(() => has('#panel', '4. secondary search of a-3')));
+  $(`#panel [data-action="objective-done"][data-id="${obj[1]}"]`).click();
+  await until(() => base.objective(obj[1]).done_at);
+  check('ticking objective 2 marks it done and logs it', !!eventText(base, 'Objective 2 done: Keep the Mill Street bridge approach closed and watched') && await until(() => $$('#panel .obj.done').length === 2));
+  check('the field sees the objectives too', await until(() => field.objectives().length === 4 && field.objective(obj[1]).done_at));
+
+  $(`#zones .zr[data-id="${ZONE('B-3')}"]`).click();
+  await until(() => has('#panel .title', 'b-3'));
+  const sel = $('#panel select[data-select="zone-objective"]');
+  check('the zone panel offers the period\'s objectives', !!sel && $$('option', sel).length === 5 && sel.value === '', sel && $$('option', sel).length);
+  sel.value = o4.id;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => base.zone(ZONE('B-3')).objective_id === o4.id);
+  check('B-3 now serves objective 4, shown in its row', await until(() => has(`#zones .zr[data-id="${ZONE('B-3')}"]`, 'objective 4')), text(`#zones .zr[data-id="${ZONE('B-3')}"]`));
+
+  $('[data-action="period"]').click();
+  await until(() => has('#panel .title', 'operational period 1'));
+  $('#panel [data-action="period-next"]').click();
+  await until(() => $('#panel form[data-form="period-start"]'));
+  const pf = $('#panel form[data-form="period-start"]');
+  check('the start form is prefilled with the current command names and carries objectives by default', pf.ic.value === 'Dana Ruiz' && pf.carry.checked, pf.ic.value);
+  pf.ic.value = 'Jordan Pike';
+  pf.notes.value = 'Night operations: lights on every unit.';
+  pf.requestSubmit();
+  await until(() => base.currentPeriod() && base.currentPeriod().number === 2);
+  const p2 = base.currentPeriod();
+  check('period 2 starts with the new IC, period 1 is closed, and the log says what came over', p2.ic_name === 'Jordan Pike' && p2.notes.startsWith('Night') && !!base.period(per).closed_at && !!eventText(base, 'Operational period 2 started, Incident Commander Jordan Pike, 2 objectives carried over'), logTexts()[0]);
+  const carried = base.objectives(p2.id);
+  check('the two open objectives came over, renumbered 1 and 2, the done ones stayed behind', carried.length === 2 && carried[0].number === 1 && carried[0].text.startsWith('Primary search') && carried[1].number === 2 && carried[1].text.startsWith('Secondary search') && base.objectives(per).length === 4, carried.map((o) => o.number + ' ' + o.text).join(' | '));
+  check('zones follow their objectives into the new period', base.zone(ZONE('A-1')).objective_id === carried[0].id && base.zone(ZONE('B-3')).objective_id === carried[1].id && base.zone(ZONE('B-1')).objective_id === obj[1]);
+  check('carry-over wrote no objective lines of its own', base.events().filter((e) => /^Objective 1 set/.test(e.text)).length === 1);
+  check('the header and the field see period 2', await until(() => has('#inc-sub', 'op 2', 'ic jordan pike')) && await until(() => field.currentPeriod() && field.currentPeriod().number === 2), text('#inc-sub'));
+
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && $('#briefing-page').textContent.includes('Objectives'));
+  check('the briefing opens with the incident, the period, objectives, zones, resources, hazards and the log', ['incident', 'operational period 2', 'jordan pike', 'night operations', 'objectives', '1. primary search', 'zones', '6 zones', 'resources', '6 people in the field', 'hazards still open', 'downed power line', 'needs attention', 'log of this period'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 300));
+  $('[data-action="close-briefing"]').click();
+  check('and closes again', $('#briefing').hidden);
+
+  const e1 = await (async () => { try { await field.addObjective('Not allowed'); return null; } catch (e) { return e; } })();
+  check('a unit cannot add objectives', !!e1 && e1.code === '42501', e1 && e1.message);
+  const e2 = await (async () => { try { await field.startPeriod({}); return null; } catch (e) { return e; } })();
+  check('a unit cannot start a period', !!e2 && /Only Operations/.test(e2.message), e2 && e2.message);
+}
+
 // A new unit checks in with the code; Operations can open a second incident.
 async function checkIn(check) {
   const c = window.supabase.createClient();
@@ -356,7 +416,7 @@ async function checkIn(check) {
   const made = await d.createIncident({ name: 'Smoke drill', period: 'OP 1', base: 'Depot', lat: 30.3, lng: -97.7, zoom: 14 });
   check('a new incident gets a six-letter code without 0, O, 1 or I', /^[A-HJ-NP-Z2-9]{6}$/.test(made.code) && made.name === 'Smoke drill' && made.status === 'active', made.code);
   await d.open(made.id);
-  check('its creator is Operations on it, and the log opens with it', d.me().role === 'ops' && d.events().length === 1 && d.events()[0].text === 'Incident opened: Smoke drill');
+  check('its creator is Operations on it, it opens in period 1, and the log opens with it', d.me().role === 'ops' && d.events().length === 1 && d.events()[0].text === 'Incident opened: Smoke drill, operational period 1' && d.currentPeriod() && d.currentPeriod().number === 1);
   const mine = await d.myIncidents();
   check('myIncidents lists the new incident with the role', mine.some((i) => i.id === made.id && i.role === 'ops'));
   check('the first incident is untouched by the second', base.incident.id === INC() && base.events().every((e) => e.incident_id === INC()));

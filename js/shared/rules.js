@@ -133,6 +133,12 @@ export function sortZones(zones) {
   return zones.slice().sort((a, b) => a.priority - b.priority || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
 
+// "OP 2 · 07:00 to 19:00": how a period is named everywhere.
+export function periodLabel(p) {
+  if (!p) return '';
+  return 'OP ' + p.number + ' · ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') + (p.closed_at ? ', closed ' + hhmm(p.closed_at) : '');
+}
+
 export function latLngText(lat, lng) {
   if (lat == null || lng == null) return '';
   return Number(lat).toFixed(5) + ', ' + Number(lng).toFixed(5);

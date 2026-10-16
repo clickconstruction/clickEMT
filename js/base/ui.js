@@ -1,6 +1,6 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, STATUS_LABEL, OOS_REASONS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -17,7 +17,7 @@ export function zonesHtml(data, state) {
       <span class="pb p${z.priority}">${z.priority}</span>
       <span class="zr-main">
         <span class="zr-top"><span class="zr-id">${esc(z.code)}</span><span class="zr-name">${esc(z.name)}</span></span>
-        <span class="zr-sub">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>
+        <span class="zr-sub">${esc(zoneStatusText(z, assignedLabel(data, z)))}${z.objective_id && data.objective(z.objective_id) ? ' · objective ' + data.objective(z.objective_id).number : ''}</span>
       </span>
       <span class="sdot ${z.status}"></span>
     </button>`).join('');
@@ -26,6 +26,7 @@ export function zonesHtml(data, state) {
 export function panelHtml(data, state) {
   const sel = state.selected || {};
   if (sel.type === 'newzone') return newZoneHtml(data, state);
+  if (sel.type === 'period') return periodHtml(data, state);
   if (sel.type === 'zone') { const z = data.zone(sel.id); if (z) return zoneHtml(data, z, state); }
   if (sel.type === 'photo') { const p = data.photo(sel.id); if (p) return photoHtml(data, p); }
   if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m, state); }
@@ -115,6 +116,12 @@ function zoneHtml(data, z, state) {
     ${hazards.map((h) => `<div class="hazline">Hazard · ${esc(h.kind)}${h.note ? ' · ' + esc(h.note) : ''} · ${esc(unitLabel(data.member(h.user_id)))} at ${hhmm(h.created_at)}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>`).join('')}
     <div class="d-row"><span class="k">Priority</span>
       ${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}">Priority ${p}</button>`).join('')}
+    </div>
+    <div class="d-row"><span class="k">Serves objective</span>
+      <select class="sel" data-select="zone-objective" data-id="${z.id}" aria-label="Objective this zone serves">
+        <option value="">none</option>
+        ${data.objectives().map((o) => `<option value="${o.id}"${z.objective_id === o.id ? ' selected' : ''}>${o.number}. ${esc(o.text)}</option>`).join('')}
+      </select>
     </div>
     <div class="d-row"><span class="k">Assigned to</span>
       ${units.length ? units.map((u) => `<button class="btn sm${z.assigned_to === u.user_id ? ' on' : ''}" data-action="assign" data-id="${z.id}" data-user="${u.user_id}">${esc(unitLabel(u))}</button>`).join('') : '<span class="muted">No units have joined yet</span>'}
@@ -220,6 +227,95 @@ function newZoneHtml(data, state) {
       </div>
       <div class="row-btns"><button class="btn sm" type="button" data-action="newzone-discard">Discard</button><button class="btn pri sm" type="submit">Save zone</button></div>
     </form>`;
+}
+
+// ---- the operational period (ICS 202) and the shift-change briefing
+
+function timeValue(iso) { if (!iso) return ''; const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+function periodFormHtml(p, next, state) {
+  const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()) } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at) };
+  return `
+    <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
+      <div class="row-2">
+        <label>Incident Commander <input name="ic" value="${esc(d.ic)}"></label>
+        <label>Operations Section Chief <input name="ops" value="${esc(d.ops)}"></label>
+      </div>
+      <div class="row-2">
+        <label>Safety Officer <input name="safety" value="${esc(d.safety)}"></label>
+        <label>Planned end <input name="ends" type="time" value="${esc(d.ends)}"></label>
+      </div>
+      <label>Safety message and notes for the period <textarea name="notes" rows="2">${esc(d.notes)}</textarea></label>
+      ${next ? `<label class="chk"><input type="checkbox" name="carry" checked> Carry open objectives and assignments into the new period</label>` : ''}
+      <div class="row-btns">${next ? '<button class="btn sm" type="button" data-action="period-next-cancel">Cancel</button>' : ''}<button class="btn pri sm" type="submit">${next ? 'Start period ' + ((p ? p.number : 0) + 1) : 'Save'}</button></div>
+    </form>`;
+}
+
+export function periodHtml(data, state) {
+  const p = data.currentPeriod();
+  const objectives = p ? data.objectives(p.id) : [];
+  const zonesFor = (o) => data.zones().filter((z) => z.objective_id === o.id);
+  const earlier = data.periods().filter((x) => !p || x.id !== p.id);
+  return `
+    <button class="back" data-action="close-panel">Back to units</button>
+    <div class="title">${p ? 'Operational period ' + p.number : 'No operational period yet'} <span>${p ? esc(periodLabel(p)).replace('OP ' + p.number + ' · ', '') : ''}</span></div>
+    ${p ? periodFormHtml(p, false, state) : '<div class="muted" style="font-size:12.5px">An incident runs in operational periods, usually 12 hours, each with its objectives and its command names.</div>'}
+    ${p ? `
+    <div class="k">Objectives (ICS 202)</div>
+    ${objectives.length ? objectives.map((o) => `
+      <div class="obj${o.done_at ? ' done' : ''}">
+        <button class="obj-tick" data-action="${o.done_at ? 'objective-undo' : 'objective-done'}" data-id="${o.id}" aria-label="${o.done_at ? 'Reopen' : 'Done'}">${o.done_at ? '✓' : ''}</button>
+        <span class="obj-text"><strong>${o.number}.</strong> ${esc(o.text)}${o.done_at ? ` <span class="muted">done ${hhmm(o.done_at)}</span>` : ''}${zonesFor(o).length ? ` <span class="muted">· ${zonesFor(o).map((z) => esc(z.code)).join(', ')}</span>` : ''}</span>
+      </div>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. What must be true by the end of the period?</div>'}
+    <form class="composer" data-form="objective"><div class="composer-row"><input name="text" placeholder="Add an objective" required maxlength="300" autocomplete="off"><button class="btn pri sm" type="submit">Add</button></div></form>` : ''}
+    <div class="k">Shift change</div>
+    <div class="d-row"><button class="btn sm" data-action="briefing">Briefing</button>${state.periodNext ? '' : `<button class="btn sm" data-action="period-next">Start period ${(p ? p.number : 0) + 1}</button>`}</div>
+    ${state.periodNext ? periodFormHtml(p, true, state) : ''}
+    ${earlier.length ? `<div class="k">Earlier periods</div>${earlier.map((x) => `<div class="muted" style="font-size:12.5px">${esc(periodLabel(x))}${x.ic_name ? ' · IC ' + esc(x.ic_name) : ''}</div>`).join('')}` : ''}`;
+}
+
+// The briefing is built once as sections of lines, then shown as a page or copied as text.
+export function briefingSections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  const zones = data.zones();
+  const units = data.units();
+  const objectives = p ? data.objectives(p.id) : [];
+  const hazards = data.hazards();
+  const alerts = data.alerts();
+  const waiting = data.openSafety();
+  const S = [];
+  S.push({ title: 'Incident', lines: [
+    inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set')].join(' · ') : null,
+    'Briefing made ' + new Date().toLocaleString()
+  ].filter(Boolean) });
+  if (p && p.notes) S.push({ title: 'Safety message and notes', lines: [p.notes] });
+  S.push({ title: 'Objectives', lines: objectives.length ? objectives.map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ' (open)'}`) : ['None set'] });
+  const cleared = zones.filter((z) => z.status === 'cleared').length, active = zones.filter((z) => z.status === 'active').length, open = zones.filter((z) => z.status === 'open').length;
+  S.push({ title: 'Zones', lines: [`${zones.length} zones: ${cleared} cleared, ${active} in progress, ${open} not started`].concat(zones.map((z) => {
+    const o = z.objective_id ? data.objective(z.objective_id) : null;
+    return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '')}${o ? ' · objective ' + o.number : ''}`;
+  })) });
+  S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(units.map((m) => {
+    const zone = zones.find((z) => z.assigned_to === m.user_id && z.status === 'active');
+    return `${unitLabel(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`;
+  })) });
+  S.push({ title: 'Hazards still open', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · ${h.zone_id && data.zone(h.zone_id) ? data.zone(h.zone_id).code : 'outside the zones'} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None'] });
+  const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
+    .concat(waiting.map((m) => `${m.kind === 'par' ? 'PAR' : 'Safety message'} from ${hhmm(m.created_at)} still waiting on ${data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ')}`));
+  S.push({ title: 'Needs attention', lines: attention.length ? attention : ['Nothing outstanding'] });
+  const log = data.eventsIn(p).slice(0, 40);
+  S.push({ title: p ? 'Log of this period, newest first' : 'Log, newest first', lines: log.length ? log.map((e) => `${hhmm(e.at)}  ${e.text}`) : ['Nothing yet'] });
+  return S;
+}
+
+export function briefingHtml(data) {
+  return briefingSections(data).map((s) => `<section><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</section>`).join('');
+}
+
+export function briefingText(data) {
+  return briefingSections(data).map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n');
 }
 
 export function logHtml(data) {

@@ -2,6 +2,8 @@
 
 Who the app is designed around, with what each needs done and where the app stands for them. Written 2026-10-17 at v22; the gaps named here were the state then. Walkthroughs (`docs/walkthroughs.md`, when they exist) take each persona through the app with only that person's knowledge.
 
+A guide for each persona, written against the app as it stands, is in [guides/](guides/README.md).
+
 **1. Dana Ruiz, Incident Commander.** Small-town fire chief, at the command post, pulled in five directions. Needs: to know in thirty seconds whether anyone is in trouble, how far the search has got, and what the next period's plan is; to sign the IAP and brief the shift change; to name a unified command when the county arrives. Today: the header counts, the mayday bar, the briefing, the IAP, lead agency and unified command. Gap: no "what changed since I last looked" summary for someone away for an hour.
 
 **2. Marcus Bell, Operations Section Chief.** The base map's main user, in front of it for twelve hours. Needs: to draw divisions and set priorities fast, assign and reassign units, see photos as they arrive, keep the PAR honest, answer the radio with the map in front of him, and never lose a report. Today: nearly everything on the base is his. Gap: a second screen for the log exists, but no way to hand the map to a relief chief with his context intact.

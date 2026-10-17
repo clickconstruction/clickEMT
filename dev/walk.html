@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Walk the app · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A persona's guide beside the base and the phone, both live in mock mode and sharing one incident.
+     Serve the repo (npm run serve) and open /dev/walk.html. The frames are /?mock and /field/?mock on
+     the same origin, so the mock's BroadcastChannel joins them: a tap on the phone shows on the base.
+     The guides are docs/guides/*.md, fetched and drawn here with a small renderer (headings, lists,
+     bold, code). -->
+<style>
+  :root { --bg: #15161a; --panel: #1d1f24; --ink: #e8e8e8; --muted: #9aa0a8; --line: #2c2f36; --accent: #e8b84a; --base: #5aa9e6; --phone: #7bd389; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; white-space: nowrap; }
+  header .grp { display: flex; gap: 4px; align-items: center; }
+  select, button, a.btn { font: inherit; color: var(--ink); background: #262930; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; cursor: pointer; text-decoration: none; }
+  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  button:hover, a.btn:hover { border-color: #555; }
+  .muted { color: var(--muted); }
+  .sp { flex: 1; }
+  main { flex: 1; display: flex; min-height: 0; }
+  aside { width: 360px; flex: none; overflow: auto; border-right: 1px solid var(--line); padding: 12px 16px 40px; background: var(--panel); }
+  aside[hidden] { display: none; }
+  aside h1 { font-size: 18px; margin: 4px 0 10px; line-height: 1.25; }
+  aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 6px; }
+  aside h3 { font-size: 14px; margin: 16px 0 4px; }
+  aside p { margin: 6px 0; }
+  aside ul, aside ol { padding-left: 18px; margin: 4px 0; }
+  aside li { margin: 5px 0; }
+  aside li.on-base::marker, aside li.on-phone::marker { content: ""; }
+  aside li.on-base, aside li.on-phone { list-style: none; margin-left: -18px; padding-left: 0; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-right: 6px; vertical-align: 1px; }
+  .chip.base { background: rgba(90,169,230,.18); color: var(--base); }
+  .chip.phone { background: rgba(123,211,137,.18); color: var(--phone); }
+  aside code { background: #2a2d34; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  aside .err { color: #f08c8c; }
+  #stage { flex: 1; min-width: 0; overflow: auto; padding: 12px; display: flex; align-items: flex-start; gap: 20px; }
+  .slot { flex: none; overflow: hidden; position: relative; border-radius: 8px; }
+  .scaled { transform-origin: top left; }
+  .slot[hidden] { display: none; }
+  .base-box { width: 1280px; height: 800px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 18px rgba(0,0,0,.5); }
+  .phone-box { width: 395px; height: 832px; padding: 10px; background: #0b0b0d; border-radius: 40px; box-shadow: 0 2px 18px rgba(0,0,0,.6), inset 0 0 0 1px #333; }
+  .phone-box iframe { border-radius: 30px; }
+  iframe { border: 0; display: block; background: #fff; width: 100%; height: 100%; }
+  .phone-box iframe { width: 375px; height: 812px; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: #111; padding: 8px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+  .toast[hidden] { display: none; }
+  @media (max-width: 900px) { aside { width: 300px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Walk the app</h1>
+  <div class="grp">
+    <button id="prev" title="Previous persona">‹</button>
+    <select id="who" aria-label="Persona"></select>
+    <button id="next" title="Next persona">›</button>
+  </div>
+  <div class="grp" id="layout">
+    <button data-mode="both" class="on">Both</button>
+    <button data-mode="base">Base only</button>
+    <button data-mode="phone">Phone only</button>
+  </div>
+  <div class="grp">
+    <button id="fit" class="on" title="Scale both to fit the window">Fit</button>
+    <button id="one" title="Real size, scroll to see the rest">1:1</button>
+  </div>
+  <div class="grp">
+    <button id="guide" class="on">Guide</button>
+    <button id="reload" title="Reload both frames, keeping the data">Reload</button>
+    <button id="reset" title="Put the seeded incident back in both frames">Reset the mock</button>
+  </div>
+  <span class="sp"></span>
+  <span class="muted" id="hint">Base as Operations · phone as Unit 3 · they share one incident</span>
+  <a class="btn" href="/?mock" target="_blank" rel="noopener">Base ↗</a>
+  <a class="btn" href="/field/?mock" target="_blank" rel="noopener">Phone ↗</a>
+</header>
+<main>
+  <aside id="aside"><p class="muted">Loading the guide…</p></aside>
+  <div id="stage">
+    <div class="slot" id="slot-base"><div class="scaled"><div class="base-box"><iframe id="base" title="The base" src="/?mock"></iframe></div></div></div>
+    <div class="slot" id="slot-phone"><div class="scaled"><div class="phone-box"><iframe id="phone" title="The phone" src="/field/?mock"></iframe></div></div></div>
+  </div>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function () {
+  'use strict';
+  const PERSONAS = [
+    { n: 1, slug: '01-incident-commander', name: 'Dana Ruiz, Incident Commander', where: 'base' },
+    { n: 2, slug: '02-operations-section-chief', name: 'Marcus Bell, Operations Section Chief', where: 'base' },
+    { n: 3, slug: '03-unit-lead-on-foot', name: 'Lt. Ana Ramirez, unit lead on foot', where: 'phone' },
+    { n: 4, slug: '04-swift-water-boat-operator', name: 'Rosa Alvarez, swift-water boat operator', where: 'phone' },
+    { n: 5, slug: '05-safety-officer', name: 'Priya Natarajan, Safety Officer', where: 'both' },
+    { n: 6, slug: '06-documentation-unit', name: 'The Documentation Unit', where: 'base' },
+    { n: 7, slug: '07-public-information-officer', name: 'The Public Information Officer', where: 'base' },
+    { n: 8, slug: '08-mutual-aid-captain', name: 'Capt. Reyes, mutual-aid captain', where: 'phone' },
+    { n: 9, slug: '09-deputy-at-a-closed-bridge', name: 'Dep. Luis Moreno, deputy at a closed bridge', where: 'phone' },
+    { n: 10, slug: '10-shelter-desk', name: 'The shelter desk volunteer', where: 'phone' },
+    { n: 11, slug: '11-agency-administrator', name: 'The agency administrator', where: 'base' },
+    { n: 12, slug: '12-the-resident', name: 'The resident who refused to leave', where: 'both' }
+  ];
+  const $ = (id) => document.getElementById(id);
+  const state = { mode: 'both', fit: true, guide: true, who: 1 };
+  const SIZES = { base: [1280, 800], phone: [395, 832] };
+
+  // ---- the guide: docs/guides/<slug>.md drawn with a small renderer
+  const escape = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const inline = (s) => escape(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  function md(src) {
+    const out = []; let list = null; const para = [];
+    const flush = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para.length = 0; } };
+    const endList = () => { if (list) { out.push(list === 'ul' ? '</ul>' : '</ol>'); list = null; } };
+    for (const raw of src.split('\n')) {
+      const l = raw.replace(/\s+$/, ''); let m;
+      if ((m = l.match(/^(#{1,4})\s+(.*)/))) { flush(); endList(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); }
+      else if ((m = l.match(/^\s*[-*]\s+(.*)/))) { flush(); if (list !== 'ul') { endList(); out.push('<ul>'); list = 'ul'; } out.push('<li>' + inline(m[1]) + '</li>'); }
+      else if ((m = l.match(/^\s*\d+\.\s+(.*)/))) { flush(); if (list !== 'ol') { endList(); out.push('<ol>'); list = 'ol'; } out.push('<li>' + inline(m[1]) + '</li>'); }
+      else if (/^\|/.test(l)) { flush(); endList(); /* tables are not drawn here; the index has them */ }
+      else if (!l.trim()) { flush(); endList(); }
+      else if (list && /^\s{2,}/.test(raw)) { out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, ' ' + inline(l.trim()) + '</li>'); }
+      else { endList(); para.push(l.trim()); }
+    }
+    flush(); endList();
+    return out.join('\n')
+      .replace(/<li><b>Base<\/b>\s*·?\s*/g, '<li class="on-base"><span class="chip base">Base</span>')
+      .replace(/<li><b>Phone<\/b>\s*·?\s*/g, '<li class="on-phone"><span class="chip phone">Phone</span>');
+  }
+  async function showGuide() {
+    const p = PERSONAS.find((x) => x.n === state.who) || PERSONAS[0];
+    $('who').value = String(p.n);
+    try { location.hash = '#' + p.n; } catch (e) { /* ignore */ }
+    try { localStorage.setItem('ic.walk.who', String(p.n)); } catch (e) { /* ignore */ }
+    const aside = $('aside');
+    aside.innerHTML = '<p class="muted">Loading…</p>';
+    try {
+      const r = await fetch('/docs/guides/' + p.slug + '.md', { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+      aside.innerHTML = md(await r.text());
+      aside.scrollTop = 0;
+    } catch (e) {
+      aside.innerHTML = '<p class="err">Could not load docs/guides/' + escape(p.slug) + '.md (' + escape(String(e.message || e)) + '). Serve the repo root with npm run serve and open this page from it.</p>';
+    }
+  }
+
+  // ---- layout: scale the frames to fit, or 1:1 and scroll
+  function layout() {
+    const stage = $('stage');
+    const W = stage.clientWidth - 24, H = stage.clientHeight - 24, gap = 20;
+    const showBase = state.mode !== 'phone', showPhone = state.mode !== 'base';
+    $('slot-base').hidden = !showBase; $('slot-phone').hidden = !showPhone;
+    let s = 1;
+    if (state.fit) {
+      const w = (showBase ? SIZES.base[0] : 0) + (showPhone ? SIZES.phone[0] : 0) + (showBase && showPhone ? gap : 0);
+      const h = Math.max(showBase ? SIZES.base[1] : 0, showPhone ? SIZES.phone[1] : 0);
+      s = Math.min(1, W / w, H / h);
+    }
+    for (const k of ['base', 'phone']) {
+      const slot = $('slot-' + k), [w, h] = SIZES[k];
+      slot.style.width = Math.round(w * s) + 'px'; slot.style.height = Math.round(h * s) + 'px';
+      slot.querySelector('.scaled').style.transform = 'scale(' + s + ')';
+    }
+    $('hint').textContent = (s < 1 ? 'Drawn at ' + Math.round(s * 100) + '% · ' : '') + 'base as Operations · phone as Unit 3 · one incident between them';
+  }
+
+  // ---- the mock: reset in both frames, then reload both so neither copies the other's old data
+  function mockOf(id) { try { return $(id).contentWindow.__mock; } catch (e) { return null; } }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2400); }
+  function reloadFrames() { for (const id of ['base', 'phone']) { const f = $(id); f.src = f.getAttribute('src'); } }
+  function resetMock() {
+    let n = 0;
+    for (const id of ['base', 'phone']) { const m = mockOf(id); if (m && typeof m.reset === 'function') { try { m.reset(); n++; } catch (e) { /* ignore */ } } }
+    reloadFrames();
+    toast(n ? 'The seeded incident is back' : 'Reloaded; the mock was not reachable to reset');
+  }
+
+  // ---- wiring
+  const sel = $('who');
+  for (const p of PERSONAS) { const o = document.createElement('option'); o.value = String(p.n); o.textContent = p.n + '. ' + p.name; sel.appendChild(o); }
+  sel.addEventListener('change', () => { state.who = Number(sel.value); showGuide(); });
+  $('prev').addEventListener('click', () => { state.who = state.who > 1 ? state.who - 1 : PERSONAS.length; showGuide(); });
+  $('next').addEventListener('click', () => { state.who = state.who < PERSONAS.length ? state.who + 1 : 1; showGuide(); });
+  for (const b of $('layout').querySelectorAll('button')) b.addEventListener('click', () => {
+    state.mode = b.dataset.mode;
+    for (const x of $('layout').querySelectorAll('button')) x.classList.toggle('on', x === b);
+    layout();
+  });
+  $('fit').addEventListener('click', () => { state.fit = true; $('fit').classList.add('on'); $('one').classList.remove('on'); layout(); });
+  $('one').addEventListener('click', () => { state.fit = false; $('one').classList.add('on'); $('fit').classList.remove('on'); layout(); });
+  $('guide').addEventListener('click', () => { state.guide = !state.guide; $('aside').hidden = !state.guide; $('guide').classList.toggle('on', state.guide); layout(); });
+  $('reload').addEventListener('click', () => { reloadFrames(); toast('Both frames reloaded'); });
+  $('reset').addEventListener('click', resetMock);
+  window.addEventListener('resize', layout);
+  if ('ResizeObserver' in window) new ResizeObserver(layout).observe($('stage'));
+  window.addEventListener('hashchange', () => { const n = Number(location.hash.slice(1)); if (n >= 1 && n <= PERSONAS.length && n !== state.who) { state.who = n; showGuide(); } });
+
+  const fromHash = Number(location.hash.slice(1));
+  let remembered = 0; try { remembered = Number(localStorage.getItem('ic.walk.who')); } catch (e) { /* ignore */ }
+  state.who = fromHash >= 1 && fromHash <= PERSONAS.length ? fromHash : (remembered >= 1 && remembered <= PERSONAS.length ? remembered : 1);
+  layout();
+  showGuide();
+})();
+</script>
+</body>
+</html>

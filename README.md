@@ -31,6 +31,7 @@ Two views of one incident, for floods and other large-scale emergencies:
 The vocabulary follows the Incident Command System: zones are divisions, priorities are the operational period's objectives, assignments are the ICS 204, the log is the ICS 214.
 
 Picking up the work? Start with [docs/handoff.md](docs/handoff.md); the open work is in [docs/punchlist.md](docs/punchlist.md).
+A guide for each persona, with their jobs step by step and the words on the screen, is in [docs/guides/](docs/guides/README.md); `dev/walk.html` walks one beside the base and the phone in mock mode.
 
 ## Stack
 

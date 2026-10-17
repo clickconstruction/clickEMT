@@ -473,3 +473,53 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .hc-unknown { color: var(--hazard-ink); font-weight: 600; }
 .pp-row.missing { background: var(--tint-red); }
 .pp-row.missing .pp-state { color: var(--danger); font-weight: 600; }
+
+/* ---- the front door: the base's signed-out screen (index.html #auth). The join code first, then what the app
+   is, Try it as a role, and the sign-in for Operations. .auth is shared with the phone, so only .landing is styled here. */
+.auth.landing { display: block; align-items: initial; justify-content: initial; padding: 0; }
+.land-wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+.land-top { display: flex; align-items: center; gap: 10px; max-width: 1040px; margin: 0 auto; padding: 12px 24px; }
+.land-top .brand { font-weight: 700; font-size: 16px; }
+.land-top .sp { flex: 1; }
+.door { background: var(--panel); border-top: 4px solid var(--danger); border-bottom: 1px solid var(--line); }
+.door .land-wrap { padding: 34px 24px 30px; }
+.door h1 { font-size: clamp(26px, 4vw, 38px); margin: 0 0 8px; line-height: 1.15; letter-spacing: -.01em; }
+.door .lead { margin: 0 0 16px; font-size: 16px; line-height: 1.45; color: var(--ink-2); max-width: 680px; }
+.door-code { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 10px; }
+.door-code input { font-size: 26px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; width: 220px; max-width: 100%; min-height: 52px; padding: 10px 14px; border: 2px solid var(--control-border); border-radius: 10px; background: var(--control-bg); color: var(--ink); }
+.door-code input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.door-code .btn.pri { min-height: 52px; padding: 0 18px; font-size: 16px; }
+.door-code .msg { color: var(--danger); font-size: 14px; width: 100%; min-height: 1.2em; margin: 0; }
+.door .no-code { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; max-width: 720px; }
+.door .no-code b { color: var(--ink); }
+.land-hero .land-wrap { padding: 40px 24px 20px; }
+.land-hero h2 { font-size: clamp(24px, 3.4vw, 34px); line-height: 1.15; margin: 0 0 12px; letter-spacing: -.01em; }
+.land-hero .lead { font-size: 17px; line-height: 1.45; color: var(--ink-2); margin: 0 0 20px; max-width: 760px; }
+.land-three { list-style: none; padding: 0; margin: 0 0 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 24px; }
+.land-three li { padding-left: 14px; border-left: 3px solid var(--accent); color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.land-three b { color: var(--ink); }
+.land-hero h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+.land-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin: 0 0 12px; }
+.land-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; text-decoration: none; color: var(--ink); }
+.land-card:hover { border-color: var(--accent); color: var(--ink); }
+.land-card .role { font-size: 17px; font-weight: 700; line-height: 1.25; }
+.land-card .hook { color: var(--ink-2); font-size: 14px; line-height: 1.4; margin-top: 2px; }
+.land-card .on { justify-self: start; margin-top: 8px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; background: var(--sel-bg); color: var(--accent-text); }
+.land-more { margin: 0 0 8px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.land-ops { border-top: 1px solid var(--line); }
+.land-ops .land-wrap { padding: 32px 24px 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px 32px; align-items: start; }
+.land-ops .auth-card { max-width: 420px; }
+.land-ops .auth-card h2 { margin: 0; font-size: 20px; }
+.land-ops h3 { font-size: 20px; margin: 0 0 6px; }
+.land-ops p { margin: 0 0 12px; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.land-foot { border-top: 1px solid var(--line); }
+.land-foot .land-wrap { padding: 22px 24px 44px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+@media (max-width: 600px) {
+  .land-wrap, .land-top { padding-left: 16px; padding-right: 16px; }
+  .door .land-wrap { padding: 26px 16px 24px; }
+  .door-code input { width: 100%; font-size: 24px; }
+  .door-code .btn.pri { width: 100%; }
+  .land-top .land-how { display: none; }
+  .land-hero .land-wrap { padding: 30px 16px 16px; }
+  .land-ops .land-wrap { padding: 24px 16px 28px; }
+}

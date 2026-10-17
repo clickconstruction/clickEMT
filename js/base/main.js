@@ -6,7 +6,7 @@ import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHt
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
-import { codeFromSearch } from '../shared/qr.js';
+import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { photoCaption, photoFileName, imageType, withCaption, zip, whenText } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
@@ -70,6 +70,16 @@ function onData(what, detail) {
 }
 
 // ---- auth
+// ---- the front door: a join code opens the field app with the code filled in, the link a join card's QR carries
+// (?mock or ?demo on this page carries over as ?demo, so the way in can be tried on the stand-in)
+$('#door-code').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); $('#door-msg').textContent = ''; });
+$('#door-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const code = $('#door-code').value.trim().toUpperCase();
+  if (!CODE_RE.test(code)) { $('#door-msg').textContent = 'A join code is six letters and numbers, like CEDAR7. It never has 0, O, 1 or I.'; $('#door-code').focus(); return; }
+  location.href = joinUrl(code, new URL('field/', location.href)) + (/[?&](mock|demo)\b/.test(location.search) ? '&demo' : '');
+});
+
 $('#auth-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = $('#auth-msg');

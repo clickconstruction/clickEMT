@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Incident Map · Base</title>
-<meta name="description" content="The base map for an incident: zones, priorities, units in the field, their photos and what they have cleared.">
+<meta name="description" content="One picture of the incident, from the boat to the command post. Part of an incident right now? Enter your join code. Running the base? Sign in. Otherwise try it as any role, live in your browser.">
 <meta name="theme-color" content="#1F4E79">
 <script>
   // the device's light/dark choice, before first paint (js/shared/theme.js keeps it)
@@ -33,17 +33,78 @@
 </head>
 <body>
 
-<div id="auth" class="auth" hidden>
-  <form id="auth-form" class="auth-card">
-    <img src="icons/icon-192.png" alt="" width="64" height="64">
-    <h1>Incident Map</h1>
-    <p class="muted">Operations base. Sign in with the account your agency gave you.</p>
-    <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
-    <label>Password <input id="auth-password" type="password" autocomplete="current-password" required minlength="8"></label>
-    <button type="submit" class="btn pri">Sign in</button>
-    <button type="button" id="auth-signup" class="btn link">Create account</button>
-    <p id="auth-msg" class="msg" role="status"></p>
-  </form>
+<div id="auth" class="auth landing" hidden>
+  <div class="land-top">
+    <div class="brand">Incident Map <span class="muted">· clickEMT</span></div>
+    <span class="sp"></span>
+    <a class="btn sm" href="try/">Try it</a>
+    <a class="btn sm" href="#sign-in">Sign in</a>
+    <a class="btn sm land-how" href="https://github.com/clickconstruction/clickEMT" rel="noopener">How it is built</a>
+  </div>
+
+  <section class="door">
+    <div class="land-wrap">
+      <h1>Part of an incident right now?</h1>
+      <p class="lead">Enter the six-letter join code from your join card, from Operations' screen or from another unit's phone. It opens the field app on this phone with the code filled in; you check in with your name and your unit.</p>
+      <form class="door-code" id="door-form" novalidate>
+        <input id="door-code" name="code" class="mono" placeholder="CEDAR7" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Join code">
+        <button type="submit" class="btn pri">Join on this phone</button>
+        <span class="msg" id="door-msg" role="status"></span>
+      </form>
+      <p class="no-code"><b>No code?</b> It is on the join card at the check-in table and on the screen at the base. Ask whoever sent you, or the person running the base. Only the incident's Operations can add you.</p>
+    </div>
+  </section>
+
+  <section class="land-hero">
+    <div class="land-wrap">
+      <h2>One picture of the incident, from the boat to the command post.</h2>
+      <p class="lead">A map at the base and an app on every phone, sharing one picture: where the units are, what they have cleared, who needs help, and the ICS forms written as it happens.</p>
+      <ul class="land-three">
+        <li><b>Field first.</b> One tap in the rain with gloves on, and a dead spot never loses a report.</li>
+        <li><b>The paperwork writes itself.</b> The 214, the 211, every 204, the 209 and the IAP come from what the crews send.</li>
+        <li><b>Nothing is deleted, nothing is public by default.</b> The code is open on GitHub.</li>
+      </ul>
+      <h3>Try it as…</h3>
+      <div class="land-cards">
+        <a class="land-card" href="try/#1"><span class="role">Incident Commander</span><span class="hook">Is anyone in trouble, how far has the search got, what is the plan: thirty seconds, then sign the IAP.</span><span class="on">On the base</span></a>
+        <a class="land-card" href="try/#2"><span class="role">Operations Section Chief</span><span class="hook">Draw a division, assign a crew, run a head count by name, answer the radio with the map in front of you.</span><span class="on">On the base</span></a>
+        <a class="land-card" href="try/#3"><span class="role">Unit lead on foot</span><span class="hook">Clear an address in one tap, send a photo that knows which way you faced, answer the PAR without typing.</span><span class="on">On the phone</span></a>
+        <a class="land-card" href="try/#4"><span class="role">Swift-water boat operator</span><span class="hook">A rotation clock for the water, the boat ramp on the map, and intake for the people you pull out.</span><span class="on">On the phone</span></a>
+        <a class="land-card" href="try/#10"><span class="role">Shelter desk volunteer</span><span class="hook">Who is on the next bus, who needs oxygen, and an answer for "is my mother here?"</span><span class="on">On the phone</span></a>
+        <a class="land-card" href="try/#8"><span class="role">Mutual-aid captain</span><span class="hook">Join by scanning a code, get a 204 on paper with a map, and be released cleanly at the end.</span><span class="on">On the phone</span></a>
+      </div>
+      <p class="land-more"><a href="try/">Six more roles</a>: the Safety Officer, the Documentation Unit, the Public Information Officer, a deputy at a closed bridge, the agency administrator, and the resident who refused to leave. Cedar Fork is a made-up town; everything you do there stays in your browser.</p>
+    </div>
+  </section>
+
+  <section class="land-ops" id="sign-in">
+    <div class="land-wrap">
+      <form id="auth-form" class="auth-card">
+        <img src="icons/icon-192.png" alt="" width="64" height="64">
+        <h2>Running the base?</h2>
+        <p class="muted">Sign in with the account your agency gave you to open an incident, join one as Operations, and print the join card.</p>
+        <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
+        <label>Password <input id="auth-password" type="password" autocomplete="current-password" required minlength="8"></label>
+        <button type="submit" class="btn pri">Sign in</button>
+        <button type="button" id="auth-signup" class="btn link">Create account</button>
+        <p id="auth-msg" class="msg" role="status"></p>
+      </form>
+      <div class="land-pilot">
+        <h3>Thinking of piloting it?</h3>
+        <p>A pilot runs on your own incidents or a season: a briefing for the command staff and the crews, support during an incident, and an evaluation at the end. Nothing a crew sends is deleted, and personal records clear by rule after the close.</p>
+        <p><a href="try/">Try it as any role first</a>, no account needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="land-foot">
+    <div class="land-wrap">
+      <span>Incident Map runs on the Incident Command System and its forms.</span>
+      <a href="try/">Try it</a>
+      <a href="https://github.com/clickconstruction/clickEMT" rel="noopener">The code, on GitHub</a>
+      <a href="docs/guides/README.md">The guides, one per role</a>
+    </div>
+  </footer>
 </div>
 
 <div id="pick" class="pick" hidden>

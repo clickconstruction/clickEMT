@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, checkIn, permissions, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1433,6 +1433,29 @@ async function ics100(check) {
   chip.click();
   const composer = $('#panel form[data-form="message"]');
   check('the "You are released" chip fills the message with the staging area and the radio', composer.text.value === 'You are released. Return to staging, High school east lot, return the radio to Logistics, and check out on your phone. Thank you.', composer.text.value);
+}
+
+// ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.
+async function demo(check) {
+  await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });
+  const frame = document.createElement('iframe');
+  frame.src = '/field/?demo';
+  frame.style.cssText = 'position:fixed;right:0;top:0;width:375px;height:780px;z-index:3000;background:#fff;border:0';
+  document.body.appendChild(frame);
+  const w = () => frame.contentWindow;
+  check('?demo loads the stand-in on the phone', await until(() => w() && w().__mock && w().supabase && w().supabase.mock === true, 8000));
+  check('the demo phone opens the seeded incident as Unit 3', await until(() => { const d = frame.contentDocument; return !!(d && d.body && /Unit 3/.test(d.body.innerText)); }, 10000));
+  frame.remove();
+  const page = document.createElement('iframe');
+  page.src = '/try/';
+  page.style.cssText = 'position:fixed;right:0;top:0;width:1200px;height:800px;z-index:3000;background:#fff;border:0';
+  document.body.appendChild(page);
+  const pd = () => page.contentDocument;
+  const cards = await until(() => pd() && pd().querySelectorAll('.card[data-role]').length === 12 && pd().querySelectorAll('.card[data-role]').length, 8000);
+  check('/try/ draws a card for each of the twelve personas and frames both views in demo mode', cards === 12 && pd().querySelector('#base').dataset.src === '/?demo' && pd().querySelector('#phone').dataset.src === '/field/?demo', `${cards} cards`);
+  pd().querySelector('.card[data-role="10-shelter-desk"]').click();
+  check('a role card loads both frames on the stand-in and shows that role\'s guide', await until(() => pd().querySelector('#base').getAttribute('src') === '/?demo' && pd().querySelector('#phone').getAttribute('src') === '/field/?demo' && /Shelter desk volunteer/.test((pd().querySelector('.who-head') || {}).textContent || ''), 8000));
+  page.remove();
 }
 
 // ---- the walkthrough fixes (v25): each as the persona who hit it met it. The phone is the field app at

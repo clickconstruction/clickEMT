@@ -1,5 +1,5 @@
-// Local test harness: an in-memory stand-in for Supabase, loaded only on localhost with ?mock in
-// the URL (see the hook in index.html and field/index.html). It implements the part of supabase-js
+// An in-memory stand-in for Supabase, loaded with ?mock on localhost (the smoke suite) or ?demo on any
+// host (the public demo at /try/; the hook is in index.html and field/index.html). It implements the part of supabase-js
 // that js/shared/data.js uses, mirrors the database's triggers and row-level security in
 // JavaScript (the activity log, updated_at, a hazard's flag on its zone, who may write what), and
 // seeds one incident. Data lives in this tab's memory: mock tabs in the same browser share every

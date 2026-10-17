@@ -21,11 +21,13 @@
 <script src="vendor/qrcode-generator-1.4.4.min.js"></script>
 <script src="config.js"></script>
 <script>
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    document.write('<script src="config.local.js" onerror="this.remove()"><\/script>');
-    // ?mock swaps Supabase for the in-memory test harness (dev/mock-supabase.js).
-    if (/[?&]mock\b/.test(location.search)) document.write('<script src="dev/mock-supabase.js"><\/script>');
-  }
+  (function () {
+    const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (local) document.write('<script src="config.local.js" onerror="this.remove()"><\/script>');
+    // ?demo (any host) or ?mock (localhost) swaps Supabase for the in-memory stand-in (dev/mock-supabase.js):
+    // the public demo at /try/ and the smoke suite run on it, and nothing done in it reaches the real project.
+    if (/[?&]demo\b/.test(location.search) || (local && /[?&]mock\b/.test(location.search))) document.write('<script src="dev/mock-supabase.js"><\/script>');
+  })();
 </script>
 <script src="supabase-client.js"></script>
 </head>

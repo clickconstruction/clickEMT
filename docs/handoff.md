@@ -43,7 +43,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
    feature. Written for an AI assistant, but it is the most complete technical guide to the code.
 3. [personas.md](personas.md): the twelve people the app is designed around, from the Incident Commander to a
    shelter desk volunteer. [guides/](guides/README.md) has a guide for each, their jobs step by step with the words on
-   the screen, and `dev/walk.html` walks one beside the base and the phone.
+   the screen, and `/try/` (the public demo, on the stand-in with `?demo`) walks one beside the base and the phone.
 4. [walkthroughs.md](walkthroughs.md): each persona walked through the app, what confused or stopped them, and the
    re-walk after each round of fixes. This is where most new work comes from.
 5. [ROADMAP.md](../ROADMAP.md): the original plan for bringing ICS into the app, ticked as it shipped.

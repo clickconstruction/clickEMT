@@ -1,8 +1,12 @@
-# GitHub Pages: keep migrations and dev tools out of the published site.
+# GitHub Pages: keep migrations and dev tools out of the published site, except
+# dev/mock-supabase.js, the stand-in the public demo (/try/, ?demo) runs on, so dev's
+# other files are excluded one pattern at a time rather than the directory.
 # Trailing slashes matter: Jekyll's exclude is a prefix match, so a bare
 # "supabase" would also drop supabase-client.js.
 exclude:
   - supabase/
-  - dev/
+  - dev/*.py
+  - dev/*.mjs
+  - dev/smoke.js
   - README.md
   - CLAUDE.md

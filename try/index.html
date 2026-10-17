@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Try Incident Map · clickEMT</title>
+<meta name="description" content="Try Incident Map as the Incident Commander, Operations, a crew on foot, a boat crew, the shelter desk or a mutual-aid captain: the base and the phone side by side, live, with no account and nothing sent anywhere.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta property="og:title" content="Try Incident Map">
+<meta property="og:description" content="One picture of the incident, from the boat to the command post. Try it as any role, live in your browser.">
+<link rel="icon" href="../icons/icon-192.png">
+<!-- The public demo. The base (/?demo) and the phone (/field/?demo) run on the in-memory stand-in
+     (dev/mock-supabase.js) on this same origin, so the stand-in's BroadcastChannel joins the two frames:
+     a tap on the phone shows on the base. The guide beside them is docs/guides/<slug>.md, fetched and
+     drawn with a small renderer (headings, lists, bold, code). Locally: npm run serve, then /try/. -->
+<style>
+  :root { --bg: #15161a; --panel: #1d1f24; --ink: #e8e8e8; --muted: #9aa0a8; --line: #2c2f36; --accent: #e8b84a; --base: #5aa9e6; --phone: #7bd389; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: inherit; }
+  .muted { color: var(--muted); }
+  button, a.btn { font: inherit; color: var(--ink); background: #262930; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; cursor: pointer; text-decoration: none; }
+  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  button:hover, a.btn:hover { border-color: #555; }
+
+  /* ---- the top of the page */
+  .top { display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid var(--line); }
+  .top .brand { font-weight: 700; letter-spacing: .01em; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .hero { max-width: 1040px; margin: 0 auto; padding: 48px 24px 24px; }
+  .hero h1 { font-size: clamp(28px, 4.2vw, 44px); line-height: 1.12; margin: 0 0 14px; letter-spacing: -.01em; }
+  .hero .lead { font-size: clamp(16px, 1.6vw, 19px); color: #cfd3d9; margin: 0 0 22px; max-width: 760px; }
+  .hero .three { list-style: none; padding: 0; margin: 0 0 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 24px; }
+  .hero .three li { padding-left: 14px; border-left: 3px solid var(--accent); color: #cfd3d9; }
+  .hero .three b { color: var(--ink); }
+  .hero h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin: 0 0 14px; }
+  .card { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+  .card:hover, .card:focus-visible { border-color: var(--accent); outline: none; }
+  .card .role { font-size: 17px; font-weight: 700; line-height: 1.25; }
+  .card .name { color: var(--muted); font-size: 12.5px; }
+  .card .hook { color: #cfd3d9; font-size: 14px; margin-top: 4px; }
+  .card .on { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-top: 8px; justify-self: start; }
+  .on.base { background: rgba(90,169,230,.18); color: var(--base); }
+  .on.phone { background: rgba(123,211,137,.18); color: var(--phone); }
+  .on.both { background: rgba(232,184,74,.16); color: var(--accent); }
+  details.more { margin: 0 0 18px; }
+  details.more summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+  details.more summary:hover { color: var(--ink); }
+  details.more .cards { margin-top: 12px; }
+  .fine { color: var(--muted); font-size: 13.5px; max-width: 760px; margin: 0 0 8px; }
+
+  /* ---- the demo: the toolbar, the guide and the two frames, one window tall */
+  #demo { height: 100vh; min-height: 560px; display: flex; flex-direction: column; border-top: 1px solid var(--line); scroll-margin-top: 0; }
+  header.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header.bar h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; white-space: nowrap; }
+  header.bar .grp { display: flex; gap: 4px; align-items: center; }
+  header.bar .sp { flex: 1; }
+  main { flex: 1; display: flex; min-height: 0; position: relative; }
+  aside { width: 360px; flex: none; overflow: auto; border-right: 1px solid var(--line); padding: 12px 16px 40px; background: var(--panel); }
+  aside[hidden] { display: none; }
+  aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 6px; }
+  aside h3 { font-size: 14px; margin: 16px 0 4px; }
+  aside p { margin: 6px 0; font-size: 14px; }
+  aside ul, aside ol { padding-left: 18px; margin: 4px 0; font-size: 14px; }
+  aside li { margin: 5px 0; }
+  aside li.on-base, aside li.on-phone { list-style: none; margin-left: -18px; padding-left: 0; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; margin-right: 6px; vertical-align: 1px; }
+  .chip.base { background: rgba(90,169,230,.18); color: var(--base); }
+  .chip.phone { background: rgba(123,211,137,.18); color: var(--phone); }
+  aside code { background: #2a2d34; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  aside .err { color: #f08c8c; }
+  .who-head { margin: 4px 0 14px; }
+  .who-head .role { font-size: 21px; font-weight: 700; line-height: 1.2; }
+  .who-head .name { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  #stage { flex: 1; min-width: 0; overflow: auto; padding: 12px; display: flex; align-items: flex-start; gap: 20px; }
+  .slot { flex: none; overflow: hidden; position: relative; border-radius: 8px; }
+  .slot[hidden] { display: none; }
+  .scaled { transform-origin: top left; }
+  .base-box { width: 1280px; height: 800px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 18px rgba(0,0,0,.5); }
+  .phone-box { width: 395px; height: 832px; padding: 10px; background: #0b0b0d; border-radius: 40px; box-shadow: 0 2px 18px rgba(0,0,0,.6), inset 0 0 0 1px #333; }
+  iframe { border: 0; display: block; background: #fff; width: 100%; height: 100%; }
+  .phone-box iframe { width: 375px; height: 812px; border-radius: 30px; }
+  .who { position: relative; }
+  .who-btn { display: flex; align-items: baseline; gap: 8px; min-width: 320px; text-align: left; padding: 5px 10px; }
+  .who-btn .role { font-weight: 600; font-size: 14px; }
+  .who-btn .name, .who-menu .name { color: var(--muted); font-size: 12px; }
+  .who-btn .caret { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .who-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 360px; max-height: 70vh; overflow: auto; background: #1f2228; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.5); padding: 4px; }
+  .who-menu [role="option"] { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "role num" "name num"; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+  .who-menu [role="option"]:hover, .who-menu [role="option"]:focus { background: #2a2e36; outline: none; }
+  .who-menu [role="option"][aria-selected="true"] { background: rgba(232,184,74,.14); }
+  .who-menu .role { grid-area: role; font-weight: 600; font-size: 15px; line-height: 1.25; }
+  .who-menu .name { grid-area: name; }
+  .who-menu .num { grid-area: num; align-self: center; color: var(--muted); font-size: 11px; padding-left: 14px; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: #111; padding: 8px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 30; }
+  .toast[hidden] { display: none; }
+  footer { max-width: 1040px; margin: 0 auto; padding: 28px 24px 48px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  @media (max-width: 760px) {
+    .top { padding: 10px 16px; }
+    .hero { padding: 32px 16px 16px; }
+    header.bar h1 { display: none; }
+    .who-btn, .who-menu { min-width: 0; }
+    .who-menu { max-width: calc(100vw - 24px); }
+    aside { position: absolute; inset: 0; width: 100%; z-index: 5; border-right: 0; }
+    #stage { padding: 8px; }
+    footer { padding: 20px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· clickEMT</span></div>
+  <span class="sp"></span>
+  <a class="btn" href="/">Sign in</a>
+  <a class="btn" href="https://github.com/clickconstruction/clickEMT" rel="noopener">How it is built</a>
+</div>
+
+<section class="hero">
+  <h1>One picture of the incident, from the boat to the command post.</h1>
+  <p class="lead">A map at the base and an app on every phone, sharing one picture: where the units are, what they have cleared, who needs help, and the ICS forms written as it happens.</p>
+  <ul class="three">
+    <li><b>Field first.</b> One tap in the rain with gloves on, and a dead spot never loses a report.</li>
+    <li><b>The paperwork writes itself.</b> The 214, the 211, every 204, the 209 and the IAP come from what the crews send.</li>
+    <li><b>Nothing is deleted, nothing is public by default.</b> The code is open on GitHub.</li>
+  </ul>
+  <h2>Try it as…</h2>
+  <div class="cards" id="cards"></div>
+  <details class="more"><summary>More roles</summary><div class="cards" id="cards-more"></div></details>
+  <p class="fine">Cedar Fork is a made-up town. Everything you do here stays in your browser and is gone when you close the tab: no account, nothing sent anywhere. Pick a role and the base and the phone open below, side by side, with the role's guide beside them.</p>
+</section>
+
+<section id="demo">
+  <header class="bar">
+    <h1>Try it as</h1>
+    <div class="grp">
+      <button id="prev" title="Previous role">‹</button>
+      <div class="who" id="who">
+        <button id="who-btn" class="who-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Role"><span class="role" id="who-role"></span><span class="name" id="who-name"></span><span class="caret">▾</span></button>
+        <div class="who-menu" id="who-menu" role="listbox" hidden></div>
+      </div>
+      <button id="next" title="Next role">›</button>
+    </div>
+    <div class="grp" id="layout">
+      <button data-mode="both" class="on">Both</button>
+      <button data-mode="base">Base only</button>
+      <button data-mode="phone">Phone only</button>
+    </div>
+    <div class="grp">
+      <button id="fit" class="on" title="Scale both to fit the window">Fit</button>
+      <button id="one" title="Real size, scroll to see the rest">1:1</button>
+    </div>
+    <div class="grp">
+      <button id="guide" class="on">Guide</button>
+      <button id="reload" title="Reload both frames">Reload</button>
+      <button id="reset" title="Put the seeded incident back in both frames">Reset the mock</button>
+    </div>
+    <span class="sp"></span>
+    <span class="muted" id="hint"></span>
+    <a class="btn" href="/?demo" target="_blank" rel="noopener">Base ↗</a>
+    <a class="btn" href="/field/?demo" target="_blank" rel="noopener">Phone ↗</a>
+  </header>
+  <main>
+    <aside id="aside"><p class="muted">Pick a role above.</p></aside>
+    <div id="stage">
+      <div class="slot" id="slot-base"><div class="scaled"><div class="base-box"><iframe id="base" title="The base" data-src="/?demo"></iframe></div></div></div>
+      <div class="slot" id="slot-phone"><div class="scaled"><div class="phone-box"><iframe id="phone" title="The phone" data-src="/field/?demo"></iframe></div></div></div>
+    </div>
+  </main>
+</section>
+
+<footer>
+  <span>Incident Map runs on the Incident Command System and its forms.</span>
+  <a href="/">Sign in to the real thing</a>
+  <a href="https://github.com/clickconstruction/clickEMT" rel="noopener">The code, on GitHub</a>
+  <a href="/docs/guides/README.md">The guides, one per role</a>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+  const PERSONAS = [
+    { n: 1, slug: '01-incident-commander', role: 'Incident Commander', name: 'Dana Ruiz', where: 'base', hook: 'Is anyone in trouble, how far has the search got, what is the plan: thirty seconds, then sign the IAP.', lead: true },
+    { n: 2, slug: '02-operations-section-chief', role: 'Operations Section Chief', name: 'Marcus Bell', where: 'base', hook: 'Draw a division, assign a crew, run a head count by name, answer the radio with the map in front of you.', lead: true },
+    { n: 3, slug: '03-unit-lead-on-foot', role: 'Unit lead on foot', name: 'Lt. Ana Ramirez', where: 'phone', hook: 'Clear an address in one tap, send a photo that knows which way you faced, answer the PAR without typing.', lead: true },
+    { n: 4, slug: '04-swift-water-boat-operator', role: 'Swift-water boat operator', name: 'Rosa Alvarez', where: 'phone', hook: 'A rotation clock for the water, the boat ramp on the map, and intake for the people you pull out.', lead: true },
+    { n: 5, slug: '05-safety-officer', role: 'Safety Officer', name: 'Priya Natarajan', where: 'both', hook: 'A safety message that takes over every phone, who has not acknowledged, who is past the rotation.' },
+    { n: 6, slug: '06-documentation-unit', role: 'Documentation Unit', name: 'one borrowed clerk', where: 'base', hook: 'A 214 that writes itself, a 211 with names, the sitrep from the data, a replay of the day.' },
+    { n: 7, slug: '07-public-information-officer', role: 'Public Information Officer', name: '', where: 'base', hook: 'Only cleared photos, each checked and captioned, named by time and place, as one zip.' },
+    { n: 8, slug: '08-mutual-aid-captain', role: 'Mutual-aid captain', name: 'Capt. Reyes, from two counties over', where: 'phone', hook: 'Join by scanning a code, get a 204 on paper with a map, and be released cleanly at the end.', lead: true },
+    { n: 9, slug: '09-deputy-at-a-closed-bridge', role: 'Sheriff\'s deputy at a closed bridge', name: 'Dep. Luis Moreno', where: 'phone', hook: 'Counted on your own at a closed bridge, and a car in the water reported with its spot.' },
+    { n: 10, slug: '10-shelter-desk', role: 'Shelter desk volunteer', name: '', where: 'phone', hook: 'Who is on the next bus, who needs oxygen, and an answer for "is my mother here?"', lead: true },
+    { n: 11, slug: '11-agency-administrator', role: 'Agency administrator', name: '', where: 'base', hook: 'Members and roles, the Operations code, the Maps key, and personal records that clear by rule.' },
+    { n: 12, slug: '12-the-resident', role: 'The resident who refused to leave', name: 'not a user', where: 'both', hook: 'Revisited on time, oxygen noted, and the next crew knows the house was searched.' }
+  ];
+  const LEAD = [1, 2, 3, 4, 10, 8];
+  const $ = (id) => document.getElementById(id);
+  const state = { mode: 'both', fit: true, guide: true, who: 0, modeChosen: false, framesLoaded: false };
+  const SIZES = { base: [1280, 800], phone: [395, 832] };
+  const escape = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const WHERE = { base: 'On the base', phone: 'On the phone', both: 'Base and phone' };
+
+  // ---- the role cards
+  function card(p) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'card'; b.dataset.role = p.slug;
+    b.innerHTML = '<span class="role">' + escape(p.role) + '</span>' + (p.name ? '<span class="name">' + escape(p.name) + '</span>' : '') + '<span class="hook">' + escape(p.hook) + '</span><span class="on ' + p.where + '">' + WHERE[p.where] + '</span>';
+    b.addEventListener('click', () => { state.who = p.n; showGuide(); $('demo').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    return b;
+  }
+  for (const n of LEAD) $('cards').appendChild(card(PERSONAS.find((p) => p.n === n)));
+  for (const p of PERSONAS) if (!LEAD.includes(p.n)) $('cards-more').appendChild(card(p));
+
+  // ---- the guide: docs/guides/<slug>.md drawn with a small renderer
+  const inline = (s) => escape(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  function md(src) {
+    const out = []; let list = null; const para = [];
+    const flush = () => { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para.length = 0; } };
+    const endList = () => { if (list) { out.push(list === 'ul' ? '</ul>' : '</ol>'); list = null; } };
+    for (const raw of src.split('\n')) {
+      const l = raw.replace(/\s+$/, ''); let m;
+      if ((m = l.match(/^(#{1,4})\s+(.*)/))) { flush(); endList(); out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`); }
+      else if ((m = l.match(/^\s*[-*]\s+(.*)/))) { flush(); if (list !== 'ul') { endList(); out.push('<ul>'); list = 'ul'; } out.push('<li>' + inline(m[1]) + '</li>'); }
+      else if ((m = l.match(/^\s*\d+\.\s+(.*)/))) { flush(); if (list !== 'ol') { endList(); out.push('<ol>'); list = 'ol'; } out.push('<li>' + inline(m[1]) + '</li>'); }
+      else if (/^\|/.test(l)) { flush(); endList(); }
+      else if (!l.trim()) { flush(); endList(); }
+      else if (list && /^\s{2,}/.test(raw)) { out[out.length - 1] = out[out.length - 1].replace(/<\/li>$/, ' ' + inline(l.trim()) + '</li>'); }
+      else { endList(); para.push(l.trim()); }
+    }
+    flush(); endList();
+    return out.join('\n')
+      .replace(/<li><b>Base<\/b>\s*·?\s*/g, '<li class="on-base"><span class="chip base">Base</span>')
+      .replace(/<li><b>Phone<\/b>\s*·?\s*/g, '<li class="on-phone"><span class="chip phone">Phone</span>');
+  }
+  const head = (p) => '<div class="who-head"><div class="role">' + escape(p.role) + '</div>' + (p.name ? '<div class="name">' + escape(p.name) + '</div>' : '') + '</div>';
+  async function showGuide() {
+    const p = PERSONAS.find((x) => x.n === state.who) || PERSONAS[0];
+    state.who = p.n;
+    loadFrames();
+    $('who-role').textContent = p.role; $('who-name').textContent = p.name;
+    for (const el of $('who-menu').children) el.setAttribute('aria-selected', el.dataset.n === String(p.n) ? 'true' : 'false');
+    try { history.replaceState(null, '', '#' + p.n); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('ic.try.who', String(p.n)); } catch (e) { /* ignore */ }
+    const aside = $('aside');
+    aside.innerHTML = '<p class="muted">Loading…</p>';
+    try {
+      const r = await fetch('/docs/guides/' + p.slug + '.md', { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+      aside.innerHTML = head(p) + md(await r.text()).replace(/^<h1>[\s\S]*?<\/h1>\n?/, '');
+      aside.scrollTop = 0;
+    } catch (e) {
+      aside.innerHTML = head(p) + '<p class="err">The guide could not be loaded (' + escape(String(e.message || e)) + ').</p>';
+    }
+  }
+
+  // ---- the frames load once, when a role is picked or the demo scrolls into view
+  function loadFrames() {
+    if (state.framesLoaded) return;
+    state.framesLoaded = true;
+    for (const id of ['base', 'phone']) { const f = $(id); f.src = f.dataset.src; }
+  }
+
+  // ---- layout: scale the frames to fit, or 1:1 and scroll
+  function setMode(mode) {
+    state.mode = mode;
+    for (const x of $('layout').querySelectorAll('button')) x.classList.toggle('on', x.dataset.mode === mode);
+  }
+  function layout() {
+    const stage = $('stage');
+    const W = stage.clientWidth - 24, H = stage.clientHeight - 24, gap = 20;
+    // A narrow window (a phone, or a narrow pane) starts on one frame; Both would draw them too small to read.
+    if (!state.modeChosen && state.mode === 'both' && W < 700) setMode('phone');
+    const showBase = state.mode !== 'phone', showPhone = state.mode !== 'base';
+    $('slot-base').hidden = !showBase; $('slot-phone').hidden = !showPhone;
+    let s = 1;
+    if (state.fit) {
+      const w = (showBase ? SIZES.base[0] : 0) + (showPhone ? SIZES.phone[0] : 0) + (showBase && showPhone ? gap : 0);
+      const h = Math.max(showBase ? SIZES.base[1] : 0, showPhone ? SIZES.phone[1] : 0);
+      s = Math.min(1, W / w, H / h);
+    }
+    for (const k of ['base', 'phone']) {
+      const slot = $('slot-' + k), [w, h] = SIZES[k];
+      slot.style.width = Math.round(w * s) + 'px'; slot.style.height = Math.round(h * s) + 'px';
+      slot.querySelector('.scaled').style.transform = 'scale(' + s + ')';
+    }
+    $('hint').textContent = (s < 1 ? 'Drawn at ' + Math.round(s * 100) + '% · ' : '') + 'base as Operations · phone as Unit 3 · one incident between them';
+  }
+
+  // ---- the stand-in: reset in both frames, then reload both so neither copies the other's old data
+  function mockOf(id) { try { return $(id).contentWindow.__mock; } catch (e) { return null; } }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2400); }
+  function reloadFrames() { loadFrames(); for (const id of ['base', 'phone']) { const f = $(id); f.src = f.dataset.src; } }
+  function resetMock() {
+    let n = 0;
+    for (const id of ['base', 'phone']) { const m = mockOf(id); if (m && typeof m.reset === 'function') { try { m.reset(); n++; } catch (e) { /* ignore */ } } }
+    reloadFrames();
+    toast(n ? 'The seeded incident is back' : 'Reloaded');
+  }
+
+  // ---- wiring
+  const menu = $('who-menu'), btn = $('who-btn');
+  for (const p of PERSONAS) {
+    const o = document.createElement('button'); o.type = 'button'; o.setAttribute('role', 'option'); o.dataset.n = String(p.n);
+    o.innerHTML = '<span class="role">' + escape(p.role) + '</span>' + (p.name ? '<span class="name">' + escape(p.name) + '</span>' : '') + '<span class="num">' + p.n + '</span>';
+    o.addEventListener('click', () => { state.who = p.n; closeMenu(); showGuide(); btn.focus(); });
+    menu.appendChild(o);
+  }
+  function openMenu() { menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); const cur = menu.querySelector('[aria-selected="true"]'); if (cur) cur.focus(); }
+  function closeMenu() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  btn.addEventListener('click', () => { if (menu.hidden) openMenu(); else closeMenu(); });
+  document.addEventListener('click', (e) => { if (!$('who').contains(e.target)) closeMenu(); });
+  document.addEventListener('keydown', (e) => {
+    if (menu.hidden) return;
+    if (e.key === 'Escape') { closeMenu(); btn.focus(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); const items = [...menu.children]; const i = items.indexOf(document.activeElement);
+      items[e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1)].focus();
+    }
+  });
+  $('prev').addEventListener('click', () => { state.who = state.who > 1 ? state.who - 1 : PERSONAS.length; showGuide(); });
+  $('next').addEventListener('click', () => { state.who = state.who < PERSONAS.length ? state.who + 1 : 1; showGuide(); });
+  for (const b of $('layout').querySelectorAll('button')) b.addEventListener('click', () => { state.modeChosen = true; setMode(b.dataset.mode); layout(); });
+  $('fit').addEventListener('click', () => { state.fit = true; $('fit').classList.add('on'); $('one').classList.remove('on'); layout(); });
+  $('one').addEventListener('click', () => { state.fit = false; $('one').classList.add('on'); $('fit').classList.remove('on'); layout(); });
+  $('guide').addEventListener('click', () => { state.guide = !state.guide; $('aside').hidden = !state.guide; $('guide').classList.toggle('on', state.guide); layout(); });
+  $('reload').addEventListener('click', () => { reloadFrames(); toast('Both frames reloaded'); });
+  $('reset').addEventListener('click', resetMock);
+  window.addEventListener('resize', layout);
+  if ('ResizeObserver' in window) new ResizeObserver(layout).observe($('stage'));
+  if ('IntersectionObserver' in window) new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) loadFrames(); }, { rootMargin: '200px' }).observe($('demo'));
+  window.addEventListener('hashchange', () => { const n = Number(location.hash.slice(1)); if (n >= 1 && n <= PERSONAS.length && n !== state.who) { state.who = n; showGuide(); } });
+
+  // A narrow screen starts with the guide folded away, so the phone has the room; the Guide button brings it back.
+  if (window.innerWidth < 760) { state.guide = false; $('aside').hidden = true; $('guide').classList.remove('on'); }
+  const fromHash = Number(location.hash.slice(1));
+  let remembered = 0; try { remembered = Number(localStorage.getItem('ic.try.who')); } catch (e) { /* ignore */ }
+  state.who = fromHash >= 1 && fromHash <= PERSONAS.length ? fromHash : (remembered >= 1 && remembered <= PERSONAS.length ? remembered : 1);
+  layout();
+  showGuide();
+  if (fromHash >= 1) $('demo').scrollIntoView({ block: 'start' });
+})();
+</script>
+</body>
+</html>

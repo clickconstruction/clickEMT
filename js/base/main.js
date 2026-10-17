@@ -129,7 +129,7 @@ async function openIncident(id) {
       onPlaceFacility: (lat, lng) => placeFacility(lat, lng),
       onHazard: (hid) => { const h = data.hazards(true).find((x) => x.id === hid); if (h && h.zone_id) select({ type: 'zone', id: h.zone_id }); },
       onBlank: () => { if (state.selected && state.selected.type !== 'newzone') select(null); },
-      onDraftChange: (n) => { $('#tool-hint').textContent = n < 3 ? `${n} of at least 3 points. Click the map to add the next corner.` : `${n} points. Click to add more, or press Finish.`; }
+      onDraftChange: (n) => { $('#tool-hint').textContent = n === 0 ? 'Click the map to place the first corner.' : n < 3 ? `${n} of at least 3 points. Click the map to add the next corner, or Backspace to take the last one off.` : `${n} points. Click to add more, Backspace to take the last one off, or press Finish.`; }
     });
   }
   map.trails = new Map();
@@ -446,6 +446,7 @@ document.addEventListener('click', async (e) => {
         $('#btn-boundary').classList.toggle('on', mode === 'boundary');
         $('#btn-zone').classList.toggle('on', mode === 'zone');
         $('#draw-btns').hidden = false;
+        $('#btn-undo-point').hidden = false;
         $('#tool-hint').textContent = mode === 'boundary' ? 'Click the map to outline the incident area, then press Finish.' : 'Click the map to outline the division, then press Finish.';
         if (state.selected) select(null);
         break;
@@ -461,6 +462,7 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'cancel-draw': stopDraw(); break;
+      case 'undo-point': map.undoPoint(); break;
       case 'newzone-discard': state.pendingPolygon = null; state.newZone = null; select(null); break;
     }
   } catch (err) {
@@ -487,8 +489,19 @@ document.addEventListener('change', async (e) => {
   } catch (err) { toast(err.message || String(err), true); }
 });
 
+// While outlining, Backspace or Delete takes the last corner off (not while typing in a field).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+  if (!map || (map.mode !== 'boundary' && map.mode !== 'zone')) return;
+  const t = e.target;
+  if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) return;
+  e.preventDefault();
+  map.undoPoint();
+});
+
 function stopDraw() {
   map.cancelDraw();
+  $('#btn-undo-point').hidden = true;
   state.placeZone = null;
   $('#btn-boundary').classList.remove('on');
   $('#btn-zone').classList.remove('on');

@@ -71,6 +71,14 @@ export class BaseMap {
     this.cancelDraw();
     return pts.length >= 3 ? latLngsToPolygon(pts) : null;
   }
+  // Backspace while outlining: the last corner comes off. Only the outline modes have a draft.
+  undoPoint() {
+    if ((this.mode !== 'boundary' && this.mode !== 'zone') || !this.draft.length) return false;
+    this.draft.pop();
+    this.renderDraft();
+    this.cb.onDraftChange && this.cb.onDraftChange(this.draft.length);
+    return true;
+  }
   cancelDraw() {
     this.mode = null;
     this.draft = [];

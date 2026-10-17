@@ -11,6 +11,8 @@
 .pick-row .name { font-weight: 600; }
 .pick-row .sub { font-size: 12.5px; color: var(--muted); }
 .pick-row .spacer { flex: 1; }
+.pick-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 6px 10px 18px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line-soft); }
+.pick-sub.warn { color: var(--accent-text); }
 
 .app { height: 100%; display: flex; flex-direction: column; }
 .top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
@@ -341,6 +343,17 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .pp-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .pp-count { flex: 1; font-size: 13.5px; color: var(--ink-2); }
 .pp-form { margin-bottom: 14px; }
+.pp-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.pp-tabs .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.mb-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.mb-row { display: grid; grid-template-columns: minmax(140px, 1.3fr) minmax(120px, 1fr) minmax(110px, 0.9fr) minmax(140px, 1fr) auto; gap: 8px 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.mb-row:last-child { border-bottom: 0; }
+.mb-row.gone { opacity: 0.7; }
+.mb-row .mb-who { font-weight: 600; }
+.mb-row .mb-who span { font-weight: 400; color: var(--muted); }
+.mb-row .mb-act { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+@media (max-width: 760px) { .mb-row { grid-template-columns: 1fr 1fr; } .mb-row .mb-act { grid-column: 1 / -1; justify-content: flex-start; } }
+.ops-code { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; margin-bottom: 8px; }
 .pp-grp { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .pp-grp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: 13px; }
 .pp-grp-h:hover { background: var(--hover); }

@@ -49,7 +49,7 @@ function toast(msg, bad) {
   clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
-function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
+function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; if (which !== 'app') $('#s-removed').hidden = true; }
 function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
   const was = state.screen;
@@ -62,20 +62,22 @@ function screen(name) {
 }
 
 // ---- the outbox: what the phone sends, in order, even after a dead spot
+// Each new row carries the moment it was queued (at): what a phone queued before Operations removed it
+// still lands, and nothing it queues after does (ic_may_write in the database).
 const outbox = new Outbox({
   photo: (p, blob) => data.addPhoto(p.id, blob, p),
   addr: (p) => data.updateZone(p.zoneId, { cleared: p.cleared }),
   clear: (p) => data.updateZone(p.zoneId, p.patch),
-  hazard: (p) => data.addHazard(p.id, p),
-  alert: (p) => data.raiseAlert(p.id, p),
+  hazard: (p, _b, at) => data.addHazard(p.id, { ...p, createdAt: at }),
+  alert: (p, _b, at) => data.raiseAlert(p.id, { ...p, createdAt: at }),
   standdown: (p) => data.standDown(p.id),
-  message: (p) => data.sendMessage(p.id, p),
-  ack: (p) => data.ackMessage(p.messageId, p.reply, p.count),
+  message: (p, _b, at) => data.sendMessage(p.id, { ...p, createdAt: at }),
+  ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at),
   status: (p) => data.setStatus(p.userId, p.status, p.note),
-  structure: (p) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, p.fields)),
+  structure: (p, _b, at) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
   pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts),
-  person: (p) => data.addPerson(p.id, p),
-  evacuee: (p) => (p.update ? data.updateEvacuee(p.id, p.patch) : data.addEvacuee(p.id, p.fields)),
+  person: (p, _b, at) => data.addPerson(p.id, { ...p, checkedInAt: at }),
+  evacuee: (p, _b, at) => (p.update ? data.updateEvacuee(p.id, p.patch) : data.addEvacuee(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
   personPatch: (p) => data.updatePerson(p.id, p.patch)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
@@ -106,8 +108,9 @@ function distance(a, b) {
 async function boot() {
   if (!data) { document.body.innerHTML = '<p style="padding:24px">Supabase is not configured. See config.example.js.</p>'; return; }
   const user = await data.init();
-  data.on((what) => {
+  data.on((what, detail) => {
     if (what === 'auth') { if (!data.user) show('auth'); else if (!$('#auth').hidden) showJoin(); }
+    if (what === 'change' && detail && detail.table === 'ic_members') drawRemoved();
     if (what === 'change' || what === 'open' || what === 'realtime') queueDraw();
   });
   if (!user) { show('auth'); return; }
@@ -588,9 +591,21 @@ function queueDraw() {
   if (Date.now() - lastFrameAt > 1500) { drawAll(); return; }
   drawQueued = true;
   requestAnimationFrame(() => { drawQueued = false; drawAll(); });
+  setTimeout(() => { if (drawQueued) { drawQueued = false; drawAll(); } }, 1600);   // a frame that never comes (the pane hidden a moment after the draw was queued) no longer holds every later draw
 }
 
+// Removed by Operations (migration 0019): the phone keeps its own member row in view and learns it live.
+// The sheet covers everything; the way out is Sign out. Nothing new it sends would land anyway.
+function drawRemoved() {
+  const me = data.me();
+  const removed = !!(me && me.removed_at && !$('#app').hidden);
+  const sheet = $('#s-removed');
+  if (sheet.hidden === !removed) return;
+  sheet.hidden = !removed;
+  if (removed) { $('#removed-inc').textContent = data.incident ? data.incident.name : 'the incident'; sensors.stop(); toTop(sheet); }
+}
 function drawAll() {
+  drawRemoved();
   if (!data.incident || $('#app').hidden) return;
   const me = data.me();
   $('#me-name').textContent = unitLabel(me);

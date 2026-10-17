@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady } from '../shared/rules.js';
 import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -125,6 +125,7 @@ function homeHtml(data, state) {
         <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button></div>
       </div>
     </div>
+    ${opsCodeHtml(data)}
     <div class="k" style="margin-top:6px">Resources</div>
     ${resourcesHtml(data, state)}
     ${parHtml(data)}
@@ -150,6 +151,20 @@ function homeHtml(data, state) {
       <label>Lead agency <input name="lead_agency" value="${esc(inc.lead_agency || '')}" placeholder="Cedar Fork Fire Department" maxlength="120"></label>
       <div class="row-btns"><button class="btn sm" type="submit">Save</button></div>
     </form>`;
+}
+
+// The Operations code (migration 0019): joining with it makes someone Operations, so it is read here
+// alone, said by radio or phone, never printed and never on the join card. New code retires one that leaked.
+function opsCodeHtml(data) {
+  const me = data.me();
+  if (!me || me.role !== 'ops') return '';
+  const code = data.opsCode();
+  return `
+    <div class="k" style="margin-top:6px">Operations code</div>
+    <div class="ops-code">
+      <div class="d-row"><span class="code-big mono" data-ops-code>${code ? esc(code) : '—'}</span>${code ? '<button class="btn sm" data-action="copy-ops-code">Copy</button>' : ''}<button class="btn sm" data-action="new-ops-code" title="Retire this code: the old one no longer joins">New code</button></div>
+      <div class="muted" style="font-size:12.5px">${code ? 'Whoever joins with this code is Operations and can run the incident. Give it by radio or phone, never on paper; the join card carries the units\' code only. The Members tab on the People board shows who holds which role.' : 'No Operations code on record yet. Press New code to make one.'}</div>
+    </div>`;
 }
 
 // The Layers panel under the tools bar: the map underneath on one side, the imagery over it on the other.
@@ -441,8 +456,50 @@ export function peopleChipsHtml(data, state) {
 }
 
 // The People board: everyone by unit, with the find box and the chips narrowing the list.
+// What the base knows about who is behind a member: for the Members tab and the unit panel.
+export function identityState(data, m) {
+  const p = data.profileOf(m.user_id);
+  if (!p || !profileReady(p)) return { cls: 'haz', text: 'Nothing given' };
+  if (p.verified_at) return { cls: 'cleared', text: 'Verified ' + hhmm(p.verified_at) };
+  if (identityGiven(p)) return { cls: 'st-available', text: 'Licence on file, not verified' };
+  return { cls: 'haz', text: 'Name and phone only' };
+}
+
+// The Members tab: who is on the incident, in which role, with what identity; Operations changes
+// roles and removes or restores members. The person who opened the incident is always Operations.
+function membersHtml(data) {
+  const me = data.me(), ops = !!me && me.role === 'ops', inc = data.incident;
+  const members = data.members().sort((a, b) => (b.role === 'ops') - (a.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const removed = data.removedMembers();
+  const row = (m) => {
+    const p = data.profileOf(m.user_id), id = identityState(data, m), opener = m.user_id === inc.created_by, self = !!me && m.user_id === me.user_id;
+    const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
+    return `
+      <div class="mb-row${m.removed_at ? ' gone' : ''}" data-member="${m.user_id}">
+        <span class="mb-who">${esc(unitWithKind(m))}${p && p.full_name ? `<span> · ${esc(p.full_name)}</span>` : ''}${p && p.phone ? `<span> · ${esc(p.phone)}</span>` : ''}</span>
+        <span class="muted">${esc(m.agency || 'agency not set')}${zone ? ' · in ' + esc(zone.code) : ''}</span>
+        <span><span class="badge ${m.role === 'ops' ? 'cleared' : 'st-assigned'}">${m.role === 'ops' ? 'Operations' : 'Unit'}</span>${opener ? '<span class="muted"> · opened the incident</span>' : ''}</span>
+        <span>${m.removed_at ? `<span class="badge haz">Removed ${hhmm(m.removed_at)}</span>` : `<span class="badge ${id.cls}">${esc(id.text)}</span> <span class="muted">${esc(STATUS_LABEL[m.status] || m.status)}</span>`}</span>
+        <span class="mb-act">${m.removed_at
+          ? (ops ? `<button class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : '')
+          : `${m.role === 'unit' ? `<button class="btn sm" data-action="select-unit" data-id="${m.user_id}">Open</button>` : ''}
+             ${ops && !opener ? (m.role === 'ops'
+               ? `<button class="btn sm" data-action="member-role" data-id="${m.user_id}" data-role="unit" title="A unit again: it checks in on a phone and holds divisions">Make a unit</button>`
+               : `<button class="btn sm" data-action="member-role" data-id="${m.user_id}" data-role="ops" title="Can run the incident from the base">Make Operations</button>`) : ''}
+             ${ops && !opener && !self ? `<button class="btn sm" data-action="member-remove" data-id="${m.user_id}" title="Takes them off the incident; what they sent stays, and they can be put back">Remove</button>` : ''}`}</span>
+      </div>`;
+  };
+  return `
+    <div class="pp-top"><span class="pp-count">${members.length} member${members.length === 1 ? '' : 's'} · ${members.filter((m) => m.role === 'ops').length} Operations${removed.length ? ' · ' + removed.length + ' removed' : ''}</span></div>
+    <p class="muted" style="font-size:12.5px;margin:0 0 8px">The six-letter join code makes a unit; the Operations code on the home panel makes Operations. Removing a member keeps everything they sent and can be undone here.</p>
+    <div class="mb-list">${members.map(row).join('')}</div>
+    ${removed.length ? `<div class="k">Removed · kept, never deleted</div><div class="mb-list">${removed.map(row).join('')}</div>` : ''}`;
+}
+
 export function peopleBoardHtml(data, state) {
   const ps = state.people || {};
+  const tabs = `<div class="pp-tabs chips"><button class="chip${ps.tab === 'members' ? '' : ' on'}" data-action="people-tab" data-tab="people" aria-pressed="${ps.tab !== 'members'}">People</button><button class="chip${ps.tab === 'members' ? ' on' : ''}" data-action="people-tab" data-tab="members" aria-pressed="${ps.tab === 'members'}">Members</button></div>`;
+  if (ps.tab === 'members') return tabs + membersHtml(data);
   const all = data.people();
   const on = data.peopleOn();
   const ops = !!data.me() && data.me().role === 'ops';
@@ -483,7 +540,7 @@ export function peopleBoardHtml(data, state) {
       </div>`;
   }).join('');
   const noNames = data.units().filter((u) => u.status !== 'checked_out' && !data.unitPeople(u.user_id).length);
-  return `
+  return tabs + `
     <div class="pp-top">
       <span class="pp-count">${count}</span>
       ${ops && !ps.add ? '<button class="btn sm" data-action="people-add-toggle">Add a person</button>' : ''}
@@ -839,6 +896,7 @@ function unitHtml(data, m, state) {
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${esc(unitWithKind(m))} <span>${esc(m.crew || '')}</span></div>
+    ${m.removed_at ? `<div class="d-row"><span class="badge haz">Removed from the incident ${hhmm(m.removed_at)} by Operations</span>${data.me() && data.me().role === 'ops' ? `<button class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : ''}<button class="btn sm" data-action="people" data-tab="members">Members</button></div>` : ''}
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
     ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
@@ -846,12 +904,12 @@ function unitHtml(data, m, state) {
     ${identityHtml(data, m)}
     ${demobHtml(m)}
     ${unitRequestsHtml(data, m)}
-    <div class="d-row"><span class="k">Set status</span>
+    ${m.removed_at ? '' : `<div class="d-row"><span class="k">Set status</span>
       <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
       <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>
       ${m.status === 'checked_out' ? `<button class="btn sm" data-action="set-status" data-id="${m.user_id}" data-status="available">Check back in</button>` : `<button class="btn sm" data-action="check-out" data-id="${m.user_id}">Check out</button>`}
       <button class="btn sm" data-action="start-par" data-target="user:${m.user_id}">PAR</button>
-    </div>
+    </div>`}
     ${oos ? `<form class="inline-form" data-form="oos" data-id="${m.user_id}"><div class="chips">${OOS_REASONS.map((r, i) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="radio" name="reason" value="${esc(r)}"${i === 0 ? ' checked' : ''}> ${esc(r)}</label>`).join('')}</div><div class="row-btns"><button class="btn sm" type="button" data-action="oos-cancel">Cancel</button><button class="btn pri sm" type="submit">Out of service</button></div></form>` : ''}
     <div class="kv">
       <span class="k">Agency</span><span>${esc(m.agency) || 'not set'}</span>

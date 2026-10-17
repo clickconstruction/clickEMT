@@ -63,7 +63,7 @@ export class Outbox {
         const handler = this.handlers[row.kind];
         if (!handler) { await this.remove(row.id); continue; }
         try {
-          await handler(row.payload, row.blob);
+          await handler(row.payload, row.blob, row.at ? new Date(row.at).toISOString() : null);   // when it was queued: a removed phone's backlog is stamped before the removal
           await this.remove(row.id);
           this.lastError = null;
         } catch (e) {

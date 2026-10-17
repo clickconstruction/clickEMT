@@ -22,14 +22,14 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v26**, "Shelter and evacuee records" (`e84c308`), plus this handoff. The service worker reads
-  `v26`.
-- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0018` in
+- `main` is at **v27**, "Members and roles, and personal records that clear by rule". The service worker reads
+  `v27`.
+- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0019` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
-  (`evacuees.sql` 28 of 28, `walkfix.sql` 10 of 10, `ics100.sql`, `people.sql`). The last full smoke run that was
-  recorded, at v25, passed 391 of 391; v26 added an `evacuees` suite.
+  (`members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql` 10 of 10, `ics100.sql`, `people.sql`). v26 added an
+  `evacuees` smoke suite and v27 a `members` suite; the v27 release notes in `docs/punchlist.md` say how its full run went.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
 - **Open work:** the re-walk after v26, then v27, v28 and v29, a few small fixes, and four decisions for Grace. All in
@@ -49,8 +49,9 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 ## Rules that are easy to break
 
 - **Nothing the user made is deleted.** Hazards are resolved, alerts stood down, zones reopened, people and members
-  archived. There is no delete path and row-level security has no delete policy. (v27 adds one exception: personal
-  records, such as licence numbers, clear by rule after an incident closes.)
+  archived. There is no delete path and row-level security has no delete policy, with one exception since v27:
+  personal records (licence numbers, dates of birth, addresses, licence photos, the names of people sheltered) clear
+  by rule thirty days after an incident closes, never work product.
 - **The database writes the activity log.** Triggers fill `ic_events`, the 214. A new kind of report needs its
   trigger in a migration, not a write from the app.
 - **Two views, one truth.** A rule both views obey goes in `js/shared/rules.js` (no DOM, no network) or in the

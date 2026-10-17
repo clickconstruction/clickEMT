@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1060,7 +1060,7 @@ async function zoneCard(check) {
 // The code to join as a QR: drawn on the base beside the code, printed as a join card, and read
 // back by the phone's decoder from the very picture the base draws.
 async function join(check) {
-  const url = 'http://localhost:8766/field/?join=' + M().tables.ic_incidents[0].code;
+  const url = location.origin + '/field/?join=' + M().tables.ic_incidents[0].code;   // whatever port serves this checkout
   check('the home panel draws the join code as a QR beside the code', !!$('#panel .qr-box svg') && has('#panel', 'join code for field phones', 'cedar7', 'print a join card'), text('#panel').slice(0, 200));
   $('#panel [data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
@@ -1447,7 +1447,7 @@ async function phoneFrame() {
       return out;
     }
   };
-  P.ready = await until(() => P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 10000);
+  P.ready = await until(() => P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 20000);   // a hidden pane throttles the frame's timers
   return P;
 }
 async function phoneSignIn(P, email, signUp) {
@@ -1844,4 +1844,121 @@ async function evacuees(check) {
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     await wait(100);
   }
+}
+
+// Members and roles, and the personal records that clear by rule (v27, migration 0019): the Operations
+// code on the home panel, the role following the code, the Members tab with Make Operations / Make a
+// unit / Remove / Restore, the removed phone's notice and its queued rows, and the clearing from the picker.
+async function members(check) {
+  const confirmWas = window.confirm, promptWas = window.prompt;
+  window.confirm = () => true; window.prompt = () => 'Unit 9';
+  let P = null, relief = null;
+  try {
+    const U = USERS(), opsCode = M().ids.opsCode;
+    check('the home panel shows the Operations code with Copy and New code, and says it never goes on paper', has('#panel', 'operations code', opsCode.toLowerCase(), 'never on paper') && !!$('#panel [data-action="new-ops-code"]') && !!$('#panel [data-action="copy-ops-code"]'), text('#panel').slice(0, 400));
+    check('a unit cannot read it', !field.opsCode() && ((await field.sb.from('ic_ops_codes').select('*')).data || []).length === 0);
+    check('the join box and the join card do not carry it', !$('#panel .join-box').textContent.includes(opsCode) && !joinCardTextOf().includes(opsCode));
+    // the role follows the code
+    const c = window.supabase.createClient();
+    await c.auth.signInWithPassword({ email: 'relief@mock.local', password: 'any' });
+    relief = new Data(c); await relief.init();
+    await relief.saveProfile({ full_name: 'Relief Chief', phone: '512 555 0177', licence_number: 'R5551212', licence_state: 'TX', date_of_birth: '1979-05-05', address: '4 Oak St, Cedar Fork', id_source: 'typed' });
+    const e1 = await (async () => { try { await relief.join('CEDAR7', 'ops', 'Operations'); return null; } catch (e) { return e; } })();
+    check('the base holding the units\' join code is told which code it needs', !!e1 && /join code for field units/.test(e1.message), e1 && e1.message);
+    await relief.join(opsCode, 'unit', 'Whatever');
+    await until(() => base.member(relief.user.id));
+    check('the Operations code makes the member Operations, whatever the phone meant, and the log says so', base.member(relief.user.id).role === 'ops' && await until(() => eventText(base, 'Operations joined as Operations with the Operations code as Relief Chief, 512 555 0177, licence typed')), logTexts()[0]);
+    await relief.open(INC());
+    check('and they read the code too', relief.opsCode() === opsCode);
+    $('#panel [data-action="new-ops-code"]').click();
+    await until(() => base.opsCode() && base.opsCode() !== opsCode);
+    check('New code gives a new eight-letter code, logged without the code itself, and the panel shows it', base.opsCode().length === 8 && !!eventText(base, 'Operations code replaced; the old one no longer joins') && await until(() => has('#panel', base.opsCode().toLowerCase())) && !base.events().some((e) => e.text.includes(opsCode)), logTexts()[0]);
+    const e2 = await (async () => { try { await relief.join(opsCode, 'unit', 'X'); return null; } catch (e) { return e; } })();
+    check('the old code no longer joins', !!e2 && /No active incident has the code/.test(e2.message), e2 && e2.message);
+    // the Members tab
+    $('[data-action="people"]').click();
+    await until(() => !$('#people').hidden);
+    $('#people-page [data-action="people-tab"][data-tab="members"]').click();
+    await until(() => $('#people-page .mb-list'));
+    check('the Members tab lists everyone with role, agency and identity state', has('#people-page', '5 members · 2 operations', 'operations · marcus bell', 'opened the incident', 'unit 1, engine · ana ramirez', 'verified', 'unit 2, boat crew · minh nguyen', 'licence on file, not verified', 'operations · relief chief'), text('#people-page').slice(0, 600));
+    check('the opener has no Make a unit and no Remove; the others do', !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-role"]`) && !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-remove"]`) && !!$(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="unit"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-role"][data-role="ops"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-remove"]`));
+    $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="unit"]`).click();
+    check('Make a unit asks for the unit name, changes the role and logs it by name', await until(() => base.member(relief.user.id).role === 'unit' && base.member(relief.user.id).unit_name === 'Unit 9') && await until(() => eventText(base, 'Relief Chief is now a unit, Unit 9')), logTexts()[0]);
+    await until(() => $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`));
+    $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`).click();
+    check('Make Operations changes it back and logs it', await until(() => base.member(relief.user.id).role === 'ops') && await until(() => eventText(base, 'Unit 9 (Relief Chief) is now Operations')), logTexts()[0]);
+    const e3 = await (async () => { try { await base.setRole(U.ops, 'unit'); return null; } catch (e) { return e; } })();
+    check('the person who opened the incident cannot be demoted', !!e3 && /always Operations/.test(e3.message) && base.member(U.ops).role === 'ops', e3 && e3.message);
+    const e4 = await (async () => { try { await field.setRole(U.unit3, 'ops'); return null; } catch (e) { return e; } })();
+    check('a unit cannot make itself Operations', !!e4 && /Only Operations/.test(e4.message) && base.member(U.unit3).role === 'unit', e4 && e4.message);
+    relief.close(); relief = null;
+    // removal: Unit 3 on its phone, holding A-2 with two people
+    P = await phoneFrame();
+    check('the phone is open as Unit 3', !!P.ready);
+    $(`#people-page .mb-row[data-member="${U.unit3}"] [data-action="member-remove"]`).click();
+    await until(() => base.member(U.unit3) && base.member(U.unit3).removed_at);
+    const u3 = base.member(U.unit3);
+    check('Remove archives the membership: checked out, stamped by whom, one line by unit and name, no check-out line', !!u3.removed_at && u3.removed_by === U.ops && u3.status === 'checked_out' && !!eventText(base, 'Unit 3 (Jordan Lee Hale) removed from the incident by Operations') && !eventText(base, 'Unit 3 checked out'), logTexts()[0]);
+    check('its division goes back to not started and its people are checked out', base.zone(ZONE('A-2')).assigned_to === null && base.zone(ZONE('A-2')).status === 'open' && base.unitPeople(U.unit3).length === 2 && base.unitPeople(U.unit3).every((p) => p.checked_out_at));
+    check('it is off the members and the units, kept under removed', !base.members().some((m) => m.user_id === U.unit3) && !base.units().some((m) => m.user_id === U.unit3) && base.removedMembers().some((m) => m.user_id === U.unit3));
+    check('the Members tab shows it under Removed with Restore', await until(() => has('#people-page', 'removed · kept, never deleted') && !!$(`#people-page .mb-row.gone[data-member="${U.unit3}"] [data-action="member-restore"]`)), text('#people-page').slice(-300));
+    check('the phone shows it was removed, with Sign out', await until(() => P.shown('#s-removed') && /you were removed from cedar fork flooding by operations/.test(P.text('#s-removed')), 8000) && !!P.$('#s-removed [data-action="sign-out"]'), P.text('#s-removed'));
+    // what the phone queued before the removal still lands; nothing after
+    const before = new Date(new Date(u3.removed_at).getTime() - 60000).toISOString();
+    const h1 = await (async () => { try { return await field.addHazard(uuid(), { kind: 'Gas smell', note: 'queued before the removal', zoneId: ZONE('A-2'), createdAt: before }); } catch (e) { return e; } })();
+    check('a hazard the phone stamped before the removal is accepted', !!h1 && !h1.message && await until(() => base.hazards().some((h) => h.note === 'queued before the removal')), h1 && h1.message);
+    const h2 = await (async () => { try { return await field.addHazard(uuid(), { kind: 'Gas smell', note: 'after the removal', zoneId: ZONE('A-2') }); } catch (e) { return e; } })();
+    check('one it makes after the removal is refused', !!h2 && /row-level security/.test(h2.message || ''), h2 && h2.message);
+    const e5 = await (async () => { try { await field.join('CEDAR7', 'unit', 'Unit 3'); return null; } catch (e) { return e; } })();
+    check('the join code does not let a removed member back in', !!e5 && /You were removed from Cedar Fork Flooding/.test(e5.message), e5 && e5.message);
+    const e6 = await (async () => { try { await field.restoreMember(U.unit3); return null; } catch (e) { return e; } })();
+    check('nor can it put itself back', !!e6 && /Only Operations/.test(e6.message), e6 && e6.message);
+    $(`#people-page .mb-row[data-member="${U.unit3}"] [data-action="member-restore"]`).click();
+    check('Restore makes it a member again, available, logged', await until(() => base.member(U.unit3) && !base.member(U.unit3).removed_at && base.member(U.unit3).status === 'available') && await until(() => eventText(base, 'Unit 3 (Jordan Lee Hale) put back on the incident by Operations')), logTexts()[0]);
+    check('and the phone\'s notice goes away', await until(() => !P.shown('#s-removed'), 8000));
+    P.frame.remove(); P = null;
+    $('[data-action="close-people"]').click();
+    // personal records clear by rule: the clock starts at the close, the picker shows the date
+    const e7 = await (async () => { try { await base.clearPersonal(INC()); return null; } catch (e) { return e; } })();
+    check('nothing clears while the incident is open', !!e7 && /Close the incident first/.test(e7.message), e7 && e7.message);
+    await base.closeIncident();
+    const inc = () => M().tables.ic_incidents.find((i) => i.id === INC());
+    await until(() => inc().status === 'closed' && inc().clear_personal_at);
+    const days = (iso) => Math.round((new Date(iso) - Date.now()) / 86400000);
+    check('closing sets the date 30 days out and the log says so', days(inc().clear_personal_at) === 30 && await until(() => eventText(base, 'Incident closed · personal records clear by rule in 30 days')), logTexts()[0]);
+    $('[data-action="switch-incident"]').click();
+    await until(() => !$('#pick').hidden && $(`#pick-list [data-clear="${INC()}"]`));
+    check('the picker shows the date on the closed incident with Clear now and Keep 30 more days', has(`#pick-list [data-clear="${INC()}"]`, 'personal records clear by rule on', 'licences, dates of birth') && !!$(`#pick-list [data-clear="${INC()}"] [data-action="clear-personal"]`) && !!$(`#pick-list [data-clear="${INC()}"] [data-action="keep-personal"]`), text(`#pick-list [data-clear="${INC()}"]`));
+    $(`#pick-list [data-clear="${INC()}"] [data-action="keep-personal"]`).click();
+    await until(() => days(inc().clear_personal_at) === 60);
+    check('Keep 30 more days moves the date on, logged', days(inc().clear_personal_at) === 60 && M().tables.ic_events.some((e) => e.text === 'Personal records kept 30 more days'));
+    await until(() => $(`#pick-list [data-clear="${INC()}"] [data-action="clear-personal"]`));
+    const prof = (u) => M().tables.ic_profiles.find((x) => x.user_id === u);
+    const hadPhoto = prof(U.unit1).photo_path;
+    $(`#pick-list [data-clear="${INC()}"] [data-action="clear-personal"]`).click();
+    await until(() => inc().personal_cleared_at);
+    check('Clear now blanks the licence, date of birth, address and photo of every member in no open incident, and keeps the names and phones', inc().personal_cleared_at && [U.ops, U.unit1, U.unit2, U.unit3].every((u) => prof(u).licence_number === '' && prof(u).photo_path == null && prof(u).date_of_birth == null && prof(u).address === '') && prof(U.unit1).full_name === 'Ana Ramirez' && prof(U.unit1).phone === '512 555 0111', JSON.stringify(prof(U.unit1)));
+    check('the licence photos are removed through the Storage API and the queue is marked done', M().tables.ic_id_purge.length >= 4 && M().tables.ic_id_purge.every((q) => q.done_at) && !M().files.has(hadPhoto));
+    check('the evacuee records keep counts, needs and where from, and lose the names and notes', M().tables.ic_evacuees.every((e) => e.note === '' && (e.label === '' || /^family of \d+$/.test(e.label))) && M().tables.ic_evacuees.some((e) => e.label === 'family of 5' && e.needs.includes('infant') && e.from_text === 'Riverside Drive'), JSON.stringify(M().tables.ic_evacuees.map((e) => e.label)));
+    check('one line in the 214 counts what was cleared', M().tables.ic_events.filter((e) => /^Personal records cleared by rule: 5 licence records, 5 sheltered people's names$/.test(e.text)).length === 1, (M().tables.ic_events.find((e) => /cleared by rule/.test(e.text)) || {}).text);
+    check('the picker now says cleared by rule', await until(() => has(`#pick-list [data-clear="${INC()}"]`, 'personal records cleared', 'by rule')), text(`#pick-list [data-clear="${INC()}"]`));
+    // the nightly run clears what is due, called by anyone
+    const closed = M().tables.ic_incidents.find((i) => i.id === INC());
+    closed.personal_cleared_at = null; closed.clear_personal_at = new Date(Date.now() - 86400000).toISOString();
+    check('the due run clears a closed incident whose date has come', (await field.clearPersonalDue()) === 1 && !!inc().personal_cleared_at);
+  } finally {
+    window.confirm = confirmWas; window.prompt = promptWas;
+    if (relief) relief.close();
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    await wait(100);
+  }
+}
+function joinCardTextOf() {
+  const btn = $('#panel [data-action="print-join"]');
+  if (!btn) return '';
+  btn.click();
+  const t = $('#briefing-page') ? $('#briefing-page').innerText : '';
+  if ($('[data-action="close-briefing"]')) $('[data-action="close-briefing"]').click();
+  return t;
 }

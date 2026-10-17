@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 17;
+  const SEED_VERSION = 18;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -43,6 +43,7 @@
   const AGY = [ID('8', 1)];   // the agency representatives the Liaison Officer keeps
   const CMD = [ID('9', 1)];   // who has held command
   const EV = [ID('0', 1), ID('0', 2), ID('0', 3), ID('0', 4), ID('0', 5)];   // people sheltered and moved (ic_evacuees)
+  const OPS_CODE = 'MR7KQ2VD';   // the seeded incident's Operations code (ic_ops_codes), read by Operations alone
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
@@ -93,10 +94,12 @@
     const t = {
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
-        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department',
+        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null,
         channels: [{ use: 'Command', channel: 'CMD 1' }, { use: 'Tactical, Division A', channel: 'TAC 2' }, { use: 'Tactical, Division B', channel: 'TAC 3' }, { use: 'Emergency traffic', channel: 'TAC 9' }],
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
+      ic_ops_codes: [{ incident_id: INC, code: OPS_CODE, created_at: ago(190), created_by: U.ops }],
+      ic_id_purge: [],   // licence photos the clearing queued for the base to remove
       ic_periods: [
         { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '', pio: 'Lena Marsh', liaison: 'Tomás Herrera',
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
@@ -107,10 +110,10 @@
         { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), created_at: ago(186) }
       ],
       ic_members: [
-        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null },
-        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null, facility_id: null },
-        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null, facility_id: null },
-        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null, facility_id: null }
+        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null, removed_at: null, removed_by: null },
+        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null, facility_id: null, removed_at: null, removed_by: null },
+        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null, facility_id: null, removed_at: null, removed_by: null },
+        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null, facility_id: null, removed_at: null, removed_by: null }
       ],
       ic_zones: [
         zone(1, 'A-1', 'Riverside Drive, east', 1, 'active', U.unit1, 24, 9, { updated_at: ago(45), supervisor: 'Lt. Okafor', work_assignment: 'Primary search of every structure, paint the marking on each, report waterlines and anyone who refuses to leave', instructions: 'Stay out of moving water. The utility crew for the line at the park entrance is on its way.', polygon: ring([[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]]) }),
@@ -266,7 +269,9 @@
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '' }),
+    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null }),
+    ic_ops_codes: () => ({ created_at: now(), created_by: null }),
+    ic_id_purge: () => ({ id: eventId(), queued_at: now(), done_at: null }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
     ic_evacuees: () => ({ id: uuid(), label: '', count: 1, needs: [], note: '', structure_id: null, from_text: '', status: 'here', facility_id: null, prev_facility_id: null, status_at: now(), logged_by: null, signed_in_by: null, signed_in_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
@@ -277,7 +282,7 @@
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
     ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
-    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null }),
+    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
@@ -295,42 +300,50 @@
 
   // ---- membership and the policies (owner-only by incident membership, as the migration)
   const member = (inc, uid) => tables.ic_members.find((m) => m.incident_id === inc && m.user_id === uid) || null;
-  const isMember = (inc, uid) => !!member(inc, uid);
-  const isOps = (inc, uid) => { const m = member(inc, uid); return !!m && m.role === 'ops'; };
-  const memberOf = (uid) => new Set(tables.ic_members.filter((m) => m.user_id === uid).map((m) => m.incident_id));
+  const isMember = (inc, uid) => { const m = member(inc, uid); return !!m && !m.removed_at; };   // ic_is_member: a removed member is on no incident
+  const isOps = (inc, uid) => { const m = member(inc, uid); return !!m && m.role === 'ops' && !m.removed_at; };
+  const memberOf = (uid) => new Set(tables.ic_members.filter((m) => m.user_id === uid && !m.removed_at).map((m) => m.incident_id));
+  // ic_may_write: what the phone queued before it was removed still lands (a row stamped before the removal), nothing after
+  const mayWrite = (inc, uid, at) => { const m = member(inc, uid); return !!m && (!m.removed_at || (!!at && at < m.removed_at)); };
+  const creatorOf = (inc) => { const i = tables.ic_incidents.find((x) => x.id === inc); return i ? i.created_by : null; };
   // ic_sees_profile: your own, or anyone on an incident where you are Operations
   const seesProfile = (who, uid) => who === uid || tables.ic_members.some((me) => me.user_id === uid && me.role === 'ops' && tables.ic_members.some((them) => them.incident_id === me.incident_id && them.user_id === who));
   // ic_profile_ready: a unit checks in with a name and a phone; without a licence its check-in line says "identity not given"
   const profileReady = (uid) => { const p = tables.ic_profiles.find((x) => x.user_id === uid); return !!(p && p.full_name && p.phone); };
   // ic_is_desk: a shelter desk on the incident, not checked out, at that facility (or at none chosen yet)
   const isDesk = (inc, uid, fid) => { const m = member(inc, uid); return !!fid && !!m && m.kind === 'shelter_desk' && m.status !== 'checked_out' && (!m.facility_id || m.facility_id === fid); };
-  const visible = (table, row, mine, uid) => (table === 'ic_profiles' ? seesProfile(row.user_id, uid) : mine.has(table === 'ic_incidents' ? row.id : row.incident_id));
+  const visible = (table, row, mine, uid) => (table === 'ic_profiles' ? seesProfile(row.user_id, uid)
+    : table === 'ic_ops_codes' || table === 'ic_id_purge' ? isOps(row.incident_id, uid)   // Operations alone reads the code and the purge queue
+    : table === 'ic_members' ? mine.has(row.incident_id) || row.user_id === uid   // a removed member still sees its own row
+    : mine.has(table === 'ic_incidents' ? row.id : row.incident_id));
   function allowed(table, op, row, uid) {
     if (!uid) return false;
     switch (table) {
       case 'ic_incidents': return op === 'update' && isOps(row.id, uid);
       case 'ic_members': return op === 'update' && (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_zones': return op === 'insert' ? isOps(row.incident_id, uid) : isMember(row.incident_id, uid);
-      case 'ic_positions': return row.user_id === uid && isMember(row.incident_id, uid);
-      case 'ic_photos': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isOps(row.incident_id, uid);
+      case 'ic_positions': return row.user_id === uid && (op === 'insert' ? mayWrite(row.incident_id, uid, row.at) : true);
+      case 'ic_photos': return op === 'insert' ? row.user_id === uid && mayWrite(row.incident_id, uid, row.taken_at) : isOps(row.incident_id, uid);
+      case 'ic_ops_codes': return false;   // written by the functions alone
+      case 'ic_id_purge': return op === 'update' && isOps(row.incident_id, uid);
       case 'ic_tracks': return false;
-      case 'ic_hazards': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isMember(row.incident_id, uid);
-      case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
-      case 'ic_events': return op === 'insert' ? row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid) : isOps(row.incident_id, uid);   // only Operations marks a line notable
+      case 'ic_hazards': return op === 'insert' ? row.user_id === uid && mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid);
+      case 'ic_alerts': return op === 'insert' ? row.user_id === uid && mayWrite(row.incident_id, uid, row.created_at) : (row.user_id === uid || isOps(row.incident_id, uid));
+      case 'ic_events': return op === 'insert' ? row.user_id === uid && row.kind === 'note' && mayWrite(row.incident_id, uid, row.at) : isOps(row.incident_id, uid);   // only Operations marks a line notable
       case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
       case 'ic_period_agencies': return isOps(row.incident_id, uid);
       case 'ic_commands': return false;   // written by ic_transfer_command and the period trigger alone
-      case 'ic_structures': return isMember(row.incident_id, uid);
+      case 'ic_structures': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid);
       case 'ic_facilities': return isOps(row.incident_id, uid);
       case 'ic_overlays': return isOps(row.incident_id, uid);
       case 'ic_profiles': return op === 'insert' ? row.user_id === uid : seesProfile(row.user_id, uid);
-      case 'ic_people': return isMember(row.incident_id, uid) && (row.user_id === uid || isOps(row.incident_id, uid));   // a unit keeps its own people, Operations anyone's
-      case 'ic_requests': return op === 'insert' ? isMember(row.incident_id, uid) && row.user_id === uid : isOps(row.incident_id, uid) || (row.user_id === uid && row.status === 'asked');
+      case 'ic_people': return (op === 'insert' ? mayWrite(row.incident_id, uid, row.checked_in_at) : isMember(row.incident_id, uid)) && (row.user_id === uid || isOps(row.incident_id, uid));   // a unit keeps its own people, Operations anyone's
+      case 'ic_requests': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) && row.user_id === uid : isOps(row.incident_id, uid) || (row.user_id === uid && row.status === 'asked');
       case 'ic_objectives': return isOps(row.incident_id, uid);
       // members add; the logger, the shelter's desk (where it is, or the shelter it left) or Operations change (checked on the row as it was)
-      case 'ic_evacuees': return op === 'insert' ? isMember(row.incident_id, uid) : isMember(row.incident_id, uid) && (row.logged_by === uid || isOps(row.incident_id, uid) || isDesk(row.incident_id, uid, row.facility_id) || isDesk(row.incident_id, uid, row.prev_facility_id));
-      case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
-      case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
+      case 'ic_evacuees': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (row.logged_by === uid || isOps(row.incident_id, uid) || isDesk(row.incident_id, uid, row.facility_id) || isDesk(row.incident_id, uid, row.prev_facility_id));
+      case 'ic_messages': return op === 'insert' && row.from_user === uid && mayWrite(row.incident_id, uid, row.created_at);
+      case 'ic_message_acks': return op === 'insert' && row.user_id === uid && mayWrite(row.incident_id, uid, row.acked_at);
       default: return false;
     }
   }
@@ -645,7 +658,23 @@
     }
     if (table === 'ic_periods' && !quiet && JSON.stringify(r.sitrep ?? {}) !== JSON.stringify(old.sitrep ?? {})) log(changes, r.incident_id, uid, 'ops', `Situation report updated for operational period ${r.number}`);
     if (table === 'ic_members' && (r.kind || '') !== (old.kind || '') && !quiet) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + (r.kind ? ' is a ' + KIND_TEXT[r.kind] : ': kind cleared'));
-    if (table === 'ic_members' && r.status !== old.status) {
+    let memberDone = false;
+    if (table === 'ic_members' && (r.removed_at || null) !== (old.removed_at || null)) {   // ic_member_after: removed or put back
+      const pr = tables.ic_profiles.find((x) => x.user_id === r.user_id), nm = pr && pr.full_name ? ' (' + pr.full_name + ')' : '';
+      if (r.removed_at) {
+        log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + nm + ' removed from the incident by Operations');
+        for (const z of tables.ic_zones.filter((z) => z.incident_id === r.incident_id && z.assigned_to === r.user_id)) updateRow('ic_zones', z, z.status === 'active' ? { assigned_to: null, status: 'open' } : { assigned_to: null }, uid, changes, true);
+        quiet = true;
+        try { for (const p of tables.ic_people.filter((p) => p.incident_id === r.incident_id && p.user_id === r.user_id && !p.archived_at && !p.checked_out_at)) updateRow('ic_people', p, { checked_out_at: now() }, uid, changes, true); }
+        finally { quiet = false; }
+      } else log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + nm + ' put back on the incident by Operations');
+      memberDone = true;
+    }
+    if (table === 'ic_members' && !memberDone && r.role !== old.role && !quiet) {
+      const pr = tables.ic_profiles.find((x) => x.user_id === r.user_id), nm = pr && pr.full_name ? pr.full_name : null;
+      log(changes, r.incident_id, uid, 'status', r.role === 'ops' ? (old.unit_name || 'A unit') + (nm ? ' (' + nm + ')' : '') + ' is now Operations' : (nm || 'A member of Operations') + ' is now a unit, ' + (r.unit_name || 'unnamed'));
+    }
+    if (table === 'ic_members' && !memberDone && r.status !== old.status) {
       const who = label(r.incident_id, r.user_id);
       const text = r.status === 'available' ? `${who} is available${old.status === 'out_of_service' ? ', back in service' : ''}`
         : r.status === 'out_of_service' ? `${who} is out of service${r.status_note ? ': ' + r.status_note : ''}`
@@ -693,7 +722,8 @@
       if (JSON.stringify(r.boundary ?? null) !== JSON.stringify(old.boundary ?? null)) log(changes, r.id, uid, 'ops', 'Incident boundary redrawn');
       if (JSON.stringify(r.channels ?? []) !== JSON.stringify(old.channels ?? [])) log(changes, r.id, uid, 'ops', 'Communications plan updated: ' + ((r.channels || []).length ? r.channels.map((c) => (c.use || '') + ' ' + (c.channel || '')).join(', ') : 'no channels'));
       if ((r.lead_agency || '') !== (old.lead_agency || '')) log(changes, r.id, uid, 'ops', 'Lead agency: ' + (r.lead_agency || 'not set'));
-      if (r.status === 'closed' && old.status !== 'closed') log(changes, r.id, uid, 'ops', 'Incident closed');
+      if (r.status === 'closed' && old.status !== 'closed') log(changes, r.id, uid, 'ops', 'Incident closed' + (r.clear_personal_at ? ' · personal records clear by rule in ' + Math.max(1, Math.round((new Date(r.clear_personal_at) - Date.now()) / 86400000)) + ' days' : ''));
+      else if (r.status === 'active' && old.status === 'closed') log(changes, r.id, uid, 'ops', 'Incident reopened');
     }
   }
 
@@ -760,6 +790,10 @@
       const idChanged = r.full_name !== old.full_name || r.licence_number !== old.licence_number || r.licence_state !== old.licence_state || (r.photo_path || null) !== (old.photo_path || null) || (r.date_of_birth || null) !== (old.date_of_birth || null);
       if (idChanged && !verChanged) { r.verified_at = null; r.verified_by = null; }
     }
+    if (table === 'ic_incidents') {   // ic_incident_before
+      if (r.status === 'closed' && old.status !== 'closed' && !r.clear_personal_at && !r.personal_cleared_at) r.clear_personal_at = new Date(Date.now() + 30 * 86400000).toISOString();
+      else if (r.status === 'active' && old.status === 'closed' && !r.personal_cleared_at) r.clear_personal_at = null;
+    }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
     if (table === 'ic_requests') { r.updated_at = now(); r.what = String(r.what || '').trim(); if (r.status !== old.status || r.answer !== old.answer) { r.status_by = uid; r.status_at = now(); } }   // ic_request_before
@@ -770,6 +804,14 @@
       if (r.status === 'searched' && (old.status !== 'searched' || !r.searched_at)) { r.searched_at = r.searched_at || now(); r.searched_by = r.searched_by || uid; }
     }
     if (table === 'ic_members') {   // ic_member_before
+      const roleOrRemoval = r.role !== old.role || (r.removed_at || null) !== (old.removed_at || null);
+      // who is acting, judged on the rows as they were (this row may be the actor's own, already changed)
+      const actorOps = !!uid && (uid === r.user_id ? old.role === 'ops' && !old.removed_at : isOps(r.incident_id, uid));
+      if (roleOrRemoval && !system && !actorOps) { Object.assign(r, old); throw dbError("Only Operations changes a member's role or removes one"); }
+      if (r.role !== 'ops' && r.user_id === creatorOf(r.incident_id)) { Object.assign(r, old); throw dbError('The person who opened the incident is always Operations'); }
+      if (r.removed_at && r.user_id === creatorOf(r.incident_id)) { Object.assign(r, old); throw dbError('The person who opened the incident cannot be removed from it'); }
+      if (r.removed_at && !old.removed_at) { r.removed_by = uid || r.removed_by; r.status = 'checked_out'; }
+      else if (!r.removed_at && old.removed_at) { r.removed_by = null; r.status = 'available'; }
       if (r.status !== old.status) {
         r.status_at = now();
         r.checked_out_at = r.status === 'checked_out' ? now() : null;
@@ -817,17 +859,18 @@
   if (bc) {
     bc.onmessage = (e) => {
       const m = e.data || {};
-      if (m.kind === 'hello' && settled && m.version === SEED_VERSION) bc.postMessage({ kind: 'state', to: m.from, version: SEED_VERSION, tables, files: [...files] });
+      if (m.kind === 'hello' && settled && m.version === SEED_VERSION) bc.postMessage({ kind: 'state', to: m.from, version: SEED_VERSION, tables, files: [...files], users });
       else if (m.kind === 'state' && m.to === TAB && m.version === SEED_VERSION && !settled && !adopted) { adopted = m; resolveHello(); }
       else if (m.kind === 'change' && settled && m.version === SEED_VERSION) for (const c of m.changes) { absorb(c.table, c.type, c.row); deliver(c); }
       else if (m.kind === 'file') files.set(m.path, m.blob);
+      else if (m.kind === 'user' && !users.some((u) => u.email === m.user.email)) users.push(m.user);   // an account made in another tab
     };
     bc.postMessage({ kind: 'hello', from: TAB, version: SEED_VERSION });
     setTimeout(resolveHello, 250);
   } else resolveHello();
   const ready = Promise.all([import(RULES_URL), hello]).then(([m]) => {
     R = m;
-    if (adopted) { tables = adopted.tables; for (const [p, b] of adopted.files || []) files.set(p, b); } else reset();
+    if (adopted) { tables = adopted.tables; for (const [p, b] of adopted.files || []) files.set(p, b); for (const u of adopted.users || []) if (!users.some((x) => x.email === u.email)) users.push(u); } else reset();
     settled = true;
   });
 
@@ -900,6 +943,52 @@
 
   // ---- database functions
   const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O or 1/I, as ic_create_incident
+  // ic_make_code: letters no incident and no Operations code already uses
+  function makeCode(len) {
+    let code;
+    do { code = ''; for (let i = 0; i < len; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; } while (tables.ic_incidents.some((i) => i.code === code) || tables.ic_ops_codes.some((o) => o.code === code));
+    return code;
+  }
+  // ic_set_ops_code: the incident's Operations code, new or replaced
+  function setOpsCode(inc, by, changes) {
+    const cur = tables.ic_ops_codes.find((o) => o.incident_id === inc);
+    if (cur) { const o = copy(cur); cur.code = makeCode(8); cur.created_at = now(); cur.created_by = by; changes.push(['UPDATE', 'ic_ops_codes', cur, o]); return cur.code; }
+    const row = { ...DEFAULTS.ic_ops_codes(), incident_id: inc, code: makeCode(8), created_by: by };
+    tables.ic_ops_codes.push(row); changes.push(['INSERT', 'ic_ops_codes', row, null]);
+    return row.code;
+  }
+  // ic_clear_personal: the one deletion, personal data of a closed incident; licence photos are queued for the base to remove
+  function clearPersonal(incId, uid, changes, system) {
+    const inc = tables.ic_incidents.find((i) => i.id === incId);
+    if (!inc) throw dbError('No such incident');
+    if (!system && !isOps(incId, uid)) throw dbError('Only Operations clears personal records');
+    if (inc.status !== 'closed') throw dbError('Close the incident first; its personal records clear 30 days later, or sooner from the picker');
+    if (inc.personal_cleared_at) return copy(inc);
+    let nLic = 0, nNames = 0;
+    const users = [...new Set(tables.ic_members.filter((m) => m.incident_id === incId).map((m) => m.user_id))]
+      .filter((u) => !tables.ic_members.some((o) => o.user_id === u && !o.removed_at && (tables.ic_incidents.find((i) => i.id === o.incident_id) || {}).status === 'active'));
+    for (const u of users) {
+      const pr = tables.ic_profiles.find((x) => x.user_id === u);
+      if (pr && (pr.licence_number || pr.photo_path || pr.date_of_birth || pr.address || pr.licence_expires)) {
+        if (pr.photo_path && !tables.ic_id_purge.some((q) => q.incident_id === incId && q.path === pr.photo_path)) {
+          const q = { ...DEFAULTS.ic_id_purge(), incident_id: incId, user_id: u, path: pr.photo_path };
+          tables.ic_id_purge.push(q); changes.push(['INSERT', 'ic_id_purge', q, null]);
+        }
+        updateRow('ic_profiles', pr, { licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', photo_path: null, id_source: '' }, uid, changes, true);
+        nLic += 1;
+      }
+    }
+    quiet = true;
+    try {
+      for (const e of tables.ic_evacuees.filter((e) => e.incident_id === incId)) {
+        const label = e.count > 1 ? 'family of ' + e.count : '';
+        if (e.note !== '' || e.label !== label) { updateRow('ic_evacuees', e, { label, note: '' }, uid, changes, true); nNames += 1; }
+      }
+    } finally { quiet = false; }
+    const old = copy(inc); inc.personal_cleared_at = now(); changes.push(['UPDATE', 'ic_incidents', inc, old]);
+    log(changes, incId, uid, 'ops', `Personal records cleared by rule: ${nLic} licence record${nLic === 1 ? '' : 's'}, ${nNames} sheltered ${nNames === 1 ? "person's name" : "people's names"}`);
+    return copy(inc);
+  }
   function rpc(client, name, a) {
     const uid = client.user && client.user.id;
     const changes = [];
@@ -913,6 +1002,7 @@
         do { code = ''; for (let i = 0; i < 6; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; } while (tables.ic_incidents.some((i) => i.code === code));
         const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period) || 'OP 1', base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid };
         tables.ic_incidents.push(inc); changes.push(['INSERT', 'ic_incidents', inc, null]);
+        setOpsCode(inc.id, uid, changes);   // ic_incident_after_insert
         const m = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: 'ops', unit_name: 'Operations' };
         tables.ic_members.push(m); changes.push(['INSERT', 'ic_members', m, null]);
         const p1 = { ...DEFAULTS.ic_periods(), incident_id: inc.id, number: 1 };
@@ -955,18 +1045,28 @@
         if (!uid) throw dbError('not signed in');
         if (!['ops', 'unit'].includes(a.p_role)) throw dbError('role must be ops or unit');
         const code = String(a.p_code || '').trim().toUpperCase();
-        const inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
-        if (!inc) throw dbError('No active incident has the code ' + code);
-        if (a.p_role === 'unit' && !profileReady(uid)) throw dbError('Say who you are first: your name and your phone');
-        const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count), kind = trim(a.p_kind);
-        if (kind && !KIND_TEXT[kind]) throw dbError(`new row for relation "ic_members" violates check constraint "ic_members_kind_check"`, '23514');
+        // the role follows the code: the join code makes a unit, the Operations code makes Operations
+        const oc = tables.ic_ops_codes.find((o) => o.code === code);
+        let inc = oc ? tables.ic_incidents.find((i) => i.id === oc.incident_id && i.status === 'active') : null;
+        let role = 'ops';
+        if (!inc) {
+          inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
+          if (!inc) throw dbError('No active incident has the code ' + code);
+          if (a.p_role === 'ops') throw dbError('That is the join code for field units. Operations joins with the Operations code, shown on the Operations home panel.');
+          role = 'unit';
+        }
         const m = member(inc.id, uid);
+        if (m && m.removed_at) throw dbError('You were removed from ' + inc.name + ' by Operations. Only Operations can put you back.');
+        if (uid === inc.created_by) role = 'ops';
+        if (role === 'unit' && !profileReady(uid)) throw dbError('Say who you are first: your name and your phone');
+        const unit = trim(a.p_unit_name) || (role === 'ops' ? 'Operations' : null), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count), kind = trim(a.p_kind);
+        if (kind && !KIND_TEXT[kind]) throw dbError(`new row for relation "ic_members" violates check constraint "ic_members_kind_check"`, '23514');
         quiet = true;   // the check-in line says the kind; no line of its own
         try {
           if (m) {
-            updateRow('ic_members', m, { role: a.p_role, unit_name: unit ?? m.unit_name, crew: crew ?? m.crew, crew_count: count ?? m.crew_count, agency: agency || m.agency, kind: kind || m.kind || '', status: m.status === 'checked_out' ? 'available' : m.status, checked_out_at: null }, uid, changes, true);
+            updateRow('ic_members', m, { role, unit_name: unit ?? m.unit_name, crew: crew ?? m.crew, crew_count: count ?? m.crew_count, agency: agency || m.agency, kind: kind || m.kind || '', status: m.status === 'checked_out' ? 'available' : m.status, checked_out_at: null }, uid, changes, true);
           } else {
-            const nm = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: a.p_role, unit_name: unit, crew, crew_count: count, agency: agency || '', kind: kind || '' };
+            const nm = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role, unit_name: unit, crew, crew_count: count, agency: agency || '', kind: kind || '' };
             tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]);
           }
         } finally { quiet = false; }
@@ -984,8 +1084,30 @@
         const n = member(inc.id, uid).crew_count;
         const pr = tables.ic_profiles.find((x) => x.user_id === uid);
         const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + (!pr.photo_path && !pr.licence_number ? ', identity not given' : ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '')) + (pr.verified_at ? ', verified' : '') : '';
-        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (a.p_role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + ' checked in' + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
+        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + (role === 'ops' ? ' joined as Operations with the Operations code' : ' checked in') + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
+      } else if (name === 'ic_new_ops_code') {
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations replaces the Operations code');
+        out = setOpsCode(a.p_incident, uid, changes);
+        log(changes, a.p_incident, uid, 'ops', 'Operations code replaced; the old one no longer joins');
+      } else if (name === 'ic_clear_personal') {
+        out = clearPersonal(a.p_incident, uid, changes, false);
+      } else if (name === 'ic_keep_personal') {
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations keeps personal records longer');
+        const inc = tables.ic_incidents.find((i) => i.id === a.p_incident);
+        if (!inc) throw dbError('No such incident');
+        if (inc.personal_cleared_at) throw dbError('The personal records are already cleared');
+        if (inc.status !== 'closed') throw dbError('The clock starts when the incident closes');
+        const days = Math.max(1, Number(a.p_days) || 30);
+        const old = copy(inc);
+        inc.clear_personal_at = new Date(Math.max(inc.clear_personal_at ? new Date(inc.clear_personal_at).getTime() : 0, Date.now()) + days * 86400000).toISOString();
+        changes.push(['UPDATE', 'ic_incidents', inc, old]);
+        log(changes, a.p_incident, uid, 'ops', 'Personal records kept ' + days + ' more days');
+        out = copy(inc);
+      } else if (name === 'ic_clear_personal_due') {
+        let k = 0;
+        for (const inc of tables.ic_incidents.filter((i) => i.status === 'closed' && !i.personal_cleared_at && i.clear_personal_at && i.clear_personal_at <= now())) { clearPersonal(inc.id, uid, changes, true); k += 1; }
+        out = k;
       } else if (name === 'ic_transfer_command') {
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations transfers command');
         const to = trim(a.p_to);
@@ -1105,7 +1227,7 @@
     urls.set(path, url);
     return url;
   }
-  const storage = {
+  const storageFor = (client) => ({
     from: (bucket) => ({
       async upload(path, blob, opts) {
         await ready;
@@ -1119,15 +1241,29 @@
         await ready;
         const url = await urlFor(path);
         return url ? { data: { signedUrl: url }, error: null } : { data: null, error: { message: 'Object not found', statusCode: '404', error: 'not_found' } };
+      },
+      // ic_ids_bucket_purge: Operations removes a licence photo the clearing queued, nothing else
+      async remove(paths) {
+        await ready;
+        const uid = client.user && client.user.id;
+        const out = [];
+        for (const path of [].concat(paths)) {
+          const ok = bucket === 'ic-ids' && tables.ic_id_purge.some((q) => q.path === path && !q.done_at && isOps(q.incident_id, uid));
+          if (!ok) continue;   // the Storage API skips what the policy refuses
+          files.delete(path);
+          if (urls.has(path)) { URL.revokeObjectURL(urls.get(path)); urls.delete(path); }
+          out.push({ name: path });
+        }
+        return { data: out, error: null };
       }
     })
-  };
+  });
 
   // ---- auth: any email and password; a known address is that seeded person, anything else a new one
   function userFor(email) {
     const e = String(email || '').trim().toLowerCase() || 'someone@mock.local';
     let u = users.find((x) => x.email === e);
-    if (!u) { u = { id: uuid(), email: e, aud: 'authenticated', role: 'authenticated' }; users.push(u); }
+    if (!u) { u = { id: uuid(), email: e, aud: 'authenticated', role: 'authenticated' }; users.push(u); if (bc) bc.postMessage({ kind: 'user', from: TAB, user: u }); }
     return u;
   }
   function makeClient() {
@@ -1154,7 +1290,7 @@
       return ch;
     };
     client.removeChannel = (ch) => { channels.delete(ch); return Promise.resolve('ok'); };
-    client.storage = storage;
+    client.storage = storageFor(client);
     return client;
   }
 
@@ -1185,7 +1321,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD, evacuees: EV },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD, evacuees: EV, opsCode: OPS_CODE },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };

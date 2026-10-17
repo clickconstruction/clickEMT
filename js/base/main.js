@@ -21,7 +21,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people' }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -93,6 +93,7 @@ async function showPicker() {
   $('#pick-user').textContent = data.user ? data.user.email : '';
   const list = $('#pick-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
+  try { await data.clearPersonalDue(); } catch (e) { console.warn('personal records due', e); }   // whatever is due clears on open too, not only nightly
   try {
     const rows = await data.myIncidents();
     list.innerHTML = rows.length ? rows.map((r) => `
@@ -101,8 +102,17 @@ async function showPicker() {
         <span class="spacer"></span>
         <span class="pill mono">${esc(r.code)}</span>
         <span class="badge ${r.status === 'active' ? 'active' : ''}">${esc(r.status)}</span>
-      </button>`).join('') : '<p class="muted">None yet. Open one below, or join with a code.</p>';
+      </button>${clearLineHtml(r)}`).join('') : '<p class="muted">None yet. Open one below, or join with a code.</p>';
   } catch (err) { list.innerHTML = `<p class="msg">${esc(err.message || err)}</p>`; }
+}
+// A closed incident's personal records (licences, dates of birth, addresses, licence photos, the
+// names of people sheltered) clear by rule 30 days after the close; the card shows the date, with
+// Clear now and Keep 30 more days for Operations, then "cleared … by rule".
+function clearLineHtml(r) {
+  if (r.status !== 'closed') return '';
+  if (r.personal_cleared_at) return `<div class="pick-sub" data-clear="${r.id}">Personal records cleared ${esc(new Date(r.personal_cleared_at).toLocaleDateString())} by rule · the names, the log and the forms stay</div>`;
+  const when = r.clear_personal_at ? new Date(r.clear_personal_at) : null;
+  return `<div class="pick-sub warn" data-clear="${r.id}"><span>Personal records clear by rule ${when ? 'on ' + esc(when.toLocaleDateString()) : 'after the close'}: licences, dates of birth, addresses, licence photos and the names of people sheltered</span>${r.role === 'ops' ? `<button class="btn sm" data-action="clear-personal" data-id="${r.id}">Clear now</button><button class="btn sm" data-action="keep-personal" data-id="${r.id}">Keep 30 more days</button>` : ''}</div>`;
 }
 
 $('#new-incident').addEventListener('submit', async (e) => {
@@ -205,6 +215,7 @@ function queueDraw() {
   if (Date.now() - lastFrameAt > 1500) { drawAll(); return; }
   drawQueued = true;
   requestAnimationFrame(() => { drawQueued = false; drawAll(); });
+  setTimeout(() => { if (drawQueued) { drawQueued = false; drawAll(); } }, 1600);   // a frame that never comes (the pane hidden a moment after the draw was queued) no longer holds every later draw
 }
 
 function drawAll() {
@@ -683,6 +694,40 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
+      case 'copy-ops-code': await navigator.clipboard.writeText(data.opsCode() || ''); toast('Operations code copied. Give it by radio or phone, never on paper'); break;
+      case 'new-ops-code': if (!data.opsCode() || confirm('Replace the Operations code? Whoever has the old one can no longer join with it; those already on the incident stay.')) { await data.newOpsCode(); toast('New Operations code; the old one no longer joins'); queueDraw(); } break;
+      case 'people-tab': state.people.tab = btn.dataset.tab === 'members' ? 'members' : 'people'; drawPeople(); break;
+      case 'member-role': {
+        const m = data.member(id);
+        if (!m) break;
+        if (btn.dataset.role === 'unit') {
+          const p = data.profileOf(id);
+          const name = prompt('Unit name for ' + ((p && p.full_name) || 'this member') + ' (what the field calls them):', m.unit_name && m.unit_name !== 'Operations' ? m.unit_name : '');
+          if (name == null) break;
+          await data.setRole(id, 'unit', name.trim() || null);
+          toast(((p && p.full_name) || 'The member') + ' is now a unit' + (name.trim() ? ', ' + name.trim() : ''));
+        } else {
+          if (!confirm(`Make ${unitLabelOf(m)} Operations? They can then run the incident from the base: draw divisions, assign units, change roles, clear records.`)) break;
+          await data.setRole(id, 'ops');
+          toast(unitLabelOf(m) + ' is now Operations');
+        }
+        drawPeople();
+        break;
+      }
+      case 'member-remove': {
+        const m = data.member(id);
+        if (m && confirm(`Remove ${unitLabelOf(m)} from the incident? Everything they sent stays on record, their phone shows they were removed, and you can put them back from the Members tab.`)) { await data.removeMember(id); toast(unitLabelOf(m) + ' removed from the incident'); drawPeople(); }
+        break;
+      }
+      case 'member-restore': { const m = data.member(id); await data.restoreMember(id); toast((m ? unitLabelOf(m) : 'The member') + ' is back on the incident'); drawPeople(); break; }
+      case 'clear-personal': {
+        if (!confirm('Clear the personal records of this incident now? Licence numbers, dates of birth, addresses and licence photos of its members (unless they are on another open incident), and the names of the people sheltered, are blanked. Names, phones, the log and the forms stay. This cannot be undone.')) break;
+        await data.clearPersonal(id);
+        toast('Personal records cleared');
+        await showPicker();
+        break;
+      }
+      case 'keep-personal': await data.keepPersonal(id, 30); toast('Kept 30 more days'); await showPicker(); break;
       case 'verify-profile': await data.verifyProfile(id, true); toast('Marked verified'); break;
       case 'unverify-profile': await data.verifyProfile(id, false); toast('Verification withdrawn'); break;
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
@@ -699,7 +744,7 @@ document.addEventListener('click', async (e) => {
       case 'log-notable': await data.setNotable(id, btn.dataset.on === '1'); drawLog(); break;
       case 'log-popout': popOutLog(); break;
       case 'print-214': openOverlay('214'); break;
-      case 'people': if (LOG_ONLY) { selectFromLog({ type: 'people' }); break; } state.people.addUnit = btn.dataset.unit || state.people.addUnit; openPeople(); break;
+      case 'people': if (LOG_ONLY) { selectFromLog({ type: 'people' }); break; } state.people.addUnit = btn.dataset.unit || state.people.addUnit; if (btn.dataset.tab) state.people.tab = btn.dataset.tab; openPeople(); break;
       case 'close-people': closePeople(); break;
       case 'print-211': openOverlay('211'); break;
       case 'hours': openOverlay('hours'); break;

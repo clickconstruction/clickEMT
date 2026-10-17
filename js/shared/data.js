@@ -2,7 +2,7 @@
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 import { profileReady, identityGiven } from './rules.js';
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
@@ -10,12 +10,13 @@ const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map() };
 }
 
 function keyOf(table, row) {
   if (table === 'ic_message_acks') return row.message_id + ':' + row.user_id;
   if (table === 'ic_profiles') return row.user_id;
+  if (table === 'ic_ops_codes') return row.incident_id;
   return (table === 'ic_positions' || table === 'ic_members') ? row.user_id : row.id;
 }
 
@@ -63,9 +64,9 @@ export class Data {
   // ---- incidents
   async myIncidents() {
     if (!this.user) return [];
-    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, agency, joined_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
+    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, agency, joined_at, removed_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
     if (error) throw error;
-    return (data || []).filter((r) => r.incident).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew, agency: r.agency || '', joined_at: r.joined_at }));
+    return (data || []).filter((r) => r.incident && !r.removed_at).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew, agency: r.agency || '', joined_at: r.joined_at }));
   }
   async createIncident({ name, period, base, lat, lng, zoom }) {
     const { data, error } = await this.sb.rpc('ic_create_incident', { p_name: name, p_period: period || null, p_base_name: base || null, p_lat: lat ?? null, p_lng: lng ?? null, p_zoom: zoom || 14 });
@@ -83,6 +84,39 @@ export class Data {
     if (!this.store.incident) return;
     const { error } = await this.sb.from('ic_incidents').update({ status: 'closed' }).eq('id', this.store.incident.id);
     if (error) throw error;
+  }
+  // ---- personal records clear by rule (migration 0019): 30 days after an incident closes, or sooner
+  // from the picker; Keep moves the date on. The due run is cheap and safe to call on every open:
+  // it clears only what is due. The licence photos it queued are removed through the Storage API.
+  async clearPersonal(incidentId) {
+    const { data, error } = await this.sb.rpc('ic_clear_personal', { p_incident: incidentId });
+    if (error) throw error;
+    await this.purgeIdPhotos();
+    return data;
+  }
+  async keepPersonal(incidentId, days = 30) {
+    const { data, error } = await this.sb.rpc('ic_keep_personal', { p_incident: incidentId, p_days: days });
+    if (error) throw error;
+    return data;
+  }
+  async clearPersonalDue() {
+    const { data, error } = await this.sb.rpc('ic_clear_personal_due', {});
+    if (error) throw error;
+    if (data) await this.purgeIdPhotos();
+    return data || 0;
+  }
+  async purgeIdPhotos() {
+    const { data: queued, error } = await this.sb.from('ic_id_purge').select('*').is('done_at', null);
+    if (error) throw error;
+    if (!queued || !queued.length) return 0;
+    const paths = [...new Set(queued.map((q) => q.path))];
+    const res = await this.sb.storage.from(ID_BUCKET).remove(paths);
+    if (res.error) throw res.error;
+    for (const path of paths) this.urlCache.delete(ID_BUCKET + '/' + path);
+    const done = new Date().toISOString();
+    const { error: e2 } = await this.sb.from('ic_id_purge').update({ done_at: done }).in('id', queued.map((q) => q.id));
+    if (e2) throw e2;
+    return paths.length;
   }
 
   // ---- open one incident: load everything, then follow changes
@@ -131,6 +165,7 @@ export class Data {
       put('ic_period_agencies', ag.data); put('ic_commands', cm.data);
     } catch (e) { /* a client without the tables */ }
     try { const { data: ev, error: evErr } = await q('ic_evacuees'); if (!evErr) put('ic_evacuees', ev); } catch (e) { /* a client without the table (migration 0018) */ }
+    try { const { data: oc, error: ocErr } = await q('ic_ops_codes'); if (!ocErr) put('ic_ops_codes', oc); } catch (e) { /* a client without the table (migration 0019); a unit gets no row */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
       const { data: profs } = ids.length ? await this.sb.from('ic_profiles').select('*').in('user_id', ids) : { data: [] };
@@ -179,7 +214,21 @@ export class Data {
   get incident() { return this.store.incident; }
   me() { return this.user ? this.store.members.get(this.user.id) || null : null; }
   member(userId) { return this.store.members.get(userId) || null; }
-  members() { return [...this.store.members.values()]; }
+  // the members on the incident; a removed member is kept (never deleted) but is on no list but removedMembers()
+  members() { return [...this.store.members.values()].filter((m) => !m.removed_at); }
+  removedMembers() { return [...this.store.members.values()].filter((m) => m.removed_at).sort((a, b) => (a.removed_at < b.removed_at ? 1 : -1)); }
+  // ---- roles and membership (migration 0019): the join code makes a unit, the Operations code makes
+  // Operations; Operations changes a role or removes a member, and the database logs each
+  opsCode() { const r = this.store.incident && this.store.ops_codes.get(this.store.incident.id); return r ? r.code : null; }
+  async newOpsCode() {
+    const { data, error } = await this.sb.rpc('ic_new_ops_code', { p_incident: this.store.incident.id });
+    if (error) throw error;
+    this.local('ic_ops_codes', { incident_id: this.store.incident.id, code: data, created_at: new Date().toISOString(), created_by: this.user.id });
+    return data;
+  }
+  async setRole(userId, role, unitName) { return this.updateMember(userId, unitName ? { role, unit_name: unitName } : { role }); }
+  async removeMember(userId) { return this.updateMember(userId, { removed_at: new Date().toISOString() }); }
+  async restoreMember(userId) { return this.updateMember(userId, { removed_at: null }); }
   units() { return this.members().filter((m) => m.role === 'unit').sort((a, b) => (a.unit_name || '').localeCompare(b.unit_name || '')); }
   // units still on the incident: everyone but the checked out
   activeUnits() { return this.units().filter((u) => u.status !== 'checked_out'); }
@@ -232,8 +281,9 @@ export class Data {
   unitPeople(userId, all) { return this.people(all).filter((p) => p.user_id === userId); }
   // the people on scene: checked in, on a unit that has not checked out
   peopleOn() { const out = new Set(this.units().filter((u) => u.status !== 'checked_out').map((u) => u.user_id)); return this.people().filter((p) => !p.checked_out_at && out.has(p.user_id)); }
-  async addPerson(id, { userId, name, role, agency, qualifications, buddyId, notes }) {
+  async addPerson(id, { userId, name, role, agency, qualifications, buddyId, notes, checkedInAt }) {
     const row = { id, incident_id: this.store.incident.id, user_id: userId || this.user.id, name: (name || '').trim(), role: role || '', agency: agency || '', qualifications: qualifications || [], buddy_id: buddyId || null, notes: notes || '' };
+    if (checkedInAt) row.checked_in_at = checkedInAt;
     const { data, error } = await this.sb.from('ic_people').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_people', data || Object.assign({ checked_in_at: new Date().toISOString(), checked_out_at: null, archived_at: null }, row));
@@ -559,8 +609,9 @@ export class Data {
     this.urlCache.set(key, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
     return data.signedUrl;
   }
-  async addHazard(id, { kind, note, lat, lng, zoneId }) {
+  async addHazard(id, { kind, note, lat, lng, zoneId, createdAt }) {
     const row = { id, incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, kind, note: note || '', lat: lat ?? null, lng: lng ?? null };
+    if (createdAt) row.created_at = createdAt;
     const { data, error } = await this.sb.from('ic_hazards').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_hazards', data || row);
@@ -572,8 +623,9 @@ export class Data {
     this.local('ic_hazards', data);
     return data;
   }
-  async raiseAlert(id, { lat, lng, zoneId }) {
+  async raiseAlert(id, { lat, lng, zoneId, createdAt }) {
     const row = { id, incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, lat: lat ?? null, lng: lng ?? null };
+    if (createdAt) row.created_at = createdAt;
     const { data, error } = await this.sb.from('ic_alerts').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_alerts', data || row);
@@ -605,16 +657,18 @@ export class Data {
     return data;
   }
   // urgency is one of URGENCY in rules.js or ''; lat/lng is the spot the message is about, when attached
-  async sendMessage(id, { toUsers, toLabel, toZone, kind, text, urgency, lat, lng }) {
+  async sendMessage(id, { toUsers, toLabel, toZone, kind, text, urgency, lat, lng, createdAt }) {
     if (!toUsers || !toUsers.length) throw new Error('Nobody to send that to');
     const row = { id: id || (crypto.randomUUID ? crypto.randomUUID() : undefined), incident_id: this.store.incident.id, from_user: this.user.id, to_users: toUsers, to_label: toLabel || '', to_zone: toZone || null, kind: kind || 'message', text, urgency: urgency || '', lat: lat ?? null, lng: lng ?? null };
+    if (createdAt) row.created_at = createdAt;
     const { data, error } = await this.sb.from('ic_messages').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_messages', data || row);
     return data || row;
   }
-  async ackMessage(messageId, reply, count) {
+  async ackMessage(messageId, reply, count, ackedAt) {
     const row = { message_id: messageId, incident_id: this.store.incident.id, user_id: this.user.id, reply: reply || '', count: count ?? null };
+    if (ackedAt) row.acked_at = ackedAt;
     const { data, error } = await this.sb.from('ic_message_acks').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_message_acks', data || { ...row, acked_at: new Date().toISOString() });

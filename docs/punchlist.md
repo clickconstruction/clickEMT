@@ -12,7 +12,7 @@ the personas who hit them, and add a "Re-walk after vN" section there, as v25 di
 | # | What | Size | After | Found by |
 |---|---|---|---|---|
 | 1 | Write the re-walk after v26 (done 17 October, `docs: re-walk after v26`) | an hour | now | the v26 release, cut short |
-| 2 | v27 Members and roles, and personal records that clear by rule | medium | 1 | the agency administrator (3 jobs he could not do) |
+| 2 | v27 Members and roles, and personal records that clear by rule (shipped 17 October) | medium | 1 | the agency administrator (3 jobs he could not do) |
 | 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
 | 4 | v29 Accountability by name | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
 | 5 | Small fixes, any time | small | — | testing and hand-over notes |
@@ -80,6 +80,8 @@ rule names this one exception); items 8 and 10 in `docs/walkthroughs.md` are mar
 **Start in.** `js/base/ui.js` (the People board), `js/base/main.js` (the incident picker), `js/shared/data.js`,
 `supabase/migrations/0013_people.sql` and `0017_walkthrough_fixes.sql` (`ic_join`, `ic_profiles`),
 `dev/mock-supabase.js`.
+
+**Shipped** 17 October 2026 as `Members and roles, and personal records that clear by rule (v27)`, migration `0019_members.sql`, rule test `supabase/tests/members.sql` (44 of 44), smoke suite `members`. One change from the plan: Supabase refuses a SQL delete on `storage.objects`, so the licence photos are queued (`ic_id_purge`) and removed through the Storage API by the base the next time Operations opens it, right after Clear now included.
 
 ## 3. v28 Time in the water, incident settings, the public photo set, and v25's four leftovers
 

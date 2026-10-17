@@ -298,3 +298,19 @@ export function sampleAt(list, atMs) {
 export function samplesBefore(list, atMs, windowMs) {
   return list.filter((s) => { const t = new Date(s.at).getTime(); return t <= atMs && t >= atMs - windowMs; });
 }
+
+// ---- resource requests (ICS 213RR) and the check-out list
+export const REQUEST_KINDS = [['people', 'More hands'], ['water', 'Boat or water team'], ['medical', 'Ambulance'], ['fuel', 'Fuel'], ['equipment', 'Pump, lights, equipment'], ['supplies', 'Food, water, supplies'], ['other', 'Other']];
+export const REQUEST_STATUS = { asked: 'Asked', approved: 'Approved', ordered: 'Ordered, on the way', filled: 'Filled', declined: 'Could not fill' };
+export function requestKind(kind) { const r = REQUEST_KINDS.find((k) => k[0] === kind); return r ? r[1] : 'Other'; }
+export function requestLine(r) { return (r.quantity > 1 ? r.quantity + ' ' : (r.quantity === 1 ? '1 ' : '')) + (r.what || requestKind(r.kind)); }
+// what a unit ticks off before it leaves; the keys live in ic_members.demob
+export const DEMOB_ITEMS = [
+  ['people', 'Everyone on the unit is accounted for'],
+  ['zone', 'The division is handed over or released'],
+  ['equipment', 'Radio and equipment returned to Logistics'],
+  ['reported', 'Every hazard and open request is reported'],
+  ['unhurt', 'Nobody hurt, no equipment damaged'],
+  ['hours', 'Hours confirmed']
+];
+export function demobOpen(ticks) { return DEMOB_ITEMS.filter(([k]) => !(ticks && ticks[k])).map(([, label]) => label.charAt(0).toLowerCase() + label.slice(1)); }

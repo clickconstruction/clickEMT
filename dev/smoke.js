@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -887,7 +887,7 @@ async function log(check) {
   check('lines link to the thing they are about', $$('#log .llink[data-action="select-structure"]').length >= 1 && $$('#log .llink[data-action="select-facility"]').length >= 1 && $$('#log .llink[data-action="select-photo"]').length >= 3, $$('#log .llink').length);
   $('[data-action="log-group"][data-group="field"]').click();
   await until(() => rows() < all);
-  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
+  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
   $('[data-action="log-group"][data-group="all"]').click();
   await until(() => rows() === all);
   const q = $('#log-search');
@@ -1145,4 +1145,84 @@ async function legend(check) {
   document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await until(() => $$('#map path.zone-hl').length === 0);
   check('Escape shows all too', $$('#zones .zr.dim').length === 0 && $('#legend-hint').hidden);
+}
+
+// Planning, Logistics and Finance: the section chiefs on the period and the 203, resource requests
+// worked from asked to filled, the check-out list riding along to the base, and the hours for Finance.
+async function sections(check) {
+  const u = USERS(), REQ = M().ids.requests;
+  // 1 · the chiefs
+  $('[data-action="period"]').click();
+  await until(() => $('#panel form[data-form="period-edit"]'));
+  const pf = $('#panel form[data-form="period-edit"]');
+  check('the period form seats Planning, Logistics and Finance, seeded with two of them', pf.planning.value === 'Theresa Okafor' && pf.logistics.value === 'Sam Whitaker' && pf.finance.value === '', pf.planning.value);
+  pf.finance.value = 'Rae Lindqvist';
+  pf.requestSubmit();
+  await until(() => base.currentPeriod().finance_chief === 'Rae Lindqvist');
+  check('saving a seat logs it', !!eventText(base, 'Operational period 1 updated, Finance Rae Lindqvist'), logTexts()[0]);
+  $('[data-action="iap"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the 203 lists all five seats and Safety', has('#briefing-page', 'planning section chief: theresa okafor', 'logistics section chief: sam whitaker', 'finance / administration section chief: rae lindqvist', 'safety officer: priya natarajan'), text('#briefing-page').slice(0, 600));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  // 2 · requests
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => has('#panel', 'resource requests (ics 213rr)'));
+  check('the home panel lists the open requests, the urgent first, with the seeded ask from Unit 1', $$('#panel .req').length >= 2 && has('#panel', '2 open', '4 portable lights', 'fuel truck, diesel', 'ordered, on the way'), text('#panel').slice(0, 400));
+  const rid = uuid();
+  await field.addRequest({ id: rid, kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', note: 'Two houses with people on the roof', zoneId: ZONE('A-2'), lat: 30.2674, lng: -97.7384 });
+  await until(() => base.request(rid));
+  check('the field asks and the base has it at the top, logged with the words of the ask', await until(() => $(`#panel .req[data-request="${rid}"]`) && $$('#panel .req')[0].dataset.request === rid) && has('#panel', '1 to act on now') && !!eventText(base, 'Unit 3 asked for swift-water team for A-2, act on now: Two houses with people on the roof'), logTexts()[0]);
+  const answer = (st, words) => { const f = $(`#panel .req[data-request="${rid}"] form[data-form="request-answer"]`); f.answer.value = words || ''; f.requestSubmit(); };
+  // requestSubmit has no submitter: click the button instead
+  const press = (st) => $(`#panel .req[data-request="${rid}"] button[name="status"][value="${st}"]`).click();
+  press('approved');
+  await until(() => base.request(rid).status === 'approved');
+  check('Approve moves it on and the unit sees it', base.request(rid).status_by === u.ops && !!eventText(base, 'Request for swift-water team (Unit 3) approved') && await until(() => field.request(rid) && field.request(rid).status === 'approved'));
+  $(`#panel .req[data-request="${rid}"] form[data-form="request-answer"] input[name="answer"]`).value = 'Boat 2, Bastrop County, 15 min';
+  press('ordered');
+  await until(() => base.request(rid).status === 'ordered');
+  check('Mark ordered carries who is coming and when', base.request(rid).answer === 'Boat 2, Bastrop County, 15 min' && !!eventText(base, 'Request for swift-water team (Unit 3) ordered: Boat 2, Bastrop County, 15 min'), logTexts()[0]);
+  press('filled');
+  await until(() => base.request(rid).status === 'filled');
+  check('Filled closes it, off the open list, in the sitrep no more', !!eventText(base, 'Request for swift-water team (Unit 3) filled') && base.openRequests().every((r) => r.id !== rid));
+  $('[data-action="sitrep"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+  check('the situation report\'s Resources needed is written from the open requests', has('#briefing-page', 'resources needed', '4 portable lights for a-1, before nightfall · asked', 'fuel truck, diesel, before nightfall · ordered, on the way, county yard'), text('#briefing-page').slice(-700));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  const e1 = await (async () => { try { await field.answerRequest(REQ[2], 'approved', ''); return null; } catch (e) { return e; } })();
+  check('a unit cannot work a request', !!e1 && e1.code === '42501', e1 && e1.message);
+  await field.addRequest({ kind: 'fuel', what: 'diesel, 20 gallons', quantity: 1, urgency: 'tomorrow' });
+  const mine = field.myRequests().find((r) => r.what === 'diesel, 20 gallons');
+  await field.withdrawRequest(mine.id);
+  check('a unit can withdraw its own ask while it is only asked', !!mine && await until(() => base.request(mine.id) && base.request(mine.id).archived_at));
+  // 3 · checking out with the list
+  await field.checkOut({ ticks: { people: true, zone: true, reported: true, hours: true }, open: ['radio and equipment returned to logistics', 'nobody hurt, no equipment damaged'], note: 'Pump left at 112 Pecan Ln, still running' });
+  await until(() => base.member(u.unit3).status === 'checked_out');
+  check('the check-out line carries what was not done and the note', !!eventText(base, 'Unit 3 checked out · not done: radio and equipment returned to logistics · nobody hurt, no equipment damaged · for the next crew: Pump left at 112 Pecan Ln, still running') && base.member(u.unit3).demob.open.length === 2, logTexts()[0]);
+  $(`#panel [data-action="select-unit"][data-id="${u.unit3}"]`).click();
+  await until(() => has('#panel .title', 'unit 3') && $('#panel .demob'));
+  check('the unit panel shows how it checked out', has('#panel .demob', 'not done: radio and equipment', 'for the next crew: pump left'), text('#panel .demob'));
+  $('[data-action="people"]').click();
+  await until(() => !$('#people').hidden);
+  $('[data-action="print-211"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
+  check('the 211 says what the unit left undone', has('#briefing-page', 'at check-out, not done: radio and equipment returned to logistics, nobody hurt, no equipment damaged · for the next crew: pump left'), text('#briefing-page').slice(0, 900));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  // 4 · hours
+  $('[data-action="hours"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'hours on scene'));
+  check('the Hours page lists every person and unit with hours, the seeded people on scene and Unit 3 checked out', $$('#briefing-page .hours-table tbody tr').length >= 9 && has('#briefing-page', 'ramirez', 'on scene', 'unit 3', 'checked out', 'people hours', 'by agency: cedar fork fire department') && has('#briefing-page', 'counted to now'), text('#briefing-page').slice(0, 500));
+  const sel = $('#briefing-page [data-select="hours-period"]');
+  sel.value = 'all'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => has('#briefing-page', 'the whole incident so far'));
+  check('the period picker switches to the whole incident', has('#briefing-page', 'the whole incident so far'));
+  const { hoursCsv, hoursRows } = await import('../js/shared/hours.js');
+  const csv = hoursCsv(hoursRows({ people: base.people(), members: base.members(), period: null }), base.incident.name, 'whole incident');
+  check('the CSV has a header and a row per person and unit', csv.startsWith('incident,period,row,name,unit,agency,role,checked_in_utc,checked_out_utc,hours,note') && csv.split('\r\n').filter(Boolean).length >= 10 && /"unit","Unit 3"/.test(csv), csv.split('\r\n')[1]);
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="people-close"]') && $('[data-action="people-close"]').click();
 }

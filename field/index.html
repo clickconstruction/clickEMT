@@ -225,8 +225,37 @@
     <div id="safety-list"></div>
   </div>
 
+  <div id="s-ask" class="sheet" hidden>
+    <h2>Ask for something</h2>
+    <p class="muted small">Goes to Logistics at the base. You see each step here as they work it. For a person in danger, use Need help now instead.</p>
+    <div class="k">What</div>
+    <div class="chips" id="ask-kinds"></div>
+    <div class="row-2">
+      <label class="k" for="ask-qty" style="display:flex;flex-direction:column;gap:4px;text-transform:none;letter-spacing:0;font-size:12px">How many<input id="ask-qty" class="input" type="number" inputmode="numeric" min="1" max="9999" value="1"></label>
+      <label class="k" for="ask-what" style="display:flex;flex-direction:column;gap:4px;text-transform:none;letter-spacing:0;font-size:12px">What exactly<input id="ask-what" class="input" placeholder="swift-water team" maxlength="120" autocomplete="off"></label>
+    </div>
+    <label class="k" for="ask-note">In your words</label>
+    <input id="ask-note" class="input" placeholder="Why, and where" maxlength="300" autocomplete="off">
+    <div class="k">By when</div>
+    <div class="chips" id="ask-urgency"></div>
+    <div class="muted small" id="ask-where"></div>
+    <div class="k">Your requests today</div>
+    <div id="ask-mine"></div>
+    <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="ask-send">Send to Logistics</button></div>
+  </div>
+
+  <div id="s-checkout" class="sheet" hidden>
+    <h2 id="checkout-title">Check out</h2>
+    <p class="muted small">Demobilization. Tick what is done; what is not ticked goes to Operations with your check-out, so nothing is lost in the handover. The time on scene is already counted.</p>
+    <div class="card" id="checkout-list"></div>
+    <label class="k" for="checkout-note">Anything the next crew should know</label>
+    <input id="checkout-note" class="input" placeholder="Pump left at 112 Pecan Ln, still running" maxlength="300" autocomplete="off">
+    <div class="muted small" id="checkout-open"></div>
+    <div class="sheet-btns"><button class="btn" data-action="menu">Not yet</button><button class="btn" data-action="checkout-confirm" style="background:var(--ink);color:var(--panel);border-color:var(--ink)">Check out</button></div>
+  </div>
+
   <div id="s-inbox" class="sheet" hidden>
-    <div class="sheet-head"><h2>Messages</h2><button class="btn sm" data-action="compose">Message Operations</button></div>
+    <div class="sheet-head"><h2>Messages</h2><span style="display:flex;gap:6px"><button class="btn sm" data-action="ask">Ask for something</button><button class="btn sm" data-action="compose">Message Operations</button></span></div>
     <div id="inbox-list"></div>
     <div class="sheet-btns"><button class="btn" data-action="home">Back</button></div>
   </div>

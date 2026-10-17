@@ -66,6 +66,14 @@ body { background: var(--bg-2); }
 .card .zone-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .compose-map { height: 240px; }
+.req-row { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
+.req-row:last-child { border-bottom: 0; }
+.req-dot { width: 10px; height: 10px; border-radius: 5px; flex: none; background: var(--dot-off); }
+.req-dot.asked { background: var(--hazard); } .req-dot.approved, .req-dot.ordered { background: var(--active-fill); } .req-dot.filled { background: var(--cleared-fill); } .req-dot.declined { background: var(--danger); }
+.co-item { display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+.co-item:last-child { border-bottom: 0; }
+.co-item input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); flex: none; }
+.co-item .sub { font-size: 12px; color: var(--muted); }
 .sheet.sheet-fixed { position: fixed; z-index: 1600; }   /* over the app's own sheets, which sit at 1500 */
 .you-line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; background: var(--tint-blue); color: var(--active); border-radius: 10px; padding: 8px 12px; }
 .you-line.missing { background: var(--tint-orange); color: var(--hazard-ink); }

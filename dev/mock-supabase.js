@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 13;
+  const SEED_VERSION = 14;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -39,6 +39,7 @@
   const FAC = [ID('4', 1), ID('4', 2), ID('4', 3), ID('4', 4), ID('4', 5)];
   let trackId = 0;   // ic_tracks ids: an identity column
   const OVL = [ID('5', 1)];
+  const REQ = [ID('7', 1), ID('7', 2), ID('7', 3)];
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
@@ -90,7 +91,7 @@
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
       ic_periods: [
-        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '',
+        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '',
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
       ],
       ic_objectives: [
@@ -135,6 +136,11 @@
         { id: PEOPLE[3], incident_id: INC, user_id: U.unit2, name: 'Patel', role: '', agency: 'Travis County Rescue', qualifications: ['emt', 'rope'], buddy_id: PEOPLE[2], checked_in_at: ago(167.9), checked_out_at: null, notes: '', created_by: U.unit2, created_at: ago(167.9), updated_at: ago(167.9), archived_at: null },
         { id: PEOPLE[4], incident_id: INC, user_id: U.unit3, name: 'Hale', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[5], checked_in_at: ago(165), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(165), updated_at: ago(165), archived_at: null },
         { id: PEOPLE[5], incident_id: INC, user_id: U.unit3, name: 'Dominguez', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic'], buddy_id: PEOPLE[4], checked_in_at: ago(164.9), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(164.9), updated_at: ago(164.9), archived_at: null }
+      ],
+      ic_requests: [
+        { id: REQ[0], incident_id: INC, user_id: U.ops, zone_id: Z['B-2'], kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', note: 'Two houses with people on the roof', lat: null, lng: null, status: 'filled', answer: 'Boat 1, Travis County Rescue', status_by: U.ops, status_at: ago(130), created_at: ago(190), updated_at: ago(130), archived_at: null },
+        { id: REQ[1], incident_id: INC, user_id: U.ops, zone_id: null, kind: 'fuel', what: 'fuel truck, diesel', quantity: 1, urgency: 'nightfall', note: 'At staging by 18:00', lat: null, lng: null, status: 'ordered', answer: 'County yard, due 17:45', status_by: U.ops, status_at: ago(90), created_at: ago(120), updated_at: ago(90), archived_at: null },
+        { id: REQ[2], incident_id: INC, user_id: U.unit1, zone_id: Z['A-1'], kind: 'equipment', what: 'portable lights', quantity: 4, urgency: 'nightfall', note: 'No street lights, search runs past dark', lat: 30.2681, lng: -97.7318, status: 'asked', answer: '', status_by: null, status_at: null, created_at: ago(25), updated_at: ago(25), archived_at: null }
       ],
       ic_overlays: [
         { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2640, west: -97.7440, north: 30.2730, east: -97.7280 }, opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
@@ -190,6 +196,11 @@
     ev(186, U.ops, 'ops', 'Communications plan updated: Command CMD 1, Tactical, Division A TAC 2, Tactical, Division B TAC 3, Emergency traffic TAC 9');
     ev(150, U.ops, 'ops', 'Shelter: High school gym opened', 'ic_facilities', FAC[2]);
     ev(100, U.ops, 'ops', 'Point of distribution: Fairgrounds gate opened', 'ic_facilities', FAC[4]);
+    ev(190, U.ops, 'request', 'Operations asked for swift-water team for B-2, act on now: Two houses with people on the roof', 'ic_requests', REQ[0]);
+    ev(130, U.ops, 'request', 'Request for swift-water team (Operations) filled: Boat 1, Travis County Rescue', 'ic_requests', REQ[0]);
+    ev(120, U.ops, 'request', 'Operations asked for fuel truck, diesel, before nightfall: At staging by 18:00', 'ic_requests', REQ[1]);
+    ev(90, U.ops, 'request', 'Request for fuel truck, diesel (Operations) ordered: County yard, due 17:45', 'ic_requests', REQ[1]);
+    ev(25, U.unit1, 'request', 'Unit 1 asked for 4 portable lights for A-1, before nightfall: No street lights, search runs past dark', 'ic_requests', REQ[2]);
     ev(120, U.ops, 'ops', 'Imagery: Aerial 06:40, Civil Air Patrol added to the map', 'ic_overlays', OVL[0]);
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Division ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
@@ -229,9 +240,10 @@
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
-    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', created_at: now() }),
+    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', created_at: now() }),
+    ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
-    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
+    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
@@ -274,6 +286,7 @@
       case 'ic_overlays': return isOps(row.incident_id, uid);
       case 'ic_profiles': return op === 'insert' ? row.user_id === uid : seesProfile(row.user_id, uid);
       case 'ic_people': return isMember(row.incident_id, uid) && (row.user_id === uid || isOps(row.incident_id, uid));   // a unit keeps its own people, Operations anyone's
+      case 'ic_requests': return op === 'insert' ? isMember(row.incident_id, uid) && row.user_id === uid : isOps(row.incident_id, uid) || (row.user_id === uid && row.status === 'asked');
       case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
@@ -311,6 +324,13 @@
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
     if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
     if (table === 'ic_periods' && r.number == null) throw nn('number');
+    if (table === 'ic_requests') {
+      if (!String(r.what || '').trim()) throw dbError('say what is needed');
+      if (!['people', 'water', 'medical', 'fuel', 'equipment', 'supplies', 'other'].includes(r.kind)) throw chk('ic_requests_kind_check');
+      if (!['', 'now', 'nightfall', 'tomorrow'].includes(r.urgency ?? '')) throw chk('ic_requests_urgency_check');
+      if (!['asked', 'approved', 'ordered', 'filled', 'declined'].includes(r.status)) throw chk('ic_requests_status_check');
+      if (!(r.quantity >= 1 && r.quantity <= 9999)) throw chk('ic_requests_quantity_check');
+    }
     if (table === 'ic_overlays') {
       if (!r.storage_path) throw nn('storage_path');
       if (r.bounds == null) throw nn('bounds');
@@ -330,6 +350,7 @@
   const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helispot: 'Helispot', other: 'Facility' };
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
   const overlayWhat = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
+  const requestLine = (r) => (r.quantity > 1 ? r.quantity + ' ' : '') + r.what;
 
   // ---- the triggers: the log (ic_events), updated_at, a hazard's flag on its zone
   const label = (inc, uid) => R.unitLabel(member(inc, uid));
@@ -404,6 +425,10 @@
     if (table === 'ic_positions') trackPosition(r, null, uid, changes);
     if (table === 'ic_facilities') log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' opened', 'ic_facilities', r.id);
     if (table === 'ic_overlays') log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' added to the map', 'ic_overlays', r.id);
+    if (table === 'ic_requests') {
+      const urg = r.urgency ? ', ' + R.urgencyLabel(r.urgency).toLowerCase() : '';
+      log(changes, r.incident_id, r.user_id, 'request', `${label(r.incident_id, r.user_id)} asked for ${requestLine(r)}${r.zone_id ? ' for ' + zoneCode(r.zone_id) : ''}${urg}${r.note ? ': ' + r.note : ''}`, 'ic_requests', r.id);
+    }
     if (table === 'ic_zones') log(changes, r.incident_id, uid, 'ops', `Division ${r.code} drawn, priority ${r.priority}`, 'ic_zones', r.id);
     if (table === 'ic_photos') {
       log(changes, r.incident_id, r.user_id, 'photo', `${label(r.incident_id, r.user_id)} sent a photo from ${zoneCode(r.zone_id)}${r.heading == null ? '' : ', facing ' + R.compass(r.heading)}${r.note !== '' ? ': ' + r.note : ''}`, 'ic_photos', r.id);
@@ -462,6 +487,11 @@
     }
     if (table === 'ic_positions') trackPosition(r, old, uid, changes);
     if (table === 'ic_photos' && !!r.public_ok !== !!old.public_ok) log(changes, r.incident_id, uid, 'ops', `Photo from ${label(r.incident_id, r.user_id)} ${r.public_ok ? 'cleared for public information' : 'withdrawn from public information'}`, 'ic_photos', r.id);
+    if (table === 'ic_requests') {
+      const step = { approved: 'approved', ordered: 'ordered', filled: 'filled', declined: 'could not be filled', asked: 'asked again' };
+      if (r.status !== old.status) log(changes, r.incident_id, uid, 'request', `Request for ${requestLine(r)} (${label(r.incident_id, r.user_id)}) ${step[r.status]}${r.answer ? ': ' + r.answer : ''}`, 'ic_requests', r.id);
+      else if (r.answer !== old.answer && r.answer) log(changes, r.incident_id, uid, 'request', `Request for ${requestLine(r)} (${label(r.incident_id, r.user_id)}): ${r.answer}`, 'ic_requests', r.id);
+    }
     if (table === 'ic_overlays') {
       if (r.archived_at && !old.archived_at) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' removed from the map', 'ic_overlays', r.id);
       else if (!r.archived_at && old.archived_at) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' put back on the map', 'ic_overlays', r.id);
@@ -477,10 +507,13 @@
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
       else if (r.text !== old.text) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} is now: ${r.text}`, 'ic_objectives', r.id);
     }
-    if (table === 'ic_periods' && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || ''))) {
+    if (table === 'ic_periods' && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || '') || (r.planning_chief || '') !== (old.planning_chief || '') || (r.logistics_chief || '') !== (old.logistics_chief || '') || (r.finance_chief || '') !== (old.finance_chief || ''))) {
       log(changes, r.incident_id, uid, 'ops', `Operational period ${r.number} updated`
         + (r.ic_name !== old.ic_name ? ', Incident Commander ' + (r.ic_name || 'not set') : '')
         + (r.ops_chief !== old.ops_chief ? ', Operations ' + (r.ops_chief || 'not set') : '')
+        + ((r.planning_chief || '') !== (old.planning_chief || '') ? ', Planning ' + (r.planning_chief || 'not set') : '')
+        + ((r.logistics_chief || '') !== (old.logistics_chief || '') ? ', Logistics ' + (r.logistics_chief || 'not set') : '')
+        + ((r.finance_chief || '') !== (old.finance_chief || '') ? ', Finance ' + (r.finance_chief || 'not set') : '')
         + (r.safety_officer !== old.safety_officer ? ', Safety ' + (r.safety_officer || 'not set') : '')
         + ((r.unified || '') !== (old.unified || '') ? ', unified command ' + (r.unified || 'cleared') : ''));
     }
@@ -489,7 +522,7 @@
       const who = label(r.incident_id, r.user_id);
       const text = r.status === 'available' ? `${who} is available${old.status === 'out_of_service' ? ', back in service' : ''}`
         : r.status === 'out_of_service' ? `${who} is out of service${r.status_note ? ': ' + r.status_note : ''}`
-        : r.status === 'checked_out' ? `${who} checked out` : `${who} is assigned`;
+        : r.status === 'checked_out' ? `${who} checked out${r.demob && Array.isArray(r.demob.open) && r.demob.open.length ? ' · not done: ' + r.demob.open.join(' · ') : ''}${r.demob && r.demob.note ? ' · for the next crew: ' + r.demob.note : ''}` : `${who} is assigned`;
       log(changes, r.incident_id, uid, 'status', text);
       if (r.status === 'checked_out') {
         for (const z of tables.ic_zones.filter((z) => z.incident_id === r.incident_id && z.assigned_to === r.user_id)) {
@@ -558,6 +591,7 @@
     if (table === 'ic_profiles') { row.verified_at = null; row.verified_by = null; row.full_name = String(row.full_name || '').trim(); row.phone = String(row.phone || '').trim(); row.licence_number = String(row.licence_number || '').trim().toUpperCase(); row.licence_state = String(row.licence_state || '').trim().toUpperCase(); }   // ic_profile_before
     if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
     if (table === 'ic_overlays') row.created_by = row.created_by || uid;   // ic_overlay_before
+    if (table === 'ic_requests') { row.what = String(row.what || '').trim(); row.status = 'asked'; row.answer = ''; row.status_by = null; row.status_at = null; }   // ic_request_before
     if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
@@ -597,6 +631,7 @@
     }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
+    if (table === 'ic_requests') { r.updated_at = now(); r.what = String(r.what || '').trim(); if (r.status !== old.status || r.answer !== old.answer) { r.status_by = uid; r.status_at = now(); } }   // ic_request_before
     if (table === 'ic_people') personBefore(r, old);
     if (table === 'ic_structures') {   // ic_structure_before
       r.updated_at = now();
@@ -757,7 +792,7 @@
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations starts a period');
         const cur = tables.ic_periods.filter((p) => p.incident_id === a.p_incident && !p.closed_at).sort((x, y) => y.number - x.number)[0] || null;
         const maxN = tables.ic_periods.filter((p) => p.incident_id === a.p_incident).reduce((n, p) => Math.max(n, p.number), 0);
-        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '' };
+        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '' };
         tables.ic_periods.push(np); changes.push(['INSERT', 'ic_periods', np, null]);
         let n = 0;
         if (cur) {
@@ -825,6 +860,11 @@
           }
           out = [...last.values()].sort((x, y) => (x.user_id < y.user_id ? -1 : x.user_id > y.user_id ? 1 : x.at < y.at ? -1 : 1)).map((t) => ({ user_id: t.user_id, lat: t.lat, lng: t.lng, heading: t.heading, at: t.at }));
         }
+      } else if (name === 'ic_check_out') {
+        const m = member(a.p_incident, uid);
+        if (!m) throw dbError('Not on this incident');
+        updateRow('ic_members', m, { demob: a.p_demob || null, status: 'checked_out', status_note: '' }, uid, changes);
+        out = copy(m);
       } else if (name === 'ic_verify_profile') {
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations verifies');
         if (!member(a.p_incident, a.p_user)) throw dbError('Not on this incident');
@@ -981,7 +1021,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };

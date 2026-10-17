@@ -45,6 +45,19 @@
 .par-row.ok { border-left-color: var(--cleared-fill); } .par-row.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-row.wait { border-left-color: var(--hazard); }
 .safety .missing { color: var(--danger); font-weight: 600; }
 .log-row.log-status { border-left-color: #8CA6BF; }
+.log-row.log-request { border-left-color: #1B6F8A; }
+.req { border: 1px solid var(--line); border-left: 4px solid var(--grey); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; font-size: 13px; background: var(--panel-2); }
+.req.urg-now, .req.urg-blocking { border-left-color: var(--danger); } .req.urg-nightfall { border-left-color: var(--hazard); } .req.urg-tomorrow { border-left-color: var(--active-fill); }
+.req.req-filled { opacity: .8; border-left-color: var(--cleared-fill); } .req.req-declined { opacity: .8; }
+.req-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.req-line { font-size: 14px; font-weight: 600; }
+.req-answer { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+.req-answer input { flex: 1 1 140px; min-width: 0; border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; font-size: 12.5px; min-height: 30px; background: var(--control-bg); color: var(--ink); }
+.badge.st-req-asked { background: var(--tint-orange); color: var(--hazard-ink); } .badge.st-req-approved, .badge.st-req-ordered { background: var(--tint-blue); color: var(--active); } .badge.st-req-filled { background: var(--tint-green); color: var(--cleared); } .badge.st-req-declined { background: var(--tint-red); color: var(--danger); }
+.hours-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+.hours-table th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+.hours-table td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.hours-table .inferred { color: var(--hazard-ink); }
 .badge.primary { background: var(--tint-green2); color: var(--cleared); }
 .fmark { position: absolute; left: -13px; top: -13px; min-width: 26px; height: 26px; padding: 0 5px; border-radius: 6px; background: #3E3C36; color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); cursor: pointer; white-space: nowrap; }
 .fmark.inline { position: static; width: auto; height: 22px; font-size: 10px; flex: none; border-width: 1px; }

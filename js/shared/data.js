@@ -1,7 +1,7 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
@@ -9,7 +9,7 @@ const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map() };
 }
 
 function keyOf(table, row) {
@@ -123,6 +123,7 @@ export class Data {
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
     put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data); put('ic_overlays', overlays.data); put('ic_people', people.data);
+    try { const { data: reqs } = await q('ic_requests').order('created_at', { ascending: false }); put('ic_requests', reqs); } catch (e) { /* a client without the table */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
       const { data: profs } = ids.length ? await this.sb.from('ic_profiles').select('*').in('user_id', ids) : { data: [] };
@@ -302,6 +303,35 @@ export class Data {
     return data;
   }
 
+  // ---- resource requests (ICS 213RR): the field or the base asks, Operations works it to filled or declined
+  requests(all) { return [...this.store.requests.values()].filter((r) => all || !r.archived_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
+  request(id) { return this.store.requests.get(id) || null; }
+  openRequests() { return this.requests().filter((r) => r.status === 'asked' || r.status === 'approved' || r.status === 'ordered'); }
+  myRequests() { return this.user ? this.requests().filter((r) => r.user_id === this.user.id) : []; }
+  async addRequest({ id, kind, what, quantity, urgency, note, zoneId, lat, lng }) {
+    const row = { id: id || crypto.randomUUID(), incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, kind: kind || 'other', what: (what || '').trim(), quantity: Math.max(1, Number(quantity) || 1), urgency: urgency || '', note: (note || '').trim(), lat: lat ?? null, lng: lng ?? null };
+    const { data, error } = await this.sb.from('ic_requests').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_requests', data || row);
+    return data || row;
+  }
+  async updateRequest(id, patch) {
+    const { data, error } = await this.sb.from('ic_requests').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_requests', data);
+    return data;
+  }
+  async answerRequest(id, status, answer) { return this.updateRequest(id, { status, answer: (answer || '').trim() }); }
+  async withdrawRequest(id) { return this.updateRequest(id, { archived_at: new Date().toISOString() }); }
+
+  // ---- checking out with the list of what was done and what was not (ic_members.demob)
+  async checkOut(demob) {
+    const { data, error } = await this.sb.rpc('ic_check_out', { p_incident: this.store.incident.id, p_demob: demob || null });
+    if (error) throw error;
+    this.local('ic_members', data);
+    return data;
+  }
+
   // ---- custom imagery (ic_overlays): a picture over the map by its corner coordinates, ops only
   overlays(all) { return [...this.store.overlays.values()].filter((o) => all || !o.archived_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
   overlay(id) { return this.store.overlays.get(id) || null; }
@@ -345,8 +375,8 @@ export class Data {
     const from = period.starts_at, to = period.closed_at || null;
     return this.events().filter((e) => e.at >= from && (!to || e.at <= to));
   }
-  async startPeriod({ endsAt, ic, ops, safety, notes, carry }) {
-    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false });
+  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified }) {
+    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '' });
     if (error) throw error;
     this.local('ic_periods', data);
     return data;

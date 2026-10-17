@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
@@ -19,7 +19,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, people: { q: '', quals: new Set(), add: false, addUnit: null } };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null } };
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
@@ -328,18 +328,18 @@ function drawBriefing() {
   if (!data.incident) return;
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'join' ? joinCardHtml(data) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
+  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'join' ? joinCardHtml(data) : kind === 'hours' ? hoursHtml(data, state) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
   const page = $('#briefing-page');
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
   page.className = 'briefing-page kind-' + kind;
-  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
+  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card' : kind === 'hours' ? 'Hours on scene' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === '211' ? form211Text(data) : kind === 'join' ? joinCardText(data) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
+  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === '211' ? form211Text(data) : kind === 'join' ? joinCardText(data) : kind === 'hours' ? hoursCsvText(data, state) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
 }
 // The maps' tiles are plain <image>s; give them a moment to arrive before the print dialog
 // takes a picture of the page.
@@ -559,6 +559,18 @@ document.addEventListener('click', async (e) => {
       case 'people': if (LOG_ONLY) { selectFromLog({ type: 'people' }); break; } state.people.addUnit = btn.dataset.unit || state.people.addUnit; openPeople(); break;
       case 'close-people': closePeople(); break;
       case 'print-211': openOverlay('211'); break;
+      case 'hours': openOverlay('hours'); break;
+      case 'hours-csv': {
+        const period = state.hoursPeriod === 'all' ? null : (state.hoursPeriod && data.period(state.hoursPeriod)) || data.currentPeriod();
+        const blob = new Blob([hoursCsvText(data, state)], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `hours-${data.incident.code}-${period ? 'OP' + period.number : 'all'}.csv`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        toast('CSV downloaded');
+        break;
+      }
       case 'people-qual': { const q = btn.dataset.q; if (state.people.quals.has(q)) state.people.quals.delete(q); else state.people.quals.add(q); drawPeople(); break; }
       case 'people-add-toggle': state.people.add = !state.people.add; drawPeople(); if (state.people.add) { const f = $('#people-page form[data-form="person-add"]'); if (f) f.name.focus(); } break;
       case 'person-out': await data.checkOutPerson(id); break;
@@ -698,6 +710,7 @@ document.addEventListener('change', async (e) => {
   try {
     if (sel.dataset.select === 'zone-objective') { await data.updateZone(sel.dataset.id, { objective_id: sel.value || null }); sel.blur(); queueDraw(); }
     if (sel.dataset.range === 'overlay-opacity') { await data.updateOverlay(sel.dataset.id, { opacity: Number(sel.value) }); sel.blur(); queueDraw(); }
+    if (sel.dataset.select === 'hours-period') { state.hoursPeriod = sel.value; drawBriefing(); }
     if (sel.dataset.select === 'person-unit') { const p = data.person(sel.dataset.id); await data.updatePerson(sel.dataset.id, { user_id: sel.value }); sel.blur(); if (p) toast(p.name + ' moved to ' + unitLabelOf(data.member(sel.value))); queueDraw(); }
     if (sel.dataset.select === 'person-buddy') { await data.updatePerson(sel.dataset.id, { buddy_id: sel.value || null }); sel.blur(); queueDraw(); }
   } catch (err) { toast(err.message || String(err), true); }
@@ -790,18 +803,29 @@ document.addEventListener('submit', async (e) => {
       toast(name + ' added to ' + unitLabelOf(data.member(form.unit.value)));
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();   // the page redraws only while no field in it has focus
       drawPeople();
+    } else if (form.dataset.form === 'request-add') {
+      await data.addRequest({ kind: form.kind.value, what: form.what.value, quantity: form.quantity.value, urgency: form.urgency.value, note: form.note.value, zoneId: form.zone.value || null });
+      toast('Asked');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'request-answer') {
+      const status = e.submitter && e.submitter.value;
+      if (!status) return;
+      await data.answerRequest(form.dataset.id, status, form.answer.value);
+      toast({ approved: 'Approved', ordered: 'Marked ordered', filled: 'Filled', declined: 'Marked as not fillable', asked: 'Asked again' }[status] || 'Saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
     } else if (form.dataset.form === 'incident-edit') {
       await data.setLeadAgency(form.lead_agency.value);
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'period-edit') {
-      await data.updatePeriod(form.dataset.id, { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim() });
+      await data.updatePeriod(form.dataset.id, { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim() });
       toast('Period saved');
       queueDraw();
     } else if (form.dataset.form === 'period-start') {
-      const p = await data.startPeriod({ endsAt: timeToIso(form.ends.value), ic: form.ic.value, ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked });
-      if (form.unified.value.trim()) await data.updatePeriod(p.id, { unified: form.unified.value.trim() });
+      const p = await data.startPeriod({ endsAt: timeToIso(form.ends.value), ic: form.ic.value, ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value });
       state.periodNext = false;
       toast('Operational period ' + p.number + ' started');
       queueDraw();

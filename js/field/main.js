@@ -12,6 +12,7 @@ import { availableLayers, layerDef, storedLayer, storeLayer, makeBaseLayer, make
 import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
 import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
+import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
 const AGENCY_KEY = 'ic.field.agency';
 const JOIN_KEY = 'ic.field.join';   // a code that arrived in the address (?join=), kept through sign-in
 const SEEN_ZONE = 'ic.field.seen.';
@@ -20,7 +21,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set() };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set() };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -45,7 +46,7 @@ function toast(msg, bad) {
 function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
 function screen(name) {
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout']) $('#s-' + s).hidden = name !== s;
   if (name === 'home') { state.pending = null; if (mini) setTimeout(() => mini.invalidateSize(), 50); }
 }
 
@@ -156,6 +157,7 @@ async function showJoin() {
   } catch (err) { list.innerHTML = `<p class="msg">${esc(err.message || err)}</p>`; }
 }
 
+document.addEventListener('change', (e) => { const co = e.target.closest('[data-co]'); if (co) { state.coTicks[co.dataset.co] = co.checked; drawCheckout(); } });
 $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
 
 // The people on the unit at check-in: a row per person, name and rank or role typed, what they are
@@ -354,10 +356,63 @@ async function setMyStatus(status, note) {
   drawMenu();
   queueDraw();
 }
+// ---- Ask for something: a resource request to Logistics, worked at the base, answered here
+function drawAsk() {
+  const a = state.ask;
+  $('#ask-kinds').innerHTML = REQUEST_KINDS.map(([v, label]) => `<button class="chip${a.kind === v ? ' on' : ''}" data-action="ask-kind" data-value="${v}">${esc(label)}</button>`).join('');
+  $('#ask-urgency').innerHTML = URGENCY_WORDS.filter(([v]) => v !== 'blocking').map(([v, label]) => `<button class="chip${a.urgency === v ? ' on' : ''}" data-action="ask-urgency" data-value="${v}">${esc(label)}</button>`).join('');
+  const zone = data.myZones()[0] || (sensors.pos ? zoneAt(data.zones(), sensors.pos.lat, sensors.pos.lng) : null);
+  $('#ask-where').textContent = zone ? `For ${zone.code} ${zone.name || ''}, where you are · your spot goes with it` : (sensors.pos ? 'Your spot goes with it' : 'No GPS fix yet; the request goes without a spot');
+  const mine = data.myRequests().slice(0, 6);
+  $('#ask-mine').innerHTML = mine.length ? mine.map((r) => `<div class="req-row"><span class="req-dot ${esc(r.status)}"></span><span style="flex:1"><strong>${esc(requestLine(r))}</strong><br><span class="muted" style="font-size:12px">${esc(REQUEST_STATUS[r.status] || r.status)}${r.answer ? ' · ' + esc(r.answer) : ''} · ${hhmm(r.status_at || r.created_at)}</span></span>${r.status === 'asked' ? `<button class="btn sm" data-action="ask-withdraw" data-id="${r.id}">Withdraw</button>` : ''}</div>`).join('') : '<div class="muted small">Nothing asked yet.</div>';
+}
+async function sendAsk() {
+  const what = $('#ask-what').value.trim() || REQUEST_KINDS.find(([v]) => v === state.ask.kind)[1].toLowerCase();
+  const qty = Math.max(1, Number($('#ask-qty').value) || 1);
+  const zone = data.myZones()[0] || (sensors.pos ? zoneAt(data.zones(), sensors.pos.lat, sensors.pos.lng) : null);
+  try {
+    await data.addRequest({ kind: state.ask.kind, what, quantity: qty, urgency: state.ask.urgency, note: $('#ask-note').value.trim(), zoneId: zone ? zone.id : null, lat: sensors.pos ? sensors.pos.lat : null, lng: sensors.pos ? sensors.pos.lng : null });
+    $('#ask-what').value = ''; $('#ask-note').value = ''; $('#ask-qty').value = '1';
+    toast('Sent to Logistics');
+    drawAsk();
+  } catch (err) { toast(err.message || String(err), true); }
+}
+
+// ---- checking out with the list: what is done is ticked, the rest rides along to the base
+function drawCheckout() {
+  const me = data.me();
+  const people = data.unitPeople ? data.unitPeople(me.user_id).filter((p) => !p.checked_out_at) : [];
+  const zone = data.myZones().find((z) => z.status === 'active');
+  const hazards = data.hazards().filter((h) => h.user_id === me.user_id).length;
+  const open = data.myRequests().filter((r) => r.status === 'asked' || r.status === 'approved' || r.status === 'ordered').length;
+  const hours = ((Date.now() - new Date(me.joined_at).getTime()) / 3600000);
+  const subs = {
+    people: people.length ? people.map((p) => p.name).join(', ') + ' · ' + people.length + ' on the unit' : 'nobody listed on the unit',
+    zone: zone ? `${zone.code} · ${zone.cleared} of ${zone.structures} cleared · Operations will reassign it` : 'no division assigned',
+    equipment: 'radios, pumps, lights borrowed from Logistics',
+    reported: `${hazards} hazard${hazards === 1 ? '' : 's'} reported by you · ${open} request${open === 1 ? '' : 's'} of yours open`,
+    unhurt: 'untick to say what happened; Finance needs it the same day',
+    hours: `${unitLabel(me)} on scene ${hhmm(me.joined_at)} to now, ${Math.floor(hours)} h ${String(Math.round((hours % 1) * 60)).padStart(2, '0')}`
+  };
+  $('#checkout-title').textContent = 'Check out ' + unitLabel(me);
+  $('#checkout-list').innerHTML = DEMOB_ITEMS.map(([k, label]) => `<label class="co-item"><input type="checkbox" data-co="${k}"${state.coTicks[k] ? ' checked' : ''}><span style="flex:1"><strong>${esc(label)}</strong><br><span class="sub">${esc(subs[k])}</span></span></label>`).join('');
+  const left = demobOpen(state.coTicks);
+  $('#checkout-open').textContent = left.length ? `${left.length} item${left.length === 1 ? '' : 's'} not ticked. They go to Operations with your check-out: ${left.join(' · ')}.` : 'Everything ticked. Operations sees a clean check-out.';
+}
+function openCheckout() {
+  const me = data.me();
+  if (!me) return;
+  const zone = data.myZones().find((z) => z.status === 'active');
+  state.coTicks = { people: true, zone: !zone, reported: true, hours: true };
+  $('#checkout-note').value = '';
+  screen('checkout');
+  drawCheckout();
+}
 async function checkOut() {
   const me = data.me();
-  if (!me || !confirm('Check out of ' + data.incident.name + '? Your zone goes back to Operations and your location stops sharing.')) return;
-  try { await data.setStatus(me.user_id, 'checked_out'); }
+  if (!me) return;
+  const demob = { ticks: { ...state.coTicks }, open: demobOpen(state.coTicks), note: $('#checkout-note').value.trim() };
+  try { await data.checkOut(demob); }
   catch (e) { toast('Could not check out: ' + (e.message || e), true); return; }
   sensors.stop();
   data.close();
@@ -1010,8 +1065,14 @@ document.addEventListener('click', async (e) => {
       case 'person-add': await addPerson(); break;
       case 'person-out': await setPersonOut(btn.dataset.id, true); break;
       case 'person-in': await setPersonOut(btn.dataset.id, false); break;
-      case 'check-out': await checkOut(); break;
+      case 'check-out': openCheckout(); break;
       case 'compose': state.composeI = 0; screen('compose'); drawCompose(); break;
+      case 'ask': screen('ask'); drawAsk(); break;
+      case 'ask-kind': state.ask.kind = btn.dataset.value; drawAsk(); break;
+      case 'ask-urgency': state.ask.urgency = btn.dataset.value; drawAsk(); break;
+      case 'ask-send': await sendAsk(); break;
+      case 'ask-withdraw': await data.withdrawRequest(id); drawAsk(); toast('Withdrawn'); break;
+      case 'checkout-confirm': await checkOut(); break;
       case 'cmp': $('#compose-text').value = btn.dataset.text || ''; drawCompose(); break;
       case 'cmp-u': state.composeU = state.composeU === btn.dataset.value ? '' : btn.dataset.value; drawCompose(); break;
       case 'compose-loc': toggleComposeLocation(); break;

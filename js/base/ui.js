@@ -4,7 +4,8 @@ import { divisionMapHtml } from './print-map.js';
 import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } from '../shared/layers.js';
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
+import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -113,6 +114,7 @@ function homeHtml(data) {
     <div class="k" style="margin-top:6px">Resources</div>
     ${resourcesHtml(data)}
     ${parHtml(data)}
+    ${requestsHtml(data)}
     <div class="k" style="margin-top:6px">Message the field</div>
     ${composerHtml(data, 'all')}
     <div class="k" style="margin-top:6px">Messages</div>
@@ -481,7 +483,7 @@ export function form211Sections(data) {
     const rows = data.unitPeople(m.user_id);
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
     S.push({ title: `${unitLabel(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
-      lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${p.verified_at ? ', verified' : ', not verified'}` : 'Checked in by an account with no identity given'; })()].concat(rows.length ? rows.map((px) => {
+      lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${p.verified_at ? ', verified' : ', not verified'}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
         return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${px.notes ? ' · ' + px.notes : ''}`;
       }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]) });
@@ -579,6 +581,97 @@ function structureHtml(data, s) {
     </form>`;
 }
 
+// How a unit checked out: what it ticked, what it left undone, the note for the next crew.
+export function demobHtml(m) {
+  if (m.status !== 'checked_out' || !m.demob) return '';
+  const open = Array.isArray(m.demob.open) ? m.demob.open : [];
+  return `<div class="ident demob"><div class="k">Checked out ${m.checked_out_at ? hhmm(m.checked_out_at) : ''}</div>
+    ${open.length ? `<div class="hazline" style="display:block">Not done: ${esc(open.join(' · '))}</div>` : '<div class="muted" style="font-size:12.5px">Everything on the list ticked</div>'}
+    ${m.demob.note ? `<div style="font-size:13px">For the next crew: ${esc(m.demob.note)}</div>` : ''}
+  </div>`;
+}
+
+// Resource requests (ICS 213RR): a card per request with the step Operations can take next.
+const REQ_NEXT = { asked: [['approved', 'Approve'], ['declined', 'Can\'t fill']], approved: [['ordered', 'Mark ordered'], ['declined', 'Can\'t fill']], ordered: [['filled', 'Arrived, filled'], ['declined', 'Can\'t fill']], filled: [], declined: [['asked', 'Ask again']] };
+const URG_RANK = { now: 0, nightfall: 1, tomorrow: 2, blocking: 0, '': 3 };
+export function requestCardHtml(data, r) {
+  const who = unitLabel(data.member(r.user_id));
+  const z = r.zone_id ? data.zone(r.zone_id) : null;
+  const next = REQ_NEXT[r.status] || [];
+  return `<div class="req req-${esc(r.status)} urg-${esc(r.urgency || 'none')}" data-request="${r.id}">
+    <div class="req-top">${r.urgency ? `<span class="badge urg-${esc(r.urgency)}">${esc(urgencyLabel(r.urgency))}</span>` : ''}<span class="badge st-req-${esc(r.status)}">${esc(REQUEST_STATUS[r.status] || r.status)}</span><span class="muted">${hhmm(r.created_at)} · ${esc(who)}${z ? ' · ' + esc(z.code) : ''}</span></div>
+    <div class="req-line">${esc(requestLine(r))}</div>
+    ${r.note ? `<div class="muted" style="font-size:12.5px">${esc(r.note)}</div>` : ''}
+    ${r.answer ? `<div style="font-size:12.5px">${esc(r.answer)}${r.status_at ? ' · ' + hhmm(r.status_at) : ''}</div>` : ''}
+    ${next.length ? `<form class="req-answer" data-form="request-answer" data-id="${r.id}"><input name="answer" placeholder="${r.status === 'approved' ? 'Who is coming and when' : 'A word for the unit (optional)'}" maxlength="200" autocomplete="off">${next.map(([st, label]) => `<button class="btn sm${st === 'filled' ? ' green' : st === 'declined' ? '' : ' pri'}" name="status" value="${st}">${label}</button>`).join('')}</form>` : ''}
+    ${r.lat != null && r.lng != null ? `<button class="plink" data-action="pan-to" data-lat="${r.lat}" data-lng="${r.lng}">Show on map</button>` : ''}
+  </div>`;
+}
+export function requestsHtml(data) {
+  const open = data.openRequests().sort((a, b) => (URG_RANK[a.urgency] ?? 3) - (URG_RANK[b.urgency] ?? 3) || (a.created_at < b.created_at ? -1 : 1));
+  const done = data.requests().filter((r) => r.status === 'filled' || r.status === 'declined').slice(0, 4);
+  const now = open.filter((r) => r.urgency === 'now' || r.urgency === 'blocking').length;
+  return `
+    <div class="d-row" style="margin-top:6px"><span class="k" style="width:auto;flex:1">Resource requests (ICS 213RR)</span>${now ? `<span class="badge urg-now">${now} to act on now</span>` : ''}<span class="muted">${open.length} open</span></div>
+    ${open.length ? open.map((r) => requestCardHtml(data, r)).join('') : '<div class="muted" style="font-size:12.5px">Nothing open. The field asks from its inbox; Operations asks below.</div>'}
+    ${done.length ? `<details class="muted" style="font-size:12.5px"><summary>${done.length} filled or declined lately</summary>${done.map((r) => requestCardHtml(data, r)).join('')}</details>` : ''}
+    <form class="inline-form" data-form="request-add">
+      <div class="row-2">
+        <label>What <input name="what" placeholder="fuel truck, diesel" required maxlength="120"></label>
+        <label>How many <input name="quantity" type="number" min="1" max="9999" value="1"></label>
+      </div>
+      <div class="row-2">
+        <label>Kind <select name="kind" class="sel">${REQUEST_KINDS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select></label>
+        <label>By when <select name="urgency" class="sel"><option value="">No rush</option>${URGENCY.filter(([v]) => v !== 'blocking').map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select></label>
+      </div>
+      <div class="row-2">
+        <label>For <select name="zone" class="sel"><option value="">Staging or the base</option>${data.zones().map((z) => `<option value="${z.id}">${esc(z.code)} ${esc(z.name)}</option>`).join('')}</select></label>
+        <label>Why <input name="note" placeholder="in a few words" maxlength="300"></label>
+      </div>
+      <div class="row-btns"><button class="btn pri sm" type="submit">Ask Logistics</button></div>
+    </form>`;
+}
+export function unitRequestsHtml(data, m) {
+  const mine = data.requests().filter((r) => r.user_id === m.user_id).slice(0, 5);
+  if (!mine.length) return '';
+  return `<div class="k">Requests from ${esc(unitLabel(m))}</div>${mine.map((r) => requestCardHtml(data, r)).join('')}`;
+}
+
+// Hours on scene, for Finance: the table and the CSV, for one period or the whole incident.
+export function hoursPeriod(data, state) { return state.hoursPeriod === 'all' ? null : (state.hoursPeriod && data.period(state.hoursPeriod)) || data.currentPeriod(); }
+export function hoursHtml(data, state) {
+  const period = hoursPeriod(data, state);
+  const rows = hoursRows({ people: data.people(), members: data.members(), period });
+  const t = hoursTotals(rows);
+  const inc = data.incident;
+  const fmt = (iso) => (iso ? hhmm(iso) : '');
+  return `
+    <div class="inline-form no-print" style="margin-bottom:14px"><div class="d-row">
+      <label style="flex-direction:row;align-items:center;gap:6px">Period <select class="sel" data-select="hours-period">${data.periods().map((p) => `<option value="${p.id}"${period && period.id === p.id ? ' selected' : ''}>Operational period ${p.number} · ${hhmm(p.starts_at)}${p.closed_at ? ' to ' + hhmm(p.closed_at) : ', open'}</option>`).join('')}<option value="all"${!period ? ' selected' : ''}>Whole incident</option></select></label>
+      <button class="btn pri sm" data-action="hours-csv">Export CSV</button>
+    </div></div>
+    <section><h2>Hours on scene</h2>
+      <p>${esc(inc.name)} · ${period ? 'Operational period ' + period.number + ', ' + hhmm(period.starts_at) + (period.closed_at ? ' to ' + hhmm(period.closed_at) : ', still open') : 'the whole incident so far'} · prepared ${new Date().toLocaleString()}</p>
+      <p>People hours <strong>${t.peopleHours}</strong> across ${t.people} ${t.people === 1 ? 'person' : 'people'}, ${t.peopleOn} still on scene · unit hours <strong>${t.unitHours}</strong> across ${t.units} unit${t.units === 1 ? '' : 's'}</p>
+      <p>By agency: ${t.byAgency.map(([a, h]) => esc(a) + ' ' + h).join(' · ') || 'nobody yet'}</p>
+      ${t.inferred ? `<p class="hazline" style="display:block">${t.inferred} row${t.inferred === 1 ? '' : 's'} counted to now, the period's end or the unit's check-out because nobody pressed check out: marked in the note.</p>` : ''}
+    </section>
+    <section><h2>People</h2>
+      <div style="overflow-x:auto"><table class="hours-table"><thead><tr><th>Person</th><th>Unit</th><th>Agency</th><th>Role</th><th>In</th><th>Out</th><th style="text-align:right">Hours</th><th>Note</th></tr></thead><tbody>
+      ${rows.filter((r) => r.kind === 'person').map((r) => `<tr><td><strong>${esc(r.name)}</strong></td><td>${esc(r.unit)}</td><td>${esc(r.agency)}</td><td>${esc(r.role)}</td><td class="mono">${fmt(r.in)}</td><td class="mono${r.out ? '' : ' muted'}">${r.out ? fmt(r.out) : 'on scene'}</td><td class="mono" style="text-align:right">${r.hours.toFixed(2)}</td><td class="muted${r.inferred ? ' inferred' : ''}">${esc(r.note)}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">No people listed yet</td></tr>'}
+      </tbody></table></div>
+    </section>
+    <section><h2>Units</h2>
+      <div style="overflow-x:auto"><table class="hours-table"><thead><tr><th>Unit</th><th>Agency</th><th>In</th><th>Out</th><th style="text-align:right">Hours</th><th>Note</th></tr></thead><tbody>
+      ${rows.filter((r) => r.kind === 'unit').map((r) => `<tr><td><strong>${esc(r.name)}</strong></td><td>${esc(r.agency)}</td><td class="mono">${fmt(r.in)}</td><td class="mono${r.out ? '' : ' muted'}">${r.out ? fmt(r.out) : 'on scene'}</td><td class="mono" style="text-align:right">${r.hours.toFixed(2)}</td><td class="muted">${esc(r.note)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No units yet</td></tr>'}
+      </tbody></table></div>
+    </section>`;
+}
+export function hoursCsvText(data, state) {
+  const period = hoursPeriod(data, state);
+  return hoursCsv(hoursRows({ people: data.people(), members: data.members(), period }), data.incident.name, period ? 'OP ' + period.number : 'whole incident');
+}
+
 // Who is behind an account: the profile given at check-in, and Operations' verdict on it.
 export function identityHtml(data, m) {
   const p = data.profileOf(m.user_id);
@@ -612,6 +705,8 @@ function unitHtml(data, m, state) {
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
     ${identityHtml(data, m)}
+    ${demobHtml(m)}
+    ${unitRequestsHtml(data, m)}
     <div class="d-row"><span class="k">Set status</span>
       <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
       <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>
@@ -664,6 +759,7 @@ function timeValue(iso) { if (!iso) return ''; const d = new Date(iso); return S
 
 function periodFormHtml(p, next, state) {
   const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()), unified: p ? p.unified || '' : '' } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at), unified: p.unified || '' };
+  d.planning = p ? p.planning_chief || '' : ''; d.logistics = p ? p.logistics_chief || '' : ''; d.finance = p ? p.finance_chief || '' : '';
   return `
     <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
       <div class="row-2">
@@ -673,6 +769,14 @@ function periodFormHtml(p, next, state) {
       <div class="row-2">
         <label>Safety Officer <input name="safety" value="${esc(d.safety)}"></label>
         <label>Planned end <input name="ends" type="time" value="${esc(d.ends)}"></label>
+      </div>
+      <div class="row-2">
+        <label>Planning Section Chief <input name="planning" value="${esc(d.planning)}"></label>
+        <label>Logistics Section Chief <input name="logistics" value="${esc(d.logistics)}"></label>
+      </div>
+      <div class="row-2">
+        <label>Finance / Admin Section Chief <input name="finance" value="${esc(d.finance)}"></label>
+        <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">Empty seats print as "not set". The names carry into the next period.</span>
       </div>
       <label>Unified command <input name="unified" value="${esc(d.unified)}" placeholder="The other agencies' Incident Commanders, if more than one agency is in charge" maxlength="200"></label>
       <label>Safety message and notes for the period <textarea name="notes" rows="2">${esc(d.notes)}</textarea></label>
@@ -717,7 +821,7 @@ export function briefingSections(data) {
   S.push({ title: 'Incident', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set')].join(' · ') : null,
+    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set')].join(' · ') : null,
     commandText(inc, p) || null,
     'Briefing made ' + new Date().toLocaleString()
   ].filter(Boolean) });
@@ -802,7 +906,7 @@ export function sitrepSections(data) {
   S.push({ title: 'Resources', lines: [`${units.length} units checked in, ${data.activeUnits().length} on the incident, ${data.peopleInField()} people in the field`].concat(
     ['assigned', 'available', 'out_of_service', 'checked_out'].map((st) => `${STATUS_LABEL[st]}: ${units.filter((u) => u.status === st).length}`),
     agenciesOn(units).map(agencyLine)) });
-  S.push({ title: 'Resources needed', lines: [sr.needs || 'None stated'] });
+  S.push({ title: 'Resources needed', lines: data.openRequests().map((r) => `${requestLine(r)}${r.zone_id && data.zone(r.zone_id) ? ' for ' + data.zone(r.zone_id).code : ''}${r.urgency ? ', ' + urgencyLabel(r.urgency).toLowerCase() : ''} · ${REQUEST_STATUS[r.status].toLowerCase()}${r.answer ? ', ' + r.answer : ''}`).concat(sr.needs ? [sr.needs] : []).concat(data.openRequests().length || sr.needs ? [] : ['None stated']) });
   S.push({ title: 'Outlook for the next period', lines: [sr.outlook || 'Not written yet'] });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => facilityLabel(f)) : ['None set'] });
   const pub = data.publicPhotos().length;
@@ -824,6 +928,9 @@ export function iapSections(data) {
     'Command: ' + (commandText(inc, p) || 'lead agency not set'),
     'Incident Commander: ' + ((p && p.ic_name) || 'not set'),
     'Operations Section Chief: ' + ((p && p.ops_chief) || 'not set'),
+    'Planning Section Chief: ' + ((p && p.planning_chief) || 'not set'),
+    'Logistics Section Chief: ' + ((p && p.logistics_chief) || 'not set'),
+    'Finance / Administration Section Chief: ' + ((p && p.finance_chief) || 'not set'),
     'Safety Officer: ' + ((p && p.safety_officer) || 'not set')
   ].concat(data.zones().filter((z) => z.supervisor).map((z) => `Division ${z.code} supervisor: ${z.supervisor}`), data.units().filter((u) => u.status !== 'checked_out').flatMap((u) => [`${unitLabel(u)}${u.crew ? ' (' + u.crew + ')' : ''}${u.crew_count != null ? ' · ' + u.crew_count + ' people' : ''}${u.agency ? ' · ' + u.agency : ''}`].concat(personLines(data, u)))) });
   for (const z of data.zones()) {
@@ -882,7 +989,7 @@ export function sitrepFormHtml(data) {
 // lines Operations marked notable), searched, with the hours marked and every line linked to the
 // thing it is about.
 export const LOG_GROUPS = [['all', 'All'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];
-const GROUP_OF = { photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
+const GROUP_OF = { request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
 export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
 const inGroup = (e, g) => !g || g === 'all' || (g === 'notable' ? !!e.notable : logGroupOf(e.kind) === g);
 export function logFilter(events, { group, q } = {}) {

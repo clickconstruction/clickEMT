@@ -1086,15 +1086,16 @@ export function orgChartHtml(data) {
     </div>
   </div>`;
 }
-export function orgSections(data) {
+// chartOnly: the standalone 207 page prints the chart without the lines above it (v30); the IAP and the text copies keep them
+export function orgSections(data, { chartOnly } = {}) {
   const inc = data.incident, p = data.currentPeriod();
   return [{ title: 'Organization chart, ICS 207', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
     'Drawn from the period\'s seats, the divisions and their supervisors, the units and their people · prepared ' + new Date().toLocaleString()
-  ].concat(orgLines(data)), figure: orgChartHtml(data) }];
+  ].concat(chartOnly ? [] : orgLines(data)), figure: orgChartHtml(data) }];
 }
-export function orgHtml(data) { return sectionsHtml(orgSections(data)); }
+export function orgHtml(data) { return sectionsHtml(orgSections(data, { chartOnly: true })); }
 export function orgText(data) { return sectionsText(orgSections(data)); }
 
 // The briefing is built once as sections of lines, then shown as a page or copied as text.

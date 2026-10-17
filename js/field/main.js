@@ -823,6 +823,13 @@ function drawMini(zone) {
 }
 
 // The nearest staging area, boat ramp, shelter and hospital (each when one is open), with directions in the phone's own maps app.
+// The first sentence of a line, cut at a full stop that ends a word, not at an initial: "Medic: J. Ortiz, EMT." stays whole.
+function firstSentence(t) {
+  const re = /\.(\s|$)/g;
+  let m;
+  while ((m = re.exec(t))) { const before = t.slice(0, m.index); if (!/(^|\s)[A-Z]$/.test(before)) return before; }
+  return t;
+}
 function drawNearby() {
   const p = sensors.pos;
   const rows = [];
@@ -835,7 +842,7 @@ function drawNearby() {
   // the hurt card rides on the Nearest card: the medic on the unit, or the nearest one
   const me = data.me();
   const hurt = me ? hurtLines(data, { unit: me, at: p ? [p.lat, p.lng] : null })[0] : null;
-  if (hurt) rows.push(`<div class="near hurt-near" data-action="hurt" role="button" tabindex="0"><span class="fmark inline">+</span><span class="near-main"><span class="near-name">If someone is hurt</span><span class="${hurt.warn ? 'warn' : 'muted'}" style="${hurt.warn ? 'color:var(--hazard-ink)' : ''}">${esc(hurt.text.replace(/^Medic on your unit: /, 'Medic: ').split('. ')[0])}</span></span><button class="btn sm" data-action="hurt" type="button">Open</button></div>`);
+  if (hurt) rows.push(`<div class="near hurt-near" data-action="hurt" role="button" tabindex="0"><span class="fmark inline">+</span><span class="near-main"><span class="near-name">If someone is hurt</span><span class="${hurt.warn ? 'warn' : 'muted'}" style="${hurt.warn ? 'color:var(--hazard-ink)' : ''}">${esc(firstSentence(hurt.text.replace(/^Medic on your unit: /, 'Medic: ')))}</span></span><button class="btn sm" data-action="hurt" type="button">Open</button></div>`);
   setHtml($('#nearby'), rows.length ? `<div class="card"><div class="k">Nearby</div>${rows.join('')}</div>` : '');
 }
 

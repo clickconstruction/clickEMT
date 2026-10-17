@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 20;
+  const SEED_VERSION = 21;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -35,7 +35,7 @@
   const MSG = [ID('d', 1), ID('d', 2)];
   const PER = ID('1', 1);
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
-  const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9)];
+  const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9), ID('3', 10), ID('3', 11), ID('3', 12), ID('3', 13), ID('3', 14)];
   const FAC = [ID('4', 1), ID('4', 2), ID('4', 3), ID('4', 4), ID('4', 5)];
   let trackId = 0;   // ic_tracks ids: an identity column
   const OVL = [ID('5', 1)];
@@ -183,7 +183,14 @@
         // B-2, the low-water crossing: three houses Operations placed for the next unit
         structure(6, 'B-2', '101 Bee Creek Rd', 30.2585, -97.7490, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
         structure(7, 'B-2', '105 Bee Creek Rd', 30.2592, -97.7478, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
-        structure(8, 'B-2', '109 Bee Creek Rd', 30.2600, -97.7466, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) })
+        structure(8, 'B-2', '109 Bee Creek Rd', 30.2600, -97.7466, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
+        // a few addresses in the other divisions, so their printed 204 maps show more than an outline (A-2 keeps none: the
+        // smoke test watches its tap counter give way to its first record)
+        structure(9, 'A-1', '12 Riverside Dr', 30.2680, -97.7320, { status: 'not_searched', created_at: ago(35), updated_at: ago(35) }),
+        structure(10, 'B-1', '3 Mill St', 30.2610, -97.7402, { occupants: 'none', water_cm: 20, damage: 'affected', searched_by: U.unit2, searched_at: ago(36), created_by: U.unit2, created_at: ago(36), updated_at: ago(36) }),
+        structure(11, 'B-1', '5 Mill St', 30.2626, -97.7399, { status: 'not_searched', created_at: ago(36), updated_at: ago(36) }),
+        structure(12, 'B-3', 'Fairgrounds gate house', 30.2585, -97.7350, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) }),
+        structure(13, 'B-3', 'Livestock barn', 30.2592, -97.7335, { status: 'not_searched', created_at: ago(30), updated_at: ago(30) })
       ],
       ic_facilities: [
         { id: FAC[0], incident_id: INC, kind: 'icp', name: 'Cedar Fork High School, front office', lat: 30.2562, lng: -97.7415, notes: 'Incident command post, enter from Mill Street', contact: 'CMD 1', created_by: U.ops, created_at: ago(189), updated_at: ago(189), closed_at: null },

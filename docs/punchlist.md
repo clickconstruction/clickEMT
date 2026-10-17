@@ -15,7 +15,7 @@ the personas who hit them, and add a "Re-walk after vN" section there, as v25 di
 | 2 | v27 Members and roles, and personal records that clear by rule (shipped 17 October) | medium | 1 | the agency administrator (3 jobs he could not do) |
 | 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers (shipped 17 October) | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
 | 4 | v29 Accountability by name (shipped 17 October) | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
-| 5 | Small fixes, any time | small | — | testing and hand-over notes |
+| 5 | Small fixes, any time (done 17 October, v30) | small | — | testing and hand-over notes |
 | 6 | Decisions only Grace can make | — | — | testing and hand-over notes |
 
 ---
@@ -185,6 +185,8 @@ board row), `supabase/migrations/0013_people.sql`.
 ## 5. Small fixes, any time
 
 Each is a few lines. Commit app fixes with a version bump; test-only fixes as `smoke:` or `dev:`.
+
+**Done** 17 October 2026 in `Small fixes from the punchlist (v30)`: the medic's initial, the flaky check-in check, seeded addresses in A-1, B-1 and B-3 (A-2 keeps none: the smoke test watches its tap counter give way to its first record), the 207 printing the chart alone, the README's and CLAUDE.md's timing.
 
 - **"Medic: J" on the phone's home screen.** For a medic named "J. Ortiz", the Nearby row shows "Medic: J" because
   the line is cut at the first ". " (`js/field/main.js`, the `hurt` row in Nearby). Cut at the end of the sentence,

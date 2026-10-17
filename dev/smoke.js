@@ -604,7 +604,7 @@ async function assignment(check) {
 // pass, the secondary pass, and reopening.
 async function search(check) {
   const u = USERS(), a2 = ZONE('A-2'), b2 = ZONE('B-2'), a3 = ZONE('A-3');
-  check('the seed has six searched structures in A-3 and three placed in B-2, all drawn on the map', base.structures(a3).length === 6 && base.structures(b2).length === 3 && base.structures(b2).every((s) => s.status === 'not_searched') && $$('#map path.structure').length === 9, $$('#map path.structure').length);
+  check('the seed has six searched structures in A-3, three placed in B-2 and five more in A-1, B-1 and B-3 (v30), all drawn on the map', base.structures(a3).length === 6 && base.structures(b2).length === 3 && base.structures(b2).every((s) => s.status === 'not_searched') && base.structures().length === 14 && $$('#map path.structure').length === 14, $$('#map path.structure').length);
 
   const sid = uuid();
   await field.addStructure(sid, { zone_id: a2, lat: 30.2670, lng: -97.7380, status: 'searched', label: '12 Pecan Ln', occupants: 'sheltering', people_needing_help: 2, water_cm: 50, damage: 'major', hazards: 'ELEC', notes: 'Elderly couple upstairs' });
@@ -700,7 +700,7 @@ async function facilities(check) {
 async function reports(check) {
   $('[data-action="sitrep"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
-  check('the situation report opens with the counts, the seeded words, resources by status and agency, and the facilities', ['incident status summary, ics 209', 'situation', 'cedar fork crested', 'progress', '6 divisions', '6 of 9 structures on record searched', 'people: 0 needing help', 'resources needed', 'swift-water team', 'outlook', 'resources', 'assigned: 3', 'cedar fork fire department: 2 units', 'travis county rescue: 1 unit', 'facilities', 'staging area: high school east lot'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
+  check('the situation report opens with the counts, the seeded words, resources by status and agency, and the facilities', ['incident status summary, ics 209', 'situation', 'cedar fork crested', 'progress', '6 divisions', '7 of 14 structures on record searched', 'people: 0 needing help', 'resources needed', 'swift-water team', 'outlook', 'resources', 'assigned: 3', 'cedar fork fire department: 2 units', 'travis county rescue: 1 unit', 'facilities', 'staging area: high school east lot'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
   const sf = $('#briefing-page form[data-form="sitrep-edit"]');
   check('the words are editable above the report', !!sf && sf.summary.value.startsWith('Cedar Fork crested'));
   sf.needs.value = 'Two more boats and a fuel truck by 18:00';
@@ -735,7 +735,7 @@ async function checkIn(check) {
   await d.saveProfile({ full_name: 'Sam Smoke', phone: '512 555 0144', licence_number: 'S1122334', licence_state: 'TX', id_source: 'typed' });
   const inc = await d.join(' cedar7 ', 'unit', 'Unit 4', 'Smoke');
   check('the code, trimmed and upper-cased, joins the incident', inc && inc.id === INC());
-  await until(() => base.units().some((u) => u.unit_name === 'Unit 4') && eventText(base, 'Unit 4 checked in as Sam Smoke, 512 555 0144, licence typed'));
+  await until(() => base.units().some((u) => u.unit_name === 'Unit 4') && eventText(base, 'Unit 4 checked in as Sam Smoke, 512 555 0144, licence typed') && has('#panel', 'unit 4', 'available'));   // the panel redraws on the next frame
   check('the base sees Unit 4 join, available in its resources list and in the log', base.units().some((u) => u.unit_name === 'Unit 4' && u.crew === 'Smoke' && u.status === 'available') && !!eventText(base, 'Unit 4 checked in as Sam Smoke, 512 555 0144, licence typed') && has('#panel', 'unit 4', 'available'), text('#panel'));
   await d.open(INC());
   check('Unit 4 can read the incident it joined', d.me().unit_name === 'Unit 4' && d.zones().length === 6);

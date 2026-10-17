@@ -442,3 +442,29 @@ Items 8 and 10 of "What to fix first" are clear; item 9 (the Google Maps key) is
 - **Make a unit asks the unit's name in the browser's own prompt**, not a sheet in the app's style.
 - **"Prove nothing a crew sent can be lost"** (the administrator's job 4) still has no one place that says so; the Members tab's line ("removing a member keeps everything they sent") is the nearest.
 - **Dates on the picker are the browser's short form** (11/16/2026) while the log counts days ("in 30 days"); on a shared machine set to another locale the two will not read alike.
+
+---
+
+## Re-walk after v28
+
+The screens v28 added, walked on 2026-10-17 after commit ffdc7a8 (time in the water, incident settings, the public set) in the same mock: Rosa as the seeded Unit 2 on the phone at 375 × 812, the administrator and the Public Information Officer on the base at 1280 × 800. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| 4 · Job 2, a rotation timer | Rosa | Her briefing's Safety and PPE now ends "Time in the water: crews out of the water every 45 minutes; the phone nudges you past it." The home screen's first row: "Not in the water · In the water"; the menu's status area says the same with the rotation. One tap: "In the water 0 min · rotation 45 min · Out of the water", the toast "In the water · the clock runs until you tap out", the 214 "Unit 2 in the water". At 50 minutes the row turned the safety yellow: "In the water 50 min · rotation 45 min · past the rotation: swap the crew · Later · Out of the water". Later put the words away and kept the clock. Out of the water: "Out of the water after 50 min", the 214 "Unit 2 out of the water after 50 min". Nothing wider than the screen. | Clear |
+| Rosa's boat ramp (v25's leftover) | Rosa | Work area: "B-1 on the map, 15 structures, 2 cleared. No boat ramp on the map yet; ask Operations where to put in. Staging: High school east lot, 0.8 mi." The seed has no ramp; with one placed, the briefing names it with the distance (the `safetyset` suite checks it). | Clear |
+| Who is past the rotation (Priya's job 4, part) | Safety, on the base | The resources row: "Unit 2, boat crew · Nguyen, Patel · … · in the water 50 min", the time in orange past the 45; the unit panel: "In the water · in the water 50 min · since 13:17 · Out of the water · rotation 45 min"; the briefing, the situation report and the 208 list who is in the water. | Clear |
+| 9 · Job 2, the Google Maps key | Administrator | Header → Settings: "Incident settings · Cedar Fork Flooding. Operations' settings for this incident. They carry into the next incident this account opens. Google Maps browser key … Every member's browser reads it, so in Google Cloud restrict it to this site's address and to the Map Tiles API. The log says a key was set, never the key. Test the key. Personal records clear by rule: 30 · 60 · 90 days after the close. Default rotation in the water, minutes (0 = off)." Layers listed Streets, Satellite and Google Maps streets and satellite from the mock's key. | Clear (Test not pressed: it calls Google) |
+| PIO · Job 1, which photos are cleared | PIO | Public information: "1 photo cleared for the public, 0 checked (no face, no plate, no house number). Only checked photos leave in the public set; open a photo to write its public caption and check it. · Download the public set · 0 of 1; the rest wait for a check. · 13:15 · Unit 1 · A-1 · not checked · no public caption". | Clear |
+| PIO · Job 3, none shows a victim or an address | PIO | The photo panel: "Cleared for public information · not checked yet, so not in the public set", a Public caption box ("what the public reads, never the unit's note or a house number") and "Checked: no face, no plate, no house number". Wrote the caption and pressed Checked: "checked 14:06 (no face, no plate, no house number) · Withdraw the check". The 214: "Photo from Unit 1, public caption: Floodwater over Riverside Drive on Saturday morning" and "Photo from Unit 1 checked for public release: no face, no plate, no house number". | Clear |
+| PIO · Job 2, files with time, place and caption | PIO | After the check: "1 photo cleared for the public, 1 checked … Download the public set · 1 of 1", the list row "13:15 · Unit 1 · A-1 · checked · Floodwater over Riverside Drive", and the situation report "1 photo cleared for public release, 1 checked (no face, no plate, no house number), to Lena Marsh (PIO)". The download itself was not pressed in the pane; the `safetyset` and `walkfix` suites open the zip: the photo named by time and place with the caption inside, captions.txt with the time, the place to the street and the caption, no coordinates, the cleared-but-unchecked listed as missing. | Clear on screen; the file checked by the suites |
+
+Items 4 and 9 of "What to fix first" and the PIO's three jobs are clear.
+
+**Still bites, small:**
+
+- **The clock is per unit.** A crew that swaps one person out keeps one clock running for the boat; per-person clocks wait for the People and tags work, as decided.
+- **Every water crew's home screen carries the row** ("Not in the water · In the water") even on a dry assignment such as a bridge hold. One line; it could fold to a button once a unit has never used it.
+- **The nudge is only on the screen.** Past the rotation the row turns yellow and says swap the crew, but a phone in a dry bag makes no sound (never a takeover, by decision); the base's orange time is the other half of the warning.
+- **A photo outside any division has the base for its place** in the public set's captions; a street name typed by Operations would read better.
+- **Test the key is a live call** to Google from the browser, so the mock cannot show what "worked" looks like; the words appear beside the button.

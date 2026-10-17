@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 15;
+  const SEED_VERSION = 16;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -277,7 +277,8 @@
   const memberOf = (uid) => new Set(tables.ic_members.filter((m) => m.user_id === uid).map((m) => m.incident_id));
   // ic_sees_profile: your own, or anyone on an incident where you are Operations
   const seesProfile = (who, uid) => who === uid || tables.ic_members.some((me) => me.user_id === uid && me.role === 'ops' && tables.ic_members.some((them) => them.incident_id === me.incident_id && them.user_id === who));
-  const profileComplete = (uid) => { const p = tables.ic_profiles.find((x) => x.user_id === uid); return !!(p && p.full_name && p.phone && (p.photo_path || p.licence_number)); };
+  // ic_profile_ready: a unit checks in with a name and a phone; without a licence its check-in line says "identity not given"
+  const profileReady = (uid) => { const p = tables.ic_profiles.find((x) => x.user_id === uid); return !!(p && p.full_name && p.phone); };
   const visible = (table, row, mine, uid) => (table === 'ic_profiles' ? seesProfile(row.user_id, uid) : mine.has(table === 'ic_incidents' ? row.id : row.incident_id));
   function allowed(table, op, row, uid) {
     if (!uid) return false;
@@ -357,13 +358,13 @@
       if (!Array.isArray(r.qualifications) || r.qualifications.some((q) => !QUALS.includes(q))) throw chk('ic_people_qualifications_check');
     }
     if (table === 'ic_facilities') {
-      if (!['icp', 'staging', 'base', 'camp', 'shelter', 'pod', 'hospital', 'helibase', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
+      if (!['icp', 'staging', 'base', 'camp', 'shelter', 'pod', 'hospital', 'ramp', 'helibase', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
       if (r.lat == null) throw nn('lat');
       if (r.lng == null) throw nn('lng');
     }
   }
   const QUALS = ['swift_water', 'boat', 'rope', 'emt', 'paramedic', 'k9', 'hazmat', 'drone'];
-  const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', camp: 'Camp', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helibase: 'Helibase', helispot: 'Helispot', other: 'Facility' };
+  const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', camp: 'Camp', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', ramp: 'Boat ramp', helibase: 'Helibase', helispot: 'Helispot', other: 'Facility' };
   // ic_kind_text: the words for a unit's kind, as UNIT_KINDS in rules.js
   const KIND_TEXT = { engine: 'engine', boat: 'boat crew', swift_water: 'swift-water team', high_water: 'high-water vehicle', ambulance: 'ambulance', search: 'search team', k9: 'K9 team', drone: 'drone team', pump: 'pump crew', other: 'other' };
   // ic_transfer_text: the words every unit gets on a transfer of command
@@ -868,7 +869,7 @@
         const code = String(a.p_code || '').trim().toUpperCase();
         const inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
         if (!inc) throw dbError('No active incident has the code ' + code);
-        if (a.p_role === 'unit' && !profileComplete(uid)) throw dbError('Identify yourself first: your name, your phone and your licence');
+        if (a.p_role === 'unit' && !profileReady(uid)) throw dbError('Say who you are first: your name and your phone');
         const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count), kind = trim(a.p_kind);
         if (kind && !KIND_TEXT[kind]) throw dbError(`new row for relation "ic_members" violates check constraint "ic_members_kind_check"`, '23514');
         const m = member(inc.id, uid);
@@ -894,7 +895,7 @@
         }
         const n = member(inc.id, uid).crew_count;
         const pr = tables.ic_profiles.find((x) => x.user_id === uid);
-        const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '') + (pr.verified_at ? ', verified' : '') : '';
+        const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + (!pr.photo_path && !pr.licence_number ? ', identity not given' : ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '')) + (pr.verified_at ? ', verified' : '') : '';
         log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (a.p_role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + ' checked in' + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
       } else if (name === 'ic_transfer_command') {

@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore } from '../js/shared/rules.js';
+import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -90,4 +90,17 @@ t('a replay finds the sample at a moment and the crumbs before it', () => {
   assert.equal(sampleAt(list, ms(15)).lat, 2);
   assert.equal(sampleAt(list, ms(99)).lat, 3);
   assert.deepEqual(samplesBefore(list, ms(30), 25000).map((s) => s.lat), [2, 3]);
+});
+
+t('a name and a phone check in; a licence or its photo is the identity (v25)', () => {
+  assert.equal(profileReady({ full_name: 'Pat Doe', phone: '512 555 0199', licence_number: '', photo_path: null }), true);
+  assert.equal(identityGiven({ full_name: 'Pat Doe', phone: '512 555 0199', licence_number: '', photo_path: null }), false);
+  assert.equal(profileReady({ full_name: 'Pat Doe', phone: '' }), false);
+  assert.equal(profileReady(null), false);
+  assert.equal(identityGiven({ licence_number: 'D1' }), true);
+  assert.equal(identityGiven({ licence_number: '', photo_path: 'u/licence.jpg' }), true);
+});
+
+t('Nearby lists staging, the boat ramp, the shelter and the hospital (v25)', () => {
+  assert.deepEqual(NEARBY_KINDS, ['staging', 'ramp', 'shelter', 'hospital']);
 });

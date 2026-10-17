@@ -106,22 +106,25 @@
     </span>
   </header>
 
-  <div id="mayday" class="mayday" hidden></div>
-  <div id="safety" class="safety" hidden></div>
+  <div id="bars" class="bars" aria-live="polite">
+    <div id="mayday" class="mayday" hidden></div>
+    <div id="safety" class="safety" hidden></div>
+    <div id="bars-quiet" class="bars-quiet">No emergency open · no safety message or PAR waiting on an answer</div>
+  </div>
 
   <div class="body">
     <div class="mapcol">
       <div class="tools">
         <button class="btn sm" data-action="draw-boundary" id="btn-boundary">Draw boundary</button>
         <button class="btn sm" data-action="draw-zone" id="btn-zone" title="A division is an area of the map given to a unit">Draw division</button>
-        <span class="hint" id="tool-hint">Click a division, a unit or a photo pin to open it.</span>
-        <button class="btn sm layer-btn" data-action="layers" id="btn-layers" aria-expanded="false" aria-controls="layers-pop" title="The map underneath, and the imagery laid over it">Layers</button>
-        <div id="layers-pop" class="layers-pop" hidden></div>
         <span id="draw-btns" hidden>
           <button class="btn pri sm" data-action="finish-draw">Finish</button>
           <button class="btn sm" data-action="undo-point" id="btn-undo-point" title="Backspace or Delete does this too" hidden>Remove last point</button>
           <button class="btn sm" data-action="cancel-draw">Cancel</button>
         </span>
+        <span class="hint" id="tool-hint">Click a division, a unit or a photo pin to open it.</span>
+        <button class="btn sm layer-btn" data-action="layers" id="btn-layers" aria-expanded="false" aria-controls="layers-pop" title="The map underneath, and the imagery laid over it">Layers</button>
+        <div id="layers-pop" class="layers-pop" hidden></div>
       </div>
       <div id="map" class="map" role="application" aria-label="Incident map"></div>
       <div id="replay" class="replay" hidden>

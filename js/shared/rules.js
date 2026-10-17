@@ -9,9 +9,20 @@ export const DAMAGE = [['unknown', 'Unknown'], ['affected', 'Affected'], ['minor
 export const STRUCTURE_STATUS = { not_searched: 'Not searched', in_progress: 'Being searched', searched: 'Searched' };
 
 // The places an incident runs from and sends people to, with the letter drawn on the map.
-export const FACILITY_KINDS = [['icp', 'Command post', 'CP'], ['staging', 'Staging area', 'S'], ['base', 'Base', 'B'], ['camp', 'Camp', 'C'], ['shelter', 'Shelter', 'SH'], ['pod', 'Point of distribution', 'POD'], ['hospital', 'Hospital', 'H'], ['helibase', 'Helibase', 'HB'], ['helispot', 'Helispot', 'HL'], ['other', 'Facility', 'F']];
+export const FACILITY_KINDS = [['icp', 'Command post', 'CP'], ['staging', 'Staging area', 'S'], ['base', 'Base', 'B'], ['camp', 'Camp', 'C'], ['shelter', 'Shelter', 'SH'], ['pod', 'Point of distribution', 'POD'], ['hospital', 'Hospital', 'H'], ['ramp', 'Boat ramp', 'BR'], ['helibase', 'Helibase', 'HB'], ['helispot', 'Helispot', 'HL'], ['other', 'Facility', 'F']];
 export function facilityKind(kind) { return FACILITY_KINDS.find((k) => k[0] === kind) || FACILITY_KINDS[FACILITY_KINDS.length - 1]; }
 export function facilityLabel(f) { return facilityKind(f.kind)[1] + (f.name ? ': ' + f.name : ''); }
+// What the phone's Nearby card lists, nearest of each, in this order. A boat ramp is where a boat crew
+// puts in and where the people it brings out come ashore, so every unit sees it once one is placed.
+export const NEARBY_KINDS = ['staging', 'ramp', 'shelter', 'hospital'];
+
+// Who is behind an account (ic_profiles). A unit checks in with a name and a phone; a licence (scanned,
+// photographed or typed) is the identity. Without one the unit is "identity not given" until Operations
+// checks who it is in person and marks it verified. The SQL twins are ic_profile_ready and the
+// ", identity not given" in ic_join's line.
+export function profileReady(p) { return !!(p && p.full_name && p.phone); }
+export function identityGiven(p) { return !!(p && (p.photo_path || p.licence_number)); }
+export const NO_ID_TEXT = 'identity not given';
 
 export function milesText(m) {
   if (m == null) return '';

@@ -11,12 +11,12 @@ const TILE = 256, MIN_ZOOM = 3, MAX_ZOOM = 19;
 const PAD = 0.18;          // ground kept around the division, as a share of its extent
 const MIN_PAD_M = 120;     // and never less than this, so a small division still shows its streets
 const LABELS_UP_TO = 30;   // structures in the division get their address written when there are this many or fewer
-const GO_TO = ['icp', 'staging', 'shelter', 'hospital'];   // the places a crew goes to: off the paper, a chip at the edge points their way
+const GO_TO = ['icp', 'staging', 'ramp', 'shelter', 'hospital'];   // the places a crew goes to: off the paper, a chip at the edge points their way
 
 // The same colours as the base map, so the paper matches the screen.
 const ZONE_FILL = { open: '#CFCAC0', active: '#2F6FB3', primary: '#8FCFA7', cleared: '#2E8B57' };
 const STRUCTURE = { searched: '#2E8B57', in_progress: '#D9822B', not_searched: '#FFFFFF' };
-const FACILITY = { icp: '#1F4E79', staging: '#6B5DBF', base: '#3E3C36', camp: '#5A6E2A', shelter: '#2F7A52', pod: '#B86E00', hospital: '#B3261E', helibase: '#0F556B', helispot: '#1B6F8A', other: '#6B6860' };
+const FACILITY = { icp: '#1F4E79', staging: '#6B5DBF', base: '#3E3C36', camp: '#5A6E2A', shelter: '#2F7A52', pod: '#B86E00', hospital: '#B3261E', helibase: '#0F556B', ramp: '#2A6F97', helispot: '#1B6F8A', other: '#6B6860' };
 const PRIORITY = { 1: '#B3261E', 2: '#B86E00', 3: '#6B6860' };
 const INK = '#1B1B18', GREY = '#7A776F', HAZARD = '#F2B134', HELP = '#B3261E';
 const HALO = 'stroke:#fff;stroke-width:3px;paint-order:stroke;stroke-linejoin:round';

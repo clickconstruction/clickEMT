@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT } from '../shared/rules.js';
 import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -67,7 +67,7 @@ function unitRowHtml(data, m, now) {
   const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : 'Identity not verified yet'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : ''}</span>` : ''; })()}</span>
+      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : identityGiven(p) ? 'Identity not verified yet' : 'No licence given: check who this is in person'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : identityGiven(p) ? '' : ' · no ID'}</span>` : ''; })()}</span>
       <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}</span></span>
     </button>`;
 }
@@ -260,6 +260,7 @@ export function publicHtml(data) {
   return `
     <div class="k" style="margin-top:6px">Public information</div>
     <div class="muted" style="font-size:12.5px">${pub.length ? pub.length + ' photo' + (pub.length === 1 ? '' : 's') + ' cleared for the public. Open a photo to clear or withdraw it.' : 'No photo is cleared for the public. Open a photo to clear it for the Public Information Officer.'}</div>
+    ${pub.length ? `<div class="d-row"><button class="btn sm" data-action="download-public" title="One zip: every cleared photo named by its time and division, with its caption (what it shows, where, when, whose) written into the file and listed in captions.txt. No coordinates.">Download cleared photos</button><span class="muted" style="font-size:12px">One zip; each caption (what, where, when, whose) is inside its file and in captions.txt.</span></div>` : ''}
     ${pub.slice(0, 6).map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.zone_id && data.zone(p.zone_id) ? ' · ' + esc(data.zone(p.zone_id).code) : ''}${p.note ? ' · ' + esc(p.note) : ''}</button>`).join('')}`;
 }
 
@@ -507,7 +508,7 @@ export function form211Sections(data) {
     const rows = data.unitPeople(m.user_id);
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
     S.push({ title: `${unitWithKind(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
-      lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${p.verified_at ? ', verified' : ', not verified'}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
+      lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${identityGiven(p) ? (p.verified_at ? ', verified' : ', not verified') : ', ' + NO_ID_TEXT + (p.verified_at ? ', verified in person' : ', not verified')}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
         return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${px.notes ? ' · ' + px.notes : ''}`;
       }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]) });
@@ -551,6 +552,7 @@ function facilityHtml(data, f) {
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${esc(f.name || k[1])} <span>${esc(k[1])}${f.closed_at ? ' · closed ' + hhmm(f.closed_at) : ''}</span></div>
     ${f.notes ? `<div class="d-sub">${esc(f.notes)}</div>` : ''}
+    <div class="d-row">${f.closed_at ? `<span class="badge">Closed ${hhmm(f.closed_at)}</span><button class="btn sm" data-action="reopen-facility" data-id="${f.id}" title="Open again: back on the field's Nearby card and the map">Reopen</button>` : `<span class="badge cleared">Open</span><button class="btn sm" data-action="close-facility" data-id="${f.id}" title="The facility itself has closed: it leaves the field's Nearby card and is drawn faded on the map. Logged; Reopen brings it back.">Mark closed</button>`}</div>
     <div class="kv">
       <span class="k">Contact</span><span>${esc(f.contact) || 'not set'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(f.lat, f.lng))}</span>
@@ -565,7 +567,7 @@ function facilityHtml(data, f) {
       <label>Notes <input name="notes" value="${esc(f.notes)}" placeholder="What the field should know"></label>
       <div class="row-btns">
         <button class="btn sm" type="button" data-action="pan-to" data-lat="${f.lat}" data-lng="${f.lng}">Show on map</button>
-        ${f.closed_at ? `<button class="btn sm" type="button" data-action="reopen-facility" data-id="${f.id}">Reopen</button>` : `<button class="btn sm" type="button" data-action="close-facility" data-id="${f.id}">Close</button>`}
+        <button class="btn sm" type="button" data-action="close-panel" title="Close this card; the facility stays open">Close</button>
         <button class="btn pri sm" type="submit">Save</button>
       </div>
     </form>`;
@@ -703,17 +705,19 @@ export function identityHtml(data, m) {
   if (!p) return `<div class="ident"><div class="k">Identity</div><div class="muted" style="font-size:12.5px">Nothing given yet${m.role === 'unit' ? ' · a unit cannot check in without one' : ''}</div></div>`;
   const expired = p.licence_expires && licenceExpired(p.licence_expires);
   const source = { scan: 'read from the barcode', photo: 'front photographed', typed: 'typed' }[p.id_source] || 'on file';
-  return `<div class="ident">
-    <div class="d-row"><span class="k" style="width:auto;flex:1">Identity</span>${p.verified_at ? `<span class="badge cleared">Verified ${hhmm(p.verified_at)}</span>` : '<span class="badge haz">Not verified</span>'}</div>
+  const given = identityGiven(p);
+  return `<div class="ident${given ? '' : ' noid'}">
+    <div class="d-row"><span class="k" style="width:auto;flex:1">Identity</span>${given ? '' : `<span class="badge haz">${NO_ID_TEXT[0].toUpperCase() + NO_ID_TEXT.slice(1)}</span>`}${p.verified_at ? `<span class="badge cleared">Verified ${hhmm(p.verified_at)}</span>` : '<span class="badge haz">Not verified</span>'}</div>
+    ${given ? '' : `<div style="font-size:12.5px">${p.verified_at ? 'Checked in with a name and a phone, no licence; verified in person.' : 'Checked in with a name and a phone, no licence. Check who this is in person (an agency card, someone who knows them, a call to the number), then Mark verified.'}</div>`}
     <div class="kv">
       <span class="k">Name</span><span><strong>${esc(p.full_name) || '—'}</strong></span>
       <span class="k">Phone</span><span>${p.phone ? `<a href="tel:${esc(p.phone.replace(/\s+/g, ''))}">${esc(p.phone)}</a>` : '—'}</span>
-      <span class="k">Licence</span><span>${p.licence_number ? `${esc(p.licence_state)} ${esc(licenceTail(p.licence_number))}${p.licence_expires ? ' · expires ' + esc(p.licence_expires) : ''}${expired ? ' <strong style="color:var(--danger)">expired</strong>' : ''}` : 'number not read'} · ${source}</span>
+      ${given ? `<span class="k">Licence</span><span>${p.licence_number ? `${esc(p.licence_state)} ${esc(licenceTail(p.licence_number))}${p.licence_expires ? ' · expires ' + esc(p.licence_expires) : ''}${expired ? ' <strong style="color:var(--danger)">expired</strong>' : ''}` : 'number not read'} · ${source}</span>` : ''}
       ${p.date_of_birth ? `<span class="k">Born</span><span>${esc(p.date_of_birth)}</span>` : ''}
       ${p.address ? `<span class="k">Address</span><span>${esc(p.address)}</span>` : ''}
     </div>
-    ${p.photo_path ? `<div class="photo-box id-box" data-id-photo="${esc(p.photo_path)}"><img alt="The front of ${esc(p.full_name)}'s licence" hidden><div class="muted" style="padding:28px 12px;text-align:center" data-photo-wait>Loading the licence…</div></div>` : '<div class="muted" style="font-size:12.5px">No photo of the licence</div>'}
-    <div class="d-row">${p.verified_at ? `<button class="btn sm" data-action="unverify-profile" data-id="${m.user_id}">Withdraw verification</button>` : `<button class="btn sm green" data-action="verify-profile" data-id="${m.user_id}" title="You have looked at the licence and it is this person">Mark verified</button>`}</div>
+    ${p.photo_path ? `<div class="photo-box id-box" data-id-photo="${esc(p.photo_path)}"><img alt="The front of ${esc(p.full_name)}'s licence" hidden><div class="muted" style="padding:28px 12px;text-align:center" data-photo-wait>Loading the licence…</div></div>` : given ? '<div class="muted" style="font-size:12.5px">No photo of the licence</div>' : ''}
+    <div class="d-row">${p.verified_at ? `<button class="btn sm" data-action="unverify-profile" data-id="${m.user_id}">Withdraw verification</button>` : `<button class="btn sm green" data-action="verify-profile" data-id="${m.user_id}" title="${given ? 'You have looked at the licence and it is this person' : 'You have checked in person who this is'}">Mark verified</button>`}</div>
   </div>`;
 }
 
@@ -1194,10 +1198,17 @@ export function maydayHtml(data) {
   return alerts.map((a) => {
     const who = unitLabel(data.member(a.user_id));
     const zone = a.zone_id ? data.zone(a.zone_id) : null;
-    return `<span>EMERGENCY · ${esc(who)} needs help${zone ? ' in ' + esc(zone.code) : ''} · sent ${hhmm(a.created_at)}${a.acknowledged_at ? ' · acknowledged ' + hhmm(a.acknowledged_at) : ''}</span>` +
+    return barItem(`EMERGENCY · ${who} needs help${zone ? ' in ' + zone.code : ''} · sent ${hhmm(a.created_at)}${a.acknowledged_at ? ' · acknowledged ' + hhmm(a.acknowledged_at) : ''}`, '',
       (a.acknowledged_at ? '' : `<button class="btn sm" data-action="ack-alert" data-id="${a.id}">Acknowledge</button>`) +
-      `<button class="btn sm" data-action="select-unit" data-id="${a.user_id}">Show unit</button>`;
-  }).join('<span style="flex-basis:100%"></span>');
+      `<button class="btn sm" data-action="select-unit" data-id="${a.user_id}">Show unit</button>`);
+  }).join('');
+}
+// One thing on the bars' slot: its words on one line, cut short on screen and whole on hover, its buttons
+// beside them. The slot above the map is always one row tall, so a bar appearing moves nothing below it.
+function barItem(words, cls, buttons) {
+  const i = words.indexOf(' · ');
+  const head = i > 0 ? words.slice(0, i) : words, rest = i > 0 ? words.slice(i) : '';
+  return `<span class="bar-item${cls ? ' ' + cls : ''}" title="${esc(words)}"><span class="bar-text"><strong>${esc(head)}</strong>${esc(rest)}</span>${buttons || ''}</span>`;
 }
 
 // ---- messages (ICS 213)
@@ -1261,12 +1272,13 @@ export function messagesHtml(data, filter, limit) {
 // The yellow bar: safety messages and PARs still waiting on someone, and anyone reporting a missing person.
 export function safetyHtml(data) {
   const parts = [];
+  // who has not answered comes first: on one row it is what is cut last
   for (const m of data.openSafety()) {
-    const waiting = data.waitingOn(m).map((u) => esc(unitLabel(data.member(u)))).join(', ');
-    if (m.kind === 'safety') parts.push(`<span><strong>SAFETY</strong> · ${esc(m.text)} · sent ${hhmm(m.created_at)} by ${esc(unitLabel(data.member(m.from_user)))} · waiting on ${waiting}</span>`);
-    else if (m.kind === 'par') parts.push(`<span><strong>PAR</strong> · started ${hhmm(m.created_at)} to ${esc(m.to_label || 'everyone')} · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} (${esc(since(m.created_at))})</span>`);
+    const waiting = data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ');
+    if (m.kind === 'safety') parts.push(barItem(`SAFETY · waiting on ${waiting} · ${m.text} · sent ${hhmm(m.created_at)} by ${unitLabel(data.member(m.from_user))}`));
+    else if (m.kind === 'par') parts.push(barItem(`PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'} (${since(m.created_at)})`));
   }
   const par = data.lastPar();
-  if (par) for (const a of data.acksFor(par.id)) if (a.reply === 'Missing someone') parts.push(`<span class="missing"><strong>MISSING</strong> · ${esc(unitLabel(data.member(a.user_id)))} reports someone missing${a.count != null ? ', ' + a.count + ' accounted for' : ''} · ${hhmm(a.acked_at)}</span>`);
-  return parts.join('<span style="flex-basis:100%"></span>');
+  if (par) for (const a of data.acksFor(par.id)) if (a.reply === 'Missing someone') parts.unshift(barItem(`MISSING · ${unitLabel(data.member(a.user_id))} reports someone missing${a.count != null ? ', ' + a.count + ' accounted for' : ''} · ${hhmm(a.acked_at)}`, 'missing'));
+  return parts.join('');
 }

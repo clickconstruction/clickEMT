@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -731,7 +731,7 @@ async function checkIn(check) {
   check('a wrong code is refused with the database\'s message', !!bad && /No active incident has the code NOPE22/.test(bad.message), bad && bad.message);
   let noId = null;
   try { await d.join(' cedar7 ', 'unit', 'Unit 4', 'Smoke'); } catch (e) { noId = e; }
-  check('a unit that has not said who it is cannot check in', !!noId && /Identify yourself first/.test(noId.message), noId && noId.message);
+  check('a unit that has not said who it is cannot check in', !!noId && /Say who you are first: your name and your phone/.test(noId.message), noId && noId.message);
   await d.saveProfile({ full_name: 'Sam Smoke', phone: '512 555 0144', licence_number: 'S1122334', licence_state: 'TX', id_source: 'typed' });
   const inc = await d.join(' cedar7 ', 'unit', 'Unit 4', 'Smoke');
   check('the code, trimmed and upper-cased, joins the incident', inc && inc.id === INC());
@@ -1113,7 +1113,7 @@ async function identity(check) {
   const n = new Data(c);
   await n.init();
   const e3 = await (async () => { try { await n.join('CEDAR7', 'unit', 'Unit 9', null, null, 'Bastrop County FD', []); return null; } catch (e) { return e; } })();
-  check('an account that has not said who it is cannot check in as a unit', !!e3 && /Identify yourself first/.test(e3.message), e3 && e3.message);
+  check('an account that has not said who it is cannot check in as a unit', !!e3 && /Say who you are first: your name and your phone/.test(e3.message), e3 && e3.message);
   await n.saveProfile({ full_name: 'Casey Brooks', phone: '512 555 0199', licence_number: 'B9988776', licence_state: 'TX', id_source: 'typed' });
   const inc = await n.join('CEDAR7', 'unit', 'Unit 9', null, null, 'Bastrop County FD', [{ name: 'Casey Brooks', qualifications: ['emt'] }]);
   await until(() => base.member(n.user.id));
@@ -1418,4 +1418,244 @@ async function ics100(check) {
   chip.click();
   const composer = $('#panel form[data-form="message"]');
   check('the "You are released" chip fills the message with the staging area and the radio', composer.text.value === 'You are released. Return to staging, High school east lot, return the radio to Logistics, and check out on your phone. Thank you.', composer.text.value);
+}
+
+// ---- the walkthrough fixes (v25): each as the persona who hit it met it. The phone is the field app at
+// 375 px in a frame beside the base; its own mock copies the base's data over the BroadcastChannel and
+// opens signed in as Unit 3. The frame goes before the suite ends, so the next reset is not undone by it.
+async function phoneFrame() {
+  const frame = document.createElement('iframe');
+  frame.src = '/field/?mock';
+  frame.style.cssText = 'position:fixed;right:0;top:0;width:375px;height:780px;z-index:3000;background:#fff;border:0;box-shadow:0 0 0 1px #999';
+  document.body.appendChild(frame);
+  const doc = () => frame.contentDocument;
+  const P = {
+    frame, doc,
+    $: (s) => (doc() ? doc().querySelector(s) : null),
+    $$: (s) => (doc() ? [...doc().querySelectorAll(s)] : []),
+    text: (s) => { const el = P.$(s); return el ? el.innerText.replace(/\s+/g, ' ').trim().toLowerCase() : ''; },
+    // what a tap on a button with this action does (the field's handler is on the document)
+    act: async (action, extra = {}) => { const b = doc().createElement('button'); b.dataset.action = action; Object.assign(b.dataset, extra); b.hidden = true; doc().body.appendChild(b); b.click(); b.remove(); await wait(150); },
+    shown: (s) => { const el = P.$(s); return !!el && !el.hidden && el.getClientRects().length > 0; },
+    // nothing wider than the phone: the page, and the sheet or page that is showing
+    sideways: () => {
+      const d = doc(), w = frame.contentWindow.innerWidth;
+      const out = [];
+      if (d.documentElement.scrollWidth > w + 1) out.push('page ' + d.documentElement.scrollWidth);
+      for (const el of d.querySelectorAll('.sheet, .join, .auth, .p-body')) if (el.getClientRects().length && el.scrollWidth > el.clientWidth + 1) out.push((el.id || el.className) + ' ' + el.scrollWidth);
+      for (const b of d.querySelectorAll('.btn, .chip')) { if (!b.getClientRects().length) continue; const r = b.getBoundingClientRect(); if (r.right > w + 1 || r.left < -1) out.push('button "' + b.textContent.trim() + '" ' + Math.round(r.left) + '–' + Math.round(r.right)); }
+      return out;
+    }
+  };
+  P.ready = await until(() => P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 10000);
+  return P;
+}
+async function phoneSignIn(P, email, signUp) {
+  P.$('#auth-email').value = email; P.$('#auth-password').value = 'walkfix-pw';
+  if (signUp) P.$('#auth-signup').click(); else P.$('#auth-form').requestSubmit();
+  return until(() => P.shown('#join') && P.$('#join-user').textContent === email, 5000);
+}
+
+async function walkfix(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  for (const k of Object.keys(localStorage)) if (/^ic\.field\.(briefed|agency|seen)/.test(k)) localStorage.removeItem(k);
+  let P = null;
+  try {
+    // ---- the base first, while the phone is not there yet: the bars, the toolbar, the sidebar, the card, the photos
+    const at = (s) => Math.round($(s).getBoundingClientRect().top);
+    check('the bars\' slot is there with nothing open and says so', !$('#bars').hidden && !$('#bars-quiet').hidden && has('#bars-quiet', 'no emergency open', 'no safety message or par') && $('#mayday').hidden && $('#safety').hidden, text('#bars'));
+    const mapTop = at('#map'), printTop = at('[data-action="print-214"]'), toolsTop = at('.tools');
+    const safetyMsg = await base.sendMessage(uuid(), { ...base.recipientsFor('all'), kind: 'safety', text: 'Stay out of moving water' });
+    await until(() => !$('#safety').hidden);
+    check('a SAFETY bar takes the slot: the tools, the map and Print 214 do not move (the clerk\'s first click)', !$('#safety').hidden && $('#bars-quiet').hidden && at('#map') === mapTop && at('[data-action="print-214"]') === printTop && at('.tools') === toolsTop, `${at('#map')} vs ${mapTop}, ${at('[data-action="print-214"]')} vs ${printTop}`);
+    const parMsg = await base.startPar('all');
+    await until(() => has('#safety', 'par', '0 of 3 answered'));
+    const alertId = uuid();
+    await field.raiseAlert(alertId, { lat: 30.2674, lng: -97.7384, zoneId: ZONE('A-2') });
+    await until(() => !$('#mayday').hidden);
+    check('a PAR and an emergency beside it share the one row: still nothing below moves', !$('#mayday').hidden && $$('#bars .bar-item').length === 3 && at('#map') === mapTop && at('[data-action="print-214"]') === printTop && $('#bars').getBoundingClientRect().height === 40, `${$$('#bars .bar-item').length} items, bars ${$('#bars').getBoundingClientRect().height} px, map ${at('#map')} vs ${mapTop}`);
+    const titles = $$('#bars .bar-item').map((b) => b.title);
+    check('who has not answered comes first on the bar, and the whole line is on hover', titles.some((t) => /^SAFETY · waiting on Unit 1, Unit 2, Unit 3 · Stay out of moving water · sent/.test(t)) && titles.some((t) => /^PAR · 0 of 3 answered · waiting on Unit 1, Unit 2, Unit 3/.test(t)) && has('#mayday', 'emergency · unit 3 needs help') && !!$('#mayday [data-action="ack-alert"]'), titles.join(' | '));
+
+    // the drawing toolbar stays one row and Finish stays put
+    const toolsH = $('.tools').getBoundingClientRect().height;
+    $('#btn-zone').click();
+    mapClick(-90, -60);
+    const finishAt1 = $('[data-action="finish-draw"]').getBoundingClientRect();
+    mapClick(80, -60); mapClick(80, 40); mapClick(-90, 40);
+    const finishAt4 = $('[data-action="finish-draw"]').getBoundingClientRect();
+    check('drawing a division: the toolbar stays one row at 1280 and Finish does not move after the first corner', has('#tool-hint', '4 points') && $('.tools').getBoundingClientRect().height === toolsH && finishAt1.left === finishAt4.left && finishAt1.top === finishAt4.top && at('#map') === mapTop, `tools ${toolsH} → ${$('.tools').getBoundingClientRect().height}, Finish ${Math.round(finishAt1.left)},${Math.round(finishAt1.top)} → ${Math.round(finishAt4.left)},${Math.round(finishAt4.top)}`);
+    check('the long hint is cut short on one line and whole on hover', $('#tool-hint').scrollWidth >= $('#tool-hint').clientWidth && getComputedStyle($('#tool-hint')).whiteSpace === 'nowrap' && /Finish saves it/.test($('#tool-hint').title), $('#tool-hint').title);
+    // Marcus had been typing in Message the field, further down the sidebar, before he pressed Finish
+    const side = $('.side');
+    const composer = $('#panel form[data-form="message"] input[name="text"]');
+    side.scrollTop += composer.getBoundingClientRect().top - side.getBoundingClientRect().top - 200;
+    composer.focus();
+    $('[data-action="finish-draw"]').click();
+    await until(() => $('#panel form[data-form="new-zone"]'));
+    await wait(120);
+    const nf = $('#panel form[data-form="new-zone"]').getBoundingClientRect(), sr = side.getBoundingClientRect();
+    check('after Finish the new-division form is in view, though the sidebar was scrolled down', nf.top >= sr.top - 1 && nf.top < sr.bottom - 60, `form at ${Math.round(nf.top)}, sidebar ${Math.round(sr.top)}–${Math.round(sr.bottom)}, scrolled ${side.scrollTop}`);
+    $('[data-action="newzone-discard"]').click();
+    await until(() => has('#panel', 'join code'));
+
+    // the PIO reading Public information while a message arrives above it
+    const pubHead = () => $$('#panel .k').find((k) => /public information/i.test(k.textContent));
+    side.scrollTop += pubHead().getBoundingClientRect().top - side.getBoundingClientRect().top - 40;
+    await wait(100);
+    const before = Math.round(pubHead().getBoundingClientRect().top), scrolled = side.scrollTop;
+    await field.sendMessage(uuid(), { ...field.recipientsFor('ops'), kind: 'message', text: 'Water rising at the trailer park entrance' });
+    await until(() => has('#panel', 'water rising at the trailer park entrance'));
+    await wait(150);
+    check('a message arriving above Public information leaves it where the PIO was reading', Math.abs(Math.round(pubHead().getBoundingClientRect().top) - before) <= 1 && side.scrollTop > scrolled, `heading ${before} → ${Math.round(pubHead().getBoundingClientRect().top)}, scroll ${scrolled} → ${side.scrollTop}`);
+
+    // the cleared photos, as the PIO takes them away
+    const realClick = HTMLAnchorElement.prototype.click;
+    let saved = null;
+    HTMLAnchorElement.prototype.click = function () { if (this.download) saved = { name: this.download, href: this.href }; else realClick.call(this); };
+    try {
+      check('Public information offers the cleared photos as a download', !!$('#panel [data-action="download-public"]') && has('#panel [data-action="download-public"]', 'download cleared photos'));
+      $('#panel [data-action="download-public"]').click();
+      await until(() => saved, 6000);
+    } finally { HTMLAnchorElement.prototype.click = realClick; }
+    const { unzip } = await import('../js/base/photo-export.js');
+    const entries = saved ? unzip(new Uint8Array(await (await fetch(saved.href)).arrayBuffer())) : [];
+    const pic = entries.find((e) => /\.jpg$/.test(e.name)), caps = entries.find((e) => e.name === 'captions.txt');
+    const capText = caps ? new TextDecoder().decode(caps.bytes) : '';
+    check('it is one zip named for the incident: the cleared photo and captions.txt', !!saved && /^CEDAR7-cleared-photos-\d{4}-\d\d-\d\d-\d{4}\.zip$/.test(saved.name) && entries.length === 2 && !!pic && /_\d{4}_A-1_water-over-road\.jpg$/.test(pic.name), saved ? saved.name + ' · ' + entries.map((e) => e.name).join(', ') : 'nothing saved');
+    const caption = /Water over road\. Riverside Drive, east \(division A-1\), Cedar Fork Flooding, \d+ \w+ \d{4} at \d\d:\d\d\. Photo: Cedar Fork Fire Department\./;
+    check('the caption says what, where, when and whose, in captions.txt and inside the picture, with no coordinates', caption.test(capText) && !!pic && caption.test(new TextDecoder('latin1').decode(pic.bytes)) && new TextDecoder('latin1').decode(pic.bytes).includes('ns.adobe.com/xap/1.0/') && !/30\.26|-97\.7/.test(capText), capText.slice(0, 300));
+
+    // the facility card: Close closes the card, Mark closed the facility
+    const icp = M().ids.facilities ? M().ids.facilities[0] : base.facilities().find((f) => f.kind === 'icp').id;
+    const btnSel = document.createElement('button'); btnSel.dataset.action = 'select-facility'; btnSel.dataset.id = icp; btnSel.hidden = true; document.body.appendChild(btnSel); btnSel.click(); btnSel.remove();
+    await until(() => $('#panel form[data-form="facility-edit"]'));
+    const closeBtn = $('#panel form[data-form="facility-edit"] [data-action="close-panel"]');
+    check('the facility card has a plain Close where Close was, and Mark closed beside its Open badge', !!closeBtn && closeBtn.textContent === 'Close' && has('#panel', 'open', 'mark closed') && !$$('#panel button').some((b) => b.textContent.trim() === 'Close' && b.dataset.action === 'close-facility'), text('#panel').slice(0, 200));
+    const lines = base.events().length;
+    closeBtn.click();
+    await until(() => has('#panel', 'join code'));
+    await wait(200);
+    check('Close puts the card away and leaves the command post open, with nothing logged', !base.facility(icp).closed_at && base.events().length === lines && has('#panel', 'join code'));
+    const btnSel2 = document.createElement('button'); btnSel2.dataset.action = 'select-facility'; btnSel2.dataset.id = icp; btnSel2.hidden = true; document.body.appendChild(btnSel2); btnSel2.click(); btnSel2.remove();
+    await until(() => $('#panel [data-action="close-facility"]'));
+    $('#panel [data-action="close-facility"]').click();
+    await until(() => base.facility(icp).closed_at);
+    check('Mark closed closes the facility itself, logged, with Reopen in its place', !!eventText(base, 'Command post: Cedar Fork High School, front office closed') && await until(() => $('#panel [data-action="reopen-facility"]')) && has('#panel', 'closed'));
+    $('#panel [data-action="reopen-facility"]').click();
+    await until(() => !base.facility(icp).closed_at);
+
+    // a boat ramp placed by Operations
+    $('#panel [data-action="close-panel"]') && $('#panel [data-action="close-panel"]').click();
+    await until(() => $('#facility-kind'));
+    check('Boat ramp is a kind Operations can place', [...$('#facility-kind').options].some((o) => o.value === 'ramp' && o.textContent === 'Boat ramp'));
+    $('#facility-kind').value = 'ramp';
+    $('#panel [data-action="place-facility"]').click();
+    mapClick(30, 70);
+    const ramp = await until(() => base.facilities().find((f) => f.kind === 'ramp'));
+    await until(() => $('#panel form[data-form="facility-edit"]'));
+    const rf = $('#panel form[data-form="facility-edit"]');
+    rf.name.value = 'Low-water crossing ramp'; rf.contact.value = 'TAC 3';
+    rf.requestSubmit();
+    check('placing it is logged as a boat ramp and drawn with its letters', await until(() => eventText(base, 'Boat ramp: Low-water crossing ramp updated')) && !!eventText(base, 'Boat ramp opened') && await until(() => $$('#map .fmark-ramp').length === 1 && $('#map .fmark-ramp').textContent === 'BR'), logTexts()[0]);
+    $('#panel [data-action="close-panel"]').click();
+    await until(() => has('#panel', 'join code'));
+    // the safety message, the PAR and the alert answered by Unit 3, so its phone opens on its own screens
+    await field.ackMessage(safetyMsg.id, 'Copy');
+    await field.answerPar(parMsg.id, true, 2);
+    await field.standDown(alertId);
+    await until(() => base.alerts().length === 0 && !has('#safety', 'unit 3'));
+
+    // ---- the phone at 375 px
+    P = await phoneFrame();
+    check('the field app opens at 375 px beside the base as Unit 3', !!P.ready, P.text('#me-name'));
+    const brief = P.$('#s-briefing');
+    check('Unit 3\'s briefing opens at its top: the situation first, not Safety and the buttons (Reyes, the shelter desk, Moreno)', await until(() => P.shown('#s-briefing')) && brief.scrollTop === 0 && brief.scrollHeight > brief.clientHeight && /situation/i.test(P.$('#briefing-list .k').textContent), `scrollTop ${brief.scrollTop} of ${brief.scrollHeight - brief.clientHeight}`);
+    brief.scrollTop = brief.scrollHeight;
+    const wasAtEnd = brief.scrollTop;
+    await P.act('briefing-later');
+    await P.act('menu');
+    await P.act('briefing');
+    check('read to its end and left, it opens at its top again from the menu', wasAtEnd > 0 && P.shown('#s-briefing') && brief.scrollTop === 0, `left at ${wasAtEnd}, opened at ${brief.scrollTop}`);
+    await P.act('briefed');
+    // every sheet at phone width
+    const wide = [];
+    for (const [a, sheet] of [['menu', '#s-menu'], ['inbox', '#s-inbox'], ['compose', '#s-compose'], ['ask', '#s-ask'], ['briefing', '#s-briefing'], ['hurt', '#s-hurt'], ['show-code', '#s-showcode'], ['check-out', '#s-checkout'], ['hazard', '#s-hazard'], ['help', '#s-help'], ['addr-clear', '#s-structure'], ['zone-clear', '#s-clear'], ['home', '#s-home']]) {
+      await P.act(a);
+      await wait(100);
+      if (!P.shown(sheet)) { wide.push(sheet + ' did not open'); continue; }
+      const o = P.sideways();
+      if (o.length) wide.push(sheet + ': ' + o.join('; '));
+    }
+    check('no sheet scrolls sideways at 375 px, and every button is whole on screen', wide.length === 0, wide.join(' | '));
+    await P.act('inbox');
+    const mo = P.$$('#s-inbox .btn').find((b) => b.textContent.trim() === 'Message Operations');
+    check('the inbox says "Message Operations" in full, not "Message Opera" (Reyes)', !!mo && mo.scrollWidth <= mo.clientWidth + 1 && mo.getBoundingClientRect().right <= 375, mo ? `${mo.scrollWidth} in ${mo.clientWidth}, right ${Math.round(mo.getBoundingClientRect().right)}` : 'no button');
+    mo.click();
+    await until(() => P.shown('#s-compose'));
+    P.$('#compose-text').value = 'The gym is nearly full';
+    await P.act('send-compose');
+    await until(() => P.shown('#s-inbox') && /the gym is nearly full/.test(P.text('#inbox-list')));
+    check('after sending, the Messages page is whole: not clipped at the left (the shelter desk)', P.sideways().length === 0 && P.$('#s-inbox').scrollLeft === 0 && P.doc().scrollingElement.scrollLeft === 0 && /the gym is nearly full/.test(P.text('#inbox-list')), P.sideways().join('; '));
+    await P.act('home');
+    check('Nearby lists the boat ramp with directions (Rosa)', await until(() => /boat ramp/.test(P.text('#nearby'))) && P.$$('#nearby .near').some((r) => /low-water crossing ramp/i.test(r.textContent) && r.querySelector('a.btn[href*="google.com/maps/dir"]')), P.text('#nearby'));
+
+    // a shared phone: sign out, and the next person finds nothing of the last
+    P.$('#auth-email').value = 'unit3@mock.local'; P.$('#auth-password').value = 'typed-by-the-last-person';
+    await P.act('menu');
+    await P.act('sign-out');
+    await until(() => P.shown('#auth'));
+    check('after Sign out the sign-in form is empty, and the password does not autofill (the administrator)', P.$('#auth-email').value === '' && P.$('#auth-password').value === '' && P.$('#auth-password').getAttribute('autocomplete') === 'off', `${P.$('#auth-email').value} / ${P.$('#auth-password').value ? 'a password' : ''} / ${P.$('#auth-password').getAttribute('autocomplete')}`);
+    // the shelter desk volunteer: a new account, a name and a phone, no licence
+    await phoneSignIn(P, 'walk-desk@mock.local', true);
+    check('a new account sees the check-in form alone: no empty "already in" list above it', P.shown('#join-form') && !P.shown('#join-mine') && P.$('#join-title').textContent === 'Check in to an incident' && P.$('#join-form').agency.value === '', P.text('#join'));
+    check('the Identify sheet says a licence is not a condition', await until(() => P.shown('#s-identify')) && /no licence\? your name and phone are enough/.test(P.text('#s-identify')) && /identity not given/.test(P.text('#id-none')));
+    P.$('#id-name').value = 'Pat Doe'; P.$('#id-phone').value = '512 555 0199';
+    await P.act('id-save');
+    check('it saves with a name and a phone, and the check-in line says "identity not given"', await until(() => !P.shown('#s-identify')) && /checking in as pat doe · 512 555 0199 · identity not given: operations checks who you are in person/.test(P.text('#join-you')) && P.$('#join-you').classList.contains('noid'), P.text('#join-you'));
+    const jf = P.$('#join-form');
+    jf.code.value = 'CEDAR7'; jf.unit.value = 'Gym shelter desk'; jf.agency.value = 'Red Cross';
+    jf.requestSubmit();
+    const deskIn = await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym shelter desk', 6000);
+    check('the volunteer checks in without a licence (the shelter desk was LOST here)', !!deskIn && await until(() => eventText(base, 'Gym shelter desk checked in as Pat Doe, 512 555 0199, identity not given')), logTexts()[0]);
+    check('and her briefing opens at its top too', await until(() => P.shown('#s-briefing')) && brief.scrollTop === 0);
+    const desk = base.units().find((u) => u.unit_name === 'Gym shelter desk');
+    check('the resources row marks her "no ID"', await until(() => has(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`, 'pat doe · no id')), text(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`));
+    $(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`).click();
+    await until(() => $('#panel .ident'));
+    check('her unit panel says "identity not given" and how to verify in person', $('#panel .ident').classList.contains('noid') && has('#panel .ident', 'identity not given', 'not verified', 'check who this is in person', 'pat doe', '512 555 0199') && !$$('#panel .ident .kv .k').some((k) => /licence/i.test(k.textContent)) && !!$('#panel .ident [data-action="verify-profile"]'), text('#panel .ident'));
+    $('#panel .ident [data-action="verify-profile"]').click();
+    check('Operations can mark her verified in person', await until(() => base.profileOf(desk.user_id) && base.profileOf(desk.user_id).verified_at) && await until(() => has('#panel .ident', 'verified in person')), text('#panel .ident'));
+    $('[data-action="people"]').click();
+    await until(() => !$('#people').hidden);
+    $('[data-action="print-211"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
+    check('the 211 says so too', has('#briefing-page', 'checked in by pat doe, 512 555 0199, identity not given, verified in person'), text('#briefing-page').slice(0, 300));
+    $('[data-action="close-briefing"]').click(); $('[data-action="close-people"]').click();
+
+    // the next person on the same phone (Moreno after the shelter desk)
+    await P.act('briefed');
+    await P.act('menu');
+    await P.act('sign-out');
+    await until(() => P.shown('#auth'));
+    await phoneSignIn(P, 'walk-deputy@mock.local', true);
+    await until(() => P.shown('#s-identify'));
+    check('the next account on the phone finds the Agency box empty, not the last unit\'s Red Cross', P.$('#join-form').agency.value === '' && P.$('#join-form').unit.value === '' && P.$('#id-name').value === '', `agency "${P.$('#join-form').agency.value}"`);
+    await P.act('id-cancel');
+    await P.act('sign-out');
+    await until(() => P.shown('#auth'));
+    for (const k of Object.keys(P.frame.contentWindow.localStorage)) if (k.startsWith('ic.field.agency')) P.frame.contentWindow.localStorage.removeItem(k);
+    await phoneSignIn(P, 'walk-desk@mock.local', false);
+    check('the shelter desk back on the phone gets her own agency again, from her own check-in', await until(() => P.$('#join-form').agency.value === 'Red Cross'), `agency "${P.$('#join-form').agency.value}"`);
+    const mine = P.$('#join-mine'), form = P.$('#join-form');
+    check('someone already in the incident sees it first, above the form (Rosa, Ana)', P.shown('#join-mine') && mine.getBoundingClientRect().bottom <= form.getBoundingClientRect().top && /cedar fork flooding/.test(P.text('#join-list')) && /you are gym shelter desk/.test(P.text('#join-list')) && P.$('#join-title').textContent === 'Check in to another incident', P.text('#join').slice(0, 200));
+    check('the check-in page is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#join-list [data-action="open-incident"]').click();
+    check('one tap on it opens the incident', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym shelter desk'));
+  } finally {
+    window.confirm = confirmWas;
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    await wait(100);
+  }
 }

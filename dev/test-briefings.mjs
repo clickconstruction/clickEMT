@@ -205,10 +205,13 @@ t('the transfer message and the command lines read the same everywhere', () => {
   assert.ok(/^Marcus Bell · since \d\d:\d\d, from Dana Ruiz$/.test(lines[1]), lines[1]);
 });
 
-t('Camp and Helibase are facility kinds with their own letters', () => {
+t('Camp, Helibase and Boat ramp are facility kinds, every kind with its own letter', () => {
   assert.equal(facilityKind('camp')[1], 'Camp');
   assert.equal(facilityKind('helibase')[2], 'HB');
-  assert.equal(FACILITY_KINDS.length, 10);
+  assert.equal(facilityKind('ramp')[1], 'Boat ramp');
+  assert.equal(facilityKind('ramp')[2], 'BR');
+  assert.equal(new Set(FACILITY_KINDS.map((k) => k[2])).size, FACILITY_KINDS.length);
+  assert.equal(new Set(FACILITY_KINDS.map((k) => k[0])).size, FACILITY_KINDS.length);
 });
 
 console.log(`${n} checks passed`);

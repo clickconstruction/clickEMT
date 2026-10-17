@@ -7,6 +7,7 @@ import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markin
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
 import { codeFromSearch } from '../shared/qr.js';
+import { photoCaption, photoFileName, imageType, withCaption, zip, whenText } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
@@ -149,7 +150,7 @@ async function openIncident(id) {
       overlayUrl: (path) => data.overlayUrl(path),
       onError: (err) => toast(err.message || String(err), true),
       onBlank: () => { if (state.selected && state.selected.type !== 'newzone') select(null); },
-      onDraftChange: (n) => { $('#tool-hint').textContent = n === 0 ? 'Click the map to place the first corner.' : n < 3 ? `${n} of at least 3 points. Click the map to add the next corner, or Backspace to take the last one off.` : `${n} points. Click to add more, Backspace to take the last one off, or press Finish.`; }
+      onDraftChange: (n) => { setHint(n === 0 ? 'Click the map to place the first corner.' : n < 3 ? `${n} of at least 3 points. Click the next corner; Backspace takes one off.` : `${n} points. Click to add more, Backspace takes one off, Finish saves it.`); }
     });
   }
   markLogSeen();
@@ -221,25 +222,66 @@ function drawAll() {
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
   map.render(data, state);
-  $('#zones').innerHTML = zonesHtml(data, state);
-  const panel = $('#panel');
-  const focused = document.activeElement && panel.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
-  if (!focused) {
-    panel.innerHTML = panelHtml(data, state);
-    if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
-    loadIdPhoto();
-    fillOverlayBounds(false);
-  }
+  drawSide();
   drawZoneModal();
   const md = $('#mayday');
   const mh = maydayHtml(data);
   md.hidden = !mh;
-  md.innerHTML = mh;
+  if (md.__html !== mh) { md.__html = mh; md.innerHTML = mh; }
   md.classList.toggle('ack', !!mh && data.alerts().every((a) => a.acknowledged_at));
   const sf = $('#safety');
   const sh = safetyHtml(data);
   sf.hidden = !sh;
-  sf.innerHTML = sh;
+  if (sf.__html !== sh) { sf.__html = sh; sf.innerHTML = sh; }
+  $('#bars-quiet').hidden = !!(mh || sh);
+}
+
+// The sidebar: the divisions and the panel, redrawn on every live update, but only where the words
+// changed. What the operator was looking at stays put: the heading or row at the top of the view is
+// found again after the redraw and kept at the same height, so a message arriving above the Public
+// information section no longer pushes it away. When the selection changes, the new panel's top comes
+// into view (the new-division form after Finish appeared above where the sidebar was scrolled).
+let sideSel = 'home';
+const ANCHORS = '#panel .title, #panel .k, #panel [data-id]';
+function anchorKey(el) { return el.dataset.id ? 'id:' + (el.dataset.action || el.dataset.form || el.tagName) + ':' + el.dataset.id : 'tx:' + el.className + ':' + el.textContent.trim().slice(0, 80); }
+function sideAnchor(side) {
+  const top = side.getBoundingClientRect().top;
+  let fallback = null;
+  for (const el of side.querySelectorAll(ANCHORS)) {
+    const r = el.getBoundingClientRect();
+    if (!r.height || r.bottom <= top) continue;
+    if (r.top >= top - 1) return { key: anchorKey(el), off: r.top - top };
+    fallback = fallback || { key: anchorKey(el), off: r.top - top };
+  }
+  return fallback;
+}
+function drawSide() {
+  const side = $('.side'), zones = $('#zones'), panel = $('#panel');
+  const zh = zonesHtml(data, state);
+  if (zones.__html !== zh) { zones.__html = zh; zones.innerHTML = zh; }
+  const key = state.selected ? state.selected.type + ':' + (state.selected.id || '') : 'home';
+  // a field being typed in holds the panel still, unless the selection itself changed: the field then
+  // belongs to the panel being left (a word left in the composer kept the new-division form from showing)
+  const focused = document.activeElement && panel.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+  if (!focused || key !== sideSel) {
+    const html = panelHtml(data, state);
+    if (panel.__html !== html) {
+      const anchor = key === sideSel && side.scrollTop > 0 ? sideAnchor(side) : null;
+      panel.__html = html; panel.innerHTML = html;
+      if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
+      loadIdPhoto();
+      if (anchor) {
+        const el = [...side.querySelectorAll(ANCHORS)].find((x) => anchorKey(x) === anchor.key);
+        if (el) side.scrollTop += el.getBoundingClientRect().top - side.getBoundingClientRect().top - anchor.off;
+      }
+    }
+    fillOverlayBounds(false);
+  }
+  if (key !== sideSel) {
+    sideSel = key;
+    const top = panel.getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop;
+    if (side.scrollTop > top) side.scrollTop = top;
+  }
 }
 
 // The legend's status entries: pressed, the divisions in that status stand out and the rest fade.
@@ -548,6 +590,43 @@ async function loadPhoto(id) {
   }
 }
 
+// The Public Information Officer's photos: every cleared one in a zip, named by its time and division,
+// its caption written into the file and listed in captions.txt (js/base/photo-export.js).
+async function downloadPublic(btn) {
+  const photos = data.publicPhotos().slice().sort((a, b) => (a.taken_at < b.taken_at ? -1 : 1));
+  if (!photos.length) { toast('No photo is cleared for the public yet', true); return; }
+  const inc = data.incident, now = new Date();
+  btn.disabled = true;
+  toast('Preparing ' + photos.length + ' photo' + (photos.length === 1 ? '' : 's') + '…');
+  try {
+    const files = [], lines = [], missed = [], names = new Set();
+    for (const p of photos) {
+      const zone = p.zone_id ? data.zone(p.zone_id) : null, m = data.member(p.user_id), takenAt = new Date(p.taken_at);
+      const caption = photoCaption({ note: p.note, place: zone ? (zone.name ? zone.name + ' (division ' + zone.code + ')' : 'Division ' + zone.code) : '', incident: inc.name, takenAt, credit: (m && m.agency) || unitLabelOf(m) });
+      try {
+        const res = await fetch(await data.photoUrl(p.storage_path));
+        if (!res.ok) throw new Error('the server said ' + res.status);
+        const raw = new Uint8Array(await res.arrayBuffer());
+        const first = photoFileName({ takenAt, code: zone ? zone.code : '', note: p.note, ext: imageType(raw) || 'jpg' });
+        let name = first;
+        for (let i = 2; names.has(name); i++) name = first.replace(/(\.\w+)$/, '_' + i + '$1');   // two in the same minute and place
+        names.add(name);
+        files.push({ name, bytes: withCaption(raw, { caption, title: p.note || '', credit: (m && m.agency) || '', takenAt }), date: takenAt });
+        lines.push(name, caption, '');
+      } catch (err) { missed.push(hhmm(p.taken_at) + ' · ' + unitLabelOf(m) + (p.note ? ' · ' + p.note : '') + ': not saved, ' + (err.message || err)); }
+    }
+    const head = [inc.name + ' · photos cleared for public information by Operations', 'Saved ' + whenText(now) + ' · ' + files.length + ' photo' + (files.length === 1 ? '' : 's') + '. Each caption is also written into its file (the description a newsroom tool reads).', ''];
+    files.push({ name: 'captions.txt', bytes: new TextEncoder().encode(head.concat(lines, missed.length ? ['Not saved:'].concat(missed) : []).join('\n')), date: now });
+    const blob = new Blob([zip(files)], { type: 'application/zip' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${inc.code}-cleared-photos-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${hhmm(now).replace(':', '')}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(missed.length ? `${files.length - 1} saved with captions; ${missed.length} could not be fetched (listed in captions.txt)` : `${files.length - 1} photo${files.length === 2 ? '' : 's'} saved with captions`, !!missed.length);
+  } finally { btn.disabled = false; }
+}
+
 // the front of a licence in the unit panel, from a signed link
 async function loadIdPhoto() {
   const box = document.querySelector('#panel [data-id-photo]');
@@ -629,11 +708,12 @@ document.addEventListener('click', async (e) => {
         map.startDraw('facility');
         $('#btn-boundary').classList.remove('on'); $('#btn-zone').classList.remove('on');
         $('#draw-btns').hidden = false;
-        $('#tool-hint').textContent = 'Click the map where the ' + (data.facilities ? (FACILITY_LABEL[state.placeKind] || 'facility').toLowerCase() : 'facility') + ' is.';
+        setHint('Click the map where the ' + (data.facilities ? (FACILITY_LABEL[state.placeKind] || 'facility').toLowerCase() : 'facility') + ' is.');
         break;
       }
-      case 'close-facility': await data.updateFacility(id, { closed_at: new Date().toISOString() }); break;
-      case 'reopen-facility': await data.updateFacility(id, { closed_at: null }); break;
+      case 'download-public': await downloadPublic(btn); break;
+      case 'close-facility': { const f = await data.updateFacility(id, { closed_at: new Date().toISOString() }); toast((f && f.name ? f.name : 'The facility') + ' marked closed. Reopen brings it back.'); break; }
+      case 'reopen-facility': { const f = await data.updateFacility(id, { closed_at: null }); toast((f && f.name ? f.name : 'The facility') + ' reopened'); break; }
       case 'channel-remove': { const ch = data.channels().slice(); ch.splice(Number(btn.dataset.i), 1); await data.setChannels(ch); break; }
       case 'place-structures': {
         state.placeZone = id;
@@ -641,7 +721,7 @@ document.addEventListener('click', async (e) => {
         map.startDraw('structures');
         $('#btn-boundary').classList.remove('on'); $('#btn-zone').classList.remove('on');
         $('#draw-btns').hidden = false;
-        $('#tool-hint').textContent = 'Click the map once per structure to place it in ' + (data.zone(id) ? data.zone(id).code : 'the division under the click') + ', then press Finish.';
+        setHint('Click the map once per structure to place it in ' + (data.zone(id) ? data.zone(id).code : 'the division under the click') + ', then press Finish.');
         break;
       }
       case 'finish-pass': {
@@ -715,7 +795,7 @@ document.addEventListener('click', async (e) => {
         $('#btn-zone').classList.toggle('on', mode === 'zone');
         $('#draw-btns').hidden = false;
         $('#btn-undo-point').hidden = false;
-        $('#tool-hint').textContent = mode === 'boundary' ? 'Click the map to outline the incident area, then press Finish.' : 'Click the map to outline the division, then press Finish.';
+        setHint(mode === 'boundary' ? 'Click the map to outline the incident area, then press Finish.' : 'Click the map to outline the division, then press Finish.');
         if (state.selected) select(null);
         break;
       }
@@ -773,6 +853,9 @@ document.addEventListener('keydown', (e) => {
   map.undoPoint();
 });
 
+// The hint shares the tools' one row with the buttons; a long one is cut short on screen and whole on hover.
+function setHint(t) { const h = $('#tool-hint'); h.textContent = t; h.title = t; }
+
 function stopDraw() {
   map.cancelDraw();
   $('#btn-undo-point').hidden = true;
@@ -780,7 +863,7 @@ function stopDraw() {
   $('#btn-boundary').classList.remove('on');
   $('#btn-zone').classList.remove('on');
   $('#draw-btns').hidden = true;
-  $('#tool-hint').textContent = 'Click a division, a unit or a photo pin to open it.';
+  setHint('Click a division, a unit or a photo pin to open it.');
 }
 
 document.addEventListener('submit', async (e) => {

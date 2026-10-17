@@ -12,6 +12,8 @@ values ('00000000-0000-4000-8000-0000000000a1', '00000000-0000-0000-0000-0000000
 create temp table t_ctx (incident uuid, code text, ops uuid default '00000000-0000-4000-8000-0000000000a1', unit uuid default '00000000-0000-4000-8000-0000000000a2');
 insert into t_ctx (incident) values (null);
 grant all on t_r, t_ctx to authenticated;   -- the checks are written while acting as that role
+-- the unit says who it is (a name and a phone are enough to check in since v25; without them ic_join refuses)
+insert into public.ic_profiles (user_id, full_name, phone) values ('00000000-0000-4000-8000-0000000000a2', 'People Test', '512 555 0000');
 
 -- as Operations: open the incident
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
@@ -30,7 +32,7 @@ insert into t_r select name = 'Hale' and agency = 'Test Rescue' and role = 'Lt.'
 insert into t_r select crew = 'Hale, Dominguez' and crew_count = 2, 'the unit''s crew and head count are its people: ' || coalesce(crew, 'null') || ' / ' || coalesce(crew_count::text, 'null')
   from public.ic_members where incident_id = (select incident from t_ctx) and user_id = (select unit from t_ctx);
 insert into t_r select exists (select 1 from public.ic_events where incident_id = (select incident from t_ctx) and text = 'Hale (swift water, EMT) checked in with Unit T' and kind = 'status' and ref_table = 'ic_people'), 'the log says Hale checked in with the unit, with the qualifications';
-insert into t_r select exists (select 1 from public.ic_events where incident_id = (select incident from t_ctx) and text = 'Unit T checked in with 2 people'), 'the unit''s own line counts its people';
+insert into t_r select exists (select 1 from public.ic_events where incident_id = (select incident from t_ctx) and text = 'Unit T checked in as People Test, 512 555 0000, identity not given with 2 people'), 'the unit''s own line counts its people';
 
 -- a hand change to the head count is overruled while the unit has people
 update public.ic_members set crew_count = 7, crew = 'Whoever' where incident_id = (select incident from t_ctx) and user_id = (select unit from t_ctx);
@@ -67,7 +69,7 @@ insert into t_r select crew_count = 0, 'the head count of a checked-out unit is 
 select public.ic_join((select code from t_ctx), 'unit', 'Unit T', null, null, null, null);
 insert into t_r select crew = 'Dominguez' and crew_count = 1, 'checking the unit back in brings back the people who left with it, not the one who left before: ' || coalesce(crew, 'null') || ' / ' || crew_count
   from public.ic_members where incident_id = (select incident from t_ctx) and user_id = (select unit from t_ctx);
-insert into t_r select exists (select 1 from public.ic_events where incident_id = (select incident from t_ctx) and text = 'Unit T checked in'), 'the unit''s line names no count when no list and no count were given';
+insert into t_r select exists (select 1 from public.ic_events where incident_id = (select incident from t_ctx) and text = 'Unit T checked in as People Test, 512 555 0000, identity not given'), 'the unit''s line names no count when no list and no count were given';
 
 -- Hale is checked back in by name on the next check-in
 select public.ic_join((select code from t_ctx), 'unit', 'Unit T', null, null, null, '[{"name":"hale","qualifications":["rope"]}]'::jsonb);

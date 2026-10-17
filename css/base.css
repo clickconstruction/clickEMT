@@ -18,10 +18,20 @@
 .top h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top .muted { font-size: 12.5px; }
 .top-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.mayday { background: var(--danger); color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-weight: 600; }
+/* The bars' slot under the header: always one row tall, so an emergency, a safety message or a PAR
+   appearing moves nothing below it (the clerk's Print 214 stayed under the pointer). With nothing open it
+   says so. Each open thing is one cell on the row, cut short on screen, whole on hover. */
+.bars { display: flex; height: 40px; flex: none; overflow: hidden; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.bars > #mayday, .bars > #safety { display: contents; }   /* every open thing is a cell of the one row, with an equal share */
+.bars-quiet { flex: 1 1 0; min-width: 0; display: flex; align-items: center; padding: 0 16px; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-item { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 100%; }
+.bar-item + .bar-item { border-left: 1px solid rgba(0,0,0,.25); }
+.bar-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-item .btn { flex: none; }
+.mayday .bar-item { flex-grow: 1.5; background: var(--danger); color: #fff; font-weight: 600; }   /* an emergency's cell is wider, for its two buttons */
 .mayday .btn { background: #fff; color: var(--danger); border-color: #fff; }
-.mayday.ack { background: #7A1C16; }
-.safety { background: var(--safety); color: #1B1B18; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 13px; }
+.mayday.ack .bar-item { background: #7A1C16; }
+.safety .bar-item { background: var(--safety); color: #1B1B18; font-size: 13px; }
 .composer { display: flex; flex-direction: column; gap: 6px; }
 .composer-row { display: flex; gap: 6px; align-items: center; }
 .composer select { flex: 1; min-width: 0; border: 1px solid var(--control-border); border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); }
@@ -43,7 +53,7 @@
 .badge.st-checked_out { background: var(--soft); color: var(--muted); }
 .par-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 3px 8px; border-left: 3px solid var(--line); margin-bottom: 3px; }
 .par-row.ok { border-left-color: var(--cleared-fill); } .par-row.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-row.wait { border-left-color: var(--hazard); }
-.safety .missing { color: var(--danger); font-weight: 600; }
+.safety .bar-item.missing { color: var(--danger); font-weight: 600; }
 .log-row.log-status { border-left-color: #8CA6BF; }
 .log-row.log-request { border-left-color: #1B6F8A; }
 .req { border: 1px solid var(--line); border-left: 4px solid var(--grey); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; font-size: 13px; background: var(--panel-2); }
@@ -63,7 +73,7 @@
 .fmark.inline { position: static; width: auto; height: 22px; font-size: 10px; flex: none; border-width: 1px; }
 .fmark-icp { background: #1F4E79; } .fmark-staging { background: #6B5DBF; } .fmark-base { background: #3E3C36; } .fmark-shelter { background: #2F7A52; }
 .fmark-pod { background: #B86E00; } .fmark-hospital { background: #B3261E; } .fmark-helispot { background: #1B6F8A; } .fmark-other { background: #6B6860; }
-.fmark-camp { background: #5A6E2A; } .fmark-helibase { background: #0F556B; }
+.fmark-camp { background: #5A6E2A; } .fmark-helibase { background: #0F556B; } .fmark-ramp { background: #2A6F97; }
 .fmark.closed { opacity: .45; } .fmark.sel { outline: 2px solid var(--ink); }
 .chan { display: flex; gap: 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
 .chan-use { flex: 1; min-width: 0; } .chan-ch { font-weight: 600; }
@@ -107,7 +117,11 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .log-row.log-msg { border-left-color: #6B8FC2; } .log-row.log-safety { border-left-color: var(--safety); background: var(--tint-yellow); } .log-row.log-par { border-left-color: #6B5DBF; }
 .body { flex: 1; min-height: 0; display: flex; }
 .mapcol { flex: 1; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }
-.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); position: relative; }
+.tools { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); position: relative; }
+.tools > .btn, #draw-btns { flex: none; }
+#draw-btns { display: inline-flex; gap: 8px; }
+/* one row whatever the hint says, so Finish never jumps to a second line: the hint takes what is left and is cut short */
+.tools .hint { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .layer-btn { margin-left: auto; }
 .layers-pop { position: absolute; right: 12px; top: calc(100% + 4px); z-index: 1200; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 14px 22px; width: min(660px, calc(100vw - 24px)); box-sizing: border-box; }
 .layers-pop[hidden] { display: none; }
@@ -276,6 +290,7 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .zm-kv { row-gap: 6px; }
 @media (max-width: 600px) { .zm-head { grid-template-columns: 1fr 1fr; } .zm-name { grid-column: 1 / -1; } }
 .ident { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.ident.noid { border-color: var(--hazard); background: var(--tint-yellow); }
 .id-box { max-height: 220px; }
 .id-box img { max-height: 220px; object-fit: contain; background: #D8D5CD; }
 .ur .who { font-weight: 400; color: var(--hazard-ink); font-size: 12px; }
@@ -297,6 +312,8 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .agency-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0; border-bottom: 1px solid var(--line-soft); }
 
 @media (max-width: 900px) {
+  .tools { flex-wrap: wrap; }
+  .tools .hint { flex-basis: 100%; order: 10; white-space: normal; }
   .top-main { flex-basis: 100%; }
   .top h1 { white-space: normal; }
   .body { flex-direction: column; overflow: auto; }
@@ -309,7 +326,7 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 /* The log alone in its own window (#log, the Pop out button): the header stays for the incident,
    the period, the live dot and the clock; the map, the tools, the sidebar and the bars are left
    out and the log fills the window, always open. */
-.log-only .top-btns, .log-only .tools, .log-only #map, .log-only #replay, .log-only .legend, .log-only .side, .log-only #mayday, .log-only #safety { display: none !important; }
+.log-only .top-btns, .log-only .tools, .log-only #map, .log-only #replay, .log-only .legend, .log-only .side, .log-only #bars { display: none !important; }
 .log-only .body { flex-direction: row; overflow: hidden; }
 .log-only .mapcol { flex: 1; border: 0; }
 .log-only .log { flex: 1; min-height: 0; height: auto; border-top: 0; }   /* min-height lets #log scroll inside the window */

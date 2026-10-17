@@ -1,5 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
+import { profileReady, identityGiven } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands'];
 const BUCKET = 'ic-photos';
@@ -62,9 +63,9 @@ export class Data {
   // ---- incidents
   async myIncidents() {
     if (!this.user) return [];
-    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, joined_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
+    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, agency, joined_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
     if (error) throw error;
-    return (data || []).filter((r) => r.incident).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew }));
+    return (data || []).filter((r) => r.incident).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew, agency: r.agency || '', joined_at: r.joined_at }));
   }
   async createIncident({ name, period, base, lat, lng, zoom }) {
     const { data, error } = await this.sb.rpc('ic_create_incident', { p_name: name, p_period: period || null, p_base_name: base || null, p_lat: lat ?? null, p_lng: lng ?? null, p_zoom: zoom || 14 });
@@ -282,7 +283,8 @@ export class Data {
     this.profile = data || null;
     return this.profile;
   }
-  profileComplete(p) { const x = p || this.profile; return !!(x && x.full_name && x.phone && (x.photo_path || x.licence_number)); }
+  profileComplete(p) { const x = p || this.profile; return profileReady(x) && identityGiven(x); }
+  profileReady(p) { return profileReady(p || this.profile); }   // enough to check in: a name and a phone (ic_profile_ready)
   async saveProfile(fields) {
     const row = Object.assign({ user_id: this.user.id }, fields);
     const { data, error } = await this.sb.from('ic_profiles').upsert(row, { onConflict: 'user_id' }).select().single();

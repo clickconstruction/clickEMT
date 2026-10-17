@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
@@ -14,7 +14,10 @@ import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
 import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
-const AGENCY_KEY = 'ic.field.agency';
+// The agency a check-in prefills is the one this account gave last time, never the last unit's on a
+// shared phone: kept per account here, and read from the account's own check-ins once they load.
+const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
+try { localStorage.removeItem('ic.field.agency'); } catch (e) { /* the old key was per phone */ }
 const JOIN_KEY = 'ic.field.join';   // a code that arrived in the address (?join=), kept through sign-in
 const SEEN_ZONE = 'ic.field.seen.';
 const BRIEFED = 'ic.field.briefed.';   // the check-in the unit was briefed for (its joined_at), per incident
@@ -23,7 +26,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -46,9 +49,14 @@ function toast(msg, bad) {
 }
 
 function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
+function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
+  const was = state.screen;
   state.screen = name;
   for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt']) $('#s-' + s).hidden = name !== s;
+  // A sheet opens at its top. The browser gives a sheet shown again the scroll it had when it was
+  // hidden, so the briefing came back at its end, where Briefed was pressed last time.
+  if (name !== was && name !== 'home') toTop($('#s-' + name));
   if (name === 'home') { state.pending = null; if (mini) setTimeout(() => mini.invalidateSize(), 50); }
 }
 
@@ -137,27 +145,54 @@ $('#auth-signup').addEventListener('click', async () => {
 // ---- check in
 async function showJoin() {
   show('join');
+  window.scrollTo(0, 0);
   $('#join-user').textContent = data.user ? data.user.email : '';
-  try { const f = $('#join-form'); if (!f.agency.value) f.agency.value = localStorage.getItem(AGENCY_KEY) || ''; } catch (e) { /* storage blocked */ }
+  const f = $('#join-form');
+  if (state.joinFor !== (data.user && data.user.id)) { clearJoinForm(); state.joinFor = data.user && data.user.id; }
+  if (!f.agency.value) { f.agency.value = lastAgency(); f.agency.dataset.prefill = f.agency.value; }
   const pending = pendingJoin();
   if (pending) { const f = $('#join-form'); f.code.value = pending; f.unit.focus(); toast('Code ' + pending + ' from the link. Name your unit and check in.'); }
   try { await data.myProfile(); } catch (e) { console.warn(e); }
   drawYouLine();
-  if (!data.profileComplete() && !state.identShown) { state.identShown = true; openIdentify(); }
+  if (!data.profileReady() && !state.identShown) { state.identShown = true; openIdentify(); }
   drawJoinPeople();
   drawJoinKind();
-  const list = $('#join-list');
-  list.innerHTML = '<p class="muted">Loading…</p>';
+  // The incidents this account is already in come first, above the form, and only when there are some:
+  // someone reopening theirs taps the row instead of scrolling past a whole check-in form.
+  const list = $('#join-list'), mine = $('#join-mine');
   try {
-    const rows = (await data.myIncidents()).filter((r) => r.status === 'active');
+    const all = await data.myIncidents();
+    const rows = all.filter((r) => r.status === 'active');
     const already = pending && rows.find((r) => r.code === pending);
     if (already) { clearPendingJoin(); toast('You are already on ' + already.name); await openIncident(already.id); return; }
-    list.innerHTML = rows.length ? rows.map((r) => `
+    // the agency this account gave at its own last check-in, unless the box has been typed in since
+    const last = all.find((r) => r.role === 'unit' && r.agency);
+    if (last && f.agency.value === (f.agency.dataset.prefill || '')) { f.agency.value = last.agency; f.agency.dataset.prefill = last.agency; }
+    list.innerHTML = rows.map((r) => `
       <button class="pick-row" data-action="open-incident" data-id="${r.id}">
         <span style="flex:1;min-width:0"><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
         <span class="pill mono">${esc(r.code)}</span>
-      </button>`).join('') : '<p class="muted">None yet. Check in above with the code from Operations.</p>';
-  } catch (err) { list.innerHTML = `<p class="msg">${esc(err.message || err)}</p>`; }
+      </button>`).join('');
+    mine.hidden = !rows.length;
+    $('#join-title').textContent = rows.length ? 'Check in to another incident' : 'Check in to an incident';
+  } catch (err) { list.innerHTML = `<p class="msg">${esc(err.message || err)}</p>`; mine.hidden = false; }
+}
+function lastAgency() { try { return (data.user && localStorage.getItem(AGENCY_KEY + data.user.id)) || ''; } catch (e) { return ''; } }
+// Everything one person typed on this phone, gone before the next one signs in: the sign-in form, the
+// check-in form with its people and kind, the identity sheet.
+function clearJoinForm() {
+  const f = $('#join-form');
+  f.reset(); delete f.agency.dataset.prefill;
+  const msg = f.querySelector('[data-msg]'); if (msg) msg.textContent = '';
+  state.joinPeople = [blankPerson(), blankPerson()]; state.joinKind = '';
+  drawJoinPeople(); drawJoinKind();
+}
+function clearForms() {
+  $('#auth-form').reset(); $('#auth-msg').textContent = ''; $('#auth-msg').classList.remove('ok');
+  clearJoinForm(); state.joinFor = null; state.identShown = false;
+  for (const id of ['id-name', 'id-phone', 'id-number', 'id-state']) $('#' + id).value = '';
+  $('#join-mine').hidden = true; $('#join-list').innerHTML = ''; $('#join-title').textContent = 'Check in to an incident';
+  closeIdentify();
 }
 
 document.addEventListener('change', (e) => { const co = e.target.closest('[data-co]'); if (co) { state.coTicks[co.dataset.co] = co.checked; drawCheckout(); } });
@@ -192,11 +227,9 @@ $('#join-form').addEventListener('submit', async (e) => {
   msg.textContent = 'Checking in…';
   try {
     const inc = await data.join(f.code.value, 'unit', f.unit.value, null, null, f.agency.value, joinPeopleList(), state.joinKind);
-    try { localStorage.setItem(AGENCY_KEY, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
-    f.reset(); msg.textContent = '';
+    try { localStorage.setItem(AGENCY_KEY + data.user.id, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
+    clearJoinForm();
     clearPendingJoin();
-    state.joinPeople = [blankPerson(), blankPerson()]; state.joinKind = '';
-    drawJoinPeople(); drawJoinKind();
     state.briefOnce = true;   // your briefing opens once the incident is open
     await openIncident(inc.id);
   } catch (err) { msg.textContent = err.message || String(err); }
@@ -672,11 +705,11 @@ function drawMini(zone) {
   }
 }
 
-// The nearest staging area, shelter and hospital, with directions in the phone's own maps app.
+// The nearest staging area, boat ramp, shelter and hospital (each when one is open), with directions in the phone's own maps app.
 function drawNearby() {
   const p = sensors.pos;
   const rows = [];
-  for (const kind of ['staging', 'shelter', 'hospital']) {
+  for (const kind of NEARBY_KINDS) {
     const n = p ? nearestFacility(data.facilities(), kind, p.lat, p.lng) : null;
     const f = n ? n.facility : data.facilities().find((x) => x.kind === kind);
     if (!f) continue;
@@ -755,9 +788,13 @@ function drawYouLine() {
   if (data.profileComplete(p)) {
     el.className = 'you-line';
     el.innerHTML = `<span>Checking in as <strong>${esc(p.full_name)}</strong> · ${esc(p.phone)} · ${({ scan: 'licence scanned', photo: 'licence photographed', typed: 'licence typed' })[p.id_source] || 'licence on file'}${p.verified_at ? ' · verified' : ''}</span><button type="button" class="btn sm" data-action="id-open">Change</button>`;
+  } else if (data.profileReady(p)) {
+    // a name and a phone check in; Operations sees "identity not given" and checks in person
+    el.className = 'you-line noid';
+    el.innerHTML = `<span>Checking in as <strong>${esc(p.full_name)}</strong> · ${esc(p.phone)} · ${NO_ID_TEXT}${p.verified_at ? ', verified in person' : ': Operations checks who you are in person'}</span><button type="button" class="btn sm" data-action="id-open">Add a licence</button>`;
   } else {
     el.className = 'you-line missing';
-    el.innerHTML = `<span>Say who you are before you check in: your name, your phone and your licence.</span><button type="button" class="btn sm" data-action="id-open">Identify yourself</button>`;
+    el.innerHTML = `<span>Say who you are before you check in: your name and your phone, and your licence if you have it.</span><button type="button" class="btn sm" data-action="id-open">Identify yourself</button>`;
   }
 }
 function openIdentify() {
@@ -772,6 +809,7 @@ function openIdentify() {
   if (p.photo_path) data.idPhotoUrl(p.photo_path).then((u) => { $('#id-photo-preview').src = u; }).catch(() => { $('#id-photo-box').hidden = true; });
   drawIdRead(p.licence_number ? { fullName: p.full_name, dateOfBirth: p.date_of_birth, licenceNumber: p.licence_number, licenceState: p.licence_state, expires: p.licence_expires, address: p.address, fromRecord: true } : null);
   $('#s-identify').hidden = false;
+  toTop($('#s-identify'));
 }
 function closeIdentify() { $('#s-identify').hidden = true; }
 function drawIdRead(r) {
@@ -810,10 +848,12 @@ async function saveIdentity() {
   const name = $('#id-name').value.trim(), phone = $('#id-phone').value.trim();
   const number = $('#id-number').value.trim().toUpperCase(), st = $('#id-state').value.trim().toUpperCase();
   const msg = $('#id-msg');
-  if (!name) { msg.textContent = 'Your name, as on the licence.'; $('#id-name').focus(); return; }
+  if (!name) { msg.textContent = 'Your name, as on your licence if you have one.'; $('#id-name').focus(); return; }
   if (!phone) { msg.textContent = 'A phone Operations can reach you on.'; $('#id-phone').focus(); return; }
   const p = data.profile || {};
-  if (!(state.ident.read || state.ident.photo || p.photo_path || number)) { msg.textContent = 'Scan the back of your licence, photograph the front, or type its number.'; return; }
+  // A licence is the identity, but not a condition: without one the unit checks in as "identity not
+  // given" and Operations checks in person (the volunteer handed a phone at the shelter door).
+  const hasId = !!(state.ident.read || state.ident.photo || p.photo_path || number);
   msg.textContent = 'Saving…';
   try {
     const r = state.ident.read;
@@ -823,13 +863,13 @@ async function saveIdentity() {
     await data.saveProfile({
       full_name: name, phone, licence_number: number || (r ? r.licenceNumber : p.licence_number) || '', licence_state: st || (r ? r.licenceState : p.licence_state) || '',
       licence_expires: r ? r.expires : (p.licence_expires || null), date_of_birth: r ? r.dateOfBirth : (p.date_of_birth || null), address: r ? r.address : (p.address || ''),
-      id_source: source || 'typed', photo_path: photoPath
+      id_source: hasId ? source || 'typed' : '', photo_path: photoPath
     });
     msg.textContent = '';
     closeIdentify();
     drawYouLine();
     if (state.screen === 'menu' && data.incident) drawMenu();
-    toast('Saved. Operations sees this when you check in.');
+    toast(hasId ? 'Saved. Operations sees this when you check in.' : 'Saved without a licence. Operations will check who you are in person.');
   } catch (err) { msg.textContent = err.message || String(err); }
 }
 function closeScan() { if (scanner) scanner.stop(); scanner = null; $('#s-scan').hidden = true; }
@@ -859,7 +899,7 @@ function drawMenu() {
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
     <span class="k">Code</span><span class="mono">${esc(inc.code)}</span>
     <span class="k">You</span><span>${esc(unitWithKind(me))}${me && crewNames(me, data.people()) ? ' · ' + esc(crewNames(me, data.people())) : ''}</span>
-    ${data.profile ? `<span class="k">Identity</span><span>${esc(data.profile.full_name)} · ${esc(data.profile.phone)}${data.profile.licence_number ? ' · ' + esc(data.profile.licence_state) + ' ' + esc(licenceTail(data.profile.licence_number)) : ''}${data.profile.verified_at ? ' · verified by Operations' : ' · not yet verified'}</span>` : ''}
+    ${data.profile ? `<span class="k">Identity</span><span>${esc(data.profile.full_name)} · ${esc(data.profile.phone)}${data.profile.licence_number ? ' · ' + esc(data.profile.licence_state) + ' ' + esc(licenceTail(data.profile.licence_number)) : ''}${identityGiven(data.profile) ? '' : ' · ' + NO_ID_TEXT}${data.profile.verified_at ? ' · verified by Operations' : ' · not yet verified'}</span>` : ''}
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
   setHtml($('#menu-kind'), kindChips(me ? me.kind : '', 'me-kind'));
@@ -1065,7 +1105,7 @@ document.addEventListener('click', async (e) => {
   const act = btn.dataset.action;
   try {
     switch (act) {
-      case 'sign-out': localStorage.removeItem(LAST_INCIDENT); sensors.stop(); await data.signOut(); show('auth'); break;
+      case 'sign-out': localStorage.removeItem(LAST_INCIDENT); sensors.stop(); await data.signOut(); clearForms(); show('auth'); break;
       case 'open-incident': await openIncident(btn.dataset.id); break;
       case 'switch-incident': data.close(); localStorage.removeItem(LAST_INCIDENT); screen('home'); await showJoin(); break;
       case 'home': screen('home'); queueDraw(); break;

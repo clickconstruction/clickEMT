@@ -19,7 +19,7 @@ A guide for each of the twelve people the app is designed around (`docs/personas
 
 ## Walking a guide with the app beside it
 
-[clickemt.com/try](https://clickemt.com/try/) shows a guide beside the base and the phone, both live on the in-memory stand-in (`?demo`) and sharing one incident: a tap on the phone shows on the base within a second. Pick a role at the top; the guide is on the left, the base in the middle, the phone on the right. **Reset the mock** puts the seeded incident back. Locally it is `http://localhost:8766/try/` (or whichever port the server took) after `npm run serve`.
+[clickemt.com/try](https://clickemt.com/try/) shows a guide beside the base and the phone, both live on the in-memory stand-in (`?demo`) and sharing one incident: a tap on the phone shows on the base within a second. Pick a role at the top; the tour (six roles) or the guide is on the left, the base in the middle, the phone on the right. A tour's **Show me** rings the button in the frame and **Do it for me** presses it; **Play the tour** runs every step. **Reset the mock** puts the seeded incident back. Locally it is `http://localhost:8766/try/` (or whichever port the server took) after `npm run serve`.
 
 ## Being each persona in the mock
 

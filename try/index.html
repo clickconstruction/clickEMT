@@ -94,6 +94,25 @@
   .who-menu .role { grid-area: role; font-weight: 600; font-size: 15px; line-height: 1.25; }
   .who-menu .name { grid-area: name; }
   .who-menu .num { grid-area: num; align-self: center; color: var(--muted); font-size: 11px; padding-left: 14px; }
+  .tabs { display: flex; gap: 4px; margin: 0 0 10px; }
+  .tabs button { padding: 4px 10px; }
+  .intro { color: #cfd3d9; font-size: 14px; margin: 0 0 10px; }
+  .play { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+  ol.steps { list-style: none; padding: 0; margin: 0; }
+  ol.steps li.step { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 8px; background: rgba(255,255,255,.015); }
+  ol.steps li.step.cur { border-color: var(--accent); }
+  ol.steps li.step.done { opacity: .78; }
+  ol.steps li.step.done .say::after { content: " ✓"; color: var(--phone); }
+  .step .say { font-size: 14px; margin: 0 0 8px; }
+  .step .say b { font-weight: 600; }
+  .step .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .step .acts button { padding: 4px 9px; font-size: 13px; }
+  .step .acts button.do { background: var(--accent); color: #111; border-color: var(--accent); }
+  .step .acts button:disabled { opacity: .5; cursor: default; }
+  .step .res { font-size: 13px; color: #cfd3d9; margin: 8px 0 0; display: none; }
+  .step .res.on { display: block; }
+  .step .res.bad { color: #f0a8a8; }
+  .nodo { color: var(--muted); font-size: 12px; }
   .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: #111; padding: 8px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 30; }
   .toast[hidden] { display: none; }
   footer { max-width: 1040px; margin: 0 auto; padding: 28px 24px 48px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
@@ -103,7 +122,7 @@
     header.bar h1 { display: none; }
     .who-btn, .who-menu { min-width: 0; }
     .who-menu { max-width: calc(100vw - 24px); }
-    aside { position: absolute; inset: 0; width: 100%; z-index: 5; border-right: 0; }
+    aside { position: absolute; left: 0; right: 0; bottom: 0; top: auto; height: 48%; width: 100%; z-index: 5; border-right: 0; border-top: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(0,0,0,.4); }
     #stage { padding: 8px; }
     footer { padding: 20px 16px 40px; }
   }
@@ -178,9 +197,11 @@
 </footer>
 <div class="toast" id="toast" hidden></div>
 
+<script src="tours.js"></script>
 <script>
 (function () {
   'use strict';
+  const TOURS = window.IC_TOURS || {};
   const PERSONAS = [
     { n: 1, slug: '01-incident-commander', role: 'Incident Commander', name: 'Dana Ruiz', where: 'base', hook: 'Is anyone in trouble, how far has the search got, what is the plan: thirty seconds, then sign the IAP.', lead: true },
     { n: 2, slug: '02-operations-section-chief', role: 'Operations Section Chief', name: 'Marcus Bell', where: 'base', hook: 'Draw a division, assign a crew, run a head count by name, answer the radio with the map in front of you.', lead: true },
@@ -197,7 +218,7 @@
   ];
   const LEAD = [1, 2, 3, 4, 10, 8];
   const $ = (id) => document.getElementById(id);
-  const state = { mode: 'both', fit: true, guide: true, who: 0, modeChosen: false, framesLoaded: false };
+  const state = { mode: 'both', fit: true, guide: true, who: 0, modeChosen: false, framesLoaded: false, tab: 'tour', step: 0 };
   const SIZES = { base: [1280, 800], phone: [395, 832] };
   const escape = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WHERE = { base: 'On the base', phone: 'On the phone', both: 'Base and phone' };
@@ -238,6 +259,42 @@
       .replace(/<li><b>Phone<\/b>\s*·?\s*/g, '<li class="on-phone"><span class="chip phone">Phone</span>');
   }
   const head = (p) => '<div class="who-head"><div class="role">' + escape(p.role) + '</div>' + (p.name ? '<div class="name">' + escape(p.name) + '</div>' : '') + '</div>';
+  const guides = {};
+  async function guideHtml(p) {
+    if (guides[p.slug]) return guides[p.slug];
+    const r = await fetch('/docs/guides/' + p.slug + '.md', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+    guides[p.slug] = md(await r.text()).replace(/^<h1>[\s\S]*?<\/h1>\n?/, '');
+    return guides[p.slug];
+  }
+  function tabsHtml(p) {
+    const t = TOURS[p.slug];
+    return '<div class="tabs"><button data-tab="tour" class="' + (state.tab === 'tour' ? 'on' : '') + '">Tour' + (t ? '' : '') + '</button><button data-tab="guide" class="' + (state.tab === 'guide' ? 'on' : '') + '">Guide</button></div>';
+  }
+  function tourHtml(p) {
+    const t = TOURS[p.slug];
+    if (!t) return '<p class="intro">No tour for this role yet; the guide walks the jobs step by step.</p>';
+    const steps = t.steps.map((st, i) => '<li class="step' + (i === state.step ? ' cur' : '') + '" data-i="' + i + '"><div class="say"><b>' + (i + 1) + '.</b> ' + escape(st.say) + '</div><div class="acts"><span class="chip ' + st.on + '">' + (st.on === 'base' ? 'Base' : 'Phone') + '</span><button data-act="show">Show me</button>' + (st.do ? '<button data-act="do" class="do">Do it for me</button>' : '<span class="nodo">look, then read on</span>') + '</div><div class="res"></div></li>').join('');
+    return '<p class="intro">' + escape(t.intro) + '</p><div class="play"><button id="play-all">Play the tour</button><span class="muted small">every step, a few seconds apart</span></div><ol class="steps">' + steps + '</ol>';
+  }
+  async function drawAside() {
+    const p = PERSONAS.find((x) => x.n === state.who) || PERSONAS[0];
+    const aside = $('aside');
+    if (state.tab === 'tour') { aside.innerHTML = head(p) + tabsHtml(p) + tourHtml(p); }
+    else {
+      aside.innerHTML = head(p) + tabsHtml(p) + '<p class="muted">Loading…</p>';
+      try { aside.innerHTML = head(p) + tabsHtml(p) + await guideHtml(p); }
+      catch (e) { aside.innerHTML = head(p) + tabsHtml(p) + '<p class="err">The guide could not be loaded (' + escape(String(e.message || e)) + ').</p>'; }
+    }
+    aside.scrollTop = 0;
+  }
+  $('aside').addEventListener('click', async (e) => {
+    const tab = e.target.closest('[data-tab]');
+    if (tab) { state.tab = tab.dataset.tab; drawAside(); return; }
+    if (e.target.id === 'play-all') { playAll(); return; }
+    const act = e.target.closest('[data-act]');
+    if (act) { const i = Number(act.closest('.step').dataset.i); if (act.dataset.act === 'show') showStep(i); else doStep(i); }
+  });
   async function showGuide() {
     const p = PERSONAS.find((x) => x.n === state.who) || PERSONAS[0];
     state.who = p.n;
@@ -246,17 +303,127 @@
     for (const el of $('who-menu').children) el.setAttribute('aria-selected', el.dataset.n === String(p.n) ? 'true' : 'false');
     try { history.replaceState(null, '', '#' + p.n); } catch (e) { /* ignore */ }
     try { localStorage.setItem('ic.try.who', String(p.n)); } catch (e) { /* ignore */ }
-    const aside = $('aside');
-    aside.innerHTML = '<p class="muted">Loading…</p>';
-    try {
-      const r = await fetch('/docs/guides/' + p.slug + '.md', { cache: 'no-store' });
-      if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
-      aside.innerHTML = head(p) + md(await r.text()).replace(/^<h1>[\s\S]*?<\/h1>\n?/, '');
-      aside.scrollTop = 0;
-    } catch (e) {
-      aside.innerHTML = head(p) + '<p class="err">The guide could not be loaded (' + escape(String(e.message || e)) + ').</p>';
-    }
+    state.step = 0; state.tab = TOURS[p.slug] ? 'tour' : 'guide';
+    await drawAside();
   }
+
+  // ---- the tours: a helper kit over the two frames, Show me (ring the thing) and Do it for me
+  const RING_CSS = '#ic-ring{position:fixed;border:3px solid #e8b84a;border-radius:8px;box-shadow:0 0 0 4px rgba(232,184,74,.35),0 0 0 9999px rgba(0,0,0,.28);pointer-events:none;z-index:2147483000;animation:icpulse 1.1s ease-in-out infinite}@keyframes icpulse{0%,100%{box-shadow:0 0 0 4px rgba(232,184,74,.35),0 0 0 9999px rgba(0,0,0,.28)}50%{box-shadow:0 0 0 9px rgba(232,184,74,.15),0 0 0 9999px rgba(0,0,0,.28)}}';
+  const frameWin = (k) => $(k).contentWindow;
+  const frameDoc = (k) => { try { return $(k).contentDocument; } catch (e) { return null; } };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v = fn(); while (!v && Date.now() < end) { await wait(80); v = fn(); } return v; };
+  const h = {
+    get B() { return frameWin('base'); }, get P() { return frameWin('phone'); },
+    b: (sel) => (frameDoc('base') ? frameDoc('base').querySelector(sel) : null),
+    p: (sel) => (frameDoc('phone') ? frameDoc('phone').querySelector(sel) : null),
+    bb: (sel) => (frameDoc('base') ? [...frameDoc('base').querySelectorAll(sel)] : []),
+    pp: (sel) => (frameDoc('phone') ? [...frameDoc('phone').querySelectorAll(sel)] : []),
+    byText: (els, re) => els.find((el) => re.test(el.textContent.replace(/\s+/g, ' ').trim())) || null,
+    shown: (el) => !!el && !el.hidden && el.getClientRects().length > 0,
+    wait, until,
+    logHas: (t) => { const l = h.b('#log'); return !!l && l.textContent.includes(t); },
+    fill: (el, v) => { if (!el) throw new Error('no field to fill'); el.focus(); el.value = v; el.dispatchEvent(new el.ownerDocument.defaultView.Event('input', { bubbles: true })); el.dispatchEvent(new el.ownerDocument.defaultView.Event('change', { bubbles: true })); },
+    ring: async (el) => {
+      if (!el) throw new Error('nothing to show');
+      const d = el.ownerDocument, w = d.defaultView;
+      if (!d.getElementById('ic-ring-css')) { const st = d.createElement('style'); st.id = 'ic-ring-css'; st.textContent = RING_CSS; d.head.appendChild(st); }
+      el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      await wait(250);
+      let r = d.getElementById('ic-ring'); if (!r) { r = d.createElement('div'); r.id = 'ic-ring'; d.body.appendChild(r); }
+      const b = el.getBoundingClientRect(), pad = 6;
+      Object.assign(r.style, { left: Math.max(0, b.left - pad) + 'px', top: Math.max(0, b.top - pad) + 'px', width: Math.min(w.innerWidth, b.width + pad * 2) + 'px', height: Math.min(w.innerHeight, b.height + pad * 2) + 'px', display: 'block' });
+      clearTimeout(h._ringT); h._ringT = setTimeout(() => { r.style.display = 'none'; }, 5000);
+      return el;
+    },
+    unring: () => { for (const k of ['base', 'phone']) { const d = frameDoc(k); const r = d && d.getElementById('ic-ring'); if (r) r.style.display = 'none'; } },
+    // Tap a button: ring it, then click. `target` may be a finder, re-run at click time, because a live
+    // update can redraw the panel or the log between the ring and the click and leave the old button detached.
+    tap: async (target) => { const get = typeof target === 'function' ? target : () => target; let el = get(); if (!el) throw new Error('nothing to tap'); await h.ring(el); await wait(650); if (!el.isConnected) el = get(); if (!el) throw new Error('the button went away'); el.click(); await wait(250); },
+    act: async (k, action, extra = {}) => { const d = frameDoc(k); const b = d.createElement('button'); b.dataset.action = action; Object.assign(b.dataset, extra); b.hidden = true; d.body.appendChild(b); b.click(); b.remove(); await wait(200); },
+    baseHome: async () => {
+      const cb = h.b('[data-action="close-briefing"]'); if (cb && h.b('#briefing') && !h.b('#briefing').hidden) { cb.click(); await wait(150); }
+      const cp = h.b('[data-action="close-people"]'); if (cp && h.b('#people') && !h.b('#people').hidden) { cp.click(); await wait(150); }
+      const rc = h.b('[data-action="replay-close"]'); if (rc && h.shown(rc)) { rc.click(); await wait(150); }
+      const td = h.b('#transfer-dialog'); if (td && td.open) { const c = td.querySelector('[data-action="transfer-cancel"]'); if (c) c.click(); else td.close(); await wait(150); }
+      const x = h.b('#panel [data-action="close-panel"]'); if (x) { x.click(); await until(() => !h.b('#panel [data-action="close-panel"]'), 2000); }
+    },
+    phoneHome: async () => {
+      if (h.shown(h.p('#s-briefing'))) { await h.act('phone', 'briefed'); await wait(300); }
+      for (const id of ['#s-menu', '#s-inbox', '#s-compose', '#s-structure', '#s-person']) if (h.shown(h.p(id))) { await h.act('phone', 'home'); await wait(250); }
+    },
+    // Sign the phone in as someone new, identify them with a name and a phone, and check in.
+    phoneAccount: async ({ email, name, phone, unit, agency, kind, count }) => {
+      const P = h.P; P.confirm = () => true;
+      if (!h.shown(h.p('#auth'))) { await h.phoneHome(); await h.tap(h.p('[data-action="menu"]')); await until(() => h.shown(h.p('[data-action="sign-out"]'))); await h.tap(h.p('[data-action="sign-out"]')); }
+      await until(() => h.shown(h.p('#auth')), 6000);
+      h.fill(h.p('#auth-email'), email); h.fill(h.p('#auth-password'), 'demo-walk-pw');
+      await h.tap(h.p('#auth-signup'));
+      await until(() => h.shown(h.p('#join')), 8000);
+      if (h.shown(h.p('#s-identify'))) {
+        h.fill(h.p('#id-name'), name); h.fill(h.p('#id-phone'), phone);
+        await h.tap(h.p('[data-action="id-save"]'));
+        await until(() => !h.shown(h.p('#s-identify')), 6000);
+      }
+      const jf = h.p('#join-form');
+      h.fill(jf.code, 'CEDAR7'); h.fill(jf.unit, unit); h.fill(jf.agency, agency);
+      if (jf.count) h.fill(jf.count, String(count));
+      if (kind) { const chip = h.p('#join-kind [data-kind="' + kind + '"]'); if (chip) await h.tap(chip); else await h.act('phone', 'jp-kind', { kind }); }
+      await wait(300);
+      const go = jf.querySelector('button[type="submit"]'); await h.ring(go); await wait(500); jf.requestSubmit();
+      await until(() => h.shown(h.p('#app')) && h.p('#me-name').textContent === unit, 12000);
+    }
+  };
+  function currentTour() { const p = PERSONAS.find((x) => x.n === state.who); return p && TOURS[p.slug] ? TOURS[p.slug] : null; }
+  function focusFrame(k) { const slot = $('slot-' + k); if (slot.hidden) { state.modeChosen = true; setMode(k); layout(); } }
+  function stepEl(i) { return $('aside').querySelector('.step[data-i="' + i + '"]'); }
+  function setResult(i, text, bad) { const el = stepEl(i); if (!el) return; const r = el.querySelector('.res'); r.textContent = text; r.className = 'res on' + (bad ? ' bad' : ''); }
+  function setCurrent(i) { state.step = i; for (const el of $('aside').querySelectorAll('.step')) el.classList.toggle('cur', Number(el.dataset.i) === i); }
+  let busy = false;
+  async function showStep(i) {
+    const t = currentTour(); if (!t || busy) return; const st = t.steps[i]; busy = true;
+    try { loadFrames(); focusFrame(st.on); setCurrent(i); if (st.prep) await st.prep(h); const el = st.show ? st.show(h) : null; if (el) await h.ring(el); else throw new Error('not on screen yet'); if (!st.do && st.result) setResult(i, st.result); }
+    catch (e) { setResult(i, 'Could not find that on the screen here (' + (e.message || e) + '). Try it by hand.', true); }
+    finally { busy = false; }
+  }
+  async function doStep(i) {
+    const t = currentTour(); if (!t || busy) return false; const st = t.steps[i]; busy = true;
+    const btn = stepEl(i) && stepEl(i).querySelector('[data-act="do"]'); if (btn) btn.disabled = true;
+    try {
+      loadFrames(); focusFrame(st.on); setCurrent(i);
+      await until(() => frameWin('base') && frameWin('base').__mock && frameWin('phone') && frameWin('phone').__mock, 15000);
+      if (st.prep) await st.prep(h);
+      if (st.do) await st.do(h);
+      const ok = st.done ? await until(() => { try { return st.done(h); } catch (e) { return false; } }, 15000) : true;
+      h.unring();
+      if (!ok) throw new Error('it did not show up on the other side in time');
+      setResult(i, st.result || 'Done.'); stepEl(i).classList.add('done');
+      if (i + 1 < t.steps.length) setCurrent(i + 1);
+      return true;
+    } catch (e) { h.unring(); setResult(i, 'That did not go through here (' + (e.message || e) + '). Reset the mock and try again, or do it by hand.', true); return false; }
+    finally { busy = false; if (btn) btn.disabled = false; }
+  }
+  let playing = false;
+  async function playAll() {
+    const t = currentTour(); if (!t) return;
+    const pb = $('play-all');
+    if (playing) { playing = false; pb.textContent = 'Play the tour'; return; }
+    playing = true; pb.textContent = 'Stop';
+    for (let i = 0; i < t.steps.length && playing; i++) {
+      const st = t.steps[i];
+      stepEl(i).scrollIntoView({ block: 'nearest' });
+      if (st.do) { const ok = await doStep(i); if (!ok) break; } else { await showStep(i); }
+      await wait(2600);
+    }
+    playing = false; pb.textContent = 'Play the tour';
+  }
+  // For the smoke suite and the console: run a tour's steps headlessly and report each.
+  window.__tour = {
+    tours: Object.keys(TOURS),
+    pick: (slug) => { const p = PERSONAS.find((x) => x.slug === slug); if (p) { state.who = p.n; return showGuide(); } },
+    run: (i) => doStep(i), show: (i) => showStep(i), reset: resetMock,
+    runAll: async () => { const t = currentTour(); const out = []; for (let i = 0; i < t.steps.length; i++) { const ok = await doStep(i); const r = stepEl(i).querySelector('.res').textContent; out.push({ i, ok, say: t.steps[i].say, res: ok ? 'ok' : r }); if (!ok) break; } return out; }
+  };
 
   // ---- the frames load once, when a role is picked or the demo scrolls into view
   function loadFrames() {
@@ -342,7 +509,7 @@
   state.who = fromHash >= 1 && fromHash <= PERSONAS.length ? fromHash : (remembered >= 1 && remembered <= PERSONAS.length ? remembered : 1);
   layout();
   showGuide();
-  if (fromHash >= 1) $('demo').scrollIntoView({ block: 'start' });
+  if (fromHash >= 1) { $('demo').scrollIntoView({ block: 'start' }); setTimeout(() => $('demo').scrollIntoView({ block: 'start' }), 400); }
 })();
 </script>
 </body>

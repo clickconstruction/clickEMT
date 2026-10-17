@@ -1454,7 +1454,13 @@ async function demo(check) {
   const cards = await until(() => pd() && pd().querySelectorAll('.card[data-role]').length === 12 && pd().querySelectorAll('.card[data-role]').length, 8000);
   check('/try/ draws a card for each of the twelve personas and frames both views in demo mode', cards === 12 && pd().querySelector('#base').dataset.src === '/?demo' && pd().querySelector('#phone').dataset.src === '/field/?demo', `${cards} cards`);
   pd().querySelector('.card[data-role="10-shelter-desk"]').click();
-  check('a role card loads both frames on the stand-in and shows that role\'s guide', await until(() => pd().querySelector('#base').getAttribute('src') === '/?demo' && pd().querySelector('#phone').getAttribute('src') === '/field/?demo' && /Shelter desk volunteer/.test((pd().querySelector('.who-head') || {}).textContent || ''), 8000));
+  check('a role card loads both frames on the stand-in and shows that role\'s tour', await until(() => pd().querySelector('#base').getAttribute('src') === '/?demo' && pd().querySelector('#phone').getAttribute('src') === '/field/?demo' && /Shelter desk volunteer/.test((pd().querySelector('.who-head') || {}).textContent || '') && pd().querySelectorAll('.step').length >= 6, 8000), `${pd().querySelectorAll('.step').length} steps`);
+  const tour = page.contentWindow.__tour;
+  check('six roles have a tour, with Show me on every step and Do it for me on most', !!tour && tour.tours.length === 6 && pd().querySelectorAll('.step [data-act="show"]').length === pd().querySelectorAll('.step').length && pd().querySelectorAll('.step [data-act="do"]').length >= 5, tour && tour.tours.join());
+  await tour.pick('03-unit-lead-on-foot');
+  await until(() => pd().querySelectorAll('.step').length === 7);
+  const ok0 = await tour.run(0);
+  check('Do it for me on the unit lead\'s first step presses Briefed on the demo phone and reports back', ok0 === true && /assembled from the incident/i.test(pd().querySelector('.step[data-i="0"] .res').textContent), pd().querySelector('.step[data-i="0"] .res').textContent.slice(0, 120));
   page.remove();
 }
 

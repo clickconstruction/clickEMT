@@ -27,6 +27,8 @@ Two views of one incident, for floods and other large-scale emergencies:
 
 The vocabulary follows the Incident Command System: zones are divisions, priorities are the operational period's objectives, assignments are the ICS 204, the log is the ICS 214.
 
+Picking up the work? Start with [docs/handoff.md](docs/handoff.md); the open work is in [docs/punchlist.md](docs/punchlist.md).
+
 ## Stack
 
 Plain JavaScript ES modules, no build step. Leaflet with OpenStreetMap tiles. Supabase (Postgres, Realtime, Storage) in the shared charity-tooling project, where every table carries the `ic_` prefix. Hosted as a static site; the field app is a PWA.

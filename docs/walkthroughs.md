@@ -468,3 +468,26 @@ Items 4 and 9 of "What to fix first" and the PIO's three jobs are clear.
 - **The nudge is only on the screen.** Past the rotation the row turns yellow and says swap the crew, but a phone in a dry bag makes no sound (never a takeover, by decision); the base's orange time is the other half of the warning.
 - **A photo outside any division has the base for its place** in the public set's captions; a street name typed by Operations would read better.
 - **Test the key is a live call** to Google from the browser, so the mock cannot show what "worked" looks like; the words appear beside the button.
+
+---
+
+## Re-walk after v29
+
+Rosa's and Ana's PAR jobs, walked on 2026-10-17 after commit 386586d (accountability by name) in the same mock: the phone at 375 × 812 as the seeded Unit 2 (Rosa, Nguyen and Patel on record) and Unit 1 (Ana, Ramirez and Okafor), the base at 1280 × 800 as Operations. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Rosa · "Answer the head count" (v24's count that started at 1) | Rosa | Operations pressed Start PAR. The phone's takeover: "Head count (PAR) · 14:31 Operations to everyone · PAR: is everyone accounted for? · CHECKED IN WITH YOU Nguyen, Patel · All 2 accounted for · Someone's missing". One tap on "All 2 accounted for": the toast "All 2 accounted for, sent", the card gone, the 214 "Unit 2: All accounted for (2)"; the base's PAR panel "Unit 2 · All accounted for (2) · 14:31". Nothing wider than the screen. | Clear |
+| Rosa · someone is missing | Rosa | On the next PAR, "Someone's missing": "WHO IS MISSING? TICK THEM · Nguyen · Patel · Back · Send: nobody missing" (Send greyed until a tick). Ticked Patel: "Send: 1 missing". Send: the alert screen ("Alert sent 14:31 · WAITING FOR OPERATIONS · Your location keeps sending … · Stand down, all OK"), the 214 "Unit 2: Missing someone: Patel (1 accounted for)" and "EMERGENCY, Unit 2 needs help in B-1: Missing: Patel". | Clear |
+| Operations · who is missing | Marcus | The yellow bar: "MISSING · Patel (Unit 2) · 14:31 · 1 accounted for"; the red bar: "EMERGENCY · Unit 2 needs help in B-1 · Acknowledge · Show unit"; the PAR panel: "Unit 2 · Missing: Patel · 1 accounted for · 14:31". The People board's Patel row is red: "Patel · Rope EMT · MISSING since 14:31 · Unit 2 last at 30.26742, -97.73820, live"; the same row, red, on Unit 2's panel. | Clear |
+| Ana · "Answer the PAR without typing" | Ana | Her card: "CHECKED IN WITH YOU Ramirez, Okafor · All 2 accounted for · Someone's missing". One tap; the 214 "Unit 1: All accounted for (2)". | Clear |
+| The check-in's head count | Rosa | The check-in form now has "How many with you, including you?" beside the names, with "Names are optional; the number is not. Typing names raises it." | Clear (not re-typed: Rosa reopened her incident) |
+
+Rosa's and Ana's PAR jobs are clear; v24's "People with you − 1 +" for a two-person unit is gone for any unit with names on record.
+
+**Still bites, small:**
+
+- **A found person stays "missing" until the next PAR.** Rosa stood down ("Unit 2 stood down, all OK"), but the MISSING line stayed on the bar and Patel's row stayed red: nothing clears a missing report but a new PAR. The stand-down could clear it, or Operations could mark the person found.
+- **Two PARs in a row stack on the phone.** Operations started a second PAR before everyone had answered the first; Ana's phone showed two cards, each needing an answer. The base's bar showed both too. A second PAR could close the first, or the phone could answer the newest for both.
+- **The Missing someone list has no "all of them".** A crew whose whole boat is out of contact ticks every name; a one-tap "Everyone" would do.
+- **The names on the card are the people checked in, not where they are.** A crew that split (two on the bank, one in the boat) has no way to say so; that is the People and tags work.

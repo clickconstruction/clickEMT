@@ -14,6 +14,7 @@ import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
 import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
+import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
 const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
@@ -26,7 +27,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -53,7 +54,7 @@ function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
   const was = state.screen;
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt', 'person']) $('#s-' + s).hidden = name !== s;
   // A sheet opens at its top. The browser gives a sheet shown again the scroll it had when it was
   // hidden, so the briefing came back at its end, where Briefed was pressed last time.
   if (name !== was && name !== 'home') toTop($('#s-' + name));
@@ -74,6 +75,7 @@ const outbox = new Outbox({
   structure: (p) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, p.fields)),
   pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts),
   person: (p) => data.addPerson(p.id, p),
+  evacuee: (p) => (p.update ? data.updateEvacuee(p.id, p.patch) : data.addEvacuee(p.id, p.fields)),
   personPatch: (p) => data.updatePerson(p.id, p.patch)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
@@ -640,6 +642,12 @@ function drawAll() {
     setCard(acard, 'card', `<div class="k">Your zone</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns zones from the base map. You can still send photos and hazards from where you stand.</div>`);
   }
 
+  // a shelter desk is not a search crew: its home is People here, not the zone and the search buttons
+  const desk = isDesk();
+  $('#desk').hidden = !desk;
+  for (const el of [$('#assignment'), $('.actions'), $('#banner')]) el.hidden = desk;
+  if ($('#mini').hidden !== desk) { $('#mini').hidden = desk; if (!desk && mini) setTimeout(() => mini.invalidateSize(), 50); }
+  if (desk) drawDesk();
   drawMini(zone);
   drawNearby();
 
@@ -903,6 +911,9 @@ function drawMenu() {
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
   setHtml($('#menu-kind'), kindChips(me ? me.kind : '', 'me-kind'));
+  const shelters = data.facilities().filter((f) => f.kind === 'shelter'), myShelter = isDesk() ? deskShelter() : null;
+  $('#menu-shelter-box').hidden = !isDesk();
+  setHtml($('#menu-shelter'), isDesk() ? (shelters.length ? shelters.map((f) => `<button class="chip${myShelter && myShelter.id === f.id ? ' on' : ''}" data-action="desk-shelter" data-id="${f.id}" aria-pressed="${!!myShelter && myShelter.id === f.id}">${esc(placeLabel(f))}</button>`).join('') : '<span class="muted small">No shelter on the map yet; Operations places one.</span>') : '');
   $('#menu-outbox').textContent = state.outbox ? `${state.outbox} report${state.outbox === 1 ? '' : 's'} waiting for signal${state.outboxError ? ': ' + (state.outboxError.message || state.outboxError) : ''}` : 'Nothing waiting, everything is sent';
   drawStatus();
 }
@@ -948,6 +959,184 @@ async function sendPhoto() {
   queueDraw();
 }
 
+
+// ---- People here: a shelter desk's home (v26). The shelter's count against its beds, a search across
+// every shelter and hospital, the crews' records on their way here (sign them in, not again), Sign in
+// a person, and who is here now, newest first. One record per person or family (ic_evacuees).
+function isDesk() { const me = data.me(); return !!me && me.kind === 'shelter_desk'; }
+// The shelter this desk works at: the one on its membership, else the nearest open shelter (or the only
+// one), saved once so the base and the database know which shelter's desk this is.
+function deskShelter() {
+  const me = data.me();
+  if (!me) return null;
+  const chosen = me.facility_id ? data.facility(me.facility_id) : null;
+  if (chosen) return chosen;
+  const shelters = data.facilities().filter((f) => f.kind === 'shelter');
+  const p = sensors.pos, near = p ? nearestFacility(shelters, 'shelter', p.lat, p.lng) : null;
+  const pick = near ? near.facility : shelters[0] || null;
+  if (pick && state.deskPicked !== pick.id) {
+    state.deskPicked = pick.id;
+    data.local('ic_members', Object.assign({}, me, { facility_id: pick.id }));
+    data.setUnitFacility(me.user_id, pick.id).catch((e) => { state.deskPicked = null; toast(e.message || String(e), true); });
+  }
+  return pick;
+}
+const facilityOf = (id) => data.facility(id);
+const fromOf = (e) => evacueeFrom(e, { structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) });
+function placeLabel(f) { return f ? (f.name || facilityKind(f.kind)[1]) : ''; }
+function drawDesk() {
+  const f = deskShelter();
+  const all = data.evacuees();
+  const c = f ? placeCounts(all, f.id) : null;
+  setHtml($('#desk-head'), f
+    ? `<div class="desk-top"><h2>People here</h2><span class="desk-count">${esc(placeLabel(f))} · <strong>${esc(bedsText(c.people, f.beds))}</strong></span></div>
+       <div class="muted small">${c.here.length} record${c.here.length === 1 ? '' : 's'}${c.needs.length ? ' · ' + esc(c.needs.map(([, label, n]) => n + ' ' + label.toLowerCase()).join(' · ')) : ''}${f.expected ? ' · expected: ' + esc(f.expected) : ''}. Operations sees this count live on the shelter's card.</div>`
+    : `<div class="desk-top"><h2>People here</h2></div><div class="muted small">Operations has not placed a shelter yet. You can still find a person; Sign in waits for a shelter on the map.</div>`);
+  drawDeskResults();
+  const arriving = c ? c.arriving : [];
+  setHtml($('#desk-arriving'), arriving.length ? `<div class="k desk-arr-k">Arriving from crews · sign them in, not again</div>` + arriving.map((e) => `
+    <div class="arrive" data-ev="${e.id}"><span class="arrive-main"><strong>${esc(evacueeWho(e))}</strong>${fromOf(e) ? ' from ' + esc(fromOf(e)) : ''} · ${esc(unitLabel(data.member(e.logged_by)))}, ${hhmm(e.status_at || e.created_at)}${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><button type="button" class="btn arrive-btn" data-action="ev-arrived" data-id="${e.id}">They're here</button></div>`).join('') : '');
+  const here = c ? c.here : [];
+  const left = c ? c.left : [];
+  setHtml($('#desk-here'), f ? `<div class="k">Here now · ${c.people} ${c.people === 1 ? 'person' : 'people'} in ${here.length} record${here.length === 1 ? '' : 's'}, newest first</div>` +
+    (here.length ? here.map((e) => evRow(e, f)).join('') : '<div class="muted small">Nobody signed in yet.</div>') +
+    (left.length ? `<div class="k" style="margin-top:6px">Left here · moved, never removed</div>` + left.map((e) => evRow(e, f)).join('') : '') : '');
+}
+function evRow(e, f) {
+  const away = !(e.facility_id === f.id && e.status === 'here');
+  return `<button type="button" class="ev-row${away ? ' away' : ''}" data-action="ev-open" data-id="${e.id}"><span class="ev-main"><span class="ev-who">${esc(evacueeWho(e))}</span><span class="ev-sub">${esc([fromOf(e) ? 'from ' + fromOf(e) : '', needsText(e.needs), e.note].filter(Boolean).join(' · '))}</span></span><span class="ev-when">${away ? esc(evacueeWhere(e, facilityOf)) : hhmm(e.signed_in_at || e.status_at)}</span></button>`;
+}
+// Find a person: every record on the incident, wherever it says they are now and since when. Not listed?
+// One tap asks Operations to look, with the desk's number.
+function drawDeskResults() {
+  const q = state.deskQ.trim();
+  if (!q) { setHtml($('#desk-results'), ''); return; }
+  const hits = evacueeMatch(data.evacuees(true), q, { facilityOf, structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) }).slice(0, 8);
+  setHtml($('#desk-results'), `<div class="card find-card">${hits.map((e) => `<div class="find-row"><span><strong>${esc(evacueeWho(e))}</strong>${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}</span><span class="muted">${esc(evacueeWhere(e, facilityOf))}${fromOf(e) ? ' · from ' + esc(fromOf(e)) : ''}</span></div>`).join('') || `<div class="muted">Nobody on record matches "${esc(q)}".</div>`}
+    <div class="find-ask">Not listed? <button type="button" class="btn sm" data-action="ev-ask">Ask Operations to look</button><span class="muted"> sends "Looking for ${esc(q)}" with your desk's number.</span></div></div>`);
+}
+async function askOpsToLook() {
+  const q = state.deskQ.trim();
+  if (!q) { toast('Type the name first', true); $('#desk-q').focus(); return; }
+  const r = data.recipientsFor('ops');
+  if (!r.toUsers.length) { toast('Nobody at Operations to send to', true); return; }
+  const me = data.me(), f = deskShelter(), phone = data.profile && data.profile.phone;
+  const text = `Looking for ${q}. Not on any shelter or hospital record. Call ${unitLabel(me)}${f ? ' at ' + placeLabel(f) : ''}${phone ? ' on ' + phone : ''}.`;
+  const id = uuid();
+  data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, urgency: '', lat: null, lng: null, created_at: new Date().toISOString() });
+  await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text, urgency: '' });
+  state.lastSentAt = Date.now();
+  toast('Asked Operations to look for ' + q);
+}
+// Where now, as a select: here (the desk's shelter), the other shelters and the hospitals, or gone from them.
+function whereOptions(cur, hereId) {
+  const places = data.facilities().filter((f) => PERSON_PLACES.includes(f.kind) || f.id === (cur && cur.facility_id));
+  const opt = (v, label) => `<option value="${esc(v)}">${esc(label)}</option>`;
+  return places.sort((a, b) => (b.id === hereId) - (a.id === hereId) || PERSON_PLACES.indexOf(a.kind) - PERSON_PLACES.indexOf(b.kind)).map((f) => opt('f:' + f.id, f.id === hereId ? 'Here, ' + placeLabel(f) : placeLabel(f) + ' (' + facilityKind(f.kind)[1].toLowerCase() + ')')).join('')
+    + LEFT_CHOICES.map(([v, label]) => opt(v, label)).join('');
+}
+// The sheet: a new person signed in here, a crew's arrival just signed in (add the name), or a record to change.
+function openPerson(mode, id) {
+  const f = deskShelter();
+  const e = id ? data.evacuee(id) : null;
+  if (mode === 'new' && !f) { toast('No shelter on the map yet to sign people in at', true); return; }
+  state.ev = { mode, id: e ? e.id : null, needs: new Set(e ? e.needs : []), countTouched: !!e };
+  $('#person-title').textContent = mode === 'new' ? 'Sign in a person' : mode === 'arrived' ? 'Signed in: ' + evacueeWho(e) : evacueeWho(e);
+  $('#person-sub').textContent = mode === 'new' ? (f ? placeLabel(f) + ' · ' + hhmm(new Date()) : '') : evacueeWhere(e, facilityOf);
+  $('#person-hint').textContent = mode === 'arrived' ? `${unitLabel(data.member(e.logged_by))} sent them${fromOf(e) ? ' from ' + fromOf(e) : ''}. They are signed in; add the name if you have it.` : mode === 'edit' ? 'Change what is wrong, or where they are now. A record is moved, never removed.' : '';
+  $('#person-hint').hidden = mode === 'new';
+  $('#ev-who').value = e ? e.label : '';
+  $('#ev-count').value = e ? e.count : 1;
+  $('#ev-from').value = e ? (e.from_text || fromOf(e)) : '';
+  $('#ev-note').value = e ? e.note : '';
+  $('#ev-where').innerHTML = whereOptions(e, f && f.id);
+  $('#ev-where').value = e ? whereValue(e) : (f ? 'f:' + f.id : 'unknown');
+  if (e && e.status === 'on_the_way' && f && e.facility_id === f.id) $('#ev-where').value = 'f:' + f.id;
+  $('#ev-save').textContent = mode === 'new' ? 'Sign in here' : mode === 'arrived' ? 'Save the name' : 'Save';
+  $('#ev-cancel').textContent = mode === 'arrived' ? 'Not now' : 'Cancel';   // they are signed in already
+  drawPersonNeeds();
+  screen('person');
+  if (mode !== 'edit') setTimeout(() => $('#ev-who').focus(), 60);
+}
+function drawPersonNeeds() { setHtml($('#ev-needs'), NEEDS.map(([k, label]) => `<button type="button" class="chip${state.ev.needs.has(k) ? ' on' : ''}" data-action="ev-need" data-need="${k}" aria-pressed="${state.ev.needs.has(k)}">${esc(label)}</button>`).join('')); }
+async function savePerson() {
+  const ev = state.ev;
+  if (!ev) return;
+  const label = $('#ev-who').value.trim();
+  if (!label) { toast('Who: a name, or "family of 4"', true); $('#ev-who').focus(); return; }
+  const f = deskShelter();
+  const cur = ev.id ? data.evacuee(ev.id) : null;
+  const where = wherePatch($('#ev-where').value, { facilityOf, hereId: f && f.id, current: cur });
+  const fields = { label, count: Math.min(999, Math.max(1, Number($('#ev-count').value) || 1)), needs: [...ev.needs], from_text: $('#ev-from').value.trim(), note: $('#ev-note').value.trim(), ...where };
+  const now = new Date().toISOString();
+  if (cur) {
+    const patch = {};
+    for (const k of Object.keys(fields)) if (JSON.stringify(fields[k]) !== JSON.stringify(k === 'from_text' ? (cur.from_text || '') : cur[k])) patch[k] = fields[k];
+    if (patch.from_text === fromOf(cur) && !cur.from_text) delete patch.from_text;   // the house's label shown in the box, unchanged
+    if (Object.keys(patch).length) {
+      const moved = 'status' in patch || 'facility_id' in patch;
+      data.local('ic_evacuees', Object.assign({}, cur, patch, moved ? { status_at: now, prev_facility_id: cur.status === 'here' ? cur.facility_id : cur.prev_facility_id } : {}, patch.status === 'here' ? { signed_in_at: now, signed_in_by: data.user.id } : {}));
+      await outbox.add('evacuee', { id: cur.id, update: true, patch });
+    }
+    toast(Object.keys(patch).length ? evacueeWho(Object.assign({}, cur, patch)) + (patch.status && patch.status !== 'here' ? ': ' + evacueeWhere(Object.assign({}, cur, patch, { status_at: now }), facilityOf) : ' saved') : 'Nothing changed');
+  } else {
+    const id = uuid();
+    data.local('ic_evacuees', Object.assign({ id, incident_id: data.incident.id, structure_id: null, prev_facility_id: null, logged_by: data.user.id, status_at: now, created_at: now, updated_at: now, archived_at: null, signed_in_by: where.status === 'here' ? data.user.id : null, signed_in_at: where.status === 'here' ? now : null }, fields));
+    await outbox.add('evacuee', { id, fields });
+    toast(evacueeWho(fields) + (where.status === 'here' ? ' signed in' : ': ' + evacueeWhere(Object.assign({}, fields, { status_at: now }), facilityOf)));
+  }
+  state.lastSentAt = Date.now();
+  state.ev = null;
+  screen('home');
+  queueDraw();
+}
+// They're here: one tap signs the crew's record in at this shelter; the sheet then asks for the name.
+async function theyAreHere(id) {
+  const e = data.evacuee(id), f = deskShelter();
+  if (!e || !f) return;
+  const now = new Date().toISOString();
+  data.local('ic_evacuees', Object.assign({}, e, { status: 'here', facility_id: f.id, status_at: now, signed_in_at: now, signed_in_by: data.user.id }));
+  await outbox.add('evacuee', { id, update: true, patch: { status: 'here', facility_id: f.id } });
+  state.lastSentAt = Date.now();
+  openPerson('arrived', id);
+}
+$('#desk-q').addEventListener('input', (e) => { state.deskQ = e.target.value; drawDeskResults(); });
+$('#ev-who').addEventListener('input', () => { if (state.ev && !state.ev.countTouched) { const n = countIn($('#ev-who').value); $('#ev-count').value = n || 1; } });
+$('#ev-count').addEventListener('input', () => { if (state.ev) state.ev.countTouched = true; });
+// the help count follows the rows as they are typed: everyone on a row needed help
+$('#st-people').addEventListener('input', () => {
+  if (!state.st) return;
+  syncStPeople();
+  const n = state.st.people.filter((r) => r.who.trim()).reduce((sum, r) => sum + (countIn(r.who) || 1), 0);
+  if (n > state.st.help) { state.st.help = n; $('#help-count').textContent = n; }
+});
+
+// The crew's rows under People needing help: who, their condition, where they went. Each becomes a
+// record linked to the house, on its way when sent to a shelter, so the desk sees "from 112 Pecan Ln".
+function stWhereOptions(sel) {
+  const places = data.facilities().filter((f) => PERSON_PLACES.includes(f.kind)).sort((a, b) => PERSON_PLACES.indexOf(a.kind) - PERSON_PLACES.indexOf(b.kind));
+  return places.map((f) => `<option value="f:${f.id}"${sel === 'f:' + f.id ? ' selected' : ''}>Went to ${esc(placeLabel(f))} (${esc(facilityKind(f.kind)[1].toLowerCase())})</option>`).join('')
+    + LEFT_CHOICES.map(([v, label]) => `<option value="${v}"${sel === v ? ' selected' : ''}>${esc(label)}</option>`).join('');
+}
+function blankStPerson() {
+  const st = state.st, shelters = data.facilities().filter((f) => f.kind === 'shelter');
+  const near = st && st.lat != null ? nearestFacility(shelters, 'shelter', st.lat, st.lng) : null;
+  const f = near ? near.facility : shelters[0];
+  return { who: '', cond: '', where: f ? 'f:' + f.id : 'unknown' };
+}
+function syncStPeople() {
+  for (const el of document.querySelectorAll('#st-people [data-stp]')) { const r = state.st.people[Number(el.dataset.i)]; if (r) r[el.dataset.stp] = el.value; }
+}
+function drawStPeople() {
+  const st = state.st;
+  const on = st.id ? data.evacuees().filter((e) => e.structure_id === st.id) : [];
+  setHtml($('#st-people'), on.map((e) => `<div class="st-on"><strong>${esc(evacueeWho(e))}</strong>${e.note ? ' · ' + esc(e.note) : ''}<span class="muted"> · ${esc(evacueeWhere(e, facilityOf))}</span></div>`).join('')
+    + st.people.map((r, i) => `<div class="st-row">
+      <input class="input" data-stp="who" data-i="${i}" value="${esc(r.who)}" placeholder="Who: a name, or &quot;family of 4&quot;" autocapitalize="words" autocomplete="off" maxlength="120" aria-label="Who">
+      <input class="input" data-stp="cond" data-i="${i}" value="${esc(r.cond)}" placeholder="Condition: on oxygen, stable" autocomplete="off" maxlength="200" aria-label="Condition">
+      <select class="input" data-stp="where" data-i="${i}" aria-label="Went to" title="Went to">${stWhereOptions(r.where, true)}</select>
+      <button type="button" class="btn pp-x" data-action="st-person-x" data-i="${i}" aria-label="Remove this row" title="Remove this row">×</button></div>`).join(''));
+}
 // ---- a structure: who was there and what state it is in
 function openStructure(id) {
   const existing = id ? data.structure(id) : null;
@@ -961,7 +1150,7 @@ function openStructure(id) {
     id: existing ? existing.id : null, zoneId: zone ? zone.id : null,
     lat: existing && existing.lat != null ? existing.lat : (p ? p.lat : null), lng: existing && existing.lng != null ? existing.lng : (p ? p.lng : null),
     occ: existing ? existing.occupants : 'unknown', help: existing ? existing.people_needing_help : 0,
-    water: existing ? existing.water_cm : null, damage: existing ? existing.damage : 'unknown', haz
+    water: existing ? existing.water_cm : null, damage: existing ? existing.damage : 'unknown', haz, people: []
   };
   $('#structure-title').textContent = existing ? (existing.label || 'Structure') : 'Address clear';
   $('#structure-sub').textContent = (zone ? zone.code + (nextPass(zone) === 'secondary' ? ', secondary search' : '') : 'Outside the divisions') + (state.st.lat != null ? ' · ' + latLngText(state.st.lat, state.st.lng) : ' · no GPS fix yet') + '. Save marks it searched and counts it for the zone.';
@@ -978,10 +1167,14 @@ function drawStructure() {
   setHtml($('#water-chips'), WATER.map(([cm, label]) => `<button class="chip${st.water === cm ? ' on' : ''}" data-action="water" data-v="${cm}">${esc(label)}</button>`).join(''));
   setHtml($('#damage-chips'), DAMAGE.map(([v, label]) => `<button class="chip${st.damage === v ? ' on' : ''}" data-action="damage" data-v="${v}">${esc(label)}</button>`).join(''));
   setHtml($('#shaz-chips'), CLEAR_HAZARDS.map(([label], i) => `<button class="chip${st.haz.has(i) ? ' on' : ''}" data-action="shaz" data-i="${i}">${esc(label)}</button>`).join(''));
+  drawStPeople();
 }
 async function saveStructure() {
   const st = state.st;
   if (!st) return;
+  syncStPeople();
+  const rows = st.people.filter((r) => r.who.trim()).map((r) => ({ ...r, who: r.who.trim(), cond: r.cond.trim(), count: countIn(r.who) || 1 }));
+  st.help = Math.max(st.help, rows.reduce((n, r) => n + r.count, 0));   // everyone on a row needed help
   const zone = st.zoneId ? data.zone(st.zoneId) : null;
   const me = data.me();
   const codes = [...st.haz].map((i) => CLEAR_HAZARDS[i][1]);
@@ -1000,12 +1193,19 @@ async function saveStructure() {
     data.local('ic_zones', Object.assign({}, zone, { cleared: recs.filter((s) => s.status === 'searched').length, structures: Math.max(zone.structures, recs.length) }));
   }
   await outbox.add('structure', { id, update: !!st.id, fields });
+  // each row a record linked to the house: after the house in the outbox, so the link has something to point at
+  for (const r of rows) {
+    const eid = uuid(), at = now.toISOString();
+    const ev = { label: r.who, count: r.count, needs: needsIn(r.who + ' ' + r.cond), note: r.cond, structure_id: id, from_text: fields.label || (zone ? zone.code : ''), ...wherePatch(r.where, { facilityOf }) };
+    data.local('ic_evacuees', Object.assign({ id: eid, incident_id: data.incident.id, prev_facility_id: null, logged_by: data.user.id, status_at: at, signed_in_by: null, signed_in_at: null, created_at: at, updated_at: at, archived_at: null }, ev));
+    await outbox.add('evacuee', { id: eid, fields: ev });
+  }
   state.lastSentAt = Date.now();
   state.st = null;
   screen('home');
   const z = zone ? data.zone(zone.id) : null;
   if (z && z.structures && z.cleared >= z.structures) { openClear(); toast('That was the last structure. Is the search of ' + z.code + ' complete?'); }
-  else toast((fields.label || 'Structure') + ' searched' + (z ? ' · ' + z.cleared + ' of ' + z.structures : ''));
+  else toast((fields.label || 'Structure') + ' searched' + (z ? ' · ' + z.cleared + ' of ' + z.structures : '') + (rows.length ? ' · ' + rows.length + (rows.length === 1 ? ' record' : ' records') + ' of who went where' : ''));
   queueDraw();
 }
 
@@ -1129,12 +1329,21 @@ document.addEventListener('click', async (e) => {
       case 'addr-clear': await addrClear(); break;
       case 'zone-clear': openClear(); break;
       case 'pass': state.pass = btn.dataset.v; { const z = myZone(); $('#clear-title').textContent = state.pass === 'secondary' ? 'Mark ' + (z ? z.code : '') + ' clear' : 'Finish the search of ' + (z ? z.code : ''); } drawClear(); break;
-      case 'occ': state.st.occ = btn.dataset.v; drawStructure(); break;
-      case 'water': state.st.water = state.st.water === Number(btn.dataset.v) ? null : Number(btn.dataset.v); drawStructure(); break;
-      case 'damage': state.st.damage = btn.dataset.v; drawStructure(); break;
-      case 'shaz': { const i = Number(btn.dataset.i); if (state.st.haz.has(i)) state.st.haz.delete(i); else state.st.haz.add(i); drawStructure(); break; }
-      case 'help-up': state.st.help = Math.min(999, state.st.help + 1); drawStructure(); break;
-      case 'help-down': state.st.help = Math.max(0, state.st.help - 1); drawStructure(); break;
+      case 'occ': syncStPeople(); state.st.occ = btn.dataset.v; drawStructure(); break;
+      case 'water': syncStPeople(); state.st.water = state.st.water === Number(btn.dataset.v) ? null : Number(btn.dataset.v); drawStructure(); break;
+      case 'damage': syncStPeople(); state.st.damage = btn.dataset.v; drawStructure(); break;
+      case 'shaz': { syncStPeople(); const i = Number(btn.dataset.i); if (state.st.haz.has(i)) state.st.haz.delete(i); else state.st.haz.add(i); drawStructure(); break; }
+      case 'help-up': syncStPeople(); state.st.help = Math.min(999, state.st.help + 1); if (!state.st.people.length) state.st.people.push(blankStPerson()); drawStructure(); break;
+      case 'st-person-add': syncStPeople(); state.st.people.push(blankStPerson()); drawStructure(); { const last = document.querySelector('#st-people .st-row:last-child [data-stp="who"]'); if (last) last.focus(); } break;
+      case 'st-person-x': syncStPeople(); state.st.people.splice(Number(btn.dataset.i), 1); drawStructure(); break;
+      case 'ev-new': openPerson('new'); break;
+      case 'ev-open': { const e = data.evacuee(btn.dataset.id); if (e) openPerson('edit', e.id); break; }
+      case 'ev-arrived': await theyAreHere(btn.dataset.id); break;
+      case 'ev-need': { const k = btn.dataset.need; if (state.ev.needs.has(k)) state.ev.needs.delete(k); else state.ev.needs.add(k); drawPersonNeeds(); break; }
+      case 'ev-save': await savePerson(); break;
+      case 'ev-ask': await askOpsToLook(); break;
+      case 'desk-shelter': { const me = data.me(); if (me) { data.local('ic_members', Object.assign({}, me, { facility_id: btn.dataset.id })); await data.setUnitFacility(me.user_id, btn.dataset.id); toast('Your shelter: ' + placeLabel(data.facility(btn.dataset.id))); drawMenu(); queueDraw(); } break; }
+      case 'help-down': syncStPeople(); state.st.help = Math.max(0, state.st.help - 1); drawStructure(); break;
       case 'save-structure': await saveStructure(); break;
       case 'victims-up': state.victims += 1; drawClear(); break;
       case 'victims-down': state.victims = Math.max(0, state.victims - 1); drawClear(); break;

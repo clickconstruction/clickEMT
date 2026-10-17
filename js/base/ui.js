@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf } from '../shared/rules.js';
 import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -36,7 +36,7 @@ export function panelHtml(data, state) {
   if (sel.type === 'zone') { const z = data.zone(sel.id); if (z) return zoneHtml(data, z, state); }
   if (sel.type === 'photo') { const p = data.photo(sel.id); if (p) return photoHtml(data, p); }
   if (sel.type === 'structure') { const s = data.structure(sel.id); if (s) return structureHtml(data, s); }
-  if (sel.type === 'facility') { const f = data.facility(sel.id); if (f) return facilityHtml(data, f); }
+  if (sel.type === 'facility') { const f = data.facility(sel.id); if (f) return facilityHtml(data, f, state); }
   if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m, state); }
   return homeHtml(data, state);
 }
@@ -134,6 +134,7 @@ function homeHtml(data, state) {
     <div class="k" style="margin-top:6px">Messages</div>
     ${messagesHtml(data, null, 8)}
     ${facilitiesHtml(data)}
+    ${shelteredHtml(data, state)}
     ${channelsHtml(data)}
     ${agenciesHtml(data)}
     ${publicHtml(data)}
@@ -546,8 +547,10 @@ export function channelsHtml(data) {
     <form class="composer" data-form="channel-add"><div class="composer-row"><input name="use" placeholder="Use, e.g. Tactical, Division A" required maxlength="60"><input name="channel" placeholder="Channel" required maxlength="24" style="flex:0 1 110px"><button class="btn pri sm" type="submit">Add</button></div></form>`;
 }
 
-function facilityHtml(data, f) {
+function facilityHtml(data, f, state) {
   const k = facilityKind(f.kind);
+  const shelter = f.kind === 'shelter', people = PERSON_PLACES.includes(f.kind);
+  const c = people ? placeCounts(data.evacuees(), f.id) : null;
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${esc(f.name || k[1])} <span>${esc(k[1])}${f.closed_at ? ' · closed ' + hhmm(f.closed_at) : ''}</span></div>
@@ -555,6 +558,10 @@ function facilityHtml(data, f) {
     <div class="d-row">${f.closed_at ? `<span class="badge">Closed ${hhmm(f.closed_at)}</span><button class="btn sm" data-action="reopen-facility" data-id="${f.id}" title="Open again: back on the field's Nearby card and the map">Reopen</button>` : `<span class="badge cleared">Open</span><button class="btn sm" data-action="close-facility" data-id="${f.id}" title="The facility itself has closed: it leaves the field's Nearby card and is drawn faded on the map. Logged; Reopen brings it back.">Mark closed</button>`}</div>
     <div class="kv">
       <span class="k">Contact</span><span>${esc(f.contact) || 'not set'}</span>
+      ${shelter ? `<span class="k">Beds</span><span><strong>${esc(bedsText(c.people, f.beds))}</strong>${f.beds == null ? ' <span class="muted">· capacity not set: Beds, below</span>' : ''}</span>
+      <span class="k">Expected</span><span>${f.expected ? esc(f.expected) + ' · ' : ''}<span class="ev-coming${c.arriving.length ? ' on' : ''}">${c.arrivingPeople} on ${c.arrivingPeople === 1 ? 'the' : 'their'} way from crews</span> <span class="muted">(live: records a crew sent here, not yet signed in at the desk)</span></span>
+      <span class="k">Needs here</span><span>${c.needs.length ? esc(needsTotalsText(c.needs)) : 'none listed'}</span>
+      <span class="k">Desk</span><span>${esc(data.units().filter((u) => u.kind === 'shelter_desk' && u.facility_id === f.id && u.status !== 'checked_out').map((u) => unitLabel(u)).join(', ') || 'no shelter desk checked in here yet')}</span>` : ''}
       <span class="k">Position</span><span class="mono">${esc(latLngText(f.lat, f.lng))}</span>
       <span class="k">Opened</span><span>${esc(new Date(f.created_at).toLocaleString())}</span>
     </div>
@@ -565,12 +572,113 @@ function facilityHtml(data, f) {
       </div>
       <label>Contact <input name="contact" value="${esc(f.contact)}" placeholder="A channel or a phone number"></label>
       <label>Notes <input name="notes" value="${esc(f.notes)}" placeholder="What the field should know"></label>
+      ${shelter ? `<div class="row-2">
+        <label>Beds <input name="beds" type="number" min="0" max="100000" inputmode="numeric" value="${f.beds == null ? '' : f.beds}" placeholder="Capacity"></label>
+        <label>Expected <input name="expected" value="${esc(f.expected || '')}" placeholder="Bus 2 from Pecan Park, 12 people, 17:30" maxlength="200"></label>
+      </div>` : ''}
       <div class="row-btns">
         <button class="btn sm" type="button" data-action="pan-to" data-lat="${f.lat}" data-lng="${f.lng}">Show on map</button>
         <button class="btn sm" type="button" data-action="close-panel" title="Close this card; the facility stays open">Close</button>
         <button class="btn pri sm" type="submit">Save</button>
       </div>
+    </form>
+    ${people ? placePeopleHtml(data, f, c, state) : ''}`;
+}
+
+// ---- people sheltered and moved (v26): one record per person or family, on the shelter's or the
+// hospital's card, findable by name from the header; counts only on anything that leaves the incident.
+const evFrom = (data, e) => evacueeFrom(e, { structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) });
+const facilityOf = (data) => (id) => data.facility(id);
+// how the record came to be: "brought out by Unit 3 at 14:05", "signed in by Gym desk 14:22"
+function evOrigin(data, e) {
+  if (e.structure_id || (e.logged_by && data.member(e.logged_by) && data.member(e.logged_by).role === 'unit' && data.member(e.logged_by).kind !== 'shelter_desk')) return `brought out by ${unitLabel(data.member(e.logged_by))} at ${hhmm(e.created_at)}`;
+  return e.signed_in_by ? `signed in by ${unitLabel(data.member(e.signed_in_by))} ${hhmm(e.signed_in_at)}` : `logged by ${unitLabel(data.member(e.logged_by))} ${hhmm(e.created_at)}`;
+}
+// Where now, as a select: this place, the other shelters and the hospitals, or gone from them.
+function whereSelectHtml(data, e, attrs) {
+  const places = data.facilities(true).filter((x) => (PERSON_PLACES.includes(x.kind) && !x.closed_at) || x.id === e.facility_id);
+  const cur = whereValue(e);
+  return `<select class="sel" ${attrs} aria-label="Where now" title="Where now: a record is moved, never removed">${places.map((x) => `<option value="f:${x.id}"${cur === 'f:' + x.id ? ' selected' : ''}>${esc(x.name || facilityKind(x.kind)[1])}${e.status === 'on_the_way' && cur === 'f:' + x.id ? ' (on the way)' : ''}</option>`).join('')}${LEFT_CHOICES.map(([v, label]) => `<option value="${v}"${cur === v ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
+}
+function evRowHtml(data, e, f) {
+  const away = !(e.facility_id === f.id && (e.status === 'here' || e.status === 'moved'));
+  return `<div class="ev-r${away ? ' away' : ''}" data-ev="${e.id}">
+    <span class="ev-who"><strong>${esc(evacueeWho(e))}</strong>${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span>
+    <span class="muted">${evFrom(data, e) ? 'from ' + esc(evFrom(data, e)) : ''}</span>
+    <span class="${away ? 'ev-moved' : ''}">${away ? esc(evacueeWhere(e, facilityOf(data))) : esc(needsText(e.needs)) || '<span class="muted">—</span>'}</span>
+    <span class="muted">${esc(evOrigin(data, e))}</span>
+    ${whereSelectHtml(data, e, `data-select="ev-where" data-id="${e.id}"`)}
+  </div>`;
+}
+function placePeopleHtml(data, f, c, state) {
+  const adding = state && state.evAdd === f.id;
+  const hospital = f.kind !== 'shelter';
+  return `
+    ${c.arriving.length ? `<div class="ev-box arriving"><div class="d-row"><span class="k" style="width:auto;flex:1">On the way from crews · ${c.arrivingPeople} ${c.arrivingPeople === 1 ? 'person' : 'people'}</span></div>
+      ${c.arriving.map((e) => `<div class="ev-r" data-ev="${e.id}"><span class="ev-who"><strong>${esc(evacueeWho(e))}</strong>${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><span class="muted">${evFrom(data, e) ? 'from ' + esc(evFrom(data, e)) : ''}</span><span>${esc(needsText(e.needs))}</span><span class="muted">${esc(evOrigin(data, e))}</span><button class="btn sm" data-action="ev-sign-in" data-id="${e.id}" data-facility="${f.id}" title="They have arrived: sign them in here (the desk usually does this)">Signed in</button></div>`).join('')}</div>` : ''}
+    <div class="ev-box"><div class="d-row"><span class="k" style="width:auto;flex:1">${hospital ? 'People sent here' : 'People here'} · ${c.people} in ${c.here.length} record${c.here.length === 1 ? '' : 's'}</span><span class="muted" style="font-size:12px">newest first</span></div>
+      ${c.here.length ? `<div class="ev-grid">${c.here.map((e) => evRowHtml(data, e, f)).join('')}</div>` : '<div class="muted" style="font-size:12.5px">Nobody signed in yet.</div>'}
+      ${c.left.length ? `<div class="k" style="margin-top:4px">Left here</div><div class="ev-grid">${c.left.map((e) => evRowHtml(data, e, f)).join('')}</div>` : ''}
+      ${adding ? evAddFormHtml(f) : ''}
+      <div class="d-row">${adding ? '' : `<button class="btn sm" data-action="ev-add-toggle" data-id="${f.id}">Sign in a person</button>`}<button class="btn sm" data-action="print-shelter" data-id="${f.id}">Print the list</button><span class="muted" style="font-size:12px">A record is moved, never removed: moved to, left with family, unknown.</span></div>
+    </div>`;
+}
+function evAddFormHtml(f) {
+  return `<form class="inline-form ev-add" data-form="evacuee-add" data-facility="${f.id}">
+      <div class="row-2"><label>Who <input name="label" required maxlength="120" placeholder="a name, or &quot;family of 4, Nguyen&quot;" autocomplete="off"></label><label>How many <input name="count" type="number" min="1" max="999" value="1"></label></div>
+      <div class="chips">${NEEDS.map(([k, label]) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="checkbox" name="need" value="${k}"> ${esc(label)}</label>`).join('')}</div>
+      <div class="row-2"><label>From <input name="from" maxlength="120" placeholder="address or division" autocomplete="off"></label><label>Note <input name="note" maxlength="300" placeholder="on oxygen, stable" autocomplete="off"></label></div>
+      <div class="row-btns"><button class="btn sm" type="button" data-action="ev-add-toggle" data-id="">Cancel</button><button class="btn pri sm" type="submit">Sign in here</button></div>
     </form>`;
+}
+// The home panel's line per shelter and hospital, and the find box (the header has one too).
+export function shelteredHtml(data, state) {
+  const places = data.facilities().filter((f) => PERSON_PLACES.includes(f.kind));
+  const all = data.evacuees();
+  if (!places.length && !all.length) return '';
+  const q = (state && state.find && state.find.home) || '';
+  return `
+    <div class="k" style="margin-top:6px">People sheltered and moved</div>
+    ${places.map((f) => { const c = placeCounts(all, f.id); return `<button class="ur" data-action="select-facility" data-id="${f.id}"><span class="fmark fmark-${esc(f.kind)} inline">${esc(facilityKind(f.kind)[2])}</span><span class="ur-main"><span class="ur-name">${esc(f.name || facilityKind(f.kind)[1])}</span><span class="ur-sub">${f.kind === 'shelter' ? esc(bedsText(c.people, f.beds)) + (f.beds != null ? ' beds' : '') + (c.arriving.length ? ` · <span class="ev-coming on">${c.arrivingPeople} on the way</span>` : '') + (c.needs.length ? ' · ' + esc(needsTotalsText(c.needs)) : '') : c.people + ' sent here'}</span></span></button>`; }).join('')}
+    <div class="find-home"><input class="log-search" data-find="home" type="search" value="${esc(q)}" placeholder="Find a person: a name, a street" aria-label="Find a person" autocomplete="off"><div data-find-results="home">${q.trim() ? findPersonHtml(data, q) : ''}</div></div>`;
+}
+// Find a person: where they are now and since when, from every shelter, hospital and crew record, and the
+// responders on the People board.
+export function findPersonHtml(data, q) {
+  const hits = evacueeMatch(data.evacuees(true), q, { facilityOf: facilityOf(data), structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) }).slice(0, 12);
+  const crew = (q || '').trim() ? peopleMatch(data.people(), { q, unitLabelOf: (uid) => unitLabel(data.member(uid)) }).slice(0, 6) : [];
+  const rows = hits.map((e) => { const place = e.facility_id || e.prev_facility_id; return `<div class="find-row"><span class="find-who"><strong>${esc(evacueeWho(e))}</strong>${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}</span><span class="find-where">${esc(evacueeWhere(e, facilityOf(data)))}</span><span class="muted find-from">${esc([evFrom(data, e) ? 'from ' + evFrom(data, e) : '', evOrigin(data, e)].filter(Boolean).join(' · '))}</span>${place ? `<button class="btn sm" data-action="select-facility" data-id="${place}">Open</button>` : ''}</div>`; }).join('');
+  const crewRows = crew.map((p) => { const u = data.member(p.user_id); return `<div class="find-row"><span class="find-who"><strong>${esc(p.name)}</strong>${p.role ? ' · ' + esc(p.role) : ''}</span><span class="find-where">responder on ${esc(unitLabel(u))}${p.checked_out_at ? ', checked out ' + hhmm(p.checked_out_at) : ', on scene since ' + hhmm(p.checked_in_at)}</span><span class="muted find-from"></span><button class="btn sm" data-action="select-unit" data-id="${p.user_id}">Open</button></div>`; }).join('');
+  if (!rows && !crewRows) return `<div class="find-none muted">Nobody on record matches "${esc(q.trim())}". Records come from the shelter desks, the crews' house records and Operations; a desk's "Not listed?" asks you to look.</div>`;
+  return rows + (crewRows ? `<div class="k find-k">Responders</div>${crewRows}` : '');
+}
+// A shelter desk's shelter, on its unit panel; Operations can move the desk.
+function deskPlaceHtml(data, m) {
+  const shelters = data.facilities().filter((f) => f.kind === 'shelter');
+  return `<div class="d-row"><span class="k">Shelter desk at</span><select class="sel" data-select="unit-facility" data-id="${m.user_id}" aria-label="The shelter this desk works at"><option value=""${m.facility_id ? '' : ' selected'}>Not chosen yet</option>${shelters.map((f) => `<option value="${f.id}"${m.facility_id === f.id ? ' selected' : ''}>${esc(f.name || 'Shelter')}</option>`).join('')}</select>${m.facility_id ? `<button class="btn sm" data-action="select-facility" data-id="${m.facility_id}">Open the shelter</button>` : ''}</div>`;
+}
+// Print the list: the people at a shelter or a hospital, for the desk's clipboard. Names stay inside the incident.
+export function placeListSections(data, f) {
+  const c = placeCounts(data.evacuees(), f.id), inc = data.incident;
+  const line = (e) => `${hhmm(e.signed_in_at || e.status_at)}  ${evacueeWho(e)}${evFrom(data, e) ? ' · from ' + evFrom(data, e) : ''}${e.needs.length ? ' · needs ' + needsText(e.needs) : ''}${e.note ? ' · ' + e.note : ''}`;
+  return [
+    { title: `People at ${f.name || facilityKind(f.kind)[1]}, ${facilityKind(f.kind)[1].toLowerCase()}`, lines: [
+      inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+      f.kind === 'shelter' ? `Beds: ${bedsText(c.people, f.beds)}${f.beds != null ? ' taken' : ''} · ${c.here.length} record${c.here.length === 1 ? '' : 's'}` : `${c.people} sent here in ${c.here.length} record${c.here.length === 1 ? '' : 's'}`,
+      f.kind === 'shelter' ? `Expected: ${f.expected || 'nothing typed'} · ${c.arrivingPeople} on the way from crews` : null,
+      c.needs.length ? 'Needs: ' + needsTotalsText(c.needs) : null,
+      'Printed ' + new Date().toLocaleString() + '. Names are for this incident only, never for public release.'
+    ].filter(Boolean) },
+    { title: `${f.kind === 'shelter' ? 'Here now' : 'Sent here'}, newest first`, lines: c.here.length ? c.here.map(line) : ['Nobody signed in'] },
+    { title: 'On the way from crews', lines: c.arriving.length ? c.arriving.map((e) => `${evacueeWho(e)}${evFrom(data, e) ? ' · from ' + evFrom(data, e) : ''} · ${evOrigin(data, e)}${e.needs.length ? ' · needs ' + needsText(e.needs) : ''}`) : ['None'] },
+    { title: 'Left here', lines: c.left.length ? c.left.map((e) => `${evacueeWho(e)} · ${evacueeWhere(e, facilityOf(data))}`) : ['None'] }
+  ];
+}
+export function placeListHtml(data, f) { return sectionsHtml(placeListSections(data, f)); }
+export function placeListText(data, f) { return sectionsText(placeListSections(data, f)); }
+// The sitrep's line: counts only, never a name.
+export function peopleLine(data) {
+  return peopleShelteredLine({ evacuees: data.evacuees(), facilities: data.facilities(true), placeWords: placeWordsOf({ zones: data.zones(), structures: data.structures(), facilities: data.facilities(true) }) });
 }
 
 function structureHtml(data, s) {
@@ -734,6 +842,7 @@ function unitHtml(data, m, state) {
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
     ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
+    ${m.kind === 'shelter_desk' ? deskPlaceHtml(data, m) : ''}
     ${identityHtml(data, m)}
     ${demobHtml(m)}
     ${unitRequestsHtml(data, m)}
@@ -941,7 +1050,8 @@ export function briefingSections(data) {
   })) });
   S.push({ title: 'Hazards still open', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · ${h.zone_id && data.zone(h.zone_id) ? data.zone(h.zone_id).code : 'outside the zones'} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None'] });
   const facilities = data.facilities();
-  S.push({ title: 'Facilities', lines: facilities.length ? facilities.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`) : ['None set'] });
+  S.push({ title: 'Facilities', lines: facilities.length ? facilities.map((f) => { const c = f.kind === 'shelter' ? placeCounts(data.evacuees(), f.id) : null; return `${facilityLabel(f)}${c ? ' · ' + bedsText(c.people, f.beds) + (f.beds != null ? ' beds' : '') + (c.arrivingPeople ? ', ' + c.arrivingPeople + ' on the way' : '') + (f.expected ? ', expecting ' + f.expected : '') : ''}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`; }) : ['None set'] });
+  if (data.evacuees().length) S[S.length - 1].lines.push(peopleLine(data));
   const channels = data.channels();
   S.push({ title: 'Communications (ICS 205)', lines: channels.length ? channels.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
@@ -1003,6 +1113,7 @@ export function sitrepSections(data) {
     `${zones.length} divisions: ${zones.filter((z) => z.status === 'cleared').length} cleared, ${zones.filter((z) => z.status === 'primary').length} primary search done, ${zones.filter((z) => z.status === 'active').length} in progress, ${zones.filter((z) => z.status === 'open').length} not started`,
     `${structs.filter((s) => s.status === 'searched').length} of ${structs.length} structures on record searched`,
     `People: ${help} needing help, ${sheltering} sheltering in place, ${refused} refused to leave`,
+    peopleLine(data),
     `Damage: ${damaged.major} major, ${damaged.destroyed} destroyed`,
     `Hazards open: ${data.hazards().length} · emergencies open: ${data.alerts().length}`
   ] });
@@ -1116,7 +1227,7 @@ export function sitrepFormHtml(data) {
 // lines Operations marked notable), searched, with the hours marked and every line linked to the
 // thing it is about.
 export const LOG_GROUPS = [['all', 'All'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];
-const GROUP_OF = { request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
+const GROUP_OF = { shelter: 'field', request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
 export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
 const inGroup = (e, g) => !g || g === 'all' || (g === 'notable' ? !!e.notable : logGroupOf(e.kind) === g);
 export function logFilter(events, { group, q } = {}) {
@@ -1133,6 +1244,7 @@ function logLink(e) {
     case 'ic_facilities': return `<button class="llink" data-action="select-facility" data-id="${id}">Open facility</button>`;
     case 'ic_objectives': return `<button class="llink" data-action="period">Open period</button>`;
     case 'ic_people': return `<button class="llink" data-action="people">Open people</button>`;
+    case 'ic_evacuees': return `<button class="llink" data-action="select-evacuee" data-id="${id}">Where now</button>`;
     default: return '';
   }
 }

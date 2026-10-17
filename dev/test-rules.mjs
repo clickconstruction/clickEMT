@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS } from '../js/shared/rules.js';
+import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -103,4 +103,95 @@ t('a name and a phone check in; a licence or its photo is the identity (v25)', (
 
 t('Nearby lists staging, the boat ramp, the shelter and the hospital (v25)', () => {
   assert.deepEqual(NEARBY_KINDS, ['staging', 'ramp', 'shelter', 'hospital']);
+});
+
+// ---- people sheltered and moved (v26)
+const FAC = [{ id: 'gym', kind: 'shelter', name: 'High school gym', beds: 60, expected: 'Bus 2 from Pecan Park, 12 people, 17:30', closed_at: null }, { id: 'hall', kind: 'shelter', name: 'Church hall', beds: null, expected: '', closed_at: null }, { id: 'dell', kind: 'hospital', name: 'Dell Seton', closed_at: null }];
+const fac = (id) => FAC.find((f) => f.id === id) || null;
+const EV = [
+  { id: 'e1', label: 'Okonkwo family', count: 5, needs: ['infant', 'pets'], status: 'here', facility_id: 'gym', status_at: '2026-10-17T13:10:00', note: '', from_text: 'Riverside Drive' },
+  { id: 'e2', label: 'family of 3', count: 3, needs: [], status: 'here', facility_id: 'gym', status_at: '2026-10-17T13:30:00', note: '', from_text: 'Mill Street' },
+  { id: 'e3', label: 'family of 4', count: 4, needs: ['pets'], status: 'on_the_way', facility_id: 'gym', status_at: '2026-10-17T14:05:00', note: 'wet, cold, a dog', from_text: '', structure_id: 's1' },
+  { id: 'e4', label: 'Maria Alvarez, 78', count: 1, needs: ['oxygen'], status: 'moved', facility_id: 'dell', prev_facility_id: 'gym', status_at: '2026-10-17T15:10:00', note: 'on oxygen', from_text: '112 Pecan Ln' },
+  { id: 'e5', label: 'Nguyen, Tam', count: 1, needs: ['oxygen'], status: 'with_family', facility_id: null, prev_facility_id: 'gym', status_at: '2026-10-17T15:40:00', note: '', from_text: '' }
+];
+
+t('a shelter desk is a kind of unit, between the pump crews and other', () => {
+  assert.deepEqual(UNIT_KINDS.find((k) => k[0] === 'shelter_desk'), ['shelter_desk', 'Shelter desk', 'Shelter desks', 'shelter desk']);
+  assert.equal(UNIT_KINDS[UNIT_KINDS.length - 1][0], 'other');
+  assert.equal(kindText('shelter_desk'), 'shelter desk');
+});
+
+t('needs read as the database writes them', () => {
+  assert.deepEqual(NEEDS.map((n) => n[0]), ['oxygen', 'insulin', 'wheelchair', 'infant', 'pets', 'other']);
+  assert.equal(needsText(['pets', 'insulin']), 'insulin and pets');
+  assert.equal(needsText(['pets', 'oxygen', 'infant']), 'oxygen, infant care and pets');
+  assert.equal(needsText([]), '');
+  assert.deepEqual(needsIn('on oxygen, stable, a dog and a baby'), ['oxygen', 'infant', 'pets']);
+  assert.deepEqual(needsIn('diabetic, uses a walker'), ['insulin', 'wheelchair']);
+});
+
+t('who a record is: the label, with the count when the label does not say it', () => {
+  assert.equal(evacueeWho({ label: 'Okonkwo family', count: 5 }), 'Okonkwo family (5)');
+  assert.equal(evacueeWho({ label: 'family of 4', count: 4 }), 'family of 4');
+  assert.equal(evacueeWho({ label: '', count: 3 }), '3 people with no name yet');
+  assert.equal(evacueeWho({ label: '', count: 1 }), 'a person with no name yet');
+  assert.equal(countIn('family of 4, Pecan Park'), 4);
+  assert.equal(countIn('Bus 2 from Pecan Park, 12 people, 17:30'), 12);
+  assert.equal(countIn('Maria Alvarez, 78'), null);
+});
+
+t('where a record says they are now, and since when', () => {
+  assert.ok(/^High school gym since \d\d:\d\d$/.test(evacueeWhere(EV[0], fac)));
+  assert.ok(/^on the way to High school gym, sent \d\d:\d\d$/.test(evacueeWhere(EV[2], fac)));
+  assert.ok(/^Dell Seton since \d\d:\d\d$/.test(evacueeWhere(EV[3], fac)));
+  assert.ok(/^left High school gym with family at \d\d:\d\d$/.test(evacueeWhere(EV[4], fac)));
+  assert.equal(evacueeFrom(EV[2], { structureOf: () => ({ label: '112 Pecan Ln', zone_id: 'z2' }), zoneOf: () => ({ code: 'A-2' }) }), '112 Pecan Ln · A-2');
+});
+
+t('where now as a choice: here, on the way to another shelter, moved to a hospital, or gone', () => {
+  assert.equal(whereValue(EV[0]), 'f:gym');
+  assert.equal(whereValue(EV[4]), 'with_family');
+  assert.deepEqual(wherePatch('f:gym', { facilityOf: fac, hereId: 'gym' }), { status: 'here', facility_id: 'gym' });
+  assert.deepEqual(wherePatch('f:hall', { facilityOf: fac, hereId: 'gym' }), { status: 'on_the_way', facility_id: 'hall' });
+  assert.deepEqual(wherePatch('f:dell', { facilityOf: fac, hereId: 'gym' }), { status: 'moved', facility_id: 'dell' });
+  assert.deepEqual(wherePatch('f:gym', { facilityOf: fac }), { status: 'on_the_way', facility_id: 'gym' }, 'a crew sending someone to a shelter: on the way, for its desk to sign in');
+  assert.deepEqual(wherePatch('own_transport', { facilityOf: fac }), { status: 'own_transport', facility_id: null });
+});
+
+t('a name in a label, not a description or a place', () => {
+  const places = placeWordsOf({ zones: [{ name: 'Pecan Mobile Home Park' }], structures: [{ label: '112 Pecan Ln' }], facilities: [{ name: 'High school gym' }] });
+  assert.equal(hasName('Alvarez, family of 4', places), true);
+  assert.equal(hasName('Maria Alvarez, 78', places), true);
+  assert.equal(hasName('Mr. Okafor', places), true);
+  assert.equal(hasName('family of 4, Pecan Park', places), false);
+  assert.equal(hasName('elderly man and a dog', places), false);
+  assert.equal(hasName('woman in a wheelchair', places), false);
+  assert.equal(hasName('', places), false);
+});
+
+t('find a person: every word typed, the latest first', () => {
+  assert.deepEqual(evacueeMatch(EV, 'alvarez', { facilityOf: fac }).map((e) => e.id), ['e4']);
+  assert.deepEqual(evacueeMatch(EV, 'family', { facilityOf: fac }).map((e) => e.id), ['e3', 'e2', 'e1']);
+  assert.deepEqual(evacueeMatch(EV, 'pecan oxygen', { facilityOf: fac }).map((e) => e.id), ['e4']);
+  assert.deepEqual(evacueeMatch(EV, '', { facilityOf: fac }), []);
+});
+
+t('a shelter\'s count against its beds, its arrivals, who left, and the needs of those there', () => {
+  const c = placeCounts(EV, 'gym');
+  assert.equal(c.people, 8);
+  assert.deepEqual(c.here.map((e) => e.id), ['e1', 'e2']);
+  assert.equal(c.arrivingPeople, 4);
+  assert.deepEqual(c.left.map((e) => e.id), ['e4', 'e5']);
+  assert.equal(needsTotalsText(c.needs), '1 infant · 1 pets');
+  assert.equal(bedsText(c.people, 60), '8 of 60');
+  assert.equal(bedsText(3, null), '3 here');
+  assert.equal(placeCounts(EV, 'dell').people, 1, 'a hospital counts the people moved there');
+});
+
+t('the situation report\'s line: counts, beds, hospital, expected, no names', () => {
+  const line = peopleShelteredLine({ evacuees: EV, facilities: FAC, placeWords: placeWordsOf({ zones: [{ name: 'Pecan Mobile Home Park' }] }) });
+  assert.equal(line, 'People sheltered: 8 at High school gym (60 beds), 0 at Church hall, 1 moved to hospital, 16 expected · 2 records with no name yet');
+  assert.ok(!/Alvarez|Okonkwo|Nguyen/.test(line));
+  assert.equal(peopleShelteredLine({ evacuees: [], facilities: [] }), 'People sheltered: no shelter open and nobody on record');
 });

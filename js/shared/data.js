@@ -2,7 +2,7 @@
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 import { profileReady, identityGiven } from './rules.js';
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
@@ -10,7 +10,7 @@ const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map() };
 }
 
 function keyOf(table, row) {
@@ -130,6 +130,7 @@ export class Data {
       const [ag, cm] = await Promise.all([q('ic_period_agencies'), q('ic_commands').order('started_at')]);
       put('ic_period_agencies', ag.data); put('ic_commands', cm.data);
     } catch (e) { /* a client without the tables */ }
+    try { const { data: ev, error: evErr } = await q('ic_evacuees'); if (!evErr) put('ic_evacuees', ev); } catch (e) { /* a client without the table (migration 0018) */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
       const { data: profs } = ids.length ? await this.sb.from('ic_profiles').select('*').in('user_id', ids) : { data: [] };
@@ -247,6 +248,27 @@ export class Data {
   async checkOutPerson(id) { return this.updatePerson(id, { checked_out_at: new Date().toISOString() }); }
   async checkInPerson(id) { return this.updatePerson(id, { checked_out_at: null }); }
   async archivePerson(id) { return this.updatePerson(id, { archived_at: new Date().toISOString() }); }
+
+  // ---- people sheltered and moved (ic_evacuees): one record per person or family. A crew makes one from
+  // the house record, the shelter desk at the door, Operations from the facility card. Archived ones are
+  // withdrawn, kept for the history (all = true). Newest first: the last signed in or moved on top.
+  evacuees(all) { return [...this.store.evacuees.values()].filter((e) => all || !e.archived_at).sort((a, b) => ((b.signed_in_at || b.status_at || b.created_at) > (a.signed_in_at || a.status_at || a.created_at) ? 1 : -1)); }
+  evacuee(id) { return this.store.evacuees.get(id) || null; }
+  async addEvacuee(id, fields) {
+    const row = Object.assign({ id, incident_id: this.store.incident.id, logged_by: this.user.id }, fields);
+    const { data, error } = await this.sb.from('ic_evacuees').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_evacuees', data || row);
+    return data || row;
+  }
+  async updateEvacuee(id, patch) {
+    const { data, error } = await this.sb.from('ic_evacuees').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_evacuees', data);
+    return data;
+  }
+  // the facility a unit works at: a shelter desk's shelter (ic_members.facility_id)
+  async setUnitFacility(userId, facilityId) { return this.updateMember(userId, { facility_id: facilityId || null }); }
 
   // ---- facilities (ICS 205 and 206, light) and the communications plan
   facilities(all) { return [...this.store.facilities.values()].filter((f) => all || !f.closed_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }

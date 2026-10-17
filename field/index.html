@@ -120,6 +120,14 @@
   <div id="s-home" class="p-body">
     <div id="banner"></div>
     <div id="inbox-card"></div>
+    <div id="desk" class="desk" hidden>
+      <div class="desk-head" id="desk-head"></div>
+      <label class="desk-find"><span class="k">Find a person, any shelter or hospital</span><input id="desk-q" class="input" type="search" placeholder="A name, a street" autocomplete="off" autocapitalize="words" enterkeyhint="search"></label>
+      <div id="desk-results"></div>
+      <div id="desk-arriving"></div>
+      <button class="btn pri desk-signin" data-action="ev-new">Sign in a person</button>
+      <div id="desk-here"></div>
+    </div>
     <div class="card" id="assignment"></div>
     <div class="actions">
       <button class="act photo" data-action="camera">
@@ -190,6 +198,8 @@
     <div class="chips" id="occ-chips"></div>
     <div class="k">People needing help</div>
     <div class="stepper"><button class="btn" data-action="help-down" aria-label="Fewer">−</button><span class="num" id="help-count">0</span><button class="btn" data-action="help-up" aria-label="More">+</button></div>
+    <div class="st-people" id="st-people"></div>
+    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="st-person-add">Add who and where they went</button><span class="muted small">Each row is a person or a family; the shelter desk sees them coming.</span></div>
     <div class="k">Water at the structure</div>
     <div class="chips" id="water-chips"></div>
     <div class="k">Damage</div>
@@ -296,6 +306,24 @@
     </div>
   </div>
 
+  <div id="s-person" class="sheet" hidden>
+    <div class="sheet-head"><h2 id="person-title">Sign in a person</h2><span class="muted small" id="person-sub"></span></div>
+    <p class="muted small" id="person-hint"></p>
+    <div class="person-who">
+      <label class="k" for="ev-who">Who<input id="ev-who" class="input" placeholder="a name, or &quot;family of 4, Nguyen&quot;" autocapitalize="words" autocomplete="off" maxlength="120"></label>
+      <label class="k" for="ev-count">How many<input id="ev-count" class="input" type="number" inputmode="numeric" min="1" max="999" value="1"></label>
+    </div>
+    <div class="k">Needs</div>
+    <div class="chips" id="ev-needs"></div>
+    <div class="row-2">
+      <label class="k" for="ev-from">From<input id="ev-from" class="input" placeholder="address or division" autocomplete="off" maxlength="120"></label>
+      <label class="k" for="ev-where">Where now<select id="ev-where" class="input"></select></label>
+    </div>
+    <label class="k" for="ev-note">Note<input id="ev-note" class="input" placeholder="on oxygen, stable" autocomplete="off" maxlength="300"></label>
+    <p class="muted small">Only "Who" is needed; the rest can be added from the list. Names are seen by this incident's members only, never in anything public.</p>
+    <div class="sheet-btns"><button class="btn" data-action="home" id="ev-cancel">Cancel</button><button class="btn pri" data-action="ev-save" id="ev-save" style="flex:2">Sign in here</button></div>
+  </div>
+
   <div id="s-showcode" class="sheet" hidden>
     <h2>Join this incident</h2>
     <p class="muted small">Anyone who scans this with their phone lands on the field app with the code filled in. They still sign in with their own account and name their unit.</p>
@@ -311,6 +339,10 @@
     <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="briefing">Your briefing</button><button class="btn sm" data-action="hurt">If someone is hurt</button><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="id-open">Your identity</button></div>
     <div class="k">What the unit is</div>
     <div class="chips kind-chips" id="menu-kind"></div>
+    <div id="menu-shelter-box" hidden>
+      <div class="k">Your shelter</div>
+      <div class="chips" id="menu-shelter"></div>
+    </div>
     <div class="k">Your status</div>
     <div id="menu-status"></div>
     <div class="k">People on the unit</div>

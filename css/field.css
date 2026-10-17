@@ -185,3 +185,35 @@ body { background: var(--bg-2); }
 .near.hurt-near { cursor: pointer; }
 .near.hurt-near .fmark { background: var(--danger); }
 .kind-chips { gap: 6px; }
+
+/* People here: a shelter desk's home (v26), the sheet that signs a person in, the crew's rows on the house record */
+.desk { display: flex; flex-direction: column; gap: 10px; flex: none; }
+.desk-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.desk-top h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.desk-count { font-size: 13px; color: var(--muted); }
+.desk-count strong { color: var(--ink); font-size: 15px; }
+.desk-find { display: flex; flex-direction: column; gap: 4px; }
+.desk .input, .st-row .input, .person-who .input { border: 1px solid var(--control-border); border-radius: 10px; padding: 10px 12px; font-size: 16px; min-height: 48px; background: var(--control-bg); color: var(--ink); width: 100%; min-width: 0; }
+.find-card { font-size: 13.5px; }
+.find-row { display: flex; flex-direction: column; gap: 1px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+.find-ask { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12.5px; padding-top: 4px; }
+.find-ask .btn { min-height: 36px; }
+.desk-arr-k { color: var(--hazard-ink); }
+.arrive { border: 2px solid var(--hazard); background: var(--tint-orange); border-radius: 12px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13.5px; }
+.arrive-main { flex: 1; min-width: 0; }
+.arrive-btn { background: var(--ink); color: var(--bg-2); border-color: var(--ink); min-height: 44px; font-weight: 600; flex: none; }
+.desk-signin { min-height: 54px; font-size: 16px; border-radius: 14px; }
+.ev-row { display: flex; gap: 10px; align-items: center; width: 100%; padding: 10px 2px; border-bottom: 1px solid var(--line-soft); min-height: 52px; }
+.ev-row.away { color: var(--muted); }
+.ev-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ev-who { font-weight: 600; font-size: 15px; }
+.ev-sub { font-size: 12.5px; color: var(--muted); }
+.ev-when { font-size: 12.5px; color: var(--muted); text-align: right; flex: none; max-width: 45%; }
+.person-who { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; }
+.sheet label.k { display: flex; flex-direction: column; gap: 4px; }
+.sheet label.k .input { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink); }
+.st-people { display: flex; flex-direction: column; gap: 8px; }
+.st-people:empty { display: none; }
+.st-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: "who x" "cond cond" "where where"; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.st-row > [data-stp="who"] { grid-area: who; } .st-row > [data-stp="cond"] { grid-area: cond; } .st-row > [data-stp="where"] { grid-area: where; } .st-row > .pp-x { grid-area: x; }
+.st-on { font-size: 13px; padding: 6px 10px; border-left: 3px solid var(--cleared-fill); background: var(--control-bg); border-radius: 0 10px 10px 0; }

@@ -115,7 +115,8 @@ export function unitLabel(member) {
 
 // What a unit is (ICS-100's single resource): the kind Operations asks for and Logistics fills.
 // [key, label, plural, the words in a line]; ic_kind_text in SQL says the same words.
-export const UNIT_KINDS = [['engine', 'Engine', 'Engines', 'engine'], ['boat', 'Boat crew', 'Boat crews', 'boat crew'], ['swift_water', 'Swift-water team', 'Swift-water teams', 'swift-water team'], ['high_water', 'High-water vehicle', 'High-water vehicles', 'high-water vehicle'], ['ambulance', 'Ambulance', 'Ambulances', 'ambulance'], ['search', 'Search team', 'Search teams', 'search team'], ['k9', 'K9 team', 'K9 teams', 'K9 team'], ['drone', 'Drone team', 'Drone teams', 'drone team'], ['pump', 'Pump crew', 'Pump crews', 'pump crew'], ['other', 'Other', 'Other', 'other']];
+// A shelter desk is not a search crew: its phone opens on People here (v26).
+export const UNIT_KINDS = [['engine', 'Engine', 'Engines', 'engine'], ['boat', 'Boat crew', 'Boat crews', 'boat crew'], ['swift_water', 'Swift-water team', 'Swift-water teams', 'swift-water team'], ['high_water', 'High-water vehicle', 'High-water vehicles', 'high-water vehicle'], ['ambulance', 'Ambulance', 'Ambulances', 'ambulance'], ['search', 'Search team', 'Search teams', 'search team'], ['k9', 'K9 team', 'K9 teams', 'K9 team'], ['drone', 'Drone team', 'Drone teams', 'drone team'], ['pump', 'Pump crew', 'Pump crews', 'pump crew'], ['shelter_desk', 'Shelter desk', 'Shelter desks', 'shelter desk'], ['other', 'Other', 'Other', 'other']];
 export function unitKind(kind) { return UNIT_KINDS.find((k) => k[0] === kind) || null; }
 export function kindText(kind) { const k = unitKind(kind); return k && k[0] !== 'other' ? k[3] : ''; }
 // "Unit 2, boat crew": how a unit reads on the 203, the 204 and the board
@@ -364,3 +365,125 @@ export const DEMOB_ITEMS = [
   ['hours', 'Hours confirmed']
 ];
 export function demobOpen(ticks) { return DEMOB_ITEMS.filter(([k]) => !(ticks && ticks[k])).map(([, label]) => label.charAt(0).toLowerCase() + label.slice(1)); }
+
+// ---- people sheltered and moved (ic_evacuees, v26): one record per person or family, made by a crew
+// from the house record, by the shelter desk, or by Operations. Where now is a status and a facility:
+// here (signed in at a shelter), on the way (to a shelter, for its desk to sign in), moved (to a hospital
+// or elsewhere), or gone from the record's places: with family, own transport, unknown.
+// [key, chip, the words in a line]; ic_needs_text in SQL says the same words in the same order.
+export const NEEDS = [['oxygen', 'Oxygen', 'oxygen'], ['insulin', 'Insulin', 'insulin'], ['wheelchair', 'Wheelchair', 'wheelchair'], ['infant', 'Infant', 'infant care'], ['pets', 'Pets', 'pets'], ['other', 'Other', 'other help']];
+export function needsText(needs) {
+  const words = NEEDS.filter(([k]) => (needs || []).includes(k)).map((n) => n[2]);
+  return words.length < 2 ? (words[0] || '') : words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1];
+}
+export const EVAC_STATUS = { on_the_way: 'On the way', here: 'Signed in', moved: 'Moved', with_family: 'Left with family', own_transport: 'Left by own transport', unknown: 'Whereabouts unknown' };
+// Where now, as a choice: a place, or one of the ways of leaving the record's places.
+export const LEFT_CHOICES = [['with_family', 'With family'], ['own_transport', 'Own transport'], ['unknown', 'Not known']];
+// The places a person can be signed in at or moved to.
+export const PERSON_PLACES = ['shelter', 'hospital'];
+
+// "Okonkwo family (5)": the label, with the count when the label does not say it (ic_evacuee_who in SQL)
+export function evacueeWho(e) {
+  const label = (e.label || '').trim(), n = e.count || 1;
+  if (!label) return n > 1 ? n + ' people with no name yet' : 'a person with no name yet';
+  return n > 1 && !label.includes(String(n)) ? label + ' (' + n + ')' : label;
+}
+function placeName(f) { return f ? (f.name || facilityKind(f.kind)[1]) : 'a place no longer on record'; }
+// Where a record says the person is now, and since when: "Dell Seton since 15:10".
+export function evacueeWhere(e, facilityOf) {
+  const f = e.facility_id ? facilityOf(e.facility_id) : null, prev = e.prev_facility_id ? facilityOf(e.prev_facility_id) : null;
+  const at = hhmm(e.status_at || e.created_at);
+  if (e.archived_at) return 'record withdrawn ' + hhmm(e.archived_at);
+  switch (e.status) {
+    case 'here': case 'moved': return placeName(f) + ' since ' + at;
+    case 'on_the_way': return 'on the way to ' + placeName(f) + ', sent ' + at;
+    case 'with_family': return 'left' + (prev ? ' ' + placeName(prev) : '') + ' with family at ' + at;
+    case 'own_transport': return 'left' + (prev ? ' ' + placeName(prev) : '') + ' by own transport at ' + at;
+    default: return 'whereabouts unknown since ' + at + (prev ? ', last at ' + placeName(prev) : '');
+  }
+}
+// Where they came from: what was typed, else the house a crew took them from, with its division.
+export function evacueeFrom(e, { structureOf, zoneOf } = {}) {
+  const s = e.structure_id && structureOf ? structureOf(e.structure_id) : null;
+  const z = s && s.zone_id && zoneOf ? zoneOf(s.zone_id) : null;
+  const t = e.from_text || (s ? s.label : '');
+  return [t, z && !t.includes(z.code) ? z.code : ''].filter(Boolean).join(' · ');
+}
+// The choice in a "Where now" picker: 'f:<facility id>' or one of LEFT_CHOICES.
+export function whereValue(e) { return e.facility_id && ['here', 'on_the_way', 'moved'].includes(e.status) ? 'f:' + e.facility_id : e.status; }
+// What a choice writes. Picking the place the record is signed in at, or the desk's own shelter, signs
+// them in there; another shelter puts them on the way to it, for its desk to sign in; a hospital or any
+// other place is a move.
+export function wherePatch(value, { facilityOf, hereId, current } = {}) {
+  if (!value || !value.startsWith('f:')) return { status: value || 'unknown', facility_id: null };
+  const id = value.slice(2), f = facilityOf ? facilityOf(id) : null;
+  if (id === hereId || (current && current.status === 'here' && current.facility_id === id)) return { status: 'here', facility_id: id };
+  return { status: f && f.kind === 'shelter' ? 'on_the_way' : 'moved', facility_id: id };
+}
+
+// "family of 4" → 4, "Bus 2 from Pecan Park, 12 people, 17:30" → 12; null when the words give no count
+export function countIn(text) {
+  const t = String(text || '');
+  const m = /family of (\d{1,3})\b/i.exec(t) || /\b(\d{1,4})\s*(?:people|persons|adults?|kids|children|evacuees|residents)\b/i.exec(t);
+  return m ? Number(m[1]) : null;
+}
+// The needs a crew's words imply ("on oxygen", "a dog"), for the desk's chips and the shelter's totals.
+const NEED_WORDS = [['oxygen', /\boxygen\b|\bo2\b/i], ['insulin', /insulin|diabet/i], ['wheelchair', /wheel\s?chair|walker/i], ['infant', /\binfant|\bbaby\b|\bbabies\b|newborn/i], ['pets', /\bdogs?\b|\bcats?\b|\bpets?\b|\bbirds?\b/i]];
+export function needsIn(text) { return NEED_WORDS.filter(([, re]) => re.test(String(text || ''))).map(([k]) => k); }
+
+// Does a label carry a name? "Alvarez, family of 4" does; "family of 4, Pecan Park" does not. Words
+// that describe (family, man, elderly, a dog), numbers and the incident's own place words (its divisions,
+// houses and facilities, given as placeWords) are not names; any other word is.
+const NOT_NAMES = new Set(('a an the and with of no name yet unknown family families people person persons man men woman women child children kid kids baby babies infant infants toddler teen teens teenager adult adults elderly older old young boy boys girl girls couple mother father mom mum dad son daughter grandmother grandfather grandma grandpa wife husband resident residents neighbor neighbors neighbour neighbours occupant occupants dog dogs cat cats pet pets plus from at in near on by house home mr mrs ms miss sir lady ' +
+  'one two three four five six seven eight nine ten oxygen insulin wheelchair walker blind deaf diabetic pregnant sick hurt injured wet cold ' +
+  'park lane ln street st road rd drive dr avenue ave court ct way trailer mobile apartments apartment apt school church creek bridge crossing farm ranch estates').split(' '));
+export function placeWordsOf({ zones, structures, facilities } = {}) {
+  const words = new Set();
+  for (const t of [].concat((zones || []).map((z) => z.name), (structures || []).map((s) => s.label), (facilities || []).map((f) => f.name))) for (const w of String(t || '').toLowerCase().match(/[a-zÀ-ɏ]+/g) || []) words.add(w);
+  return words;
+}
+export function hasName(label, placeWords) {
+  const words = String(label || '').toLowerCase().match(/[a-zÀ-ɏ]+(?:['’-][a-zÀ-ɏ]+)*/g) || [];
+  return words.some((w) => w.length > 1 && !NOT_NAMES.has(w) && !(placeWords && placeWords.has(w)));
+}
+
+// Find a person: every word typed is somewhere in the record (who, where from, the note, where now).
+export function evacueeMatch(list, q, { facilityOf, structureOf, zoneOf } = {}) {
+  const words = String(q || '').toLowerCase().split(/[\s,]+/).filter(Boolean);
+  if (!words.length) return [];
+  return list.filter((e) => {
+    const f = e.facility_id && facilityOf ? facilityOf(e.facility_id) : null;
+    const hay = [e.label, e.note, evacueeFrom(e, { structureOf, zoneOf }), f ? f.name : '', needsText(e.needs)].join(' ').toLowerCase();
+    return words.every((w) => hay.includes(w));
+  }).sort((a, b) => (!!a.archived_at - !!b.archived_at) || (a.status_at < b.status_at ? 1 : -1));
+}
+
+// A place's people: who is signed in there, who is on the way, who left it, and the needs of those there.
+export function placeCounts(evacuees, facilityId) {
+  const live = evacuees.filter((e) => !e.archived_at);
+  const here = live.filter((e) => e.facility_id === facilityId && (e.status === 'here' || e.status === 'moved'));
+  const arriving = live.filter((e) => e.facility_id === facilityId && e.status === 'on_the_way');
+  const left = live.filter((e) => e.prev_facility_id === facilityId && !(e.facility_id === facilityId && e.status === 'here'));
+  const sum = (rows) => rows.reduce((n, e) => n + (e.count || 1), 0);
+  const needs = NEEDS.map(([k, label]) => [k, label, here.filter((e) => (e.needs || []).includes(k)).length]).filter((x) => x[2] > 0);
+  return { here, people: sum(here), arriving, arrivingPeople: sum(arriving), left, needs };
+}
+// "3 oxygen · 2 insulin · 6 pets": records with each need
+export function needsTotalsText(needs) { return needs.map(([, label, n]) => n + ' ' + label.toLowerCase()).join(' · '); }
+// "38 of 60" against the beds, or "38 here" when the beds are not set
+export function bedsText(people, beds) { return beds != null ? people + ' of ' + beds : people + ' here'; }
+
+// The situation report's line (ICS 209), counts only, never a name:
+// "People sheltered: 38 at High school gym (60 beds), 3 moved to hospital, 12 expected · 5 records with no name yet"
+export function peopleShelteredLine({ evacuees, facilities, placeWords }) {
+  const live = evacuees.filter((e) => !e.archived_at);
+  const shelters = facilities.filter((f) => f.kind === 'shelter' && (!f.closed_at || live.some((e) => e.facility_id === f.id && e.status === 'here')));
+  const sum = (rows) => rows.reduce((n, e) => n + (e.count || 1), 0);
+  const kindOf = new Map(facilities.map((f) => [f.id, f.kind]));
+  const at = shelters.map((f) => `${sum(live.filter((e) => e.facility_id === f.id && e.status === 'here'))} at ${f.name || 'a shelter'}${f.beds != null ? ' (' + f.beds + ' beds)' : ''}`);
+  const hospital = sum(live.filter((e) => e.facility_id && kindOf.get(e.facility_id) === 'hospital' && (e.status === 'moved' || e.status === 'here')));
+  const expected = sum(live.filter((e) => e.status === 'on_the_way')) + shelters.filter((f) => !f.closed_at).reduce((n, f) => n + (countIn(f.expected) || 0), 0);
+  const unnamed = live.filter((e) => !hasName(e.label, placeWords)).length;
+  if (!shelters.length && !live.length) return 'People sheltered: no shelter open and nobody on record';
+  return `People sheltered: ${at.length ? at.join(', ') : 'no shelter open'}, ${hospital} moved to hospital, ${expected} expected · ${unnamed} record${unnamed === 1 ? '' : 's'} with no name yet`;
+}

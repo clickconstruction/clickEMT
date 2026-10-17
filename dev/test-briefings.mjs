@@ -165,6 +165,16 @@ t('a unit with no assignment is told to wait at staging', () => {
   assert.ok(S[2].text.startsWith('On Unit 9: nobody listed yet'));
 });
 
+t('a shelter desk\'s job is the people at its shelter, not staging (v26)', () => {
+  const F = stub().facilities().concat([{ id: 'f5', kind: 'shelter', name: 'High school gym', lat: 30.2566, lng: -97.7426, notes: '', contact: '', closed_at: null, beds: 60, expected: 'Bus 2, 12 people, 17:30' }]);
+  const d = stub({ facilities: F });
+  d.facility = (id) => F.find((f) => f.id === id) || null;
+  d.evacuees = () => [{ id: 'e1', label: 'Okonkwo family', count: 5, needs: [], status: 'here', facility_id: 'f5' }, { id: 'e2', label: 'family of 4', count: 4, needs: ['pets'], status: 'on_the_way', facility_id: 'f5' }];
+  const S = fieldBriefing(d, { me: { user_id: 'desk', unit_name: 'Gym desk', role: 'unit', status: 'available', kind: 'shelter_desk', facility_id: 'f5' }, at: null });
+  assert.equal(S[1].lead, 'People here at High school gym.');
+  assert.ok(S[1].text.includes('They\'re here') && S[1].text.endsWith('Now: 5 of 60 beds, 1 record on the way, expected Bus 2, 12 people, 17:30.') && !S[1].text.includes('staging'), S[1].text);
+});
+
 t('the deployment lines on the join card: incident, where to check in, assignment, when, how to get there, radio, bring', () => {
   const d = stub();
   const L = deploymentLines(d, new Date(at(0)));

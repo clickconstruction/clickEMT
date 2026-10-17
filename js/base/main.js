@@ -2,8 +2,8 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, FACILITY_KINDS } from '../shared/rules.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, esc } from './ui.js';
+import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
 import { codeFromSearch } from '../shared/qr.js';
@@ -21,7 +21,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null }, board: loadBoardPref(), transfer: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -217,6 +217,7 @@ function drawAll() {
   drawLog();
   drawLegend();
   drawLayers();
+  drawFind();
   if (!$('#briefing').hidden) drawBriefing();
   if (!$('#people').hidden) drawPeople();
   drawLive();
@@ -372,17 +373,20 @@ function drawBriefing() {
   if (!data.incident) return;
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'join' ? joinCardHtml(data) : kind === 'hours' ? hoursHtml(data, state) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : kind === 'org' ? orgHtml(data) : briefingHtml(data);
+  const pf = kind === 'shelter' && state.printFacility ? data.facility(state.printFacility) : null;
+  if (kind === 'shelter' && !pf) return;
+  const html = kind === 'shelter' ? placeListHtml(data, pf) : kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'join' ? joinCardHtml(data) : kind === 'hours' ? hoursHtml(data, state) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : kind === 'org' ? orgHtml(data) : briefingHtml(data);
   const page = $('#briefing-page');
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
   page.className = 'briefing-page kind-' + kind;
-  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card · deployment briefing' : kind === 'hours' ? 'Hours on scene' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : kind === 'org' ? 'Organization chart (ICS 207)' : 'Shift-change briefing';
+  $('#briefing-title').textContent = kind === 'shelter' ? 'People at ' + (pf.name || 'the facility') : kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card · deployment briefing' : kind === 'hours' ? 'Hours on scene' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : kind === 'org' ? 'Organization chart (ICS 207)' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
+  if (kind === 'shelter') { const f = data.facility(state.printFacility); return f ? placeListText(data, f) : ''; }
   return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === '211' ? form211Text(data) : kind === 'join' ? joinCardText(data) : kind === 'hours' ? hoursCsvText(data, state) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : kind === 'org' ? orgText(data) : briefingText(data);
 }
 // The maps' tiles are plain <image>s; give them a moment to arrive before the print dialog
@@ -448,6 +452,26 @@ function drawPeople() {
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
 }
 $('#people-q').addEventListener('input', (e) => { state.people.q = e.target.value; drawPeople(); });
+
+// ---- find a person (v26): where anyone sheltered, moved or on the way is now and since when, from the
+// header on any screen (and the home panel's box). The popover redraws with live updates while open.
+function drawFind() {
+  const pop = $('#find-pop'), q = state.find.top.trim();
+  pop.hidden = !q;
+  if (!q || !data.incident) return;
+  const html = `<div class="find-head"><span class="k">Find a person · every shelter, hospital and crew record</span><button class="btn sm" data-action="find-close">Close</button></div>` + findPersonHtml(data, q);
+  if (pop.__html !== html) { pop.__html = html; pop.innerHTML = html; }
+}
+function closeFind() { state.find.top = ''; $('#find-q').value = ''; drawFind(); }
+$('#find-q').addEventListener('input', (e) => { state.find.top = e.target.value; drawFind(); });
+$('#find-q').addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFind(); e.target.blur(); } });
+document.addEventListener('input', (e) => {
+  const box = e.target.closest('[data-find="home"]');
+  if (!box) return;
+  state.find.home = box.value;
+  const out = box.parentElement.querySelector('[data-find-results="home"]');
+  if (out) out.innerHTML = box.value.trim() ? findPersonHtml(data, box.value) : '';
+});
 
 // ---- replay: the day played back from the position history (ic_tracks), on a slider under the map.
 // The samples are fetched once per range; the slider and Play only move the moment shown.
@@ -643,6 +667,8 @@ async function loadIdPhoto() {
 // ---- actions
 document.addEventListener('click', async (e) => {
   if (state.layersOpen && !e.target.closest('#layers-pop') && !e.target.closest('#btn-layers')) setLayersOpen(false);
+  if (state.find.top && !e.target.closest('.find-top')) closeFind();
+  else if (state.find.top && e.target.closest('#find-pop [data-action="select-facility"], #find-pop [data-action="select-unit"]')) setTimeout(closeFind, 0);
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const act = btn.dataset.action, id = btn.dataset.id;
@@ -701,7 +727,18 @@ document.addEventListener('click', async (e) => {
       case 'overlay-view-bounds': fillOverlayBounds(true); break;
       case 'select-unit': if (btn.closest('#people')) closePeople(); select({ type: 'unit', id }); break;
       case 'select-structure': selectFromLog({ type: 'structure', id }); break;
-      case 'select-facility': selectFromLog({ type: 'facility', id }); break;
+      case 'select-facility': if (btn.closest('#briefing')) $('#briefing').hidden = true; selectFromLog({ type: 'facility', id }); break;
+      case 'select-evacuee': {   // a log line about a person: open the place the record says they are, or were
+        const ev = data.evacuee(id);
+        const place = ev && (ev.facility_id || ev.prev_facility_id);
+        if (place) selectFromLog({ type: 'facility', id: place });
+        else if (ev) { state.find.top = ev.label || ''; $('#find-q').value = state.find.top; drawFind(); }
+        break;
+      }
+      case 'find-close': closeFind(); break;
+      case 'ev-add-toggle': state.evAdd = id || null; queueDraw(); if (id) setTimeout(() => { const f = $('#panel form[data-form="evacuee-add"]'); if (f) f.label.focus(); }, 30); break;
+      case 'ev-sign-in': { const ev = await data.updateEvacuee(id, { status: 'here', facility_id: btn.dataset.facility }); toast(evacueeWho(ev) + ' signed in'); break; }
+      case 'print-shelter': state.printFacility = id; openOverlay('shelter'); break;
       case 'place-facility': {
         const sel = $('#facility-kind');
         state.placeKind = sel ? sel.value : 'staging';
@@ -777,7 +814,7 @@ document.addEventListener('click', async (e) => {
       case 'layers-upload': state.layersUpload = true; drawLayers(); { const f = $('#layers-pop form[data-form="overlay-add"]'); if (f) f.file.focus(); } break;
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
-      case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; break;
+      case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; state.printFacility = null; break;
       case 'print-briefing': drawBriefing(); await mapsReady($('#briefing-page')); window.print(); break;
       case 'copy-briefing': await navigator.clipboard.writeText(briefingAsText()); toast('Copied as text'); break;
       case 'start-par': {
@@ -837,6 +874,12 @@ document.addEventListener('change', async (e) => {
     if (sel.dataset.range === 'overlay-opacity') { await data.updateOverlay(sel.dataset.id, { opacity: Number(sel.value) }); sel.blur(); queueDraw(); }
     if (sel.dataset.select === 'hours-period') { state.hoursPeriod = sel.value; drawBriefing(); }
     if (sel.dataset.select === 'person-unit') { const p = data.person(sel.dataset.id); await data.updatePerson(sel.dataset.id, { user_id: sel.value }); sel.blur(); if (p) toast(p.name + ' moved to ' + unitLabelOf(data.member(sel.value))); queueDraw(); }
+    if (sel.dataset.select === 'ev-where') {
+      const ev = data.evacuee(sel.dataset.id);
+      if (ev) { const done = await data.updateEvacuee(ev.id, wherePatch(sel.value, { facilityOf: (fid) => data.facility(fid), current: ev })); toast(evacueeWho(done) + ': ' + evacueeWhere(done, (fid) => data.facility(fid))); }
+      sel.blur(); queueDraw();
+    }
+    if (sel.dataset.select === 'unit-facility') { await data.setUnitFacility(sel.dataset.id, sel.value || null); sel.blur(); toast(unitLabelOf(data.member(sel.dataset.id)) + (sel.value ? ' works at ' + (data.facility(sel.value).name || 'the shelter') : ': no shelter chosen')); queueDraw(); }
     if (sel.dataset.select === 'person-buddy') { await data.updatePerson(sel.dataset.id, { buddy_id: sel.value || null }); sel.blur(); queueDraw(); }
   } catch (err) { toast(err.message || String(err), true); }
 });
@@ -888,8 +931,19 @@ document.addEventListener('submit', async (e) => {
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       drawBriefing();
     } else if (form.dataset.form === 'facility-edit') {
-      await data.updateFacility(form.dataset.id, { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim() });
+      const patch = { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim() };
+      if (form.beds) patch.beds = form.beds.value === '' ? null : Math.max(0, Math.round(Number(form.beds.value)));
+      if (form.expected) patch.expected = form.expected.value.trim();
+      await data.updateFacility(form.dataset.id, patch);
       toast('Saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'evacuee-add') {
+      const label = form.label.value.trim();
+      if (!label) { toast('Who: a name, or "family of 4"', true); return; }
+      const ev = await data.addEvacuee(crypto.randomUUID(), { label, count: Math.min(999, Math.max(1, Number(form.count.value) || 1)), needs: [...form.querySelectorAll('input[name="need"]:checked')].map((i) => i.value), from_text: form.from.value.trim(), note: form.note.value.trim(), status: 'here', facility_id: form.dataset.facility });
+      state.evAdd = null;
+      toast(evacueeWho(ev) + ' signed in');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'channel-add') {

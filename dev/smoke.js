@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -892,7 +892,7 @@ async function log(check) {
   check('lines link to the thing they are about', $$('#log .llink[data-action="select-structure"]').length >= 1 && $$('#log .llink[data-action="select-facility"]').length >= 1 && $$('#log .llink[data-action="select-photo"]').length >= 3, $$('#log .llink').length);
   $('[data-action="log-group"][data-group="field"]').click();
   await until(() => rows() < all);
-  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
+  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request|shelter)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
   $('[data-action="log-group"][data-group="all"]').click();
   await until(() => rows() === all);
   const q = $('#log-search');
@@ -1655,6 +1655,192 @@ async function walkfix(check) {
   } finally {
     window.confirm = confirmWas;
     if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    await wait(100);
+  }
+}
+
+// ---- people sheltered and moved (v26): a crew's house record gains rows of who went where; a shelter
+// desk (a new account, kind Shelter desk) gets People here as its home, signs in the crew's arrivals with
+// They're here, signs in a walk-up, moves someone to hospital and asks Operations to look for someone;
+// the base's shelter card, find a person, Print the list and the situation report follow. The phone is
+// the field app at 375 px in a frame, as in walkfix.
+async function evacuees(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+  let P = null;
+  const gym = M().ids.facilities[2], dell = M().ids.facilities[3];
+  const rec = (label) => base.evacuees(true).find((e) => e.label === label) || null;
+  const openFacility = async (id) => {
+    const b = document.createElement('button'); b.dataset.action = 'select-facility'; b.dataset.id = id; b.hidden = true; document.body.appendChild(b); b.click(); b.remove();
+    return until(() => $('#panel form[data-form="facility-edit"]') && $('#panel .title') && base.facility(id) && $('#panel .title').textContent.startsWith(base.facility(id).name));
+  };
+  try {
+    check('seeded: 9 people in 3 records at the gym, a family of 4 on its way from Unit 3, Maria Alvarez sent to Dell Seton', base.evacuees().filter((e) => e.facility_id === gym && e.status === 'here').reduce((n, e) => n + e.count, 0) === 9 && rec('family of 4').status === 'on_the_way' && rec('family of 4').logged_by === USERS().unit3 && rec('Maria Alvarez, 78').status === 'moved' && rec('Maria Alvarez, 78').facility_id === dell && base.facility(gym).beds === 60);
+
+    // ---- a crew's house record (Unit 3's phone): People needing help gains rows
+    P = await phoneFrame();
+    check('the field app opens at 375 px as Unit 3', !!P.ready);
+    await P.act('briefed');
+    await P.act('addr-clear');
+    P.$('#structure-label').value = '114 Pecan Ln';
+    await P.act('help-up');
+    check('the first person counted opens a row: who, condition, went to, the nearest shelter first', P.$$('#st-people .st-row').length === 1 && P.$('#st-people [data-stp="where"]').value === 'f:' + gym && [...P.$('#st-people [data-stp="where"]').options].map((o) => o.textContent).join('|') === 'Went to High school gym (shelter)|Went to Dell Seton Medical Center (hospital)|With family|Own transport|Not known', [...P.$('#st-people [data-stp="where"]').options].map((o) => o.textContent).join('|'));
+    await P.act('st-person-add');
+    const fill = (i, who, cond, where) => { P.$$('#st-people [data-stp="who"]')[i].value = who; P.$$('#st-people [data-stp="cond"]')[i].value = cond; P.$$('#st-people [data-stp="where"]')[i].value = where; };
+    fill(0, 'Reyes, family of 2', 'cold, a cat', 'f:' + gym);
+    fill(1, 'Mr. Okafor, 81', 'on oxygen, short of breath', 'f:' + dell);
+    P.$('#st-people').dispatchEvent(new P.frame.contentWindow.Event('input', { bubbles: true }));
+    check('the help count follows the rows: a family of 2 and one man is 3', P.text('#help-count') === '3', P.text('#help-count'));
+    check('the structure sheet is whole at 375 px with its rows', P.sideways().length === 0, P.sideways().join('; '));
+    await P.act('save-structure');
+    const reyes = await until(() => rec('Reyes, family of 2')), okafor = await until(() => rec('Mr. Okafor, 81'));
+    const house = reyes && base.structure(reyes.structure_id);
+    check('each row is a record linked to the house: the family on its way to the gym, Mr. Okafor moved to hospital', !!reyes && reyes.status === 'on_the_way' && reyes.facility_id === gym && reyes.count === 2 && reyes.needs.join() === 'pets' && reyes.note === 'cold, a cat' && reyes.from_text === '114 Pecan Ln' && !!house && house.label === '114 Pecan Ln' && house.people_needing_help === 3
+      && !!okafor && okafor.status === 'moved' && okafor.facility_id === dell && okafor.needs.join() === 'oxygen' && okafor.structure_id === reyes.structure_id, JSON.stringify([reyes, okafor].map((e) => e && [e.status, e.count, e.needs, e.from_text])));
+    check('the log says who the crew sent where', await until(() => eventText(base, 'Unit 3 sent Reyes, family of 2 from 114 Pecan Ln to High school gym, needs pets')) && !!eventText(base, 'Unit 3 sent Mr. Okafor, 81 from 114 Pecan Ln to Dell Seton Medical Center, needs oxygen'), logTexts().slice(0, 3).join(' | '));
+    await openFacility(gym);
+    check('the gym card on the base shows the crew\'s records on their way, live', await until(() => has('#panel', 'on the way from crews · 6 people', 'reyes, family of 2', '6 on their way from crews')), text('#panel').slice(0, 600));
+
+    // ---- the shelter desk: a new account on the same phone, kind Shelter desk
+    await P.act('menu');
+    await P.act('sign-out');
+    await until(() => P.shown('#auth'));
+    await phoneSignIn(P, 'evac-desk@mock.local', true);
+    await until(() => P.shown('#s-identify'));
+    P.$('#id-name').value = 'Pat Doe'; P.$('#id-phone').value = '512 555 0199';
+    await P.act('id-save');
+    check('Shelter desk is a kind at check-in', P.$$('#join-kind .chip').some((c) => c.textContent === 'Shelter desk'), P.text('#join-kind'));
+    await P.act('jp-kind', { kind: 'shelter_desk' });
+    const jf = P.$('#join-form');
+    jf.code.value = 'CEDAR7'; jf.unit.value = 'Gym desk'; jf.agency.value = 'Red Cross';
+    jf.requestSubmit();
+    check('she checks in as a shelter desk, said in the check-in line', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym desk', 6000) && await until(() => eventText(base, 'Gym desk, shelter desk checked in as Pat Doe, 512 555 0199, identity not given')), logTexts()[0]);
+    check('her briefing gives her job as People here at the gym, not waiting at staging', await until(() => P.shown('#s-briefing') && /people here at high school gym/.test(P.text('#briefing-list'))) && /they're here/.test(P.text('#briefing-list')) && !/wait at staging/.test(P.text('#briefing-list')), P.text('#briefing-list').slice(0, 400));
+    await P.act('briefed');
+    check('her home is People here: the gym\'s count against its beds, no division card and no search buttons', await until(() => P.shown('#desk') && /high school gym · 9 of 60/.test(P.text('#desk-head'))) && !P.shown('.actions') && !P.shown('#assignment') && !P.shown('#mini') && P.shown('.help'), P.text('#desk-head'));
+    const desk = base.units().find((u) => u.unit_name === 'Gym desk');
+    check('the desk\'s shelter is saved on her unit, so the base knows whose desk it is', await until(() => base.member(desk.user_id).facility_id === gym) && base.member(desk.user_id).kind === 'shelter_desk');
+    check('Arriving from crews lists the records on their way here, with who sent them', P.$$('#desk-arriving .arrive').length === 2 && /reyes, family of 2 from 114 pecan ln · a-2 · unit 3/.test(P.text('#desk-arriving')) && /family of 4 from 112 pecan ln · unit 3/.test(P.text('#desk-arriving')), P.text('#desk-arriving'));
+    check('People here at 375 px: nothing sideways, every button whole', P.sideways().length === 0, P.sideways().join('; '));
+
+    // They're here: one tap signs the crew's record in, then the name
+    P.$$('#desk-arriving .arrive').find((r) => /reyes/i.test(r.textContent)).querySelector('[data-action="ev-arrived"]').click();
+    await until(() => P.shown('#s-person'));
+    check('They\'re here signs the crew\'s record in at once (not a second record) and asks for the name', await until(() => rec('Reyes, family of 2') && rec('Reyes, family of 2').status === 'here') && rec('Reyes, family of 2').signed_in_by === desk.user_id && base.evacuees().filter((e) => /reyes/i.test(e.label)).length === 1 && P.$('#person-title').textContent === 'Signed in: Reyes, family of 2' && P.$('#ev-cancel').textContent === 'Not now' && P.$('#ev-save').textContent === 'Save the name', P.$('#person-title').textContent);
+    check('the sign-in is logged at the shelter', await until(() => eventText(base, 'High school gym: Gym desk signed in Reyes, family of 2, from 114 Pecan Ln, needs pets')), logTexts()[0]);
+    check('the sheet is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#ev-who').value = 'Reyes, Ana and Luis';
+    await P.act('ev-save');
+    check('the name she adds is on the record and in the log', await until(() => eventText(base, 'Reyes, family of 2 now on record as Reyes, Ana and Luis (2)')) && !!rec('Reyes, Ana and Luis'), logTexts()[0]);
+    check('her count is 11 of 60 now, the arrival gone from Arriving', await until(() => /11 of 60/.test(P.text('#desk-head'))) && P.$$('#desk-arriving .arrive').length === 1, P.text('#desk-head'));
+
+    // a walk-up, with only who and a need
+    await P.act('ev-new');
+    check('Sign in a person: only Who is needed, Where now is here', P.shown('#s-person') && P.$('#ev-save').textContent === 'Sign in here' && P.$('#ev-where').value === 'f:' + gym && /^here, high school gym$/i.test(P.$('#ev-where').selectedOptions[0].textContent));
+    P.$('#ev-who').value = 'family of 5, Garza';
+    P.$('#ev-who').dispatchEvent(new P.frame.contentWindow.Event('input', { bubbles: true }));
+    check('"family of 5" fills How many', P.$('#ev-count').value === '5', P.$('#ev-count').value);
+    P.$('#ev-who').value = 'Lopez, Ana';
+    P.$('#ev-who').dispatchEvent(new P.frame.contentWindow.Event('input', { bubbles: true }));
+    await P.act('ev-need', { need: 'insulin' });
+    P.$('#ev-from').value = 'Bee Creek Rd';
+    await P.act('ev-save');
+    check('a walk-up is signed in with only who and a need, and logged', await until(() => rec('Lopez, Ana')) && rec('Lopez, Ana').status === 'here' && rec('Lopez, Ana').count === 1 && rec('Lopez, Ana').needs.join() === 'insulin' && await until(() => eventText(base, 'High school gym: Gym desk signed in Lopez, Ana, from Bee Creek Rd, needs insulin')));
+    check('newest first on her list', await until(() => /lopez, ana/.test((P.$('#desk-here .ev-row') || { textContent: '' }).textContent.toLowerCase())), P.text('#desk-here').slice(0, 200));
+
+    // a move: Nguyen, Tam to Dell Seton
+    P.$$('#desk-here .ev-row').find((r) => /nguyen/i.test(r.textContent)).click();
+    await until(() => P.shown('#s-person') && P.$('#person-title').textContent === 'Nguyen, Tam');
+    P.$('#ev-where').value = 'f:' + dell;
+    await P.act('ev-save');
+    check('a move: to Dell Seton, logged from where to where, the shelter it left remembered', await until(() => rec('Nguyen, Tam').status === 'moved') && rec('Nguyen, Tam').facility_id === dell && rec('Nguyen, Tam').prev_facility_id === gym && await until(() => eventText(base, 'Nguyen, Tam moved from High school gym to Dell Seton Medical Center')), logTexts()[0]);
+    check('he stays on the gym\'s list under Left here, with where he went', await until(() => /left here/.test(P.text('#desk-here')) && /nguyen, tam.*dell seton medical center since \d\d:\d\d/.test(P.text('#desk-here'))), P.text('#desk-here'));
+
+    // find a person on the phone; Not listed? asks Operations
+    const typeFind = async (q) => { P.$('#desk-q').value = q; P.$('#desk-q').dispatchEvent(new P.frame.contentWindow.Event('input', { bubbles: true })); await wait(100); };
+    await typeFind('alvarez');
+    check('Find a person, any shelter or hospital: Maria Alvarez at Dell Seton since when, and from where', /maria alvarez, 78/.test(P.text('#desk-results')) && /dell seton medical center since \d\d:\d\d · from 112 pecan ln/.test(P.text('#desk-results')), P.text('#desk-results'));
+    await typeFind('Rosa Diaz');
+    check('nobody on record: it says so, and Not listed? offers to ask Operations', /nobody on record matches "rosa diaz"/.test(P.text('#desk-results')) && !!P.$('#desk-results [data-action="ev-ask"]'), P.text('#desk-results'));
+    await P.act('ev-ask');
+    check('Operations gets "Looking for Rosa Diaz" with the desk\'s number', await until(() => base.messages().find((m) => m.text === 'Looking for Rosa Diaz. Not on any shelter or hospital record. Call Gym desk at High school gym on 512 555 0199.')), base.messages()[0] && base.messages()[0].text);
+    await typeFind('');
+
+    // ---- the base: the gym's card
+    await openFacility(gym);
+    check('the gym card: beds against the count, expected with the live count, needs, the desk', await until(() => has('#panel', 'beds', '11 of 60', 'bus 2 from pecan park, 12 people, 17:30', '4 on their way from crews', '1 insulin · 1 infant · 2 pets', 'gym desk')), text('#panel').slice(0, 700));
+    const rows = () => $$('#panel .ev-box:not(.arriving) .ev-grid').length ? $$('#panel .ev-box:not(.arriving) .ev-grid')[0].querySelectorAll('.ev-r') : [];
+    check('People here, newest first: Lopez, then the Reyes family', /lopez, ana/i.test(rows()[0] ? rows()[0].textContent : '') && /reyes, ana and luis/i.test(rows()[1] ? rows()[1].textContent : ''), [...rows()].map((r) => r.textContent.trim().slice(0, 30)).join(' | '));
+    check('a moved record shows where it went', /nguyen, tam[\s\S]*dell seton medical center since \d\d:\d\d/i.test(text('#panel')), text('#panel').slice(-600));
+    const ff = $('#panel form[data-form="facility-edit"]');
+    ff.beds.value = '40'; ff.expected.value = 'Bus 3 from Bee Creek, 8 people, 19:00';
+    ff.requestSubmit();
+    check('beds and expected are set on the card, logged, and the count reads against them', await until(() => eventText(base, 'Shelter: High school gym has 40 beds')) && !!eventText(base, 'Shelter: High school gym expecting Bus 3 from Bee Creek, 8 people, 19:00') && !eventText(base, 'Shelter: High school gym updated') && await until(() => has('#panel', '11 of 40')), logTexts().slice(0, 3).join(' | '));
+    check('the desk\'s phone follows: 11 of 40', await until(() => /11 of 40/.test(P.text('#desk-head'))), P.text('#desk-head'));
+    $('#panel [data-action="ev-add-toggle"]').click();
+    const af = await until(() => $('#panel form[data-form="evacuee-add"]'));
+    af.label.value = 'Haddad, Omar'; af.querySelector('input[name="need"][value="wheelchair"]').checked = true; af.from.value = 'Mill Street';
+    af.requestSubmit();
+    check('Operations signs a person in from the card', await until(() => rec('Haddad, Omar') && rec('Haddad, Omar').status === 'here') && rec('Haddad, Omar').signed_in_by === USERS().ops && await until(() => eventText(base, 'High school gym: Operations signed in Haddad, Omar, from Mill Street, needs wheelchair')) && await until(() => /haddad, omar/i.test(rows()[0] ? rows()[0].textContent : '')));
+    const fam3 = rec('family of 3');
+    const sel = $(`#panel select[data-select="ev-where"][data-id="${fam3.id}"]`);
+    sel.value = 'with_family'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    check('Where now on a row: the family of 3 left with family, logged, kept under Left here', await until(() => rec('family of 3').status === 'with_family') && await until(() => eventText(base, 'family of 3 (3) left High school gym with family') || eventText(base, 'family of 3 left High school gym with family')) && await until(() => /family of 3[\s\S]*left high school gym with family at/i.test(text('#panel'))), logTexts()[0]);
+
+    // find a person from the header
+    $('#find-q').value = 'nguyen'; $('#find-q').dispatchEvent(new Event('input', { bubbles: true }));
+    check('the header\'s Find a person answers where a person is now and since when, and finds the responders too', await until(() => !$('#find-pop').hidden && has('#find-pop', 'nguyen, tam', 'dell seton medical center since', 'responders', 'responder on unit 2')), text('#find-pop'));
+    $$('#find-pop .find-row').find((r) => /nguyen, tam/i.test(r.textContent)).querySelector('[data-action="select-facility"]').click();
+    check('Open on a result opens the place the record says, and closes the search', await until(() => has('#panel .title', 'dell seton') && $('#find-pop').hidden) && has('#panel', 'people sent here', 'nguyen, tam', 'mr. okafor, 81', 'maria alvarez, 78'), text('#panel').slice(0, 300));
+    $('#find-q').value = 'zzz'; $('#find-q').dispatchEvent(new Event('input', { bubbles: true }));
+    check('nobody matching says so', await until(() => has('#find-pop', 'nobody on record matches "zzz"')));
+    document.body.click();
+    check('a click elsewhere closes it', await until(() => $('#find-pop').hidden && $('#find-q').value === ''));
+    // the home panel's line per place, and its own find box
+    $('#panel [data-action="close-panel"]').click();
+    await until(() => has('#panel', 'join code'));
+    check('the home panel lists people sheltered and moved per place', has('#panel', 'people sheltered and moved', 'high school gym', '9 of 40 beds', '4 on the way', 'dell seton medical center', '3 sent here'), text('#panel').slice(0, 200));
+    const hf = $('#panel [data-find="home"]');
+    hf.value = 'okafor'; hf.dispatchEvent(new Event('input', { bubbles: true }));
+    check('its find box finds Mr. Okafor at Dell Seton, brought out by Unit 3', has('#panel [data-find-results="home"]', 'mr. okafor, 81', 'dell seton medical center since', 'brought out by unit 3'), text('#panel [data-find-results="home"]'));
+    hf.value = ''; hf.dispatchEvent(new Event('input', { bubbles: true })); hf.blur();
+
+    // a log line opens where the person is
+    const line = $$('#log .log-row').find((r) => /nguyen, tam moved from/i.test(r.textContent));
+    check('a log line about a person opens where the record says they are', !!line && !!line.querySelector('[data-action="select-evacuee"]'));
+    line.querySelector('[data-action="select-evacuee"]').click();
+    check('...the hospital, for Nguyen, Tam', await until(() => has('#panel .title', 'dell seton')));
+
+    // Print the list
+    await openFacility(gym);
+    $('#panel [data-action="print-shelter"]').click();
+    check('Print the list: the people at the gym by name, for the incident only', await until(() => !$('#briefing').hidden && has('#briefing-title', 'people at high school gym')) && has('#briefing-page', 'beds: 9 of 40 taken', 'here now, newest first', 'haddad, omar', 'lopez, ana', 'on the way from crews', 'family of 4', 'left here', 'nguyen, tam', 'never for public release'), text('#briefing-page').slice(0, 500));
+    $('[data-action="close-briefing"]').click();
+
+    // the situation report: counts, never a name
+    $('[data-action="sitrep"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+    check('the situation report says people sheltered, beds, moved to hospital, expected and records with no name yet', has('#briefing-page', 'people sheltered: 9 at high school gym (40 beds), 3 moved to hospital, 12 expected · 2 records with no name yet'), (text('#briefing-page').match(/people sheltered[^.]*/) || [''])[0]);
+    check('and no name of anyone sheltered or moved appears in it', !/alvarez|okafor|nguyen|reyes|lopez|haddad|okonkwo/i.test($('#briefing-page').innerText));
+    $('[data-action="close-briefing"]').click();
+
+    // the rules: another unit cannot change a record it did not make; the crew can correct its own; nothing is deleted
+    const c1 = window.supabase.createClient();
+    await c1.auth.signInWithPassword({ email: 'unit1@mock.local', password: 'any' });
+    const u1 = new Data(c1); await u1.init(); await u1.open(INC());
+    let refused = false;
+    try { await u1.updateEvacuee(rec('Lopez, Ana').id, { status: 'unknown' }); } catch (e) { refused = true; }
+    check('another unit cannot move a record it did not make', refused && rec('Lopez, Ana').status === 'here');
+    u1.close();
+    const fixed = await field.updateEvacuee(rec('Mr. Okafor, 81').id, { note: 'by ambulance, on oxygen' });
+    check('the crew that made a record can still correct it', fixed.note === 'by ambulance, on oxygen');
+    const del = await window.sb.from('ic_evacuees').delete().eq('id', rec('Lopez, Ana').id);
+    check('nothing is deleted: a record is moved or withdrawn', !!del.error && !!rec('Lopez, Ana'));
+  } finally {
+    window.confirm = confirmWas;
+    if (P) P.frame.remove();
+    if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     await wait(100);
   }

@@ -4,7 +4,7 @@
 // representatives the Liaison Officer keeps. No DOM and no network: every function takes the data
 // module's read API (or anything with the same read methods, as the Node test does) and returns
 // plain lines, so the base, the phone and the tests all say the same things.
-import { hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl } from './rules.js';
+import { hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText } from './rules.js';
 
 // ICS-100: one supervisor to three to seven people, five being best. Past seven the count turns orange.
 export const SPAN_MAX = 7;
@@ -165,6 +165,16 @@ export function fieldBriefing(data, { me, at } = {}) {
       sentence(zone.instructions),
       `Supervisor: ${zone.supervisor || 'not named'}. Priority ${zone.priority}.`,
       o ? `Objective ${o.number}: ${sentence(o.text)}` : ''
+    ].filter(Boolean).join(' ') });
+  } else if (me && me.kind === 'shelter_desk') {
+    // a shelter desk's job is the people at its shelter, not a division (v26)
+    const f = (me.facility_id && data.facility ? data.facility(me.facility_id) : null) || data.facilities().find((x) => x.kind === 'shelter') || null;
+    const c = f && data.evacuees ? placeCounts(data.evacuees(), f.id) : null;
+    S.push({ key: 'job', title: 'Your job', lead: f ? `People here at ${f.name || 'the shelter'}.` : 'People here.', text: [
+      'Sign in everyone who arrives: who, how many, their needs (oxygen, insulin, a wheelchair, an infant, pets) and where from. Only who is needed.',
+      'A crew\'s people on their way to you are listed first: tap They\'re here, so nobody is signed in twice.',
+      'Find a person answers "is my mother here?" across every shelter and hospital; Not listed? asks Operations to look.',
+      c ? `Now: ${bedsText(c.people, f.beds)}${f.beds != null ? ' beds' : ''}, ${c.arriving.length} record${c.arriving.length === 1 ? '' : 's'} on the way${f.expected ? ', expected ' + f.expected : ''}.` : (f ? '' : 'Operations has not placed a shelter on the map yet.')
     ].filter(Boolean).join(' ') });
   } else {
     const staging = data.facilities().find((f) => f.kind === 'staging');

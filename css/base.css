@@ -424,3 +424,26 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
   .org-box.ic { background: #1B1B18 !important; color: #fff !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .org-span.over, .org-warn { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+
+/* people sheltered and moved (v26): find a person in the header, the shelter's card, the home panel's lines */
+.find-top { position: relative; flex: none; }
+.find-q { width: 170px; min-height: 30px; font-size: 13px; }
+.find-pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 1700; width: min(560px, 92vw); max-height: 60vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.18); padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+.find-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 4px; }
+.find-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr) auto; grid-template-areas: "who where btn" "from from btn"; gap: 2px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.find-row:last-child { border-bottom: 0; }
+.find-who { grid-area: who; } .find-where { grid-area: where; } .find-from { grid-area: from; font-size: 12px; } .find-row .btn { grid-area: btn; }
+.find-k { margin-top: 6px; }
+.find-none { font-size: 12.5px; padding: 4px 0; }
+.find-home { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.find-home .log-search { width: 100%; min-height: 32px; font-size: 13px; }
+.ev-box { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.ev-box.arriving { border: 2px solid var(--hazard); background: var(--tint-orange); }
+.ev-grid { display: flex; flex-direction: column; }
+.ev-r { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "who from what" "by by where"; gap: 2px 10px; align-items: center; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+.ev-r:last-child { border-bottom: 0; }
+.ev-r > :nth-child(1) { grid-area: who; } .ev-r > :nth-child(2) { grid-area: from; } .ev-r > :nth-child(3) { grid-area: what; } .ev-r > :nth-child(4) { grid-area: by; font-size: 12px; } .ev-r > :nth-child(5) { grid-area: where; justify-self: end; max-width: 100%; }
+.ev-r.away { color: var(--muted); }
+.ev-moved { color: var(--active); }
+.ev-coming.on { color: var(--hazard-ink); font-weight: 600; }
+.ev-add { background: var(--panel); }

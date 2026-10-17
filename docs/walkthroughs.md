@@ -353,3 +353,32 @@ Every LOST item, then the SLOWED items two or more personas hit. Each with the s
 17. **"Close" on a facility card closes the facility** (Marcus; it bit the walker during the shelter persona too). Call it "Mark closed" and put a plain Close on the card. *Fixed in v25: the card's Close only puts the card away; "Mark closed" sits beside the facility's Open badge.*
 
 Also fixed in v25, from the administrator's walk: Sign out on the phone empties the sign-in form, and the password field no longer autofills, so a phone handed to the next crew does not carry the last account's email and password.
+
+---
+
+## Re-walk after v25
+
+The fixed screens only, walked again on 2026-10-17 after commit 4f57b64 in the same mock and at the same widths (phone 375 × 812, base 1280 × 800), as the personas who hit them and reading only what was on screen. One phone was handed from person to person: Unit 3 read its briefing to the end and pressed Briefed, then Reyes, the shelter desk, Moreno, Rosa and Ana signed in after each other; the base was Marcus, the PIO and the clerk. Screenshots are `docs/walkthroughs/rewalk-v25-*.jpg`.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| 11 Briefing at its end | Reyes, shelter desk, Moreno, Rosa | Each briefing opened at Situation, though the last person had left the same sheet at its end. `rewalk-v25-reyes-briefing-at-top.jpg` | Clear |
+| 12 Agency carried over | Shelter desk, Moreno, Rosa, Ana | The Agency box was empty for each new account; Rosa and Ana got their own crew's agency. | Clear, one small bite (below) |
+| 13 Inbox sideways | Reyes, shelter desk | "Message Operations" in full on a button of its own; after sending, the Messages page whole. `rewalk-v25-reyes-inbox-buttons-whole.jpg`, `rewalk-v25-messages-after-sending.jpg` | Clear |
+| 14 Form before "already in" | Rosa, Ana | "Incidents you are already in" at the top, one tap to open, the form below it titled "Check in to another incident". `rewalk-v25-rosa-already-in-first.jpg` | Clear |
+| 15 Sidebar jumps | PIO, Marcus | Rosa's message arrived above Public information and the section stayed exactly where the PIO was reading. After Finish, the New division form was in view though Marcus had been typing further down. `rewalk-v25-pio-before-update.jpg`, `rewalk-v25-pio-after-update.jpg` | Clear, one bite (below) |
+| 16 Controls move | Marcus, the clerk | One toolbar row through four corners, Finish in the same place. The SAFETY bar, then the PAR bar, took the slot that had said "No emergency open"; Print 214 and the map did not move. `rewalk-v25-clerk-bars-one-row.jpg` | Clear, one small bite (below) |
+| 17 Close closes the facility | Marcus | Close put the command post's card away; the post stayed open and nothing was logged. "Mark closed" sits beside the green Open badge. `rewalk-v25-marcus-facility-card.jpg` | Clear |
+| 1 No licence, no check-in | Shelter desk | Saved with her name and phone; "identity not given: Operations checks who you are in person"; checked in. The base's log said "identity not given" and its resources row "Pat Doe · no ID". `rewalk-v25-shelter-no-licence.jpg` | Clear |
+| 3 No boat ramp | Marcus, Rosa | Marcus placed one ("Click the map where the boat ramp is"); Rosa's Nearby listed "Low-water crossing ramp · Boat ramp · 1.6 mi" with Directions. `rewalk-v25-rosa-nearby-boat-ramp.jpg` | Clear, one small bite (below) |
+| 7 Cleared photos | PIO | "Download cleared photos" and a line saying what the zip holds, under Public information. The download itself was not pressed in the pane, because it saves a file to the machine; the walkfix suite opens the same zip and finds the photo named by time and division, with its caption inside it and in captions.txt. | Clear on screen; the file checked by the suite |
+| Sign out keeps the last login | Moreno, the administrator | The sign-in form was empty after every Sign out. | Clear |
+
+**Still bites, small:**
+
+- **The Agency box's placeholder looks like a value.** An empty box shows "Cedar Fork Fire Department" in grey, the same words Ana's filled box shows in white. A hurried volunteer could take it for an answer. A placeholder that is plainly an example ("e.g. Red Cross, county sheriff") would end it.
+- **Half-typed words in a sidebar form are lost when the panel redraws.** Marcus's unsent words in Message the field were gone once he clicked the map. v24 did the same; the redraw now keeps the place, but not what was typed in a box that has lost focus.
+- **Two bars at once cut the message short.** With a SAFETY message and a PAR open and six units waiting, each cell shows the waiting list and cuts the rest; the safety message's own words need a hover.
+- **A boat crew's briefing does not name the boat ramp.** Rosa found it in Nearby, but her briefing's Work area still names only staging.
+
+Seen again but outside this release: the already-in row still gives the period as typed on the picker, which differs from the reports; the shelter desk is still "Other" among the unit kinds; Moreno's briefing still says "Wait at staging".

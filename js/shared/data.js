@@ -454,8 +454,8 @@ export class Data {
     const from = period.starts_at, to = period.closed_at || null;
     return this.events().filter((e) => e.at >= from && (!to || e.at <= to));
   }
-  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison }) {
-    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '' });
+  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison, rotation }) {
+    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '', p_rotation: rotation == null || rotation === '' ? null : Number(rotation) });
     if (error) throw error;
     this.local('ic_periods', data);
     return data;
@@ -593,6 +593,20 @@ export class Data {
   }
   // the photos Operations has cleared for public information (the PIO's set), newest first
   publicPhotos() { return this.photos().filter((p) => p.public_ok); }
+  // the public set (v28): cleared and checked (no face, no plate, no house number), what leaves the incident
+  publicSet() { return this.publicPhotos().filter((p) => p.public_checked_at); }
+  async setPhotoCaption(id, caption) {
+    const { data, error } = await this.sb.from('ic_photos').update({ public_caption: (caption || '').trim() }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_photos', data);
+    return data;
+  }
+  async setPhotoChecked(id, ok) {
+    const { data, error } = await this.sb.from('ic_photos').update({ public_checked_at: ok ? new Date().toISOString() : null }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_photos', data);
+    return data;
+  }
   async setPhotoPublic(id, ok) {
     const { data, error } = await this.sb.from('ic_photos').update({ public_ok: !!ok }).eq('id', id).select().single();
     if (error) throw error;
@@ -685,6 +699,12 @@ export class Data {
   async setStatus(userId, status, note) { return this.updateMember(userId, { status, status_note: note || '' }); }
   // what a unit is: one of UNIT_KINDS in rules.js, or '' for not said
   async setKind(userId, kind) { return this.updateMember(userId, { kind: kind || '' }); }
+  // time in the water (v28): one stamp, set and cleared by the unit or Operations; a check-out clears it
+  async setInWater(userId, since) { return this.updateMember(userId, { in_water_since: since || null }); }
+  // the incident's settings (v28): the Google Maps key, the retention days, the default rotation; Operations writes
+  settings() { const inc = this.store.incident; return (inc && inc.settings && typeof inc.settings === 'object') ? inc.settings : {}; }
+  async saveSettings(patch) { return this.updateIncident({ settings: Object.assign({}, this.settings(), patch) }); }
+  rotationMinutes() { const p = this.currentPeriod(); if (p && p.rotation_minutes != null) return Number(p.rotation_minutes); const s = this.settings(); return s.rotation_minutes != null && s.rotation_minutes !== '' ? Number(s.rotation_minutes) : 45; }
   // the PAR: a message of kind 'par'; each unit answers with a head count, or that someone is missing
   async startPar(target, text) {
     const r = this.recipientsFor(target || 'all');

@@ -487,3 +487,20 @@ export function peopleShelteredLine({ evacuees, facilities, placeWords }) {
   if (!shelters.length && !live.length) return 'People sheltered: no shelter open and nobody on record';
   return `People sheltered: ${at.length ? at.join(', ') : 'no shelter open'}, ${hospital} moved to hospital, ${expected} expected · ${unnamed} record${unnamed === 1 ? '' : 's'} with no name yet`;
 }
+
+// ---- time in the water (v28): one stamp per unit (ic_members.in_water_since), the rotation on the period
+// (ic_periods.rotation_minutes, 0 = off). Past WATER_LOST_ROTATIONS rotations nobody believes the number.
+export const WATER_LOST_ROTATIONS = 3;
+export const WATER_KINDS = ['boat', 'swift_water', 'high_water'];   // the kinds whose home screen offers the clock before it runs
+export function durationText(min) { return min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '').trim(); }
+export function waterMinutes(since, now = Date.now()) { return since ? Math.max(0, Math.round((now - new Date(since).getTime()) / 60000)) : null; }
+export function waterState(since, rotation, now = Date.now()) {
+  const min = waterMinutes(since, now);
+  if (min == null) return null;
+  const rot = Math.max(0, Number(rotation) || 0);
+  const rotations = rot > 0 ? Math.floor(min / rot) : 0;
+  const lost = rot > 0 && rotations >= WATER_LOST_ROTATIONS;
+  return { min, rotation: rot, rotations, overdue: rot > 0 && min >= rot, lost, text: lost ? 'in the water, probably left running (' + durationText(min) + ')' : 'in the water ' + durationText(min) };
+}
+export function rotationText(rotation) { const r = Math.max(0, Number(rotation) || 0); return r > 0 ? 'crews out of the water every ' + r + ' minutes' : 'no rotation set'; }
+export function unitsInWater(units, rotation, now = Date.now()) { return units.filter((u) => u.in_water_since && u.status !== 'checked_out' && !u.removed_at).map((u) => ({ unit: u, state: waterState(u.in_water_since, rotation, now) })); }

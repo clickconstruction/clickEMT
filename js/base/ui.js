@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText } from '../shared/rules.js';
 import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -68,8 +68,13 @@ function unitRowHtml(data, m, now) {
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
       <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : identityGiven(p) ? 'Identity not verified yet' : 'No licence given: check who this is in person'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : identityGiven(p) ? '' : ' · no ID'}</span>` : ''; })()}</span>
-      <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}</span></span>
+      <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}${waterSpan(data, m, now)}</span></span>
     </button>`;
+}
+// " · in the water 38 min", orange past the rotation, "probably left running" past three (v28)
+function waterSpan(data, m, now) {
+  const ws = m.in_water_since && m.status !== 'checked_out' ? waterState(m.in_water_since, data.rotationMinutes(), now) : null;
+  return ws ? ` · <span class="water${ws.overdue ? ' over' : ''}" title="${ws.rotation ? 'Rotation every ' + ws.rotation + ' minutes' : 'No rotation set for the period'}">${esc(ws.text)}</span>` : '';
 }
 
 // The resources board: units by what they are (engines, boat crews ...: what a request asks for),
@@ -275,12 +280,12 @@ export function agenciesHtml(data) {
 
 // The Public Information Officer's set: photos Operations has cleared. Nothing is public by default.
 export function publicHtml(data) {
-  const pub = data.publicPhotos();
+  const pub = data.publicPhotos(), set = data.publicSet();
   return `
     <div class="k" style="margin-top:6px">Public information</div>
-    <div class="muted" style="font-size:12.5px">${pub.length ? pub.length + ' photo' + (pub.length === 1 ? '' : 's') + ' cleared for the public. Open a photo to clear or withdraw it.' : 'No photo is cleared for the public. Open a photo to clear it for the Public Information Officer.'}</div>
-    ${pub.length ? `<div class="d-row"><button class="btn sm" data-action="download-public" title="One zip: every cleared photo named by its time and division, with its caption (what it shows, where, when, whose) written into the file and listed in captions.txt. No coordinates.">Download cleared photos</button><span class="muted" style="font-size:12px">One zip; each caption (what, where, when, whose) is inside its file and in captions.txt.</span></div>` : ''}
-    ${pub.slice(0, 6).map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.zone_id && data.zone(p.zone_id) ? ' · ' + esc(data.zone(p.zone_id).code) : ''}${p.note ? ' · ' + esc(p.note) : ''}</button>`).join('')}`;
+    <div class="muted" style="font-size:12.5px">${pub.length ? pub.length + ' photo' + (pub.length === 1 ? '' : 's') + ' cleared for the public, ' + set.length + ' checked (no face, no plate, no house number). Only checked photos leave in the public set; open a photo to write its public caption and check it.' : 'No photo is cleared for the public. Open a photo to clear it for the Public Information Officer.'}</div>
+    ${pub.length ? `<div class="d-row"><button class="btn sm" data-action="download-public" title="One zip: every checked photo named by its time and place, its public caption written into the file, and captions.txt with the time, the place and the caption. No coordinates, no unit's note. Cleared photos not yet checked are listed as missing.">Download the public set</button><span class="muted" style="font-size:12px">${set.length} of ${pub.length}; the rest wait for a check.</span></div>` : ''}
+    ${pub.slice(0, 6).map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.zone_id && data.zone(p.zone_id) ? ' · ' + esc(data.zone(p.zone_id).code) : ''} · ${p.public_checked_at ? 'checked' : 'not checked'}${p.public_caption ? ' · ' + esc(p.public_caption) : ' · no public caption'}</button>`).join('')}`;
 }
 
 function zoneHtml(data, z, state) {
@@ -361,8 +366,12 @@ function photoHtml(data, p) {
       <span class="k">Facing</span><span>${p.heading != null ? compass(p.heading) : 'unknown'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(p.lat, p.lng)) || 'unknown'}</span>
       <span class="k">Note</span><span>${esc(p.note) || '—'}</span>
-      <span class="k">Public</span><span>${p.public_ok ? 'Cleared for public information' : 'Not public'}</span>
+      <span class="k">Public</span><span>${p.public_ok ? 'Cleared for public information' + (p.public_checked_at ? ' · checked ' + hhmm(p.public_checked_at) + ' (no face, no plate, no house number)' : ' · not checked yet, so not in the public set') : 'Not public'}</span>
     </div>
+    ${p.public_ok ? `<form class="inline-form" data-form="photo-public" data-id="${p.id}">
+      <label>Public caption · what the public reads, never the unit's note or a house number <textarea name="caption" rows="2" maxlength="300" placeholder="Floodwater over Mill Street at the bridge, Saturday morning">${esc(p.public_caption || '')}</textarea></label>
+      <div class="row-btns"><button class="btn sm${p.public_checked_at ? '' : ' green'}" type="button" data-action="photo-check" data-id="${p.id}" data-ok="${p.public_checked_at ? '0' : '1'}" title="You have looked: no face, no licence plate, no house number in the frame">${p.public_checked_at ? 'Withdraw the check' : 'Checked: no face, no plate, no house number'}</button><button class="btn sm" type="submit">Save caption</button></div>
+    </form>` : ''}
     <div class="d-row">
       <button class="btn sm" data-action="pan-to" data-lat="${p.lat}" data-lng="${p.lng}">Show on map</button>
       <a class="btn sm" data-photo-link target="_blank" rel="noopener" hidden>Open full size</a>
@@ -907,6 +916,7 @@ function unitHtml(data, m, state) {
     ${identityHtml(data, m)}
     ${demobHtml(m)}
     ${unitRequestsHtml(data, m)}
+    ${m.role === 'unit' && !m.removed_at && m.status !== 'checked_out' ? (() => { const ws = m.in_water_since ? waterState(m.in_water_since, data.rotationMinutes()) : null; return `<div class="d-row"><span class="k">In the water</span>${ws ? `<span class="badge ${ws.overdue ? 'haz' : 'st-assigned'}">${esc(ws.text)} · since ${hhmm(m.in_water_since)}</span>` : '<span class="muted" style="font-size:12.5px">not in the water</span>'}<button class="btn sm" data-action="unit-water" data-id="${m.user_id}" data-on="${ws ? '0' : '1'}">${ws ? 'Out of the water' : 'In the water'}</button><span class="muted" style="font-size:12px">rotation ${data.rotationMinutes() || 'off'}${data.rotationMinutes() ? ' min' : ''}</span></div>`; })() : ''}
     ${m.removed_at ? '' : `<div class="d-row"><span class="k">Set status</span>
       <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
       <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>
@@ -961,6 +971,7 @@ function periodFormHtml(data, p, next, state) {
   const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()), unified: p ? p.unified || '' : '' } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at), unified: p.unified || '' };
   d.planning = p ? p.planning_chief || '' : ''; d.logistics = p ? p.logistics_chief || '' : ''; d.finance = p ? p.finance_chief || '' : '';
   d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : '';
+  d.rotation = p && p.rotation_minutes != null ? p.rotation_minutes : data.rotationMinutes();
   const reps = next ? [] : agencyReps(data, p);
   return `
     <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
@@ -979,6 +990,10 @@ function periodFormHtml(data, p, next, state) {
       <div class="row-2">
         <label>Finance / Admin Section Chief <input name="finance" value="${esc(d.finance)}"></label>
         <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">Empty seats print as "not set". The names carry into the next period.</span>
+      </div>
+      <div class="row-2">
+        <label>Rotation in the water, minutes (0 = off) <input name="rotation" type="number" min="0" max="600" step="5" value="${esc(String(d.rotation))}"></label>
+        <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">Safety's line: past it a crew's phone nudges them out; the base shows the time in orange. Printed on the 204 and the 208.</span>
       </div>
       <div class="row-2">
         <label>Public Information Officer <input name="pio" value="${esc(d.pio)}" placeholder="Who the cleared photos go to"></label>
@@ -1121,6 +1136,7 @@ export function briefingSections(data) {
   S.push({ title: 'Needs attention', lines: attention.length ? attention : ['Nothing outstanding'] });
   const log = data.eventsIn(p).slice(0, 40);
   S.push({ title: p ? 'Log of this period, newest first' : 'Log, newest first', lines: log.length ? log.map((e) => `${hhmm(e.at)}  ${e.text}`) : ['Nothing yet'] });
+  if (waterLines(data).length) S.push({ title: 'In the water', lines: waterLines(data) });
   return S;
 }
 
@@ -1140,7 +1156,7 @@ export function form204Sections(data, z) {
   ], figure: divisionMapHtml(data, z) });
   S.push({ title: 'Resources assigned', lines: unit ? [`${unitWithKind(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`].concat(personLines(data, unit)) : ['None yet'] });
   S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
-  S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []) });
+  S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []).concat(p && p.rotation_minutes > 0 ? ['Time in the water: ' + rotationText(p.rotation_minutes)] : []) });
   S.push({ title: 'Known hazards', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None reported'] });
   const plan = data.channels();
   S.push({ title: 'Communications', lines: ['Division channel: ' + (z.channel || 'not set')].concat(plan.length ? plan.map((c) => `${c.use}: ${c.channel}`) : ['No incident plan set']) });
@@ -1150,6 +1166,12 @@ export function form204Sections(data, z) {
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '')].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
   S.push({ title: 'Prepared', lines: ['By Operations, ' + new Date().toLocaleString()] });
   return S;
+}
+
+// Who is in the water now, as report lines (v28): the unit, how long, orange words past the rotation
+export function waterLines(data) {
+  const rot = data.rotationMinutes();
+  return unitsInWater(data.units(), rot).map((x) => `${x.state.overdue ? '! ' : ''}${unitLabel(x.unit)} ${x.state.text}${x.state.overdue && !x.state.lost ? ', past the ' + rot + '-minute rotation' : ''}${x.unit.crew ? ' · ' + x.unit.crew : ''}`);
 }
 
 // The situation report, ICS 209: counts from the data, words from Operations on the period.
@@ -1185,8 +1207,9 @@ export function sitrepSections(data) {
   S.push({ title: 'Resources needed', lines: data.openRequests().map((r) => `${requestLine(r)}${r.zone_id && data.zone(r.zone_id) ? ' for ' + data.zone(r.zone_id).code : ''}${r.urgency ? ', ' + urgencyLabel(r.urgency).toLowerCase() : ''} · ${REQUEST_STATUS[r.status].toLowerCase()}${r.answer ? ', ' + r.answer : ''}`).concat(sr.needs ? [sr.needs] : []).concat(data.openRequests().length || sr.needs ? [] : ['None stated']) });
   S.push({ title: 'Outlook for the next period', lines: [sr.outlook || 'Not written yet'] });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => facilityLabel(f)) : ['None set'] });
-  const pub = data.publicPhotos().length;
-  S.push({ title: 'Public information', lines: [(pub ? `${pub} photo${pub === 1 ? '' : 's'} cleared for public release` : 'No photos cleared for public release') + (p && p.pio ? `, to ${p.pio} (PIO)` : ' · no Public Information Officer seated') + '. Nothing is public by default.'] });
+  const pub = data.publicPhotos().length, checked = data.publicSet().length;
+  S.push({ title: 'Public information', lines: [(pub ? `${pub} photo${pub === 1 ? '' : 's'} cleared for public release, ${checked} checked (no face, no plate, no house number)` : 'No photos cleared for public release') + (p && p.pio ? `, to ${p.pio} (PIO)` : ' · no Public Information Officer seated') + '. Nothing is public by default; only checked photos leave in the public set.'] });
+  if (waterLines(data).length) S.push({ title: 'In the water', lines: waterLines(data) });
   return S;
 }
 // "Command transferred at 14:20 from Dana Ruiz to Marcus Bell", when it happened in this period
@@ -1247,7 +1270,7 @@ export function iapSections(data) {
   S.push({ title: 'Communications, ICS 205', lines: ch.length ? ch.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const med = data.facilities().filter((f) => f.kind === 'hospital');
   S.push({ title: 'Medical, ICS 206', lines: (med.length ? med.map((f) => `${f.name || 'Hospital'}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`) : ['No hospital set']).concat(['Emergency traffic: ' + ((ch.find((c) => /emergency/i.test(c.use)) || {}).channel || 'not set') + '. A unit in trouble presses Need help now; Operations acknowledges.']) });
-  S.push({ title: 'Safety message, ICS 208', lines: [(p && p.notes) || 'Not written yet'] });
+  S.push({ title: 'Safety message, ICS 208', lines: [(p && p.notes) || 'Not written yet'].concat(p && p.rotation_minutes > 0 ? ['Time in the water: ' + rotationText(p.rotation_minutes)] : []).concat(waterLines(data)) });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['None set'] });
   return S;
 }
@@ -1378,10 +1401,10 @@ export function maydayHtml(data) {
 }
 // One thing on the bars' slot: its words on one line, cut short on screen and whole on hover, its buttons
 // beside them. The slot above the map is always one row tall, so a bar appearing moves nothing below it.
-function barItem(words, cls, buttons) {
+function barItem(words, cls, buttons, title) {
   const i = words.indexOf(' · ');
   const head = i > 0 ? words.slice(0, i) : words, rest = i > 0 ? words.slice(i) : '';
-  return `<span class="bar-item${cls ? ' ' + cls : ''}" title="${esc(words)}"><span class="bar-text"><strong>${esc(head)}</strong>${esc(rest)}</span>${buttons || ''}</span>`;
+  return `<span class="bar-item${cls ? ' ' + cls : ''}" title="${esc(title || words)}"><span class="bar-text"><strong>${esc(head)}</strong>${esc(rest)}</span>${buttons || ''}</span>`;
 }
 
 // ---- messages (ICS 213)
@@ -1446,12 +1469,34 @@ export function messagesHtml(data, filter, limit) {
 export function safetyHtml(data) {
   const parts = [];
   // who has not answered comes first: on one row it is what is cut last
-  for (const m of data.openSafety()) {
-    const waiting = data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ');
-    if (m.kind === 'safety') parts.push(barItem(`SAFETY · waiting on ${waiting} · ${m.text} · sent ${hhmm(m.created_at)} by ${unitLabel(data.member(m.from_user))}`));
-    else if (m.kind === 'par') parts.push(barItem(`PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'} (${since(m.created_at)})`));
+  for (const m of data.openSafety()) {   // the message's own words first; the waiting list is a count, the names on hover (v28)
+    const names = data.waitingOn(m).map((u) => unitLabel(data.member(u)));
+    const waiting = names.length === 1 ? names[0] : names.length + ' units';
+    if (m.kind === 'safety') parts.push(barItem(`SAFETY · ${m.text} · waiting on ${waiting} · sent ${hhmm(m.created_at)} by ${unitLabel(data.member(m.from_user))}`, '', '', `SAFETY · ${m.text} · waiting on ${names.join(', ')} · sent ${hhmm(m.created_at)} by ${unitLabel(data.member(m.from_user))}`));
+    else if (m.kind === 'par') parts.push(barItem(`PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'} (${since(m.created_at)})`, '', '', `PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${names.join(', ')} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'}`));
   }
   const par = data.lastPar();
   if (par) for (const a of data.acksFor(par.id)) if (a.reply === 'Missing someone') parts.unshift(barItem(`MISSING · ${unitLabel(data.member(a.user_id))} reports someone missing${a.count != null ? ', ' + a.count + ' accounted for' : ''} · ${hhmm(a.acked_at)}`, 'missing'));
   return parts.join('');
+}
+
+// Incident settings (v28): the Google Maps browser key, how long personal records are kept after the
+// close, the default rotation in the water. Operations writes them; they carry into the next incident
+// this account opens. The log says a key was set, never the key.
+export function settingsDialogHtml(data) {
+  const st = data.settings();
+  const days = Number(st.retention_days) || 30;
+  return `
+    <form class="inline-form settings-form" data-form="settings">
+      <div class="title">Incident settings <span>${esc(data.incident.name)}</span></div>
+      <div class="muted" style="font-size:12.5px">Operations' settings for this incident. They carry into the next incident this account opens.</div>
+      <label>Google Maps browser key <input name="maps_key" value="${esc(st.maps_key || '')}" autocomplete="off" spellcheck="false" placeholder="AIza…" maxlength="80"></label>
+      <div class="muted" style="font-size:12px">Every member's browser reads it, so in Google Cloud restrict it to this site's address and to the Map Tiles API. The log says a key was set, never the key. Leave it empty for Streets and Satellite alone.</div>
+      <div class="d-row"><button type="button" class="btn sm" data-action="settings-test">Test the key</button><span class="muted" style="font-size:12.5px" data-settings-test></span></div>
+      <label>Personal records clear by rule <select name="retention_days" class="sel">${[30, 60, 90].map((d) => `<option value="${d}"${days === d ? ' selected' : ''}>${d} days after the close</option>`).join('')}</select></label>
+      <div class="muted" style="font-size:12px">Licences, dates of birth, addresses, licence photos and the names of people sheltered; the names, the log and the forms stay.</div>
+      <label>Default rotation in the water, minutes (0 = off) <input name="rotation_minutes" type="number" min="0" max="600" step="5" value="${esc(String(st.rotation_minutes ?? 45))}"></label>
+      <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
+      <div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
+    </form>`;
 }

@@ -13,7 +13,7 @@ the personas who hit them, and add a "Re-walk after vN" section there, as v25 di
 |---|---|---|---|---|
 | 1 | Write the re-walk after v26 (done 17 October, `docs: re-walk after v26`) | an hour | now | the v26 release, cut short |
 | 2 | v27 Members and roles, and personal records that clear by rule (shipped 17 October) | medium | 1 | the agency administrator (3 jobs he could not do) |
-| 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
+| 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers (shipped 17 October) | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
 | 4 | v29 Accountability by name | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
 | 5 | Small fixes, any time | small | — | testing and hand-over notes |
 | 6 | Decisions only Grace can make | — | — | testing and hand-over notes |
@@ -138,6 +138,8 @@ key so the Layers suite sees Google listed); a smoke suite `safetyset` passes an
 and `npm run check` pass; `VERSION` is v28; README and CLAUDE.md lines; items 4 and 9 and the PIO's third job in
 `docs/walkthroughs.md` marked built. Commit: `Time in the water, incident settings and the public set (v28)`. Then
 re-walk Rosa's rotation job, the administrator's key job and the PIO's three jobs.
+
+**Shipped** 17 October 2026 as `Time in the water, incident settings and the public set (v28)`, migration `0020_safetyset.sql`, rule test `supabase/tests/safetyset.sql` (23 of 23), smoke suite `safetyset`. The dev fix (5) had already gone in with v27.
 
 ## 4. v29 Accountability by name
 

@@ -217,3 +217,10 @@ body { background: var(--bg-2); }
 .st-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: "who x" "cond cond" "where where"; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
 .st-row > [data-stp="who"] { grid-area: who; } .st-row > [data-stp="cond"] { grid-area: cond; } .st-row > [data-stp="where"] { grid-area: where; } .st-row > .pp-x { grid-area: x; }
 .st-on { font-size: 13px; padding: 6px 10px; border-left: 3px solid var(--cleared-fill); background: var(--control-bg); border-radius: 0 10px 10px 0; }
+
+/* time in the water (v28): one row at the top of the home screen, a slim banner past the rotation, never a takeover */
+.water-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--panel-2); font-size: 13.5px; margin-bottom: 8px; }
+.water-row > span { flex: 1; min-width: 0; }
+.water-row.over { background: var(--safety); color: #1B1B18; }
+.water-row.over .btn { color: #1B1B18; border-color: #1B1B18; }
+.water-row.over .btn.pri { background: #1B1B18; color: #fff; }

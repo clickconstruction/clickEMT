@@ -2,10 +2,10 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, esc } from './ui.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
-import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
+import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch } from '../shared/qr.js';
 import { photoCaption, photoFileName, imageType, withCaption, zip, whenText } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
@@ -59,11 +59,12 @@ async function boot() {
   await showPicker();
 }
 
-function onData(what) {
+function onData(what, detail) {
   if (what === 'auth') {
     if (!data.user) { show('auth'); return; }
     if ($('#auth').hidden === false) showPicker();
   }
+  if (what === 'change' && detail && detail.table === 'ic_incidents' && data.incident) setGoogleKey(data.settings().maps_key);   // the settings changed on another screen
   if (what === 'change' || what === 'open') queueDraw();
   if (what === 'realtime') drawLive();
 }
@@ -142,6 +143,7 @@ $('#join-form').addEventListener('submit', async (e) => {
 async function openIncident(id) {
   if (state.replay) closeReplay();
   const inc = await data.open(id);
+  setGoogleKey(data.settings().maps_key);   // the Google layers come from the incident's settings (v28)
   localStorage.setItem(LAST_INCIDENT, id);
   state.selected = null; state.newZone = null; state.pendingPolygon = null;
   show('app');
@@ -279,7 +281,16 @@ function drawSide() {
     const html = panelHtml(data, state);
     if (panel.__html !== html) {
       const anchor = key === sideSel && side.scrollTop > 0 ? sideAnchor(side) : null;
+      // words typed in a box that has lost focus come through the redraw, as long as the data did not change the box
+      const typed = key === sideSel ? [...panel.querySelectorAll('form[data-form] input[name], form[data-form] textarea[name]')]
+        .filter((el) => !['checkbox', 'radio', 'file', 'submit', 'button', 'hidden'].includes(el.type) && el.value !== el.defaultValue && !(el.form && el.form.dataset.submitted))
+        .map((el) => ({ form: el.form.dataset.form, id: el.form.dataset.id || '', name: el.name, value: el.value, was: el.defaultValue })) : [];
       panel.__html = html; panel.innerHTML = html;
+      for (const t of typed) {
+        const f = [...panel.querySelectorAll(`form[data-form="${t.form}"]`)].find((x) => (x.dataset.id || '') === t.id);
+        const el = f && f.elements[t.name];
+        if (el && el.defaultValue === t.was) el.value = t.value;
+      }
       if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
       loadIdPhoto();
       if (anchor) {
@@ -444,6 +455,7 @@ async function doTransfer() {
   if (briefing) openOverlay('briefing');
 }
 $('#transfer-dialog').addEventListener('close', () => { state.transfer = null; });
+$('#settings-dialog').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // the backdrop
 $('#transfer-dialog').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTransfer(); });
 
 // ---- the People board: everyone on scene by unit, in a page of its own. The find box and the chips
@@ -628,8 +640,9 @@ async function loadPhoto(id) {
 // The Public Information Officer's photos: every cleared one in a zip, named by its time and division,
 // its caption written into the file and listed in captions.txt (js/base/photo-export.js).
 async function downloadPublic(btn) {
-  const photos = data.publicPhotos().slice().sort((a, b) => (a.taken_at < b.taken_at ? -1 : 1));
-  if (!photos.length) { toast('No photo is cleared for the public yet', true); return; }
+  const photos = data.publicSet().slice().sort((a, b) => (a.taken_at < b.taken_at ? -1 : 1));
+  const waiting = data.publicPhotos().filter((p) => !p.public_checked_at).sort((a, b) => (a.taken_at < b.taken_at ? -1 : 1));
+  if (!photos.length) { toast(waiting.length ? 'No photo is checked yet: open a cleared photo, write its public caption and press Checked' : 'No photo is cleared for the public yet', true); return; }
   const inc = data.incident, now = new Date();
   btn.disabled = true;
   toast('Preparing ' + photos.length + ' photo' + (photos.length === 1 ? '' : 's') + '…');
@@ -637,28 +650,33 @@ async function downloadPublic(btn) {
     const files = [], lines = [], missed = [], names = new Set();
     for (const p of photos) {
       const zone = p.zone_id ? data.zone(p.zone_id) : null, m = data.member(p.user_id), takenAt = new Date(p.taken_at);
-      const caption = photoCaption({ note: p.note, place: zone ? (zone.name ? zone.name + ' (division ' + zone.code + ')' : 'Division ' + zone.code) : '', incident: inc.name, takenAt, credit: (m && m.agency) || unitLabelOf(m) });
+      const place = zone ? (zone.name ? zone.name + ' (division ' + zone.code + ')' : 'Division ' + zone.code) : inc.base_name || inc.name;   // the place to the street, never a house number or coordinates
+      const words = p.public_caption || 'Flood response photo';
+      const caption = photoCaption({ note: words, place, incident: inc.name, takenAt, credit: (m && m.agency) || unitLabelOf(m) });
       try {
         const res = await fetch(await data.photoUrl(p.storage_path));
         if (!res.ok) throw new Error('the server said ' + res.status);
         const raw = new Uint8Array(await res.arrayBuffer());
-        const first = photoFileName({ takenAt, code: zone ? zone.code : '', note: p.note, ext: imageType(raw) || 'jpg' });
+        const first = photoFileName({ takenAt, code: zone ? zone.code : '', note: zone ? zone.name || '' : inc.name, ext: imageType(raw) || 'jpg' });
         let name = first;
         for (let i = 2; names.has(name); i++) name = first.replace(/(\.\w+)$/, '_' + i + '$1');   // two in the same minute and place
         names.add(name);
-        files.push({ name, bytes: withCaption(raw, { caption, title: p.note || '', credit: (m && m.agency) || '', takenAt }), date: takenAt });
-        lines.push(name, caption, '');
-      } catch (err) { missed.push(hhmm(p.taken_at) + ' · ' + unitLabelOf(m) + (p.note ? ' · ' + p.note : '') + ': not saved, ' + (err.message || err)); }
+        files.push({ name, bytes: withCaption(raw, { caption, title: words, credit: (m && m.agency) || '', takenAt }), date: takenAt });
+        lines.push(name, whenText(takenAt) + ' · ' + place, words, '');
+      } catch (err) { missed.push(hhmm(p.taken_at) + ' · ' + place + ': not saved, ' + (err.message || err)); }
     }
-    const head = [inc.name + ' · photos cleared for public information by Operations', 'Saved ' + whenText(now) + ' · ' + files.length + ' photo' + (files.length === 1 ? '' : 's') + '. Each caption is also written into its file (the description a newsroom tool reads).', ''];
-    files.push({ name: 'captions.txt', bytes: new TextEncoder().encode(head.concat(lines, missed.length ? ['Not saved:'].concat(missed) : []).join('\n')), date: now });
+    const head = [inc.name + ' · the public set: photos cleared by Operations and checked (no face, no plate, no house number)', 'Saved ' + whenText(now) + ' · ' + files.length + ' photo' + (files.length === 1 ? '' : 's') + '. Each caption is also written into its file (the description a newsroom tool reads). No coordinates.', ''];
+    const tail = [];
+    if (waiting.length) tail.push('Cleared but not yet checked, so not in this set:', ...waiting.map((p) => hhmm(p.taken_at) + ' · ' + (p.zone_id && data.zone(p.zone_id) ? data.zone(p.zone_id).code : 'no division') + ' · ' + unitLabelOf(data.member(p.user_id))));
+    if (missed.length) tail.push('Not saved:', ...missed);
+    files.push({ name: 'captions.txt', bytes: new TextEncoder().encode(head.concat(lines, tail).join('\n')), date: now });
     const blob = new Blob([zip(files)], { type: 'application/zip' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${inc.code}-cleared-photos-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${hhmm(now).replace(':', '')}.zip`;
+    a.download = `${inc.code}-public-set-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${hhmm(now).replace(':', '')}.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast(missed.length ? `${files.length - 1} saved with captions; ${missed.length} could not be fetched (listed in captions.txt)` : `${files.length - 1} photo${files.length === 2 ? '' : 's'} saved with captions`, !!missed.length);
+    toast(missed.length ? `${files.length - 1} saved with captions; ${missed.length} could not be fetched (listed in captions.txt)` : `${files.length - 1} photo${files.length === 2 ? '' : 's'} saved with captions` + (waiting.length ? `; ${waiting.length} cleared but not checked, listed as missing` : ''), !!missed.length);
   } finally { btn.disabled = false; }
 }
 
@@ -742,7 +760,19 @@ document.addEventListener('click', async (e) => {
       case 'print-join': openOverlay('join'); break;
       case 'select-zone': selectFromLog({ type: 'zone', id }); break;
       case 'select-photo': selectFromLog({ type: 'photo', id }); break;
-      case 'photo-public': await data.setPhotoPublic(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Cleared for public information' : 'Withdrawn from public information'); break;
+      case 'photo-public': await data.setPhotoPublic(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Cleared for public information · write its public caption and check it' : 'Withdrawn from public information'); break;
+      case 'photo-check': await data.setPhotoChecked(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Checked: in the public set' : 'Check withdrawn: out of the public set'); break;
+      case 'unit-water': { const m = data.member(id); await data.setInWater(id, btn.dataset.on === '1' ? new Date().toISOString() : null); toast(unitLabelOf(m) + (btn.dataset.on === '1' ? ' in the water' : ' out of the water')); break; }
+      case 'settings': { if (!data.incident) break; $('#settings-dialog-body').innerHTML = settingsDialogHtml(data); const dlg = $('#settings-dialog'); if (!dlg.open) dlg.showModal(); break; }
+      case 'settings-close': { const dlg = $('#settings-dialog'); if (dlg.open) dlg.close(); break; }
+      case 'settings-test': {
+        const f = btn.closest('form'), out = f.querySelector('[data-settings-test]');
+        out.textContent = 'Testing…';
+        const r = await testGoogleKey(f.maps_key.value);
+        out.textContent = r.message;
+        out.style.color = r.ok ? 'var(--cleared, inherit)' : 'var(--danger)';
+        break;
+      }
       case 'replay': if (state.replay) closeReplay(); else await openReplay(); break;
       case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
       case 'replay-close': closeReplay(); break;
@@ -999,6 +1029,18 @@ document.addEventListener('submit', async (e) => {
       toast(evacueeWho(ev) + ' signed in');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
+    } else if (form.dataset.form === 'settings') {
+      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))) };
+      await data.saveSettings(patch);
+      setGoogleKey(patch.maps_key);
+      const dlg = $('#settings-dialog'); if (dlg.open) dlg.close();
+      toast('Settings saved' + (patch.maps_key ? ' · Google Maps is in the Layers panel' : ''));
+      queueDraw();
+    } else if (form.dataset.form === 'photo-public') {
+      await data.setPhotoCaption(form.dataset.id, form.caption.value);
+      toast('Public caption saved');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw();
     } else if (form.dataset.form === 'channel-add') {
       const use = form.use.value.trim(), channel = form.channel.value.trim();
       if (!use || !channel) return;
@@ -1057,7 +1099,7 @@ document.addEventListener('submit', async (e) => {
       queueDraw();
     } else if (form.dataset.form === 'period-edit') {
       const cur = data.period(form.dataset.id);
-      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim() };
+      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim(), rotation_minutes: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : undefined };
       // the agency representatives: one row per agency, saved when changed
       const reps = new Map();
       for (const el of form.querySelectorAll('[data-rep]')) { const r = reps.get(el.dataset.agency) || { agency: el.dataset.agency }; r[el.dataset.rep] = el.value.trim(); reps.set(el.dataset.agency, r); }
@@ -1071,7 +1113,7 @@ document.addEventListener('submit', async (e) => {
       await savePending({ mode: 'edit', periodId: form.dataset.id, patch });
     } else if (form.dataset.form === 'period-start') {
       const cur = data.currentPeriod();
-      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value };
+      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value, rotation: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : null };
       const from = cur ? cur.ic_name : '';
       if (from && payload.ic && payload.ic !== from) { askTransfer({ mode: 'start', from, to: payload.ic, ops: payload.ops.trim(), payload }); return; }
       await savePending({ mode: 'start', payload });
@@ -1092,6 +1134,7 @@ document.addEventListener('submit', async (e) => {
       toast((safety ? 'Safety message' : 'Message') + ' sent to ' + r.toLabel);
       queueDraw();
     }
+    form.dataset.submitted = '1';   // what was typed here has been sent: the redraw must not bring it back
   } catch (err) { toast(err.message || String(err), true); }
 });
 

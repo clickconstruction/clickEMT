@@ -148,13 +148,23 @@ t('your briefing has the eight ICS-100 items, every line from the data', () => {
   assert.equal(S[1].lead, 'Division A-2, Pecan Mobile Home Park.');
   assert.equal(S[1].text, 'No work assignment written yet; Operations will say. Supervisor: Hale. Priority 1. Objective 1: Primary search of every structure north of the river by 19:00.');
   assert.equal(S[2].text, 'On Unit 3: Hale (swift water, EMT), Dominguez (paramedic). Next door: Unit 1 in A-1, Unit 2 in B-1. Operations: Marcus Bell at High school, front office.');
-  assert.equal(S[3].text, 'A-2 on the map, 18 structures, 6 cleared. Staging: High school east lot, 0.8 mi.');
+  assert.equal(S[3].text, 'A-2 on the map, 18 structures, 6 cleared. No boat ramp on the map yet; ask Operations where to put in. Staging: High school east lot, 0.8 mi.');   // a swift-water crew is told where to put in (v28)
   assert.equal(S[3].action, 'map');
   assert.equal(S[4].text, 'TAC 2 for your division. Command on CMD 1. Emergency traffic on TAC 9. Plain English, no codes.');
   assert.ok(S[5].text.includes('Ask for something') && S[5].text.includes('Fairgrounds gate: Water and ice from 14:00.'));
   assert.ok(S[6].text.startsWith('This period ends 19:00; the next crew is briefed at staging.'));
   assert.equal(S[7].lead, 'Nobody enters moving water. PFDs on near water.');
   assert.ok(S[7].warn && S[7].text.startsWith('Hazard open: downed power line, Line across the park entrance.'));
+});
+
+t('a water crew is told the nearest boat ramp under Work area and the rotation under Safety (v28)', () => {
+  const d = stub({ facilities: stub().facilities().concat([{ id: 'f9', kind: 'ramp', name: 'Low-water crossing ramp', lat: 30.2612, lng: -97.7455, notes: '', contact: '', closed_at: null }]), period: { rotation_minutes: 45 } });
+  const S = fieldBriefing(d, { me: d.member(U.u2), at: [30.2614, -97.7420] });
+  const area = S.find((x) => x.key === 'area'), safety = S.find((x) => x.key === 'safety');
+  assert.ok(/^B-1 on the map, 15 structures, 2 cleared\. Boat ramp: Low-water crossing ramp, [\d.]+ mi\. Staging:/.test(area.text), area.text);
+  assert.ok(safety.text.includes('Time in the water: crews out of the water every 45 minutes; the phone nudges you past it.'), safety.text);
+  const engine = fieldBriefing(d, { me: d.member(U.u1), at: [30.2681, -97.7318] }).find((x) => x.key === 'area');
+  assert.ok(!/Boat ramp/.test(engine.text), engine.text);
 });
 
 t('a unit with no assignment is told to wait at staging', () => {

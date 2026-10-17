@@ -460,3 +460,8 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .ev-moved { color: var(--active); }
 .ev-coming.on { color: var(--hazard-ink); font-weight: 600; }
 .ev-add { background: var(--panel); }
+
+/* time in the water (v28) */
+.ur-sub .water.over, .water.over { color: var(--hazard-ink); font-weight: 600; }
+.settings-form { display: flex; flex-direction: column; gap: 8px; min-width: min(560px, 90vw); }
+.settings-form .title { font-size: 16px; }

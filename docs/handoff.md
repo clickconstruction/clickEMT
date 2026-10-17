@@ -22,14 +22,15 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v27**, "Members and roles, and personal records that clear by rule". The service worker reads
-  `v27`.
-- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0019` in
+- `main` is at **v28**, "Time in the water, incident settings and the public set". The service worker reads
+  `v28`.
+- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0020` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
-  (`members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql` 10 of 10, `ics100.sql`, `people.sql`). v26 added an
-  `evacuees` smoke suite and v27 a `members` suite; the v27 release notes in `docs/punchlist.md` say how its full run went.
+  (`safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql` 10 of 10, `ics100.sql`,
+  `people.sql`). v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`; each release's notes in
+  `docs/punchlist.md` say how its full run went.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
 - **Open work:** the re-walk after v26, then v27, v28 and v29, a few small fixes, and four decisions for Grace. All in

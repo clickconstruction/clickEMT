@@ -1,7 +1,7 @@
 // The map's base layers and the custom imagery laid over them, for both views. Leaflet is the
 // page's global L. Streets (OpenStreetMap) and Satellite (Esri World Imagery) need nothing;
-// Google Maps streets and satellite appear when config.js carries a Google Maps key for the
-// Map Tiles API (window.GOOGLE_MAPS_KEY). The choice is a device setting.
+// Google Maps streets and satellite appear when the incident's settings carry a Google Maps key for the
+// Map Tiles API (setGoogleKey; config.js's window.GOOGLE_MAPS_KEY is the fallback). The choice is a device setting.
 export const LAYER_KEY = 'ic.map.layer';
 export const HIDDEN_KEY = 'ic.map.hidden';   // imagery this device has hidden, by id
 
@@ -11,7 +11,23 @@ export const BASE_LAYERS = [
   { id: 'google-streets', name: 'Google Maps, streets', source: 'Google', google: 'roadmap', dim: true, needsKey: true },
   { id: 'google-satellite', name: 'Google Maps, satellite', source: 'Google', google: 'satellite', dim: false, needsKey: true }
 ];
-export function googleKey() { return (typeof window !== 'undefined' && window.GOOGLE_MAPS_KEY) || ''; }
+// The key is the incident's (ic_incidents.settings.maps_key, set on the base's Settings sheet; every member's
+// browser reads it, so it is a browser key restricted to the site and the Map Tiles API); config.js is the fallback.
+let incidentKey = '';
+export function setGoogleKey(key) { const k = (key || '').trim(); if (k !== incidentKey) { incidentKey = k; sessions.clear(); } }
+export function googleKey() { return incidentKey || (typeof window !== 'undefined' && window.GOOGLE_MAPS_KEY) || ''; }
+// Settings' Test button: does this key open a Map Tiles session?
+export async function testGoogleKey(key) {
+  const k = (key || '').trim();
+  if (!k) return { ok: false, message: 'No key to test.' };
+  try {
+    const res = await fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(k), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mapType: 'roadmap', language: 'en-US', region: 'US' }) });
+    if (res.ok) return { ok: true, message: 'The key works: Google Maps opened a tile session.' };
+    let why = '';
+    try { const j = await res.json(); why = (j.error && j.error.message) || ''; } catch (e) { /* no body */ }
+    return { ok: false, message: 'Google Maps refused the key (' + res.status + ')' + (why ? ': ' + why : '') + '. Check that the Map Tiles API is enabled and the key allows this site.' };
+  } catch (e) { return { ok: false, message: 'Could not reach Google Maps: ' + (e.message || e) }; }
+}
 export function availableLayers() { return BASE_LAYERS.filter((l) => !l.needsKey || googleKey()); }
 export function layerDef(id) { return availableLayers().find((l) => l.id === id) || BASE_LAYERS[0]; }
 

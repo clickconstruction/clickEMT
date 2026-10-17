@@ -4,7 +4,7 @@
 // representatives the Liaison Officer keeps. No DOM and no network: every function takes the data
 // module's read API (or anything with the same read methods, as the Node test does) and returns
 // plain lines, so the base, the phone and the tests all say the same things.
-import { hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText } from './rules.js';
+import { hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText, WATER_KINDS, rotationText } from './rules.js';
 
 // ICS-100: one supervisor to three to seven people, five being best. Past seven the count turns orange.
 export const SPAN_MAX = 7;
@@ -191,8 +191,10 @@ export function fieldBriefing(data, { me, at } = {}) {
   ].filter(Boolean).join(' ') });
   const stagingNear = at ? nearestFacility(data.facilities(), 'staging', at[0], at[1]) : null;
   const staging = stagingNear ? stagingNear.facility : data.facilities().find((f) => f.kind === 'staging');
+  const rampNear = at && me && WATER_KINDS.includes(me.kind) ? nearestFacility(data.facilities(), 'ramp', at[0], at[1]) : null;   // a boat crew is told where to put in (v28)
   S.push({ key: 'area', title: 'Work area', text: [
     zone ? `${zone.code} on the map${zone.structures ? ', ' + zone.structures + ' structures, ' + zone.cleared + ' cleared' : ''}.` : (at ? 'Where you stand is on the map.' : 'The map shows the divisions.'),
+    rampNear ? `Boat ramp: ${rampNear.facility.name || 'boat ramp'}, ${milesText(rampNear.distance)}.` : (me && WATER_KINDS.includes(me.kind) ? 'No boat ramp on the map yet; ask Operations where to put in.' : ''),
     staging ? `Staging: ${staging.name || 'staging area'}${stagingNear ? ', ' + milesText(stagingNear.distance) : ''}.` : ''
   ].filter(Boolean).join(' '), action: 'map' });
   const emergency = channelFor(channels, /emergency/i), command = channelFor(channels, /command/i);
@@ -205,7 +207,7 @@ export function fieldBriefing(data, { me, at } = {}) {
   const pod = data.facilities().find((f) => f.kind === 'pod');
   S.push({ key: 'supplies', title: 'Supplies, fuel, more hands', text: `Ask from the inbox: Ask for something. Logistics works it and you see each step.${pod ? ' ' + (pod.name || 'Point of distribution') + (pod.notes ? ': ' + sentence(pod.notes) : '.') : ''}`, action: 'ask' });
   S.push({ key: 'shift', title: 'Shift', text: `${p && p.ends_at ? 'This period ends ' + hhmm(p.ends_at) + (staging ? '; the next crew is briefed at staging' : '') + '.' : 'No end of period set yet.'} Check out from the menu when you leave: the list asks what you leave behind.` });
-  S.push({ key: 'safety', title: 'Safety and PPE', warn: true, lead: p && p.notes ? sentence(p.notes) : 'No safety message written for this period.', text: (hazards.length ? `Hazard${hazards.length === 1 ? '' : 's'} open: ` + hazards.slice(0, 3).map((h) => h.kind.toLowerCase() + (h.note ? ', ' + h.note : '')).join('; ') + '. ' : '') + 'If someone is hurt: see the next card.', action: 'hurt' });
+  S.push({ key: 'safety', title: 'Safety and PPE', warn: true, lead: p && p.notes ? sentence(p.notes) : 'No safety message written for this period.', text: (hazards.length ? `Hazard${hazards.length === 1 ? '' : 's'} open: ` + hazards.slice(0, 3).map((h) => h.kind.toLowerCase() + (h.note ? ', ' + h.note : '')).join('; ') + '. ' : '') + (p && p.rotation_minutes > 0 ? 'Time in the water: ' + rotationText(p.rotation_minutes) + '; the phone nudges you past it. ' : '') + 'If someone is hurt: see the next card.', action: 'hurt' });
   return S;
 }
 export function fieldBriefingText(data, opts) { return fieldBriefing(data, opts).map((s) => s.title.toUpperCase() + '\n  ' + [s.lead, s.text].filter(Boolean).join(' ')).join('\n\n'); }

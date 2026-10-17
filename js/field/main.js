@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
@@ -27,7 +27,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -74,6 +74,7 @@ const outbox = new Outbox({
   message: (p, _b, at) => data.sendMessage(p.id, { ...p, createdAt: at }),
   ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at),
   status: (p) => data.setStatus(p.userId, p.status, p.note),
+  water: (p) => data.setInWater(p.userId, p.since),
   structure: (p, _b, at) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
   pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts),
   person: (p, _b, at) => data.addPerson(p.id, { ...p, checkedInAt: at }),
@@ -427,6 +428,27 @@ async function setMyKind(kind) {
   drawMenu();
   queueDraw();
 }
+// Time in the water (v28): one tap in, one tap out, through the outbox; the stamp is the moment of the tap.
+async function toggleWater() {
+  const me = data.me();
+  if (!me) return;
+  const since = me.in_water_since ? null : new Date().toISOString();
+  const mins = me.in_water_since ? Math.max(0, Math.round((Date.now() - new Date(me.in_water_since).getTime()) / 60000)) : 0;
+  data.local('ic_members', Object.assign({}, me, { in_water_since: since }));
+  state.waterNudged = 0;
+  queueDraw();   // the row flips at once; the outbox sends behind it
+  await outbox.add('water', { userId: me.user_id, since });
+  toast(since ? 'In the water · the clock runs until you tap out' : 'Out of the water after ' + durationText(mins));
+  drawMenu();
+  queueDraw();
+}
+function waterRowHtml(me) {
+  const st = me.in_water_since ? waterState(me.in_water_since, data.rotationMinutes()) : null;
+  if (!st && !WATER_KINDS.includes(me.kind)) return '';
+  if (!st) return `<div class="water-row"><span>Not in the water</span><button class="btn sm" data-action="water-toggle">In the water</button></div>`;
+  const nudge = st.overdue && state.waterNudged !== st.rotations;
+  return `<div class="water-row${st.overdue ? ' over' : ''}"><span>${st.lost ? 'In the water, probably left running: ' + durationText(st.min) : 'In the water ' + durationText(st.min)}${st.rotation ? ' · rotation ' + st.rotation + ' min' : ''}${nudge ? ' · past the rotation: swap the crew' : ''}</span>${nudge ? `<button class="btn sm" data-action="water-later">Later</button>` : ''}<button class="btn sm pri" data-action="water-toggle">Out of the water</button></div>`;
+}
 async function setMyStatus(status, note) {
   const me = data.me();
   if (!me) return;
@@ -518,6 +540,7 @@ function drawStatus() {
   const btn = (status, label) => `<button class="btn" data-action="status" data-status="${status}">${label}</button>`;
   const html = `
     <div class="status-row"><span class="badge st-${esc(st)}">${STATUS_LABEL[st]}${me.status_note ? ': ' + esc(me.status_note) : ''}</span><span class="muted" style="font-size:12px">since ${hhmm(me.status_at)}</span></div>
+    ${me.in_water_since || WATER_KINDS.includes(me.kind) ? `<div class="status-row" style="margin-top:8px"><span class="muted" style="font-size:12.5px;flex:1">${me.in_water_since ? waterState(me.in_water_since, data.rotationMinutes()).text.replace(/^in/, 'In') : 'Not in the water'}${data.rotationMinutes() ? ' · rotation ' + data.rotationMinutes() + ' min' : ''}</span><button class="btn" data-action="water-toggle">${me.in_water_since ? 'Out of the water' : 'In the water'}</button></div>` : ''}
     <div class="status-row" style="margin-top:8px">
       ${st !== 'available' ? btn('available', 'Available at staging') : ''}
       ${st === 'out_of_service' && onZone ? btn('assigned', 'Back on my zone') : ''}
@@ -610,6 +633,7 @@ function drawAll() {
   const me = data.me();
   $('#me-name').textContent = unitLabel(me);
   $('#me-crew').textContent = [me && crewNames(me, data.people()), me && STATUS_LABEL[me.status], data.incident.name].filter(Boolean).join(' · ');
+  setHtml($('#water-row'), me && me.status !== 'checked_out' && !isDesk() ? waterRowHtml(me) : '');
 
   const gps = $('#gps-pill');
   if (sensors.error) { gps.className = 'live bad'; $('#gps-text').textContent = 'No GPS'; }
@@ -1376,6 +1400,8 @@ document.addEventListener('click', async (e) => {
       case 'par-ok': await answerPar(btn.dataset.id, true); break;
       case 'par-missing': if (confirm('Report someone missing? Operations gets an emergency alert with your position.')) await answerPar(btn.dataset.id, false); break;
       case 'status': await setMyStatus(btn.dataset.status); break;
+      case 'water-toggle': await toggleWater(); break;   // not 'water': the house record's water-depth chips own that name
+      case 'water-later': { const me = data.me(); const st = me && me.in_water_since ? waterState(me.in_water_since, data.rotationMinutes()) : null; state.waterNudged = st ? st.rotations : 0; queueDraw(); break; }
       case 'oos-pick': state.oosPick = 0; drawStatus(); break;
       case 'oos': state.oosPick = Number(btn.dataset.i); drawStatus(); break;
       case 'oos-cancel': state.oosPick = null; drawStatus(); break;

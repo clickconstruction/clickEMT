@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -256,11 +256,11 @@ async function messages(check) {
   await until(() => base.messages()[0] && base.messages()[0].kind === 'safety');
   const s1 = base.messages()[0];
   check('a safety message goes to all three units', s1.to_users.length === 3 && s1.to_label === 'everyone' && s1.text === 'Stop work, water rising at the low-water crossing');
-  check('the yellow bar shows it, waiting on all three', await until(() => !$('#safety').hidden && has('#safety', 'safety', 'stop work', 'waiting on unit 1, unit 2, unit 3')), text('#safety'));
+  check('the yellow bar shows it, the words first, waiting on all three (the names on hover)', await until(() => !$('#safety').hidden && has('#safety', 'safety · stop work', 'waiting on 3 units') && $$('#safety .bar-item').some((b) => /waiting on Unit 1, Unit 2, Unit 3/.test(b.title))), text('#safety'));
   check('the log marks it as a safety message', !!eventText(base, 'SAFETY MESSAGE, Operations to everyone: Stop work, water rising at the low-water crossing') && eventText(base, 'SAFETY MESSAGE, Operations to everyone: Stop work, water rising at the low-water crossing').kind === 'safety');
   check('Unit 3 has it as an unanswered safety message', await until(() => field.myUnanswered().some((m) => m.id === s1.id && m.kind === 'safety')));
   await field.ackMessage(s1.id, 'Acknowledged');
-  check('after Unit 3 answers, the bar waits on Unit 1 and Unit 2', await until(() => has('#safety', 'waiting on unit 1, unit 2') && !has('#safety', 'unit 3')), text('#safety'));
+  check('after Unit 3 answers, the bar waits on Unit 1 and Unit 2', await until(() => has('#safety', 'waiting on 2 units') && $$('#safety .bar-item').some((b) => /waiting on Unit 1, Unit 2(?!, Unit 3)/.test(b.title) && !/Unit 3/.test(b.title))), text('#safety'));
   for (const email of ['unit1@mock.local', 'unit2@mock.local']) {
     const c = window.supabase.createClient();
     await c.auth.signInWithPassword({ email, password: 'any' });
@@ -975,7 +975,7 @@ async function layers(check) {
   const radios = () => $$('#layers-pop [data-action="layer-pick"]');
   $('#btn-layers').click();
   await until(() => !$('#layers-pop').hidden && radios().length === 2);
-  check('Layers opens a panel: the map underneath on one side (Streets, Satellite; Google only with a key, Streets on), the overlays on the other', radios().map((r) => r.dataset.layer).join(' ') === 'streets satellite' && radios()[0].checked && has('#layers-pop', 'map underneath', 'overlays', 'aerial 06:40', 'upload aerial photography', 'google maps streets and satellite appear here') && tileHosts().some((h) => /openstreetmap/.test(h)), text('#layers-pop').slice(0, 300));
+  check('Layers opens a panel: the map underneath on one side (Streets, Satellite, and Google twice because the mock\'s settings carry a key; Streets on), the overlays on the other', radios().map((r) => r.dataset.layer).join(' ') === 'streets satellite google-streets google-satellite' && radios()[0].checked && has('#layers-pop', 'map underneath', 'overlays', 'aerial 06:40', 'upload aerial photography', 'google maps, streets') && tileHosts().some((h) => /openstreetmap/.test(h)), text('#layers-pop').slice(0, 300) + ' | ' + radios().map((r) => r.dataset.layer).join(' '));
   radios()[1].click();
   await until(() => tileHosts().includes('server.arcgisonline.com') && !tileHosts().some((h) => /openstreetmap/.test(h)), 6000);
   check('Satellite swaps the tiles underneath and is remembered on this device', tileHosts().includes('server.arcgisonline.com') && localStorage.getItem('ic.map.layer') === 'satellite' && radios()[1].checked, tileHosts());
@@ -1190,7 +1190,7 @@ async function sections(check) {
   check('Mark ordered carries who is coming and when', base.request(rid).answer === 'Boat 2, Bastrop County, 15 min' && !!eventText(base, 'Request for swift-water team (Unit 3) ordered: Boat 2, Bastrop County, 15 min'), logTexts()[0]);
   press('filled');
   await until(() => base.request(rid).status === 'filled');
-  check('Filled closes it, off the open list, in the sitrep no more', !!eventText(base, 'Request for swift-water team (Unit 3) filled') && base.openRequests().every((r) => r.id !== rid));
+  check('Filled closes it, off the open list, in the sitrep no more', await until(() => eventText(base, 'Request for swift-water team (Unit 3) filled')) && base.openRequests().every((r) => r.id !== rid), logTexts()[0]);
   $('[data-action="sitrep"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
   check('the situation report\'s Resources needed is written from the open requests', has('#briefing-page', 'resources needed', '4 portable lights for a-1, before nightfall · asked', 'fuel truck, diesel, before nightfall · ordered, on the way, county yard'), text('#briefing-page').slice(-700));
@@ -1262,7 +1262,7 @@ async function ics100(check) {
   await until(() => $('#briefing').hidden);
   $('[data-action="sitrep"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
-  check('the situation report\'s public information line names the PIO', has('#briefing-page', '1 photo cleared for public release, to lena marsh (pio)'), text('#briefing-page').slice(-300));
+  check('the situation report\'s public information line names the PIO', has('#briefing-page', '1 photo cleared for public release, 0 checked (no face, no plate, no house number), to lena marsh (pio)'), text('#briefing-page').slice(-300));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
 
@@ -1320,13 +1320,13 @@ async function ics100(check) {
   const line = base.events().find((e) => /^Command transferred/.test(e.text));
   check('the log has a notable line, and no period-updated line for the name', !!line && line.text === 'Command transferred from Dana Ruiz-Ortega to Marcus Bell · Operations Section Chief Jo Castillo' && line.notable === true && line.ref_table === 'ic_commands' && !base.events().some((e) => /^Operational period 1 updated, Incident Commander Marcus Bell/.test(e.text)), line && line.text);
   const msg = base.messages().find((m) => m.kind === 'safety' && /^Command transferred to Marcus Bell/.test(m.text));
-  check('every unit gets the safety-style message, on the yellow bar until all three answer', !!msg && msg.to_users.length === 3 && /Operations Section Chief is Jo Castillo\./.test(msg.text) && await until(() => !$('#safety').hidden && has('#safety', 'command transferred to marcus bell', 'waiting on unit 1, unit 2, unit 3')), msg && msg.text);
+  check('every unit gets the safety-style message, on the yellow bar until all three answer', !!msg && msg.to_users.length === 3 && /Operations Section Chief is Jo Castillo\./.test(msg.text) && await until(() => !$('#safety').hidden && has('#safety', 'command transferred to marcus bell', 'waiting on 3 units') && $$('#safety .bar-item').some((b) => /waiting on Unit 1, Unit 2, Unit 3/.test(b.title))), msg && msg.text);
   check('the briefing opened for the handover, with the new IC and the transfer line', !$('#briefing').hidden && has('#briefing-title', 'shift-change') && has('#briefing-page', 'incident commander marcus bell', 'command transferred at', 'from dana ruiz-ortega to marcus bell'), text('#briefing-page').slice(0, 500));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   check('Unit 3 has it as an unanswered safety message', await until(() => field.myUnanswered().some((m) => m.id === msg.id && m.kind === 'safety')));
   await field.ackMessage(msg.id, 'Acknowledged');
-  check('its acknowledgement is logged like any safety message', await until(() => !!eventText(base, 'Unit 3 acknowledged Operations: Acknowledged')) && await until(() => has('#safety', 'waiting on unit 1, unit 2') && !has('#safety', 'unit 3')), text('#safety'));
+  check('its acknowledgement is logged like any safety message', await until(() => !!eventText(base, 'Unit 3 acknowledged Operations: Acknowledged')) && await until(() => has('#safety', 'waiting on 2 units') && $$('#safety .bar-item').some((b) => /waiting on Unit 1, Unit 2$|waiting on Unit 1, Unit 2 ·/.test(b.title) && !/Unit 3/.test(b.title))), text('#safety'));
   check('the header reads IC Marcus Bell', await until(() => has('#inc-sub', 'ic marcus bell')), text('#inc-sub'));
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
@@ -1359,7 +1359,7 @@ async function ics100(check) {
 
   // 4 · your briefing on the phone: the sections the phone draws, from the field's own data
   const fb = fieldBriefing(field, { me: field.me(), at: [30.2674, -97.7384] });
-  check('Unit 3\'s briefing has the eight items, every line from the incident as it is now', fb.map((s) => s.key).join() === 'situation,job,with,area,radio,supplies,shift,safety' && fb[0].text.includes('Cedar Fork Flooding, OP 2') && fb[1].lead === 'Division A-2, Pecan Mobile Home Park.' && fb[1].text.includes('Supervisor: not named. Priority 1.') && fb[2].text.includes('On Unit 3: Hale (swift water, EMT), Dominguez (paramedic).') && fb[2].text.includes('Next door: Unit 1 in A-1, Unit 2 in B-1.') && fb[2].text.includes('Operations: Jo Castillo at Cedar Fork High School, front office.') && fb[3].text.startsWith('A-2 on the map, 18 structures, 6 cleared. Staging: High school east lot,') && fb[4].text === 'TAC 2 for your division. Command on CMD 1. Emergency traffic on TAC 9. Plain English, no codes.' && fb[7].warn && fb[7].lead === 'No safety message written for this period.' && fb[7].text.startsWith('Hazard open: downed power line'), JSON.stringify(fb.map((s) => [s.lead, s.text])).slice(0, 600));
+  check('Unit 3\'s briefing has the eight items, every line from the incident as it is now', fb.map((s) => s.key).join() === 'situation,job,with,area,radio,supplies,shift,safety' && fb[0].text.includes('Cedar Fork Flooding, OP 2') && fb[1].lead === 'Division A-2, Pecan Mobile Home Park.' && fb[1].text.includes('Supervisor: not named. Priority 1.') && fb[2].text.includes('On Unit 3: Hale (swift water, EMT), Dominguez (paramedic).') && fb[2].text.includes('Next door: Unit 1 in A-1, Unit 2 in B-1.') && fb[2].text.includes('Operations: Jo Castillo at Cedar Fork High School, front office.') && /^A-2 on the map, 18 structures, 6 cleared\. (No boat ramp on the map yet; ask Operations where to put in\. )?Staging: High school east lot,/.test(fb[3].text) && fb[4].text === 'TAC 2 for your division. Command on CMD 1. Emergency traffic on TAC 9. Plain English, no codes.' && fb[7].warn && fb[7].lead === 'No safety message written for this period.' && fb[7].text.startsWith('Hazard open: downed power line'), JSON.stringify(fb.map((s) => [s.lead, s.text])).slice(0, 600));
 
   // 5 · if someone is hurt
   const hl = hurtLines(field, { unit: field.me(), at: [30.2674, -97.7384] });
@@ -1424,6 +1424,7 @@ async function ics100(check) {
 // 375 px in a frame beside the base; its own mock copies the base's data over the BroadcastChannel and
 // opens signed in as Unit 3. The frame goes before the suite ends, so the next reset is not undone by it.
 async function phoneFrame() {
+  await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });   // an earlier frame's unsent entries would block this one's
   const frame = document.createElement('iframe');
   frame.src = '/field/?mock';
   frame.style.cssText = 'position:fixed;right:0;top:0;width:375px;height:780px;z-index:3000;background:#fff;border:0;box-shadow:0 0 0 1px #999';
@@ -1475,7 +1476,7 @@ async function walkfix(check) {
     await until(() => !$('#mayday').hidden);
     check('a PAR and an emergency beside it share the one row: still nothing below moves', !$('#mayday').hidden && $$('#bars .bar-item').length === 3 && at('#map') === mapTop && at('[data-action="print-214"]') === printTop && $('#bars').getBoundingClientRect().height === 40, `${$$('#bars .bar-item').length} items, bars ${$('#bars').getBoundingClientRect().height} px, map ${at('#map')} vs ${mapTop}`);
     const titles = $$('#bars .bar-item').map((b) => b.title);
-    check('who has not answered comes first on the bar, and the whole line is on hover', titles.some((t) => /^SAFETY · waiting on Unit 1, Unit 2, Unit 3 · Stay out of moving water · sent/.test(t)) && titles.some((t) => /^PAR · 0 of 3 answered · waiting on Unit 1, Unit 2, Unit 3/.test(t)) && has('#mayday', 'emergency · unit 3 needs help') && !!$('#mayday [data-action="ack-alert"]'), titles.join(' | '));
+    check('the message\'s words come first on the bar, the count of who is waiting after, and the names on hover (v28)', titles.some((t) => /^SAFETY · Stay out of moving water · waiting on Unit 1, Unit 2, Unit 3 · sent/.test(t)) && titles.some((t) => /^PAR · 0 of 3 answered · waiting on Unit 1, Unit 2, Unit 3/.test(t)) && has('#safety', 'safety · stay out of moving water · waiting on 3 units') && has('#mayday', 'emergency · unit 3 needs help') && !!$('#mayday [data-action="ack-alert"]'), titles.join(' | '));
 
     // the drawing toolbar stays one row and Finish stays put
     const toolsH = $('.tools').getBoundingClientRect().height;
@@ -1514,7 +1515,9 @@ async function walkfix(check) {
     let saved = null;
     HTMLAnchorElement.prototype.click = function () { if (this.download) saved = { name: this.download, href: this.href }; else realClick.call(this); };
     try {
-      check('Public information offers the cleared photos as a download', !!$('#panel [data-action="download-public"]') && has('#panel [data-action="download-public"]', 'download cleared photos'));
+      await base.setPhotoCaption(M().ids.photos[0], 'Water over road'); await base.setPhotoChecked(M().ids.photos[0], true);   // v28: only checked photos leave, with their public caption
+      await until(() => base.publicSet().length === 1 && has('#panel', 'download the public set', '1 of 1'));   // the page's own data has the check before the button is pressed
+      check('Public information offers the public set as a download', !!$('#panel [data-action="download-public"]') && has('#panel [data-action="download-public"]', 'download the public set'));
       $('#panel [data-action="download-public"]').click();
       await until(() => saved, 6000);
     } finally { HTMLAnchorElement.prototype.click = realClick; }
@@ -1522,9 +1525,9 @@ async function walkfix(check) {
     const entries = saved ? unzip(new Uint8Array(await (await fetch(saved.href)).arrayBuffer())) : [];
     const pic = entries.find((e) => /\.jpg$/.test(e.name)), caps = entries.find((e) => e.name === 'captions.txt');
     const capText = caps ? new TextDecoder().decode(caps.bytes) : '';
-    check('it is one zip named for the incident: the cleared photo and captions.txt', !!saved && /^CEDAR7-cleared-photos-\d{4}-\d\d-\d\d-\d{4}\.zip$/.test(saved.name) && entries.length === 2 && !!pic && /_\d{4}_A-1_water-over-road\.jpg$/.test(pic.name), saved ? saved.name + ' · ' + entries.map((e) => e.name).join(', ') : 'nothing saved');
+    check('it is one zip named for the incident: the checked photo, named by time and place, and captions.txt', !!saved && /^CEDAR7-public-set-\d{4}-\d\d-\d\d-\d{4}\.zip$/.test(saved.name) && entries.length === 2 && !!pic && /_\d{4}_A-1_riverside-drive-east\.jpg$/.test(pic.name), saved ? saved.name + ' · ' + entries.map((e) => e.name).join(', ') : 'nothing saved');
     const caption = /Water over road\. Riverside Drive, east \(division A-1\), Cedar Fork Flooding, \d+ \w+ \d{4} at \d\d:\d\d\. Photo: Cedar Fork Fire Department\./;
-    check('the caption says what, where, when and whose, in captions.txt and inside the picture, with no coordinates', caption.test(capText) && !!pic && caption.test(new TextDecoder('latin1').decode(pic.bytes)) && new TextDecoder('latin1').decode(pic.bytes).includes('ns.adobe.com/xap/1.0/') && !/30\.26|-97\.7/.test(capText), capText.slice(0, 300));
+    check('the caption says what, where, when and whose inside the picture; captions.txt carries the time, the place and the public words, with no coordinates', !!pic && caption.test(new TextDecoder('latin1').decode(pic.bytes)) && new TextDecoder('latin1').decode(pic.bytes).includes('ns.adobe.com/xap/1.0/') && /Riverside Drive, east \(division A-1\)\nWater over road/.test(capText) && !/30\.26|-97\.7/.test(capText), capText.slice(0, 300));
 
     // the facility card: Close closes the card, Mark closed the facility
     const icp = M().ids.facilities ? M().ids.facilities[0] : base.facilities().find((f) => f.kind === 'icp').id;
@@ -1961,4 +1964,162 @@ function joinCardTextOf() {
   const t = $('#briefing-page') ? $('#briefing-page').innerText : '';
   if ($('[data-action="close-briefing"]')) $('[data-action="close-briefing"]').click();
   return t;
+}
+
+// Time in the water, incident settings and the public set (v28, migration 0020), with v25's leftovers.
+async function safetyset(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  const realClick = HTMLAnchorElement.prototype.click;
+  let P = null;
+  try {
+    const U = USERS();
+    // ---- the water clock: in, overdue, probably left running, out; the rows, the panel, the reports, the log
+    const boat = window.supabase.createClient();
+    await boat.auth.signInWithPassword({ email: 'unit2@mock.local', password: 'any' });
+    const u2 = new Data(boat); await u2.init(); await u2.open(INC());
+    check('the period carries a rotation of 45 minutes, and the briefing tells a boat crew about it and the boat ramp', base.rotationMinutes() === 45);
+    await u2.setInWater(U.unit2, new Date().toISOString());
+    check('one tap puts the crew in the water, logged', await until(() => base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 in the water')) && await until(() => has('#panel', 'unit 2', 'in the water 0 min')), logTexts()[0]);
+    await u2.setInWater(U.unit2, new Date(Date.now() - 50 * 60000).toISOString());
+    check('past the rotation the row says so in orange', await until(() => $$('#panel .ur .water.over').some((w) => /in the water 50 min/.test(w.textContent))), text('#panel').slice(0, 200));
+    await u2.setInWater(U.unit2, new Date(Date.now() - 140 * 60000).toISOString());
+    check('past three rotations the base says the clock was probably left running', await until(() => has('#panel', 'unit 2', 'probably left running (2 h 20 min)')));
+    $(`#panel [data-action="select-unit"][data-id="${U.unit2}"]`).click();
+    await until(() => has('#panel .title', 'unit 2') && $('#panel [data-action="unit-water"]'));
+    check('the unit panel shows the clock with Out of the water for Operations', has('#panel', 'in the water', 'probably left running', 'rotation 45 min') && $('#panel [data-action="unit-water"]').textContent === 'Out of the water');
+    $('[data-action="briefing"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', 'briefing'));
+    check('the shift-change briefing lists who is in the water', has('#briefing-page', 'in the water', 'unit 2 in the water, probably left running'), text('#briefing-page').slice(-300));
+    $('[data-action="close-briefing"]').click();
+    $('[data-action="sitrep"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+    check('and so does the situation report', has('#briefing-page', 'in the water', 'unit 2'), text('#briefing-page').slice(-300));
+    $('[data-action="close-briefing"]').click();
+    $('#panel [data-action="unit-water"]').click();
+    check('Operations takes the crew out, with the minutes in the log', await until(() => !base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 out of the water after 140 min')), logTexts()[0]);
+    await u2.setInWater(U.unit2, new Date(Date.now() - 12 * 60000).toISOString());
+    await until(() => base.member(U.unit2).in_water_since);
+    await u2.checkOut({ ticks: {}, open: [], note: '' });
+    check('checking out ends the clock', await until(() => base.member(U.unit2).status === 'checked_out' && !base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 out of the water after 12 min')));
+    await u2.join('CEDAR7', 'unit', 'Unit 2', null, null, null, null, 'boat');
+    await until(() => base.member(U.unit2).status !== 'checked_out');
+    // the rotation on the period sheet, printed on the 204 and the 208, carried into the next period
+    $('[data-action="period"]').click();
+    const pf = await until(() => $('#panel form[data-form="period-edit"]'));
+    check('the period sheet has the rotation beside the seats', !!pf && pf.rotation && pf.rotation.value === '45', pf && pf.rotation && pf.rotation.value);
+    pf.rotation.value = '30'; pf.requestSubmit();
+    check('a changed rotation is saved and logged', await until(() => base.currentPeriod().rotation_minutes === 30) && await until(() => eventText(base, 'Operational period 1: rotation in the water every 30 minutes')), logTexts()[0]);
+    $('[data-action="iap"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+    check('the 204s and the 208 print the rotation', has('#briefing-page', 'time in the water: crews out of the water every 30 minutes'), (text('#briefing-page').match(/time in the water[^.]*/) || [''])[0]);
+    $('[data-action="close-briefing"]').click();
+    $('[data-action="period-next"]').click();
+    const sf = await until(() => $('#panel form[data-form="period-start"]'));
+    check('the next period\'s form starts from the current rotation', !!sf && sf.rotation.value === '30', sf && sf.rotation.value);
+    sf.requestSubmit();
+    check('and the next period carries it', await until(() => base.currentPeriod().number === 2 && base.currentPeriod().rotation_minutes === 30));
+    // the phone: the row on the home screen, the nudge past the rotation, one tap out
+    P = await phoneFrame();
+    check('the phone frame opened as Unit 3', !!P.ready);
+    if (P.ready) {
+      await field.setKind(U.unit3, 'swift_water');
+      check('a swift-water crew\'s home screen offers In the water before the clock runs', await until(() => P.shown('#water-row') && /not in the water/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 6000), P.text('#water-row'));
+      P.$('#water-row [data-action="water-toggle"]').click();
+      check('one tap: the row flips at once, and the base sees it in the water, logged (a hidden frame\'s outbox is slow to send)', await until(() => /in the water \d+ min · rotation 30 min/.test(P.text('#water-row')), 8000) && await until(() => base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 in the water'), 8000), P.text('#water-row'));
+      await base.setInWater(U.unit3, new Date(Date.now() - 35 * 60000).toISOString());
+      check('past the rotation the row turns to the safety colour and nudges: swap the crew, with Later', await until(() => P.$('#water-row .water-row.over') && /past the rotation: swap the crew/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-later"]'), 8000), P.text('#water-row'));
+      P.$('#water-row [data-action="water-later"]').click();
+      check('Later puts the nudge away until the next rotation, the clock stays', await until(() => !/swap the crew/.test(P.text('#water-row')) && /in the water 35 min/.test(P.text('#water-row')), 6000), P.text('#water-row'));
+      await base.setInWater(U.unit3, new Date(Date.now() - 65 * 60000).toISOString());
+      check('the next rotation asks again', await until(() => /swap the crew/.test(P.text('#water-row')), 8000), P.text('#water-row'));
+      P.$('#water-row [data-action="water-toggle"]').click();
+      check('one tap out, with the minutes', await until(() => /not in the water/.test(P.text('#water-row')), 8000) && await until(() => !base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 out of the water after 65 min'), 8000), logTexts()[0]);
+      check('the Agency box\'s placeholder is a plain example now', (P.$('#join-form input[name="agency"]') || {}).placeholder === 'e.g. Red Cross, county sheriff', (P.$('#join-form input[name="agency"]') || {}).placeholder);
+      P.frame.remove(); P = null;
+    }
+    // the boat crew's briefing (the pure module): the boat ramp and the rotation
+    await base.addFacility({ kind: 'ramp', name: 'Low-water crossing ramp', lat: 30.2612, lng: -97.7455 });
+    await until(() => u2.facilities().some((f) => f.kind === 'ramp'));
+    const { fieldBriefing } = await import('../js/shared/briefings.js');
+    const bl = fieldBriefing(u2, { me: u2.me(), at: [30.2614, -97.742] });
+    const area = bl.find((x) => x.key === 'area'), safe = bl.find((x) => x.key === 'safety');
+    check('a boat crew\'s briefing names the nearest boat ramp under Work area, and the rotation under Safety', !!area && /Boat ramp: Low-water crossing ramp, [\d.]+ mi\./.test(area.text) && !!safe && /Time in the water: crews out of the water every 30 minutes/.test(safe.text), (area && area.text) + ' | ' + (safe && safe.text));
+    u2.close();
+    // ---- the settings sheet: the Google Maps key, the retention days, the default rotation
+    $('[data-action="settings"]').click();
+    const sform = await until(() => $('#settings-dialog[open] form[data-form="settings"]'));
+    check('Settings opens from the header with the key, the retention days and the default rotation, the mock\'s values filled in', !!sform && sform.maps_key.value === 'mock-maps-key-for-the-layers-suite' && sform.retention_days.value === '30' && sform.rotation_minutes.value === '45' && has('#settings-dialog', 'google cloud', 'never the key'), text('#settings-dialog').slice(0, 300));
+    sform.maps_key.value = 'AIza-new-key-9'; sform.retention_days.value = '60'; sform.rotation_minutes.value = '20';
+    sform.requestSubmit();
+    await until(() => $('#settings-dialog') && !$('#settings-dialog').open);
+    const inc = () => M().tables.ic_incidents.find((i) => i.id === INC());
+    check('Save writes the settings and logs what changed, never the key', await until(() => inc().settings.maps_key === 'AIza-new-key-9' && inc().settings.retention_days === 60 && inc().settings.rotation_minutes === 20) && await until(() => eventText(base, 'Marcus Bell set the Google Maps key') && eventText(base, 'Marcus Bell set personal records to clear 60 days after the close') && eventText(base, 'Marcus Bell set the default rotation to 20 minutes in the water')) && !base.events().some((e) => /AIza-new-key-9/.test(e.text)), logTexts().slice(0, 3).join(' | '));
+    $('[data-action="layers"]').click();
+    await until(() => !$('#layers-pop').hidden);
+    check('the Layers panel lists Google Maps from the incident\'s key', $$('#layers-pop input[type="radio"]').some((r) => r.dataset.layer === 'google-satellite'), $$('#layers-pop input[type="radio"]').map((r) => r.dataset.layer).join(' '));
+    document.body.click();
+    const c2 = window.supabase.createClient();
+    await c2.auth.signInWithPassword({ email: 'ops@mock.local', password: 'any' });
+    const d2 = new Data(c2); await d2.init();
+    const made = await d2.createIncident({ name: 'Settings carry test', period: 'OP 1', base: '', lat: null, lng: null, zoom: 14 });
+    const madeRow = M().tables.ic_incidents.find((i) => i.id === made.id);
+    check('the next incident the same account opens carries the settings, and its first period the default rotation', madeRow.settings.maps_key === 'AIza-new-key-9' && madeRow.settings.retention_days === 60 && M().tables.ic_periods.find((p) => p.incident_id === made.id).rotation_minutes === 20, JSON.stringify(madeRow.settings));
+    d2.close();
+    await base.closeIncident();
+    await until(() => inc().status === 'closed' && inc().clear_personal_at);
+    check('closing now sets the clearing date 60 days out, as the settings say', Math.round((new Date(inc().clear_personal_at) - Date.now()) / 86400000) === 60 && await until(() => eventText(base, 'Incident closed · personal records clear by rule in 60 days')), logTexts()[0]);
+    await base.updateIncident({ status: 'active' });
+    await until(() => inc().status === 'active');
+    // ---- the public set: a caption and a check on the photo panel, the download, the list and the sitrep
+    const photo = M().ids.photos[0];
+    $(`#panel [data-action="select-photo"][data-id="${photo}"]`) ? $(`#panel [data-action="select-photo"][data-id="${photo}"]`).click() : (() => { const b = document.createElement('button'); b.dataset.action = 'select-photo'; b.dataset.id = photo; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); })();
+    const pform = await until(() => $('#panel form[data-form="photo-public"]'));
+    check('a cleared photo\'s panel has the public caption and the check; the photo is not in the set yet', !!pform && has('#panel', 'not checked yet, so not in the public set') && $('#panel [data-action="photo-check"]').textContent.startsWith('Checked: no face'), text('#panel').slice(0, 300));
+    pform.caption.value = 'Floodwater over Riverside Drive on Saturday morning'; pform.requestSubmit();
+    check('the public caption is saved and logged', await until(() => base.photo(photo).public_caption === 'Floodwater over Riverside Drive on Saturday morning') && await until(() => eventText(base, 'Photo from Unit 1, public caption: Floodwater over Riverside Drive on Saturday morning')), logTexts()[0]);
+    $('#panel [data-action="photo-check"]').click();
+    check('the check is stamped with who looked, and logged', await until(() => base.photo(photo).public_checked_at && base.photo(photo).public_checked_by === U.ops) && await until(() => eventText(base, 'Photo from Unit 1 checked for public release: no face, no plate, no house number')) && await until(() => has('#panel', 'checked', 'no face, no plate, no house number')), logTexts()[0]);
+    await base.setPhotoPublic(M().ids.photos[1], true);   // cleared, not checked: listed as missing
+    await until(() => base.publicPhotos().length === 2);
+    $('#panel [data-action="close-panel"]').click();
+    await until(() => has('#panel', 'join code', 'public information'));
+    check('Public information counts cleared and checked, lists each photo\'s caption and check, and offers the public set', has('#panel', '2 photos cleared for the public, 1 checked', 'download the public set', '1 of 2', 'checked · floodwater over riverside drive', 'not checked · no public caption'), text('#panel').slice(text('#panel').indexOf('public information'), text('#panel').indexOf('public information') + 400));
+    let saved = null;
+    HTMLAnchorElement.prototype.click = function () { if (this.download) saved = { name: this.download, href: this.href }; else realClick.call(this); };
+    try { $('#panel [data-action="download-public"]').click(); await until(() => saved, 6000); } finally { HTMLAnchorElement.prototype.click = realClick; }
+    const { unzip } = await import('../js/base/photo-export.js');
+    const entries = saved ? unzip(new Uint8Array(await (await fetch(saved.href)).arrayBuffer())) : [];
+    const pic = entries.find((e) => /\.jpg$/.test(e.name)), caps = entries.find((e) => e.name === 'captions.txt');
+    const capText = caps ? new TextDecoder().decode(caps.bytes) : '';
+    check('the public set is one zip: the checked photo named by time and place, and captions.txt', !!saved && /^CEDAR7-public-set-/.test(saved.name) && entries.length === 2 && !!pic && /_A-1_riverside-drive-east\.jpg$/.test(pic.name), saved ? saved.name + ' · ' + entries.map((e) => e.name).join(', ') : 'nothing saved');
+    check('captions.txt carries the time, the place to the street and the public caption, never coordinates or the unit\'s note, and lists the cleared-but-unchecked photo as missing', /Riverside Drive, east \(division A-1\)\nFloodwater over Riverside Drive on Saturday morning/.test(capText) && /Cleared but not yet checked, so not in this set:\n\d\d:\d\d · B-1 · Unit 2/.test(capText) && !/Water over road|30\.26|-97\.7/.test(capText), capText.slice(0, 400));
+    check('and the public caption is inside the picture', !!pic && new TextDecoder('latin1').decode(pic.bytes).includes('Floodwater over Riverside Drive on Saturday morning'));
+    $('[data-action="sitrep"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+    check('the situation report counts cleared and checked', has('#briefing-page', '2 photos cleared for public release, 1 checked'), (text('#briefing-page').match(/\d photos cleared[^.]*/) || [''])[0]);
+    $('[data-action="close-briefing"]').click();
+    // ---- v25's leftovers on the base: the bars' words first, half-typed words kept
+    await base.sendMessage(uuid(), { ...base.recipientsFor('all'), kind: 'safety', text: 'Water rising fast at the park entrance, everyone out of A-2 now' });
+    await base.startPar('all');
+    await until(() => $$('#safety .bar-item').length === 2);
+    const bars = $$('#safety .bar-item').map((b) => b.textContent.replace(/\s+/g, ' ').trim());
+    check('with a safety message and a PAR open, the message\'s words come before a count of who is waiting, the names on hover', bars.some((b) => /^SAFETY · Water rising fast at the park entrance, everyone out of A-2 now · waiting on 3 units/.test(b)) && bars.some((b) => /^PAR · 0 of 3 answered · waiting on 3 units/.test(b)) && $$('#safety .bar-item').every((b) => /Unit 1, Unit 2, Unit 3/.test(b.title)), bars.join(' | '));
+    const composer = $('#panel form[data-form="message"] textarea[name="text"], #panel form[data-form="message"] input[name="text"]');
+    composer.value = 'Half a sentence about the'; composer.dispatchEvent(new Event('input', { bubbles: true }));
+    composer.blur(); document.body.focus();
+    await field.addHazard(uuid(), { kind: 'Gas smell', note: 'behind the school', zoneId: ZONE('A-2') });
+    await until(() => base.hazards().some((h) => h.note === 'behind the school'));
+    await wait(200);
+    const again = $('#panel form[data-form="message"] textarea[name="text"], #panel form[data-form="message"] input[name="text"]');
+    check('words half-typed in a sidebar box survive a live redraw after focus left it', !!again && again.value === 'Half a sentence about the', again && again.value);
+    again.value = '';
+  } finally {
+    window.confirm = confirmWas;
+    HTMLAnchorElement.prototype.click = realClick;
+    if (P) P.frame.remove();
+    if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
+    if ($('#settings-dialog') && $('#settings-dialog').open) $('#settings-dialog').close();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    await wait(100);
+  }
 }

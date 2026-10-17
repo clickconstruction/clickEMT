@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 18;
+  const SEED_VERSION = 19;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -79,7 +79,7 @@
     });
     const sevenPm = new Date(); sevenPm.setHours(19, 0, 0, 0);
     const photo = (i, user, zone, lat, lng, heading, note, min, publicOk) => ({
-      id: P[i], incident_id: INC, user_id: user, zone_id: Z[zone], lat, lng, heading, note, public_ok: !!publicOk,
+      id: P[i], incident_id: INC, user_id: user, zone_id: Z[zone], lat, lng, heading, note, public_ok: !!publicOk, public_caption: '', public_checked_by: null, public_checked_at: null,
       storage_path: INC + '/' + user + '/' + P[i] + '.jpg', taken_at: ago(min), created_at: ago(min)
     });
     // an hour of positions per unit, a point every two minutes, walking from where it started to where it is now
@@ -94,14 +94,14 @@
     const t = {
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
-        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null,
+        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null, settings: { maps_key: 'mock-maps-key-for-the-layers-suite', retention_days: 30, rotation_minutes: 45 },
         channels: [{ use: 'Command', channel: 'CMD 1' }, { use: 'Tactical, Division A', channel: 'TAC 2' }, { use: 'Tactical, Division B', channel: 'TAC 3' }, { use: 'Emergency traffic', channel: 'TAC 9' }],
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
       ic_ops_codes: [{ incident_id: INC, code: OPS_CODE, created_at: ago(190), created_by: U.ops }],
       ic_id_purge: [],   // licence photos the clearing queued for the base to remove
       ic_periods: [
-        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '', pio: 'Lena Marsh', liaison: 'Tomás Herrera',
+        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '', pio: 'Lena Marsh', liaison: 'Tomás Herrera', rotation_minutes: 45,
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
       ],
       ic_objectives: [
@@ -110,10 +110,10 @@
         { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), created_at: ago(186) }
       ],
       ic_members: [
-        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null, removed_at: null, removed_by: null },
-        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null, facility_id: null, removed_at: null, removed_by: null },
-        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null, facility_id: null, removed_at: null, removed_by: null },
-        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null, facility_id: null, removed_at: null, removed_by: null }
+        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null },
+        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null },
+        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null },
+        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null }
       ],
       ic_zones: [
         zone(1, 'A-1', 'Riverside Drive, east', 1, 'active', U.unit1, 24, 9, { updated_at: ago(45), supervisor: 'Lt. Okafor', work_assignment: 'Primary search of every structure, paint the marking on each, report waterlines and anyone who refuses to leave', instructions: 'Stay out of moving water. The utility crew for the line at the park entrance is on its way.', polygon: ring([[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]]) }),
@@ -269,7 +269,7 @@
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null }),
+    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null, settings: {} }),
     ic_ops_codes: () => ({ created_at: now(), created_by: null }),
     ic_id_purge: () => ({ id: eventId(), queued_at: now(), done_at: null }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
@@ -277,16 +277,16 @@
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
-    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', created_at: now() }),
+    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, created_at: now() }),
     ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
     ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
-    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null }),
+    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null, in_water_since: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
-    ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, taken_at: now(), created_at: now() }),
+    ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, public_caption: '', public_checked_by: null, public_checked_at: null, taken_at: now(), created_at: now() }),
     ic_tracks: () => ({ id: eventId(), heading: null, at: now() }),   // unique across tabs, as ic_events
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
@@ -378,7 +378,7 @@
     }
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
     if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
-    if (table === 'ic_periods' && r.number == null) throw nn('number');
+    if (table === 'ic_periods') { if (r.number == null) throw nn('number'); if (r.rotation_minutes != null && !(r.rotation_minutes >= 0 && r.rotation_minutes <= 600)) throw chk('ic_periods_rotation_minutes_check'); }
     if (table === 'ic_period_agencies') { if (!String(r.agency || '').trim()) throw dbError('name the agency'); if (!r.period_id) throw nn('period_id'); }
     if (table === 'ic_commands' && !r.ic_name) throw nn('ic_name');
     if (table === 'ic_requests') {
@@ -621,7 +621,12 @@
       if (r.user_id !== old.user_id) syncCrew(r.incident_id, old.user_id, uid, changes);
     }
     if (table === 'ic_positions') trackPosition(r, old, uid, changes);
-    if (table === 'ic_photos' && !!r.public_ok !== !!old.public_ok) log(changes, r.incident_id, uid, 'ops', `Photo from ${label(r.incident_id, r.user_id)} ${r.public_ok ? 'cleared for public information' : 'withdrawn from public information'}`, 'ic_photos', r.id);
+    if (table === 'ic_photos') {   // ic_log_photo_public
+      const who = `Photo from ${label(r.incident_id, r.user_id)}`;
+      if (!!r.public_ok !== !!old.public_ok) log(changes, r.incident_id, uid, 'ops', `${who} ${r.public_ok ? 'cleared for public information' : 'withdrawn from public information'}`, 'ic_photos', r.id);
+      if ((r.public_caption || '') !== (old.public_caption || '')) log(changes, r.incident_id, uid, 'ops', r.public_caption ? `${who}, public caption: ${r.public_caption}` : `${who}: public caption cleared`, 'ic_photos', r.id);
+      if (!r.public_checked_at !== !old.public_checked_at) log(changes, r.incident_id, uid, 'ops', r.public_checked_at ? `${who} checked for public release: no face, no plate, no house number` : `${who}: public release check withdrawn`, 'ic_photos', r.id);
+    }
     if (table === 'ic_requests') {
       const step = { approved: 'approved', ordered: 'ordered', filled: 'filled', declined: 'could not be filled', asked: 'asked again' };
       if (r.status !== old.status) log(changes, r.incident_id, uid, 'request', `Request for ${requestLine(r)} (${label(r.incident_id, r.user_id)}) ${step[r.status]}${r.answer ? ': ' + r.answer : ''}`, 'ic_requests', r.id);
@@ -657,7 +662,12 @@
         + ((r.unified || '') !== (old.unified || '') ? ', unified command ' + (r.unified || 'cleared') : ''));
     }
     if (table === 'ic_periods' && !quiet && JSON.stringify(r.sitrep ?? {}) !== JSON.stringify(old.sitrep ?? {})) log(changes, r.incident_id, uid, 'ops', `Situation report updated for operational period ${r.number}`);
+    if (table === 'ic_periods' && !quiet && (r.rotation_minutes ?? 45) !== (old.rotation_minutes ?? 45)) log(changes, r.incident_id, uid, 'ops', `Operational period ${r.number}: ${r.rotation_minutes === 0 ? 'rotation in the water turned off' : 'rotation in the water every ' + r.rotation_minutes + ' minutes'}`);   // ic_log_period_rotation
     if (table === 'ic_members' && (r.kind || '') !== (old.kind || '') && !quiet) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + (r.kind ? ' is a ' + KIND_TEXT[r.kind] : ': kind cleared'));
+    if (table === 'ic_members' && (r.in_water_since || null) !== (old.in_water_since || null)) {   // in and out of the water, with the minutes
+      if (r.in_water_since && !old.in_water_since) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + ' in the water');
+      else if (!r.in_water_since && old.in_water_since) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + ' out of the water after ' + Math.max(0, Math.round((Date.now() - new Date(old.in_water_since).getTime()) / 60000)) + ' min');
+    }
     let memberDone = false;
     if (table === 'ic_members' && (r.removed_at || null) !== (old.removed_at || null)) {   // ic_member_after: removed or put back
       const pr = tables.ic_profiles.find((x) => x.user_id === r.user_id), nm = pr && pr.full_name ? ' (' + pr.full_name + ')' : '';
@@ -724,6 +734,11 @@
       if ((r.lead_agency || '') !== (old.lead_agency || '')) log(changes, r.id, uid, 'ops', 'Lead agency: ' + (r.lead_agency || 'not set'));
       if (r.status === 'closed' && old.status !== 'closed') log(changes, r.id, uid, 'ops', 'Incident closed' + (r.clear_personal_at ? ' · personal records clear by rule in ' + Math.max(1, Math.round((new Date(r.clear_personal_at) - Date.now()) / 86400000)) + ' days' : ''));
       else if (r.status === 'active' && old.status === 'closed') log(changes, r.id, uid, 'ops', 'Incident reopened');
+      const ns = r.settings || {}, os = old.settings || {};   // the settings: what changed, never the key (ic_log_incident)
+      const pr = tables.ic_profiles.find((x) => x.user_id === uid), actor = (pr && pr.full_name) || label(r.id, uid);
+      if ((ns.maps_key || '') !== (os.maps_key || '')) log(changes, r.id, uid, 'ops', actor + (ns.maps_key ? ' set the Google Maps key' : ' cleared the Google Maps key'));
+      if (String(ns.retention_days ?? '') !== String(os.retention_days ?? '')) log(changes, r.id, uid, 'ops', actor + ' set personal records to clear ' + (ns.retention_days || 30) + ' days after the close');
+      if (String(ns.rotation_minutes ?? '') !== String(os.rotation_minutes ?? '')) log(changes, r.id, uid, 'ops', actor + ' set the default rotation to ' + (ns.rotation_minutes ?? 45) + ' minutes in the water');
     }
   }
 
@@ -790,9 +805,16 @@
       const idChanged = r.full_name !== old.full_name || r.licence_number !== old.licence_number || r.licence_state !== old.licence_state || (r.photo_path || null) !== (old.photo_path || null) || (r.date_of_birth || null) !== (old.date_of_birth || null);
       if (idChanged && !verChanged) { r.verified_at = null; r.verified_by = null; }
     }
-    if (table === 'ic_incidents') {   // ic_incident_before
-      if (r.status === 'closed' && old.status !== 'closed' && !r.clear_personal_at && !r.personal_cleared_at) r.clear_personal_at = new Date(Date.now() + 30 * 86400000).toISOString();
+    if (table === 'ic_incidents') {   // ic_incident_before: the clock runs for the settings' retention days
+      const days = Math.max(1, Number((r.settings || {}).retention_days) || 30);
+      if (r.status === 'closed' && old.status !== 'closed' && !r.clear_personal_at && !r.personal_cleared_at) r.clear_personal_at = new Date(Date.now() + days * 86400000).toISOString();
       else if (r.status === 'active' && old.status === 'closed' && !r.personal_cleared_at) r.clear_personal_at = null;
+    }
+    if (table === 'ic_photos') {   // ic_photo_public_before
+      r.public_caption = String(r.public_caption || '').trim();
+      if (r.public_checked_at && !old.public_checked_at) r.public_checked_by = uid || r.public_checked_by;
+      else if (!r.public_checked_at) r.public_checked_by = null;
+      if (!r.public_ok && old.public_ok) { r.public_checked_at = null; r.public_checked_by = null; }
     }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
@@ -815,8 +837,10 @@
       if (r.status !== old.status) {
         r.status_at = now();
         r.checked_out_at = r.status === 'checked_out' ? now() : null;
+        if (r.status === 'checked_out') r.in_water_since = null;   // a check-out ends the water clock
         if (r.status !== 'out_of_service') r.status_note = '';
       }
+      if (r.in_water_since && new Date(r.in_water_since).getTime() > Date.now() + 300000) r.in_water_since = now();   // a phone clock ahead
       crewFromPeople(r);
     }
     changes.push(['UPDATE', table, r, old]);
@@ -1000,12 +1024,13 @@
         if (!nm) throw dbError('the incident needs a name');
         let code;
         do { code = ''; for (let i = 0; i < 6; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; } while (tables.ic_incidents.some((i) => i.code === code));
-        const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period) || 'OP 1', base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid };
+        const lastInc = tables.ic_incidents.filter((i) => i.created_by === uid && i.settings && Object.keys(i.settings).length).sort((x, y) => (x.created_at < y.created_at ? 1 : -1))[0];
+        const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period) || 'OP 1', base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid, settings: lastInc ? copy(lastInc.settings) : {} };   // ic_incident_before_insert
         tables.ic_incidents.push(inc); changes.push(['INSERT', 'ic_incidents', inc, null]);
         setOpsCode(inc.id, uid, changes);   // ic_incident_after_insert
         const m = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: 'ops', unit_name: 'Operations' };
         tables.ic_members.push(m); changes.push(['INSERT', 'ic_members', m, null]);
-        const p1 = { ...DEFAULTS.ic_periods(), incident_id: inc.id, number: 1 };
+        const p1 = { ...DEFAULTS.ic_periods(), incident_id: inc.id, number: 1, rotation_minutes: inc.settings.rotation_minutes >= 0 && inc.settings.rotation_minutes <= 600 ? Number(inc.settings.rotation_minutes) : 45 };   // ic_period_before_insert
         tables.ic_periods.push(p1); changes.push(['INSERT', 'ic_periods', p1, null]);
         inc.current_period_id = p1.id;
         log(changes, inc.id, uid, 'ops', 'Incident opened: ' + inc.name + ', operational period 1');
@@ -1014,7 +1039,10 @@
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations starts a period');
         const cur = tables.ic_periods.filter((p) => p.incident_id === a.p_incident && !p.closed_at).sort((x, y) => y.number - x.number)[0] || null;
         const maxN = tables.ic_periods.filter((p) => p.incident_id === a.p_incident).reduce((n, p) => Math.max(n, p.number), 0);
-        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '', pio: trim(a.p_pio) || '', liaison: trim(a.p_liaison) || '' };
+        const incS = (tables.ic_incidents.find((i) => i.id === a.p_incident) || {}).settings || {};
+        const rot = a.p_rotation != null ? Number(a.p_rotation) : cur && cur.rotation_minutes != null ? cur.rotation_minutes : incS.rotation_minutes != null && incS.rotation_minutes !== '' ? Number(incS.rotation_minutes) : 45;
+        if (!(rot >= 0 && rot <= 600)) throw dbError('The rotation is 0 (off) to 600 minutes');
+        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '', pio: trim(a.p_pio) || '', liaison: trim(a.p_liaison) || '', rotation_minutes: rot };
         tables.ic_periods.push(np); changes.push(['INSERT', 'ic_periods', np, null]);
         periodCommand(np, null, uid, changes);
         let n = 0;

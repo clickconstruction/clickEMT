@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["dev/serve.py", "8766"],
       "port": 8766
+    },
+    {
+      "name": "incident-map-any-port",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["dev/serve.py"],
+      "port": 8781
     }
   ]
 }

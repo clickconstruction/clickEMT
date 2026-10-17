@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The local dev server: python's http.server with caching turned off, so an edited file is what the
 browser gets on the next load (the stock server's Last-Modified lets the browser reuse a stale copy
-for minutes). Run: python3 dev/serve.py [port], default 8766, on 127.0.0.1 only."""
+for minutes). Run: python3 dev/serve.py [port], default $PORT or 8766, on 127.0.0.1 only."""
+import os
 import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -16,5 +17,5 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8766
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get('PORT', 8766))   # the Browser pane's launcher hands a free port in PORT
     ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()

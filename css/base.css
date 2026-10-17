@@ -465,3 +465,8 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .ur-sub .water.over, .water.over { color: var(--hazard-ink); font-weight: 600; }
 .settings-form { display: flex; flex-direction: column; gap: 8px; min-width: min(560px, 90vw); }
 .settings-form .title { font-size: 16px; }
+
+/* accountability by name (v29) */
+.hc-unknown { color: var(--hazard-ink); font-weight: 600; }
+.pp-row.missing { background: var(--tint-red); }
+.pp-row.missing .pp-state { color: var(--danger); font-weight: 600; }

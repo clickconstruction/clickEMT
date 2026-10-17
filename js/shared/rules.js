@@ -504,3 +504,27 @@ export function waterState(since, rotation, now = Date.now()) {
 }
 export function rotationText(rotation) { const r = Math.max(0, Number(rotation) || 0); return r > 0 ? 'crews out of the water every ' + r + ' minutes' : 'no rotation set'; }
 export function unitsInWater(units, rotation, now = Date.now()) { return units.filter((u) => u.in_water_since && u.status !== 'checked_out' && !u.removed_at).map((u) => ({ unit: u, state: waterState(u.in_water_since, rotation, now) })); }
+
+// ---- accountability by name (v29): a PAR names who is missing (ic_message_acks.missing, [{id, name}]), the
+// head count is the named people plus the unnamed (ic_members.unnamed_count) and is unknown only when neither was given
+export const HEAD_COUNT_UNKNOWN = 'head count unknown';
+export function headCountKnown(member) { return !!member && member.crew_count != null; }
+export function missingNames(ack) { return Array.isArray(ack && ack.missing) ? ack.missing.map((x) => (x && x.name) || 'someone') : []; }
+// the people reported missing on the latest PAR: one entry per name, with the unit that reported them
+export function missingOnPar(par, acks, memberOf) {
+  if (!par) return [];
+  const out = [];
+  for (const a of acks) {
+    if (a.reply !== 'Missing someone') continue;
+    const names = Array.isArray(a.missing) ? a.missing : [];
+    if (!names.length) out.push({ id: null, name: null, unit: memberOf(a.user_id), ack: a });
+    for (const x of names) out.push({ id: x.id || null, name: x.name || 'someone', unit: memberOf(a.user_id), ack: a });
+  }
+  return out;
+}
+export function parAnswerText(ack) {
+  if (!ack) return '';
+  const names = missingNames(ack);
+  if (names.length) return 'Missing: ' + names.join(', ') + (ack.count != null ? ' · ' + ack.count + ' accounted for' : '');
+  return ack.reply + (ack.count != null ? ' (' + ack.count + ')' : '');
+}

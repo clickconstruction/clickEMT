@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven } from './rules.js';
+import { profileReady, identityGiven, missingOnPar } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
 const BUCKET = 'ic-photos';
@@ -637,9 +637,10 @@ export class Data {
     this.local('ic_hazards', data);
     return data;
   }
-  async raiseAlert(id, { lat, lng, zoneId, createdAt }) {
+  async raiseAlert(id, { lat, lng, zoneId, createdAt, note }) {
     const row = { id, incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, lat: lat ?? null, lng: lng ?? null };
     if (createdAt) row.created_at = createdAt;
+    if (note) row.note = note;
     const { data, error } = await this.sb.from('ic_alerts').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_alerts', data || row);
@@ -680,9 +681,10 @@ export class Data {
     this.local('ic_messages', data || row);
     return data || row;
   }
-  async ackMessage(messageId, reply, count, ackedAt) {
+  async ackMessage(messageId, reply, count, ackedAt, missing) {
     const row = { message_id: messageId, incident_id: this.store.incident.id, user_id: this.user.id, reply: reply || '', count: count ?? null };
     if (ackedAt) row.acked_at = ackedAt;
+    if (Array.isArray(missing) && missing.length) row.missing = missing.map((x) => ({ id: x.id || null, name: x.name || '' }));
     const { data, error } = await this.sb.from('ic_message_acks').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_message_acks', data || { ...row, acked_at: new Date().toISOString() });
@@ -710,5 +712,9 @@ export class Data {
     const r = this.recipientsFor(target || 'all');
     return this.sendMessage(null, { toUsers: r.toUsers, toLabel: r.toLabel, toZone: r.toZone, kind: 'par', text: text || 'PAR: is everyone accounted for?' });
   }
-  async answerPar(messageId, allAccounted, count) { return this.ackMessage(messageId, allAccounted ? 'All accounted for' : 'Missing someone', count); }
+  // missing is [{id, name}] of the unit's people reported missing (v29); the base's bar and board name them
+  async answerPar(messageId, allAccounted, count, missing) { return this.ackMessage(messageId, allAccounted ? 'All accounted for' : 'Missing someone', count, null, allAccounted ? [] : missing); }
+  // who the latest PAR says is missing: one entry per name (or one nameless entry), with the unit that reported them
+  missingNow() { const par = this.lastPar(); return par ? missingOnPar(par, this.acksFor(par.id), (u) => this.member(u)) : []; }
+  missingPerson(personId) { return this.missingNow().find((m) => m.id === personId) || null; }
 }

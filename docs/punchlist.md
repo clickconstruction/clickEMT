@@ -14,7 +14,7 @@ the personas who hit them, and add a "Re-walk after vN" section there, as v25 di
 | 1 | Write the re-walk after v26 (done 17 October, `docs: re-walk after v26`) | an hour | now | the v26 release, cut short |
 | 2 | v27 Members and roles, and personal records that clear by rule (shipped 17 October) | medium | 1 | the agency administrator (3 jobs he could not do) |
 | 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers (shipped 17 October) | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
-| 4 | v29 Accountability by name | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
+| 4 | v29 Accountability by name (shipped 17 October) | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
 | 5 | Small fixes, any time | small | — | testing and hand-over notes |
 | 6 | Decisions only Grace can make | — | — | testing and hand-over notes |
 
@@ -177,6 +177,8 @@ unknown (v29)`. Then re-walk Rosa's and Ana's PAR jobs.
 
 **Start in.** `js/field/main.js` (`parCount`, `answerPar`, the `par` row), `js/base/ui.js` (the yellow bar, the People
 board row), `supabase/migrations/0013_people.sql`.
+
+**Shipped** 17 October 2026 as `Accountability by name: the PAR names who is missing, the head count is never unknown (v29)`, migration `0021_accountability_by_name.sql`, rule test `supabase/tests/parbyname.sql` (10 of 10), smoke suite `parbyname`. One rule added while building: a person named later on a unit that had unnamed people takes one off the unnamed, so the head count stays.
 
 ---
 

@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
 import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -67,7 +67,7 @@ function unitRowHtml(data, m, now) {
   const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : identityGiven(p) ? 'Identity not verified yet' : 'No licence given: check who this is in person'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : identityGiven(p) ? '' : ' · no ID'}</span>` : ''; })()}</span>
+      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : m.status !== 'checked_out' ? ` · <span class="hc-unknown" title="No names and no count given at check-in: ask the unit, or name them on the People board">${HEAD_COUNT_UNKNOWN}</span>` : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : identityGiven(p) ? 'Identity not verified yet' : 'No licence given: check who this is in person'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : identityGiven(p) ? '' : ' · no ID'}</span>` : ''; })()}</span>
       <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}${waterSpan(data, m, now)}</span></span>
     </button>`;
 }
@@ -113,7 +113,7 @@ export function parHtml(data) {
   const rows = (par.to_users || []).map((u) => {
     const a = data.ack(par.id, u);
     const cls = a ? (a.reply === 'Missing someone' ? 'bad' : 'ok') : 'wait';
-    return `<div class="par-row ${cls}"><span>${esc(unitLabel(data.member(u)))}</span><span>${a ? esc(a.reply) + (a.count != null ? ' (' + a.count + ')' : '') + ' · ' + hhmm(a.acked_at) : 'waiting, sent ' + since(par.created_at)}</span></div>`;
+    return `<div class="par-row ${cls}"><span>${esc(unitLabel(data.member(u)))}</span><span>${a ? esc(parAnswerText(a)) + ' · ' + hhmm(a.acked_at) : 'waiting, sent ' + since(par.created_at)}</span></div>`;
   }).join('');
   return head + `<div class="muted" style="font-size:12.5px">Started ${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${waiting.length ? waiting.length + ' still to answer' : 'everyone answered'}</div>${rows}`;
 }
@@ -432,13 +432,15 @@ export function personRowHtml(data, p, { compact, now } = {}) {
   const unit = data.member(p.user_id);
   const unitOut = unit && unit.status === 'checked_out';
   const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
-  const state = p.archived_at ? 'Removed ' + hhmm(p.archived_at)
+  const miss = data.missingPerson(p.id), pos = miss && unit ? data.position(unit.user_id) : null;
+  const state = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at) + (pos ? ' · ' + unitLabel(unit) + ' last at ' + latLngText(pos.lat, pos.lng) + ', ' + ago(pos.at, now) : ' · no position from ' + unitLabel(unit))
+    : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
     : (unitOut ? 'Unit checked out · ' : 'On scene ') + onSceneText(p, now) + ', since ' + hhmm(p.checked_in_at);
   const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
   const units = compact ? [] : data.members().filter((m) => m.status !== 'checked_out' || m.user_id === p.user_id).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   return `
-    <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}" data-person="${p.id}">
+    <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}${miss ? ' missing' : ''}" data-person="${p.id}">
       <span class="pp-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? `<span class="muted"> ${esc(p.role)}</span>` : ''}${p.agency && (!unit || p.agency !== unit.agency) ? `<span class="pp-agency muted">${esc(p.agency)}</span>` : ''}${p.notes ? `<span class="pp-agency muted">${esc(p.notes)}</span>` : ''}</span>
       ${qualBadges(p)}
       <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}</span>
@@ -446,7 +448,7 @@ export function personRowHtml(data, p, { compact, now } = {}) {
         ${compact ? '' : `<select class="sel" data-select="person-unit" data-id="${p.id}" aria-label="Unit" title="Move to another unit">${units.map((u) => `<option value="${u.user_id}"${u.user_id === p.user_id ? ' selected' : ''}>${esc(unitLabel(u))}</option>`).join('')}</select>
         <select class="sel" data-select="person-buddy" data-id="${p.id}" aria-label="Buddy" title="Who this person pairs with"><option value="">No buddy</option>${mates.map((x) => `<option value="${x.id}"${p.buddy_id === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`}
         ${p.checked_out_at ? `<button class="btn sm" data-action="person-in" data-id="${p.id}">Back in</button>` : `<button class="btn sm" data-action="person-out" data-id="${p.id}">Check out</button>`}
-        ${compact ? '' : `<button class="btn sm" data-action="person-remove" data-id="${p.id}" title="Takes the person off the roster; the record is kept">Remove</button>`}` : ops && p.archived_at ? `<button class="btn sm" data-action="person-restore" data-id="${p.id}">Put back</button>` : ''}</span>
+        ${compact ? '' : `<button class="btn sm" data-action="person-edit" data-id="${p.id}" title="Correct the name, rank or role, agency, qualifications or notes">Edit</button><button class="btn sm" data-action="person-remove" data-id="${p.id}" title="Takes the person off the roster; the record is kept">Remove</button>`}` : ops && p.archived_at ? `<button class="btn sm" data-action="person-restore" data-id="${p.id}">Put back</button>` : ''}</span>
     </div>`;
 }
 
@@ -523,18 +525,21 @@ export function peopleBoardHtml(data, state) {
   const count = narrowed ? `${shown.length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
     : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}`;
   const now = Date.now();
-  const addForm = ops && ps.add ? `
-    <form class="inline-form pp-form" data-form="person-add">
+  const editing = ops && ps.edit ? data.person(ps.edit) : null;   // Edit on a row opens the same form, filled in (v29)
+  const addForm = ops && (ps.add || editing) ? `
+    <form class="inline-form pp-form" data-form="${editing ? 'person-edit' : 'person-add'}"${editing ? ` data-id="${editing.id}"` : ''}>
+      ${editing ? `<div class="k">Edit ${esc(editing.name)} · ${esc(unitLabel(data.member(editing.user_id)))}</div>` : ''}
       <div class="row-2">
-        <label>Unit <select name="unit" class="sel">${members.filter((m) => m.status !== 'checked_out').map((m) => `<option value="${m.user_id}"${ps.addUnit === m.user_id ? ' selected' : ''}>${esc(unitLabel(m))}</option>`).join('')}</select></label>
-        <label>Name <input name="name" required maxlength="80" placeholder="Surname, or the full name" autocomplete="off"></label>
+        ${editing ? '' : `<label>Unit <select name="unit" class="sel">${members.filter((m) => m.status !== 'checked_out').map((m) => `<option value="${m.user_id}"${ps.addUnit === m.user_id ? ' selected' : ''}>${esc(unitLabel(m))}</option>`).join('')}</select></label>`}
+        <label>Name <input name="name" required maxlength="80" placeholder="Surname, or the full name" autocomplete="off" value="${esc(editing ? editing.name : '')}"></label>
+        ${editing ? `<label>Notes <input name="notes" maxlength="200" placeholder="Anything the next shift should know" value="${esc(editing.notes || '')}"></label>` : ''}
       </div>
       <div class="row-2">
-        <label>Rank or role <input name="role" maxlength="60" placeholder="Lt., Paramedic, Boat operator"></label>
-        <label>Agency <input name="agency" maxlength="120" placeholder="The unit's, unless different"></label>
+        <label>Rank or role <input name="role" maxlength="60" placeholder="Lt., Paramedic, Boat operator" value="${esc(editing ? editing.role || '' : '')}"></label>
+        <label>Agency <input name="agency" maxlength="120" placeholder="The unit's, unless different" value="${esc(editing && data.member(editing.user_id) && editing.agency !== data.member(editing.user_id).agency ? editing.agency || '' : '')}"></label>
       </div>
-      <div class="chips">${QUALIFICATIONS.map(([q, label]) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="checkbox" name="q" value="${q}"> ${esc(label)}</label>`).join('')}</div>
-      <div class="row-btns"><button class="btn sm" type="button" data-action="people-add-toggle">Cancel</button><button class="btn pri sm" type="submit">Add to the unit</button></div>
+      <div class="chips">${QUALIFICATIONS.map(([q, label]) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="checkbox" name="q" value="${q}"${editing && (editing.qualifications || []).includes(q) ? ' checked' : ''}> ${esc(label)}</label>`).join('')}</div>
+      <div class="row-btns"><button class="btn sm" type="button" data-action="${editing ? 'person-edit-cancel' : 'people-add-toggle'}">Cancel</button><button class="btn pri sm" type="submit">${editing ? 'Save' : 'Add to the unit'}</button></div>
     </form>` : '';
   const groups = members.map((m) => {
     const rows = shown.filter((p) => p.user_id === m.user_id);
@@ -559,7 +564,7 @@ export function peopleBoardHtml(data, state) {
     </div>
     ${addForm}
     ${all.length ? (groups || '<p class="muted">Nobody matches. Clear the chips or the find box.</p>') : '<p class="muted">No people on record yet. A unit adds its people by name when it checks in on the phone, or you add them here.</p>'}
-    ${noNames.length ? `<p class="muted" style="font-size:12.5px">No names on record for ${noNames.map((u) => esc(unitLabel(u)) + (u.crew ? ' (crew "' + esc(u.crew) + '"' + (u.crew_count != null ? ', ' + u.crew_count : '') + ')' : '')).join(', ')}.</p>` : ''}`;
+    ${noNames.length ? `<p class="muted" style="font-size:12.5px">No names on record for ${noNames.map((u) => esc(unitLabel(u)) + (u.crew ? ' (crew "' + esc(u.crew) + '"' + (u.crew_count != null ? ', ' + u.crew_count : '') + ')' : u.crew_count != null ? ' (' + u.crew_count + ' counted)' : ` (<span class="hc-unknown">${HEAD_COUNT_UNKNOWN}</span>)`)).join(', ')}. Name them for the PAR: a PAR by name says who is missing, not just how many.</p>` : ''}`;
 }
 
 // The check-in list, ICS 211: everyone who checked in, by unit, with when and for how long.
@@ -926,7 +931,7 @@ function unitHtml(data, m, state) {
     ${oos ? `<form class="inline-form" data-form="oos" data-id="${m.user_id}"><div class="chips">${OOS_REASONS.map((r, i) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="radio" name="reason" value="${esc(r)}"${i === 0 ? ' checked' : ''}> ${esc(r)}</label>`).join('')}</div><div class="row-btns"><button class="btn sm" type="button" data-action="oos-cancel">Cancel</button><button class="btn pri sm" type="submit">Out of service</button></div></form>` : ''}
     <div class="kv">
       <span class="k">Agency</span><span>${esc(m.agency) || 'not set'}</span>
-      <span class="k">Head count</span><span>${m.crew_count != null ? m.crew_count : 'not set'}</span>
+      <span class="k">Head count</span><span>${m.crew_count != null ? m.crew_count + (m.unnamed_count ? ' (' + m.unnamed_count + ' not named)' : '') : `<span class="hc-unknown">${HEAD_COUNT_UNKNOWN}</span> · name them for the PAR`}</span>
       <span class="k">Assigned</span><span>${zone ? esc(zone.code + ' · ' + zone.name) : 'nothing yet'}</span>
       <span class="k">Standing in</span><span>${here ? esc(here.code) : 'no zone'}</span>
       <span class="k">Position</span><span class="mono">${pos ? esc(latLngText(pos.lat, pos.lng)) : 'none yet'}</span>
@@ -1476,7 +1481,7 @@ export function safetyHtml(data) {
     else if (m.kind === 'par') parts.push(barItem(`PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'} (${since(m.created_at)})`, '', '', `PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${names.join(', ')} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'}`));
   }
   const par = data.lastPar();
-  if (par) for (const a of data.acksFor(par.id)) if (a.reply === 'Missing someone') parts.unshift(barItem(`MISSING · ${unitLabel(data.member(a.user_id))} reports someone missing${a.count != null ? ', ' + a.count + ' accounted for' : ''} · ${hhmm(a.acked_at)}`, 'missing'));
+  for (const x of data.missingNow().slice().reverse()) parts.unshift(barItem(x.name ? `MISSING · ${x.name} (${unitLabel(x.unit)}) · ${hhmm(x.ack.acked_at)}${x.ack.count != null ? ' · ' + x.ack.count + ' accounted for' : ''}` : `MISSING · ${unitLabel(x.unit)} reports someone missing${x.ack.count != null ? ', ' + x.ack.count + ' accounted for' : ''} · ${hhmm(x.ack.acked_at)}`, 'missing'));   // by name since v29
   return parts.join('');
 }
 

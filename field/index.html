@@ -74,6 +74,7 @@
         <div class="k">People on the unit</div>
         <p class="muted small" style="margin:0">Each person by name, and what they are qualified for. Operations sees them on the People board and the check-in list, and the head count follows.</p>
         <div id="join-people" class="pp-list"></div>
+        <div class="row-2" style="align-items:end"><label>How many with you, including you? <input name="count" id="join-count" type="number" inputmode="numeric" min="0" max="99" placeholder="the whole crew"></label><span class="muted small" style="padding-bottom:10px">Names are optional; the number is not. Typing names raises it.</span></div>
         <div class="row-btns" style="justify-content:space-between"><button type="button" class="btn sm" data-action="jp-add">Add a person</button><button type="submit" class="btn pri">Check in</button></div>
         <p class="msg" data-msg></p>
       </form>
@@ -355,8 +356,9 @@
     <div id="menu-people"></div>
     <div class="pp-add">
       <div class="row-2"><input id="mp-name" class="input" placeholder="Name" autocapitalize="words" autocomplete="off" maxlength="80"><input id="mp-role" class="input" placeholder="Rank or role" autocomplete="off" maxlength="60"></div>
+      <input id="mp-notes" class="input" placeholder="Notes (optional)" autocomplete="off" maxlength="200">
       <div class="chips" id="mp-quals"></div>
-      <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="person-add">Add to the unit</button></div>
+      <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="person-add">Add to the unit</button><button class="btn sm" data-action="person-edit-cancel" hidden>Cancel</button></div>
     </div>
     <div class="k">Sending</div>
     <div id="menu-outbox" class="muted">Nothing waiting</div>

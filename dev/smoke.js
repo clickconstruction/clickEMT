@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -2082,7 +2082,7 @@ async function safetyset(check) {
     await base.setPhotoPublic(M().ids.photos[1], true);   // cleared, not checked: listed as missing
     await until(() => base.publicPhotos().length === 2);
     $('#panel [data-action="close-panel"]').click();
-    await until(() => has('#panel', 'join code', 'public information'));
+    await until(() => has('#panel', 'join code', '2 photos cleared for the public'), 8000);   // the page's own data has the second photo before the counts are read
     check('Public information counts cleared and checked, lists each photo\'s caption and check, and offers the public set', has('#panel', '2 photos cleared for the public, 1 checked', 'download the public set', '1 of 2', 'checked · floodwater over riverside drive', 'not checked · no public caption'), text('#panel').slice(text('#panel').indexOf('public information'), text('#panel').indexOf('public information') + 400));
     let saved = null;
     HTMLAnchorElement.prototype.click = function () { if (this.download) saved = { name: this.download, href: this.href }; else realClick.call(this); };
@@ -2119,6 +2119,98 @@ async function safetyset(check) {
     if (P) P.frame.remove();
     if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
     if ($('#settings-dialog') && $('#settings-dialog').open) $('#settings-dialog').close();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    await wait(100);
+  }
+}
+
+// Accountability by name (v29, migration 0021): the PAR by name on the phone, who is missing on the bar and
+// the board, a check-in with a count and no names, the unknown head count, an edit on each view.
+async function parbyname(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  let P = null;
+  try {
+    const U = USERS();
+    // check-ins: a count with no names stands; names come off the count; neither is unknown
+    const mk = async (email) => { const c = window.supabase.createClient(); await c.auth.signInWithPassword({ email, password: 'any' }); const d = new Data(c); await d.init(); await d.saveProfile({ full_name: 'Test ' + email.split('@')[0], phone: '512 555 0199' }); return d; };
+    const u9 = await mk('counted@mock.local');
+    await u9.join('CEDAR7', 'unit', 'Unit 9', null, 3, 'Sheriff', [], 'other');
+    await until(() => base.member(u9.user.id));
+    check('a check-in with a count and no names: the number stands, three unnamed', base.member(u9.user.id).crew_count === 3 && base.member(u9.user.id).unnamed_count === 3 && !!eventText(base, 'Unit 9, other checked in as Test counted, 512 555 0199, identity not given with 3 people'), JSON.stringify([base.member(u9.user.id).crew_count, base.member(u9.user.id).unnamed_count]));
+    const u8 = await mk('named@mock.local');
+    await u8.join('CEDAR7', 'unit', 'Unit 8', null, 4, 'Bastrop County FD', [{ name: 'Reyes', qualifications: ['emt'] }, { name: 'Cruz', qualifications: [] }], 'engine');
+    await until(() => base.member(u8.user.id) && base.unitPeople(u8.user.id).length === 2);
+    check('two names and a count of four: head count 4, two unnamed', base.member(u8.user.id).crew_count === 4 && base.member(u8.user.id).unnamed_count === 2 && await until(() => has('#panel', 'unit 8, engine', 'reyes, cruz · 4')), text('#panel').slice(0, 300));
+    await u8.open(INC());
+    await u8.addPerson(uuid(), { name: 'Vela', qualifications: [] });
+    check('naming one of the unnamed later keeps the count and takes one off the unnamed', await until(() => base.member(u8.user.id).unnamed_count === 1) && base.member(u8.user.id).crew_count === 4);
+    const u7 = await mk('blank@mock.local');
+    await u7.join('CEDAR7', 'unit', 'Unit 7', null, null, 'Volunteers', [], null);
+    await until(() => base.member(u7.user.id));
+    check('neither names nor a count: the resources row says head count unknown in orange, the unit panel says name them for the PAR', base.member(u7.user.id).crew_count == null && await until(() => $$('#panel .hc-unknown').some((e) => /head count unknown/.test(e.textContent))), text('#panel').slice(0, 300));
+    $(`#panel [data-action="select-unit"][data-id="${u7.user.id}"]`).click();
+    await until(() => has('#panel .title', 'unit 7'));
+    check('…and the unit panel', has('#panel', 'head count unknown · name them for the par'), text('#panel').slice(0, 400));
+    $('#panel [data-action="close-panel"]').click();
+    $('[data-action="people"]').click();
+    await until(() => !$('#people').hidden);
+    const ptab = $('#people-page [data-action="people-tab"][data-tab="people"]'); if (ptab && !ptab.classList.contains('on')) { ptab.click(); await until(() => $('#people-page .pp-grp')); }   // an earlier suite may have left the Members tab on
+    check('the People board nudges: name them for the PAR', has('#people-page', 'no names on record for', 'unit 7 (head count unknown)', 'unit 9 (3 counted)', 'name them for the par'), text('#people-page').slice(-300));
+    // Edit a person on the base
+    const ramirez = base.people().find((p) => p.name === 'Ramirez');
+    $(`#people-page .pp-row[data-person="${ramirez.id}"] [data-action="person-edit"]`).click();
+    const ef = await until(() => $('#people-page form[data-form="person-edit"]'));
+    check('Edit opens the form filled in', !!ef && ef.name.value === 'Ramirez' && ef.role.value === 'Lt.' && ef.querySelector('input[name="q"][value="emt"]').checked && ef.agency.value === '', ef && JSON.stringify([ef.name.value, ef.role.value, ef.agency.value]));
+    ef.role.value = 'Capt.'; ef.notes.value = 'Drives the engine'; ef.requestSubmit();
+    check('Save writes the edit and logs it', await until(() => base.person(ramirez.id).role === 'Capt.' && base.person(ramirez.id).notes === 'Drives the engine') && await until(() => eventText(base, 'Ramirez (swift water, EMT) updated on Unit 1, Capt., notes changed')), logTexts()[0]);
+    $('[data-action="close-people"]').click();
+    u9.close(); u8.close(); u7.close();
+    // the PAR by name on the phone: Unit 3 has Hale and Dominguez on record
+    P = await phoneFrame();
+    check('the phone frame opened as Unit 3', !!P.ready);
+    if (P.ready) {
+      await base.startPar('all');
+      await until(() => P.shown('#s-safety') && /checked in with you hale, dominguez/.test(P.text('#s-safety')), 15000);
+      check('the PAR card lists the names checked in and offers one button for all of them', /checked in with you hale, dominguez/.test(P.text('#s-safety')) && !!P.$$('#s-safety button').find((b) => b.textContent.trim() === 'All 2 accounted for') && !!P.$$('#s-safety button').find((b) => b.textContent.trim() === "Someone's missing"), P.text('#s-safety').slice(0, 300));
+      P.$$('#s-safety button').find((b) => b.textContent.trim() === 'All 2 accounted for').click();
+      const par1 = base.lastPar();
+      check('one tap answers all accounted for with the count', await until(() => base.ack(par1.id, U.unit3) && base.ack(par1.id, U.unit3).count === 2, 70000) && await until(() => eventText(base, 'Unit 3: All accounted for (2)'), 8000), logTexts()[0]);
+      await base.startPar('all');
+      await until(() => P.shown('#s-safety') && /someone's missing/.test(P.text('#s-safety')), 15000);
+      P.$$('#s-safety button').find((b) => b.textContent.trim() === "Someone's missing").click();
+      await until(() => P.$('#s-safety [data-par-miss]'));
+      check('Someone\'s missing opens the list to tick, with Send waiting on a tick', !!P.$('#s-safety [data-par-miss]') && P.$$('#s-safety [data-par-miss]').length === 2 && P.$$('#s-safety button').find((b) => /^Send: nobody missing/.test(b.textContent.trim())).disabled, P.text('#s-safety').slice(0, 300));
+      const dom = base.people().find((p) => p.name === 'Dominguez');
+      const tick = P.$(`#s-safety [data-par-miss][value="${dom.id}"]`); tick.checked = true; tick.dispatchEvent(new Event('change', { bubbles: true }));
+      await until(() => P.$$('#s-safety button').find((b) => /^Send: 1 missing/.test(b.textContent.trim())));
+      P.$$('#s-safety button').find((b) => /^Send: 1 missing/.test(b.textContent.trim())).click();
+      const par2 = base.lastPar();
+      check('Send stores who is missing with the count, logged by name, and raises an alert that names them', await until(() => base.ack(par2.id, U.unit3), 70000) && JSON.stringify(base.ack(par2.id, U.unit3).missing.map((x) => x.name)) === '["Dominguez"]' && base.ack(par2.id, U.unit3).count === 1 && await until(() => eventText(base, 'Unit 3: Missing someone: Dominguez (1 accounted for)'), 8000) && await until(() => base.alerts().some((a) => a.user_id === U.unit3 && a.note === 'Missing: Dominguez'), 70000) && await until(() => eventText(base, 'EMERGENCY, Unit 3 needs help in A-2: Missing: Dominguez'), 8000), logTexts().slice(0, 3).join(' | '));
+      check('the yellow bar names who is missing and the unit', await until(() => has('#safety', 'missing · dominguez (unit 3)')), text('#safety'));
+      $('[data-action="people"]').click();
+      await until(() => !$('#people').hidden);
+      check('the People board turns the person\'s row red with the unit\'s last position', await until(() => $(`#people-page .pp-row.missing[data-person="${dom.id}"]`)) && has(`#people-page .pp-row[data-person="${dom.id}"]`, 'missing since', 'unit 3 last at'), text(`#people-page .pp-row[data-person="${dom.id}"]`));
+      $('[data-action="close-people"]').click();
+      $(`#panel [data-action="select-unit"][data-id="${U.unit3}"]`) ? $(`#panel [data-action="select-unit"][data-id="${U.unit3}"]`).click() : null;
+      await until(() => has('#panel .title', 'unit 3'));
+      check('and so does the unit panel', !!$(`#panel .pp-row.missing[data-person="${dom.id}"]`), text('#panel').slice(0, 300));
+      $('#panel [data-action="ack-alert"]') && $('#panel [data-action="ack-alert"]').click();
+      $('#panel [data-action="close-panel"]').click();
+      // Edit a person on the phone
+      await P.act('menu');
+      await until(() => P.$(`#menu-people [data-action="person-edit"][data-id="${base.people().find((p) => p.name === 'Hale').id}"]`));
+      P.$(`#menu-people [data-action="person-edit"][data-id="${base.people().find((p) => p.name === 'Hale').id}"]`).click();
+      await until(() => P.$('#mp-name').value === 'Hale');
+      check('Edit on the phone fills the form and turns Add into Save', P.$('#mp-name').value === 'Hale' && P.$('[data-action="person-add"]').textContent.trim() === 'Save', P.$('[data-action="person-add"]').textContent);
+      P.$('#mp-role').value = 'Lt.'; P.$('[data-action="person-add"]').click();
+      const hale = base.people().find((p) => p.name === 'Hale');
+      check('Save sends the edit and the log says so', await until(() => base.person(hale.id).role === 'Lt.', 70000) && await until(() => eventText(base, 'Hale (swift water, EMT) updated on Unit 3, Lt.'), 8000), logTexts()[0]);
+      P.frame.remove(); P = null;
+    }
+  } finally {
+    window.confirm = confirmWas;
+    if (P) P.frame.remove();
+    if (!$('#people').hidden) $('[data-action="close-people"]').click();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     await wait(100);
   }

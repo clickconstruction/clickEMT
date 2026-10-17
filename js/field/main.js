@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
@@ -27,7 +27,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -72,7 +72,8 @@ const outbox = new Outbox({
   alert: (p, _b, at) => data.raiseAlert(p.id, { ...p, createdAt: at }),
   standdown: (p) => data.standDown(p.id),
   message: (p, _b, at) => data.sendMessage(p.id, { ...p, createdAt: at }),
-  ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at),
+  ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at, p.missing),
+  count: (p) => data.updateMember(p.userId, { unnamed_count: p.n }),
   status: (p) => data.setStatus(p.userId, p.status, p.note),
   water: (p) => data.setInWater(p.userId, p.since),
   structure: (p, _b, at) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
@@ -202,6 +203,31 @@ function clearForms() {
 }
 
 document.addEventListener('change', (e) => { const co = e.target.closest('[data-co]'); if (co) { state.coTicks[co.dataset.co] = co.checked; drawCheckout(); } });
+document.addEventListener('change', (e) => {   // who is missing on a PAR: the ticks (v29)
+  const t = e.target.closest('[data-par-miss]');
+  if (!t) return;
+  const set = state.parPicked.get(t.dataset.parMiss) || new Set();
+  if (t.checked) set.add(t.value); else set.delete(t.value);
+  state.parPicked.set(t.dataset.parMiss, set);
+  drawSafety(); drawInbox();
+});
+document.addEventListener('input', async (e) => {   // a unit with no head count types it once; it stays on the unit (v29)
+  const n = e.target.closest('[data-par-n]');
+  if (!n) return;
+  const v = n.value === '' ? null : Math.min(99, Math.max(0, Math.round(Number(n.value) || 0)));
+  state.parCounts.set(n.dataset.parN, v);
+  for (const b of document.querySelectorAll(`[data-action="par-ok"][data-id="${n.dataset.parN}"], [data-action="par-missing"][data-id="${n.dataset.parN}"]`)) b.disabled = v == null;
+  const me = data.me();
+  if (v != null && me && me.crew_count == null) { clearTimeout(parCountTimer); parCountTimer = setTimeout(async () => { data.local('ic_members', Object.assign({}, me, { unnamed_count: v, crew_count: v })); await outbox.add('count', { userId: me.user_id, n: v }); }, 800); }
+});
+let parCountTimer = null;
+// the check-in form's head count follows the names: never fewer than the names typed (v29)
+document.addEventListener('input', (e) => {
+  if (!e.target.closest('#join-people [data-jp="name"]') && e.target.id !== 'join-count') return;
+  const c = $('#join-count'); if (!c) return;
+  const n = joinPeopleList().length;
+  if (n && (c.value === '' || Number(c.value) < n)) c.value = String(n);
+});
 $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
 
 // The people on the unit at check-in: a row per person, name and rank or role typed, what they are
@@ -232,7 +258,9 @@ $('#join-form').addEventListener('submit', async (e) => {
   const f = e.target, msg = f.querySelector('[data-msg]');
   msg.textContent = 'Checking in…';
   try {
-    const inc = await data.join(f.code.value, 'unit', f.unit.value, null, null, f.agency.value, joinPeopleList(), state.joinKind);
+    const names = joinPeopleList();
+    const count = f.count && f.count.value !== '' ? Math.max(names.length, Math.min(99, Math.round(Number(f.count.value) || 0))) : null;
+    const inc = await data.join(f.code.value, 'unit', f.unit.value, null, count, f.agency.value, names, state.joinKind);
     try { localStorage.setItem(AGENCY_KEY + data.user.id, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
     clearJoinForm();
     clearPendingJoin();
@@ -310,7 +338,7 @@ function messageRow(m, big) {
   let btns = '';
   if (!mine && !acked) {
     if (m.kind === 'safety') btns = `<div class="mrow-btns"><button class="btn" data-action="ack" data-id="${m.id}" data-reply="Acknowledged">Acknowledge</button></div>`;
-    else if (m.kind === 'par') btns = `<div class="par-count"><span>People with you</span><button class="btn" data-action="par-less" data-id="${m.id}" aria-label="Fewer">−</button><span class="num">${parCount(m.id)}</span><button class="btn" data-action="par-more" data-id="${m.id}" aria-label="More">+</button></div><div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}">Missing someone</button></div>`;
+    else if (m.kind === 'par') btns = parCardHtml(m);
     else btns = `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`;
   }
   const marks = (m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(urgencyLabel(m.urgency))}</span>` : '') + (m.lat != null && m.lng != null ? '<span class="muted">· location attached</span>' : '');
@@ -402,20 +430,49 @@ function drawSafety() {
 }
 
 // ---- accountability: the PAR answer, your status, check-out
+// The PAR card (v29): with people on record the names are the reminder and one button answers for all of
+// them; Someone's missing opens the list to tick. With no names the − / + count stays, and a unit whose head
+// count is unknown types it first.
+function parPeople() { const me = data.me(); return me ? data.unitPeople(me.user_id).filter((p) => !p.checked_out_at) : []; }
 function parCount(id) {
-  if (!state.parCounts.has(id)) { const me = data.me(); state.parCounts.set(id, me && me.crew_count != null ? me.crew_count : 1); }
+  if (!state.parCounts.has(id)) { const me = data.me(); state.parCounts.set(id, me && me.crew_count != null ? me.crew_count : null); }
   return state.parCounts.get(id);
 }
-async function answerPar(id, allAccounted) {
+function parCardHtml(m) {
+  const me = data.me(), ppl = parPeople(), total = ppl.length ? ppl.length + ((me && me.unnamed_count) || 0) : parCount(m.id);
+  if (ppl.length) {
+    const picked = state.parPicked.get(m.id) || new Set();
+    if (!state.parMissingOpen.has(m.id)) {
+      return `<div class="par-names"><span class="k">Checked in with you</span> ${ppl.map((p) => esc(p.name)).join(', ')}${me && me.unnamed_count ? ` and ${me.unnamed_count} not named` : ''}</div>
+        <div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All ${total} accounted for</button><button class="btn" data-action="par-missing-open" data-id="${m.id}">Someone's missing</button></div>`;
+    }
+    return `<div class="par-names"><span class="k">Who is missing? Tick them</span></div>
+      <div class="chips par-pick">${ppl.map((p) => `<label class="chip${picked.has(p.id) ? ' on' : ''}"><input type="checkbox" data-par-miss="${m.id}" value="${p.id}"${picked.has(p.id) ? ' checked' : ''}> ${esc(p.name)}</label>`).join('')}${me && me.unnamed_count ? `<label class="chip${picked.has('unnamed') ? ' on' : ''}"><input type="checkbox" data-par-miss="${m.id}" value="unnamed"${picked.has('unnamed') ? ' checked' : ''}> one of the ${me.unnamed_count} not named</label>` : ''}</div>
+      <div class="mrow-btns"><button class="btn" data-action="par-missing-cancel" data-id="${m.id}">Back</button><button class="btn danger" data-action="par-missing-send" data-id="${m.id}"${picked.size ? '' : ' disabled'}>Send: ${picked.size || 'nobody'} missing</button></div>`;
+  }
+  if (total == null) {
+    return `<div class="par-count"><span>How many with you, including you?</span><input class="input" type="number" inputmode="numeric" min="0" max="99" data-par-n="${m.id}" placeholder="0" aria-label="How many with you"></div>
+      <div class="muted small">Operations has no head count for ${esc(unitLabel(me))}: type it once, it stays on the unit.</div>
+      <div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}" disabled>All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}" disabled>Missing someone</button></div>`;
+  }
+  return `<div class="par-count"><span>People with you</span><button class="btn" data-action="par-less" data-id="${m.id}" aria-label="Fewer">−</button><span class="num">${total}</span><button class="btn" data-action="par-more" data-id="${m.id}" aria-label="More">+</button></div><div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}">Missing someone</button></div>`;
+}
+async function answerPar(id, allAccounted, missingIds = []) {
   const m = data.message(id);
   if (!m || data.ack(id, data.user.id)) return;
-  const count = parCount(id);
+  const me = data.me(), ppl = parPeople();
+  const total = ppl.length ? ppl.length + ((me && me.unnamed_count) || 0) : parCount(id);
+  if (total == null) { toast('Type how many are with you first', true); return; }
+  const missing = ppl.filter((p) => missingIds.includes(p.id)).map((p) => ({ id: p.id, name: p.name }));
+  const nMissing = allAccounted ? 0 : Math.max(1, missing.length + (missingIds.includes('unnamed') ? 1 : 0));
+  const count = allAccounted ? total : (ppl.length ? Math.max(0, total - nMissing) : total);
   const reply = allAccounted ? 'All accounted for' : 'Missing someone';
-  data.local('ic_message_acks', { message_id: id, incident_id: data.incident.id, user_id: data.user.id, reply, count, acked_at: new Date().toISOString() });
-  await outbox.add('ack', { messageId: id, reply, count });
+  data.local('ic_message_acks', { message_id: id, incident_id: data.incident.id, user_id: data.user.id, reply, count, missing: allAccounted ? [] : missing, acked_at: new Date().toISOString() });
+  await outbox.add('ack', { messageId: id, reply, count, missing: allAccounted ? [] : missing });
   state.lastSentAt = Date.now();
-  if (!allAccounted && !myAlert()) await sendAlert();
-  else { if (state.screen === 'safety') drawSafety(); toast('Head count sent: ' + count); }
+  state.parMissingOpen.delete(id); state.parPicked.delete(id);
+  if (!allAccounted && !myAlert()) await sendAlert(missing.length ? 'Missing: ' + missing.map((x) => x.name).join(', ') : 'Missing someone');
+  else { if (state.screen === 'safety') drawSafety(); toast(allAccounted ? 'All ' + count + ' accounted for, sent' : 'Head count sent: ' + count); }
   queueDraw();
 }
 async function setMyKind(kind) {
@@ -563,17 +620,30 @@ function drawPeople() {
       const sub = [qualsText(p.qualifications), p.checked_out_at ? 'checked out ' + hhmm(p.checked_out_at) : 'since ' + hhmm(p.checked_in_at) + ' · ' + onSceneText(p) + ' on scene', buddy ? 'with ' + buddy.name : ''].filter(Boolean).join(' · ');
       return `<div class="pp-row${p.checked_out_at ? ' out' : ''}" data-person="${p.id}">
         <span class="pp-main"><span class="pp-name">${esc(p.name)}${p.role ? ` <span class="role">${esc(p.role)}</span>` : ''}</span><span class="pp-sub">${esc(sub)}</span></span>
+        <button class="btn sm" data-action="person-edit" data-id="${p.id}" aria-label="Edit ${esc(p.name)}">Edit</button>
         ${p.checked_out_at ? `<button class="btn sm" data-action="person-in" data-id="${p.id}">Back in</button>` : `<button class="btn sm" data-action="person-out" data-id="${p.id}">Check out</button>`}
       </div>`;
     }).join('');
   setHtml($('#menu-people'), html);
   setHtml($('#mp-quals'), qualChips(state.mpQuals, 'mp-qual'));
+  const addBtn = $('[data-action="person-add"]'), cancelBtn = $('[data-action="person-edit-cancel"]');
+  if (addBtn) addBtn.textContent = state.mpEdit ? 'Save' : 'Add to the unit';
+  if (cancelBtn) cancelBtn.hidden = !state.mpEdit;
 }
 async function addPerson() {
   const me = data.me();
-  const name = $('#mp-name').value.trim(), role = $('#mp-role').value.trim();
+  const name = $('#mp-name').value.trim(), role = $('#mp-role').value.trim(), notes = $('#mp-notes') ? $('#mp-notes').value.trim() : '';
   if (!me) return;
   if (!name) { toast('Type the person\'s name first', true); $('#mp-name').focus(); return; }
+  if (state.mpEdit) {   // Save: the unit corrects its own person; the database logs the change
+    const p = data.person(state.mpEdit);
+    const patch = { name, role, qualifications: [...state.mpQuals], notes };
+    if (p) { data.local('ic_people', Object.assign({}, p, patch)); await outbox.add('personPatch', { id: p.id, patch }); }
+    state.mpEdit = null; $('#mp-name').value = ''; $('#mp-role').value = ''; if ($('#mp-notes')) $('#mp-notes').value = ''; state.mpQuals = new Set();
+    toast(name + ' updated');
+    drawPeople(); queueDraw();
+    return;
+  }
   const id = uuid();
   const row = { id, incident_id: data.incident.id, user_id: me.user_id, name, role, agency: me.agency || '', qualifications: [...state.mpQuals], buddy_id: null, notes: '', checked_in_at: new Date().toISOString(), checked_out_at: null, archived_at: null };
   data.local('ic_people', row);
@@ -1318,11 +1388,11 @@ function openHelp() {
     <span class="k">Time</span><span>${hhmm(new Date())}</span>`;
   screen('help');
 }
-async function sendAlert() {
+async function sendAlert(note) {
   const p = sensors.pos, z = myZone();
   const id = uuid();
-  data.local('ic_alerts', { id, incident_id: data.incident.id, user_id: data.user.id, zone_id: z ? z.id : null, lat: p ? p.lat : null, lng: p ? p.lng : null, created_at: new Date().toISOString(), acknowledged_at: null, stood_down_at: null });
-  await outbox.add('alert', { id, lat: p ? p.lat : null, lng: p ? p.lng : null, zoneId: z ? z.id : null });
+  data.local('ic_alerts', { id, incident_id: data.incident.id, user_id: data.user.id, zone_id: z ? z.id : null, lat: p ? p.lat : null, lng: p ? p.lng : null, note: note || '', created_at: new Date().toISOString(), acknowledged_at: null, stood_down_at: null });
+  await outbox.add('alert', { id, lat: p ? p.lat : null, lng: p ? p.lng : null, zoneId: z ? z.id : null, note: note || '' });
   state.lastPosAt = 0; await maybeSendPosition();
   screen('helpsent');
   queueDraw();
@@ -1399,6 +1469,11 @@ document.addEventListener('click', async (e) => {
       case 'par-more': state.parCounts.set(btn.dataset.id, Math.min(99, parCount(btn.dataset.id) + 1)); drawSafety(); drawInbox(); break;
       case 'par-ok': await answerPar(btn.dataset.id, true); break;
       case 'par-missing': if (confirm('Report someone missing? Operations gets an emergency alert with your position.')) await answerPar(btn.dataset.id, false); break;
+      case 'par-missing-open': state.parMissingOpen.add(btn.dataset.id); drawSafety(); drawInbox(); break;
+      case 'par-missing-cancel': state.parMissingOpen.delete(btn.dataset.id); state.parPicked.delete(btn.dataset.id); drawSafety(); drawInbox(); break;
+      case 'par-missing-send': { const picked = [...(state.parPicked.get(btn.dataset.id) || [])]; if (!picked.length) break; await answerPar(btn.dataset.id, false, picked); break; }
+      case 'person-edit': { const p = data.person(btn.dataset.id); if (!p) break; state.mpEdit = p.id; $('#mp-name').value = p.name; $('#mp-role').value = p.role || ''; if ($('#mp-notes')) $('#mp-notes').value = p.notes || ''; state.mpQuals = new Set(p.qualifications || []); drawPeople(); $('#mp-name').focus(); break; }
+      case 'person-edit-cancel': state.mpEdit = null; $('#mp-name').value = ''; $('#mp-role').value = ''; if ($('#mp-notes')) $('#mp-notes').value = ''; state.mpQuals = new Set(); drawPeople(); break;
       case 'status': await setMyStatus(btn.dataset.status); break;
       case 'water-toggle': await toggleWater(); break;   // not 'water': the house record's water-depth chips own that name
       case 'water-later': { const me = data.me(); const st = me && me.in_water_since ? waterState(me.in_water_since, data.rotationMinutes()) : null; state.waterNudged = st ? st.rotations : 0; queueDraw(); break; }

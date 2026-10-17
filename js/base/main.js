@@ -21,7 +21,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people' }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -803,6 +803,8 @@ document.addEventListener('click', async (e) => {
       case 'person-in': await data.checkInPerson(id); break;
       case 'person-remove': { const p = data.person(id); if (p && confirm(`Take ${p.name} off the roster? The record is kept and can be put back.`)) { await data.archivePerson(id); toast(p.name + ' removed'); } break; }
       case 'person-restore': await data.updatePerson(id, { archived_at: null }); break;
+      case 'person-edit': state.people.edit = id; state.people.add = false; drawPeople(); { const f = $('#people-page form[data-form="person-edit"]'); if (f) f.name.focus(); } break;
+      case 'person-edit-cancel': state.people.edit = null; drawPeople(); break;
       case 'overlay-hide': setOverlayHidden(id, true); queueDraw(); break;
       case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
       case 'overlay-remove': { const o = data.overlay(id); if (o && window.confirm(`Remove "${o.name || 'this imagery'}" from the map for everyone? It is kept and can be put back.`)) { await data.archiveOverlay(id); toast('Imagery removed from the map'); } break; }
@@ -996,6 +998,7 @@ document.addEventListener('submit', async (e) => {
   const form = e.target.closest('[data-form]');
   if (!form) return;
   e.preventDefault();
+  form.dataset.submitted = '1';   // what is typed here is being sent: a redraw (which may run at once) must not bring it back
   try {
     if (form.dataset.form === 'new-zone') {
       if (!state.pendingPolygon) { toast('Draw the zone first', true); return; }
@@ -1080,6 +1083,16 @@ document.addEventListener('submit', async (e) => {
       toast(name + ' added to ' + unitLabelOf(data.member(form.unit.value)));
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();   // the page redraws only while no field in it has focus
       drawPeople();
+    } else if (form.dataset.form === 'person-edit') {
+      const p = data.person(form.dataset.id), unit = p && data.member(p.user_id);
+      const name = form.name.value.trim();
+      if (!p || !name) return;
+      const quals = [...form.querySelectorAll('input[name="q"]:checked')].map((i) => i.value);
+      await data.updatePerson(p.id, { name, role: form.role.value.trim(), agency: form.agency.value.trim() || (unit ? unit.agency : ''), qualifications: quals, notes: form.notes.value.trim() });
+      state.people.edit = null;
+      toast(name + ' updated');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      drawPeople();
     } else if (form.dataset.form === 'request-add') {
       await data.addRequest({ kind: form.kind.value, what: form.what.value, quantity: form.quantity.value, urgency: form.urgency.value, note: form.note.value, zoneId: form.zone.value || null });
       toast('Asked');
@@ -1134,7 +1147,6 @@ document.addEventListener('submit', async (e) => {
       toast((safety ? 'Safety message' : 'Message') + ' sent to ' + r.toLabel);
       queueDraw();
     }
-    form.dataset.submitted = '1';   // what was typed here has been sent: the redraw must not bring it back
   } catch (err) { toast(err.message || String(err), true); }
 });
 

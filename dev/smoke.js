@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1030,4 +1030,31 @@ async function zoneCard(check) {
   $('#zone-dialog [data-action="zone-modal-open"]').click();
   await until(() => !dlg.open && has('#panel .title', 'a-3'));
   check('Open in the panel closes the card and selects the division', !dlg.open && has('#panel .title', 'division a-3'));
+}
+
+// The code to join as a QR: drawn on the base beside the code, printed as a join card, and read
+// back by the phone's decoder from the very picture the base draws.
+async function join(check) {
+  const url = 'http://localhost:8766/field/?join=' + M().tables.ic_incidents[0].code;
+  check('the home panel draws the join code as a QR beside the code', !!$('#panel .qr-box svg') && has('#panel', 'join code for field phones', 'cedar7', 'print a join card'), text('#panel').slice(0, 200));
+  $('#panel [data-action="print-join"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
+  check('the join card has the big code, the QR and the how-to', !!$('#briefing-page .join-card-qr svg') && has('#briefing-page', 'cedar7', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 300));
+  const svg = $('#briefing-page .join-card-qr svg').outerHTML;
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  // the decoder the phone falls back to reads the base's picture
+  if (!window.jsQR) await new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = '/vendor/jsQR-1.4.0.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+  const img = new Image();
+  const sized = (svg.includes('xmlns=') ? svg : svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')).replace('<svg ', '<svg width="320" height="320" ');
+  const blob = new Blob([sized], { type: 'image/svg+xml' });
+  const objUrl = URL.createObjectURL(blob);
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = objUrl; });
+  const c = document.createElement('canvas'); c.width = 360; c.height = 360;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 360, 360); g.drawImage(img, 20, 20, 320, 320);
+  const read = window.jsQR(g.getImageData(0, 0, 360, 360).data, 360, 360);
+  URL.revokeObjectURL(objUrl);
+  check('the phone\'s decoder reads the join link out of the base\'s QR', !!read && read.data === url, read && read.data);
+  const { codeFromScan } = await import('../js/shared/qr.js');
+  check('and the link means the code', codeFromScan(read ? read.data : '') === M().tables.ic_incidents[0].code);
 }

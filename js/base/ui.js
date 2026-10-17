@@ -2,6 +2,7 @@
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
 import { hiddenOverlays, boundsText } from '../shared/layers.js';
+import { joinUrl, qrSvg } from '../shared/qr.js';
 import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -100,8 +101,14 @@ function homeHtml(data) {
   const inc = data.incident;
   return `
     <div class="k">Join code for field phones</div>
-    <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
-    <div class="muted" style="font-size:12.5px">A unit opens the field app, signs in, and types this code with its unit name.</div>
+    <div class="join-box">
+      <div class="qr-box">${qrSvg(fieldJoinUrl(inc.code), { label: 'QR code to join ' + inc.name })}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+        <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
+        <div class="muted" style="font-size:12.5px">A unit scans this with its phone, or opens the field app and types the code with its unit name.</div>
+        <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button></div>
+      </div>
+    </div>
     <div class="k" style="margin-top:6px">Resources</div>
     ${resourcesHtml(data)}
     ${parHtml(data)}
@@ -167,6 +174,29 @@ export function imageryHtml(data) {
       <div class="row-btns"><button class="btn pri sm" type="submit">Put it on the map</button></div>
     </form>`;
 }
+
+// The field app's address, for the join link the QR carries.
+export function fieldJoinUrl(code) { return joinUrl(code, new URL('field/', document.baseURI)); }
+
+// The join card: a page for the wall of the command post or a unit's dashboard.
+export function joinCardSections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  return [
+    { title: 'Check in with your phone', lines: [inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''), p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : ''].filter(Boolean) },
+    { title: 'Join code', lines: [inc.code] },
+    { title: 'How', lines: ['Scan the code, or open ' + fieldJoinUrl(inc.code).replace(/\?.*$/, '') + ' and type it.', 'Sign in with the account your agency gave you, name your unit and the people on it, then press Check in.', 'Anyone with this code can join as a unit. Keep it to the people who should.'] }
+  ];
+}
+export function joinCardHtml(data) {
+  const inc = data.incident;
+  const url = fieldJoinUrl(inc.code);
+  return `<div class="join-card">
+    <div class="join-card-qr">${qrSvg(url, { label: 'QR code to join ' + inc.name })}</div>
+    <div class="join-card-code mono">${esc(inc.code)}</div>
+    <div class="join-card-url mono">${esc(url)}</div>
+  </div>` + sectionsHtml(joinCardSections(data));
+}
+export function joinCardText(data) { return sectionsText(joinCardSections(data)) + '\n\n' + fieldJoinUrl(data.incident.code); }
 
 // Who is on scene from where (ICS 203): the command, then units and head counts by agency.
 export function agenciesHtml(data) {

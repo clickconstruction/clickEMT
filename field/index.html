@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="../css/field.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin=""></script>
 <script src="../vendor/supabase-js-2.108.0.min.js"></script>
+<script src="../vendor/qrcode-generator-1.4.4.min.js"></script>
 <script src="../config.js"></script>
 <script>
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
@@ -57,6 +58,7 @@
       <h2>Check in to an incident</h2>
       <form id="join-form" class="form">
         <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
+        <div class="row-btns" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="btn sm" data-action="scan-code">Scan a code</button><span class="muted small">Operations' screen, a printed card or another unit's phone shows one.</span></div>
         <div class="row-2">
           <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
           <label>Agency <input name="agency" placeholder="Cedar Fork Fire Department"></label>
@@ -73,6 +75,13 @@
       <div id="join-list"><p class="muted">Loading…</p></div>
     </section>
   </div>
+</div>
+
+<div id="s-scan" class="sheet sheet-fixed" hidden>
+  <h2>Scan the code</h2>
+  <p class="muted small" id="scan-msg">Point the camera at the code.</p>
+  <video id="scan-video" autoplay muted playsinline aria-label="Camera view"></video>
+  <div class="sheet-btns"><button class="btn" data-action="scan-cancel">Cancel</button></div>
 </div>
 
 <div id="app" class="app" hidden>
@@ -218,9 +227,19 @@
     <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="send-compose">Send</button></div>
   </div>
 
+  <div id="s-showcode" class="sheet" hidden>
+    <h2>Join this incident</h2>
+    <p class="muted small">Anyone who scans this with their phone lands on the field app with the code filled in. They still sign in with their own account and name their unit.</p>
+    <div class="showcode-qr" id="showcode-qr"></div>
+    <div class="showcode-code mono" id="showcode-code"></div>
+    <div class="muted" style="text-align:center" id="showcode-name"></div>
+    <div class="muted small mono" style="text-align:center;word-break:break-all" id="showcode-url"></div>
+    <div class="sheet-btns"><button class="btn" data-action="menu">Back</button></div>
+  </div>
   <div id="s-menu" class="sheet" hidden>
     <h2>This incident</h2>
     <div class="kv" id="menu-facts"></div>
+    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="show-code">Show a code to join</button></div>
     <div class="k">Your status</div>
     <div id="menu-status"></div>
     <div class="k">People on the unit</div>

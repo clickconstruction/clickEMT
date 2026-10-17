@@ -9,7 +9,10 @@ import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, 
 const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay } from '../shared/layers.js';
+import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
+import { startScan } from './scan.js';
 const AGENCY_KEY = 'ic.field.agency';
+const JOIN_KEY = 'ic.field.join';   // a code that arrived in the address (?join=), kept through sign-in
 const SEEN_ZONE = 'ic.field.seen.';
 const POSITION_EVERY_MS = 10000;
 const POSITION_MIN_M = 8;
@@ -41,7 +44,7 @@ function toast(msg, bad) {
 function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
 function screen(name) {
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode']) $('#s-' + s).hidden = name !== s;
   if (name === 'home') { state.pending = null; if (mini) setTimeout(() => mini.invalidateSize(), 50); }
 }
 
@@ -95,9 +98,19 @@ async function boot() {
   });
   if (!user) { show('auth'); return; }
   const last = localStorage.getItem(LAST_INCIDENT);
-  if (last) { try { await openIncident(last); return; } catch (e) { console.warn(e); localStorage.removeItem(LAST_INCIDENT); } }
+  if (last && !pendingJoin()) { try { await openIncident(last); return; } catch (e) { console.warn(e); localStorage.removeItem(LAST_INCIDENT); } }
   await showJoin();
 }
+
+// ---- a join link: ?join=<code> in the address, kept through sign-in, used once
+(function takeJoinLink() {
+  const code = codeFromSearch(location.search);
+  if (!code) return;
+  try { sessionStorage.setItem(JOIN_KEY, code); } catch (e) { /* storage blocked */ }
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* fine */ }
+})();
+function pendingJoin() { try { return sessionStorage.getItem(JOIN_KEY) || ''; } catch (e) { return ''; } }
+function clearPendingJoin() { try { sessionStorage.removeItem(JOIN_KEY); } catch (e) { /* fine */ } }
 
 // ---- auth
 $('#auth-form').addEventListener('submit', async (e) => {
@@ -122,11 +135,15 @@ async function showJoin() {
   show('join');
   $('#join-user').textContent = data.user ? data.user.email : '';
   try { const f = $('#join-form'); if (!f.agency.value) f.agency.value = localStorage.getItem(AGENCY_KEY) || ''; } catch (e) { /* storage blocked */ }
+  const pending = pendingJoin();
+  if (pending) { const f = $('#join-form'); f.code.value = pending; f.unit.focus(); toast('Code ' + pending + ' from the link. Name your unit and check in.'); }
   drawJoinPeople();
   const list = $('#join-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
   try {
     const rows = (await data.myIncidents()).filter((r) => r.status === 'active');
+    const already = pending && rows.find((r) => r.code === pending);
+    if (already) { clearPendingJoin(); toast('You are already on ' + already.name); await openIncident(already.id); return; }
     list.innerHTML = rows.length ? rows.map((r) => `
       <button class="pick-row" data-action="open-incident" data-id="${r.id}">
         <span style="flex:1;min-width:0"><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
@@ -165,6 +182,7 @@ $('#join-form').addEventListener('submit', async (e) => {
     const inc = await data.join(f.code.value, 'unit', f.unit.value, null, null, f.agency.value, joinPeopleList());
     try { localStorage.setItem(AGENCY_KEY, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
     f.reset(); msg.textContent = '';
+    clearPendingJoin();
     state.joinPeople = [blankPerson(), blankPerson()];
     drawJoinPeople();
     await openIncident(inc.id);
@@ -584,6 +602,36 @@ function drawMiniOverlays() {
   for (const [id, w] of want) if (!miniOverlays.has(id)) miniOverlays.set(id, { layer: makeOverlay(w.o, w.url, 'imagery').addTo(mini), stamp: w.stamp });
 }
 
+// ---- the code to join: read with the camera at check-in, shown from the menu
+let scanner = null;
+async function openScan() {
+  $('#s-scan').hidden = false;
+  $('#scan-msg').textContent = 'Opening the camera…';
+  try {
+    scanner = await startScan($('#scan-video'), (text) => {
+      const code = codeFromScan(text);
+      if (!code) { $('#scan-msg').textContent = 'That is a code, but not a join code. Try another.'; return; }
+      closeScan();
+      const f = $('#join-form');
+      f.code.value = code;
+      f.unit.focus();
+      toast('Code ' + code + ' read');
+    });
+    $('#scan-msg').textContent = 'Point the camera at the code.';
+  } catch (err) { $('#scan-msg').textContent = err.message || String(err); }
+}
+function closeScan() { if (scanner) scanner.stop(); scanner = null; $('#s-scan').hidden = true; }
+function openShowCode() {
+  const inc = data.incident;
+  if (!inc) return;
+  const url = joinUrl(inc.code, new URL('./', location.href));
+  $('#showcode-qr').innerHTML = qrSvg(url, { label: 'QR code to join ' + inc.name });
+  $('#showcode-code').textContent = inc.code;
+  $('#showcode-name').textContent = inc.name;
+  $('#showcode-url').textContent = url;
+  screen('showcode');
+}
+
 function drawThemeChips() { const cur = storedTheme(); for (const c of document.querySelectorAll('#theme-chips .chip')) c.classList.toggle('on', c.dataset.value === cur); }
 
 function drawMenu() {
@@ -811,6 +859,9 @@ document.addEventListener('click', async (e) => {
       case 'refresh': await data.open(data.incident.id); toast('Reloaded'); break;
       case 'compass': try { await sensors.requestCompass(); toast('Compass on'); } catch (err) { toast(err.message, true); } break;
       case 'theme': applyTheme(btn.dataset.value); drawThemeChips(); break;
+      case 'scan-code': await openScan(); break;
+      case 'scan-cancel': closeScan(); break;
+      case 'show-code': openShowCode(); break;
       case 'layer': await setMiniLayer(btn.dataset.value); break;
       case 'accept': localStorage.setItem(SEEN_ZONE + data.incident.id, btn.dataset.id); state.justCleared = null; queueDraw(); toast('Assignment accepted'); break;
       case 'camera': await takePhoto(); break;

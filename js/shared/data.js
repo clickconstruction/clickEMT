@@ -4,15 +4,17 @@
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
+const ID_BUCKET = 'ic-ids';
 const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map() };
 }
 
 function keyOf(table, row) {
   if (table === 'ic_message_acks') return row.message_id + ':' + row.user_id;
+  if (table === 'ic_profiles') return row.user_id;
   return (table === 'ic_positions' || table === 'ic_members') ? row.user_id : row.id;
 }
 
@@ -29,6 +31,7 @@ export class Data {
     this.channel = null;
     this.urlCache = new Map();
     this.realtime = 'off';
+    this.profile = null;   // who this account is (ic_profiles), loaded by myProfile()
   }
 
   on(fn) { this.subs.add(fn); return () => this.subs.delete(fn); }
@@ -120,12 +123,18 @@ export class Data {
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
     put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data); put('ic_overlays', overlays.data); put('ic_people', people.data);
+    try {   // the profiles of the incident's members: Operations sees every one, a unit its own
+      const ids = (members.data || []).map((m) => m.user_id);
+      const { data: profs } = ids.length ? await this.sb.from('ic_profiles').select('*').in('user_id', ids) : { data: [] };
+      put('ic_profiles', profs);
+    } catch (e) { /* a client without the table */ }
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
     for (const table of LIVE_TABLES) {
       ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: 'incident_id=eq.' + id }, (p) => this.apply(table, p));
     }
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'ic_profiles' }, (p) => { if (p.new && this.store.members.has(p.new.user_id)) this.apply('ic_profiles', p); });   // no incident column: RLS limits what arrives
     ch.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ic_incidents', filter: 'id=eq.' + id }, (p) => {
       this.store.incident = p.new; this.emit('change', { table: 'ic_incidents', row: p.new });
     });
@@ -145,6 +154,9 @@ export class Data {
       if (!row) return;
       m.set(keyOf(table, row), row);
       if (table === 'ic_events' && m.size > EVENTS_LIMIT * 2) this.trimEvents();
+      if (table === 'ic_members' && !this.store.profiles.has(row.user_id)) {   // a new member: fetch who they are, if we may see it
+        this.sb.from('ic_profiles').select('*').eq('user_id', row.user_id).maybeSingle().then(({ data: p }) => { if (p && !this.store.profiles.has(p.user_id)) this.apply('ic_profiles', { eventType: 'INSERT', new: p }); }).catch(() => {});
+      }
     }
     this.emit('change', { table, row: payload.new || payload.old, type });
   }
@@ -252,6 +264,41 @@ export class Data {
     const { data, error } = await this.sb.from('ic_incidents').update(patch).eq('id', this.store.incident.id).select().single();
     if (error) throw error;
     this.store.incident = data; this.emit('change', { table: 'ic_incidents', row: data });
+    return data;
+  }
+
+  // ---- who an account is (ic_profiles): name, phone and licence, once per account
+  profileOf(userId) { return this.store.profiles.get(userId) || (this.profile && this.profile.user_id === userId ? this.profile : null); }
+  async myProfile() {
+    if (!this.user) return null;
+    const { data, error } = await this.sb.from('ic_profiles').select('*').eq('user_id', this.user.id).maybeSingle();
+    if (error) throw error;
+    this.profile = data || null;
+    return this.profile;
+  }
+  profileComplete(p) { const x = p || this.profile; return !!(x && x.full_name && x.phone && (x.photo_path || x.licence_number)); }
+  async saveProfile(fields) {
+    const row = Object.assign({ user_id: this.user.id }, fields);
+    const { data, error } = await this.sb.from('ic_profiles').upsert(row, { onConflict: 'user_id' }).select().single();
+    if (error) throw error;
+    this.profile = data;
+    if (this.store.incident) this.local('ic_profiles', data);
+    return data;
+  }
+  idPhotoPath() { return this.user.id + '/licence.jpg'; }
+  async uploadIdPhoto(blob) {
+    const path = this.idPhotoPath();
+    const up = await this.sb.storage.from(ID_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) throw up.error;
+    this.urlCache.delete(ID_BUCKET + '/' + path);
+    return path;
+  }
+  async idPhotoUrl(path) { return this.signedUrl(ID_BUCKET, path); }
+  // Operations looks at the licence and says so; withdrawing it is the same call with false
+  async verifyProfile(userId, ok) {
+    const { data, error } = await this.sb.rpc('ic_verify_profile', { p_incident: this.store.incident.id, p_user: userId, p_ok: !!ok });
+    if (error) throw error;
+    this.local('ic_profiles', data);
     return data;
   }
 

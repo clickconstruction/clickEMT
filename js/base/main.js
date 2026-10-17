@@ -223,6 +223,7 @@ function drawAll() {
   if (!focused) {
     panel.innerHTML = panelHtml(data, state);
     if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
+    loadIdPhoto();
     fillOverlayBounds(false);
   }
   drawZoneModal();
@@ -479,6 +480,19 @@ async function loadPhoto(id) {
   }
 }
 
+// the front of a licence in the unit panel, from a signed link
+async function loadIdPhoto() {
+  const box = document.querySelector('#panel [data-id-photo]');
+  if (!box || box.__loaded) return;
+  box.__loaded = true;
+  try {
+    const url = await data.idPhotoUrl(box.dataset.idPhoto);
+    const img = box.querySelector('img'), wait = box.querySelector('[data-photo-wait]');
+    if (img) { img.src = url; img.hidden = false; }
+    if (wait) wait.hidden = true;
+  } catch (err) { const wait = box.querySelector('[data-photo-wait]'); if (wait) wait.textContent = 'Could not load the licence: ' + (err.message || err); }
+}
+
 // ---- actions
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-action]');
@@ -495,6 +509,8 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
+      case 'verify-profile': await data.verifyProfile(id, true); toast('Marked verified'); break;
+      case 'unverify-profile': await data.verifyProfile(id, false); toast('Verification withdrawn'); break;
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
       case 'print-join': openOverlay('join'); break;
       case 'select-zone': selectFromLog({ type: 'zone', id }); break;

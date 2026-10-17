@@ -66,7 +66,14 @@ body { background: var(--bg-2); }
 .card .zone-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .compose-map { height: 240px; }
-.sheet-fixed { position: fixed; }
+.sheet.sheet-fixed { position: fixed; z-index: 1600; }   /* over the app's own sheets, which sit at 1500 */
+.you-line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; background: var(--tint-blue); color: var(--active); border-radius: 10px; padding: 8px 12px; }
+.you-line.missing { background: var(--tint-orange); color: var(--hazard-ink); }
+.you-line .btn { min-height: 32px; }
+.id-photo img { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px; border: 1px solid var(--line); }
+#id-read { font-size: 14px; }
+#id-read .k { margin-bottom: 2px; }
+#id-read .warn { color: var(--danger); font-weight: 600; }
 #scan-video { width: 100%; max-height: 60vh; border-radius: 14px; background: #000; object-fit: cover; }
 .showcode-qr { display: flex; justify-content: center; }
 .showcode-qr svg { width: 100%; max-width: 300px; height: auto; background: #fff; padding: 12px; border-radius: 14px; box-sizing: content-box; }

@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -359,7 +359,7 @@ async function accountability(check) {
   check('a checked-out unit is not messaged and not counted', !base.recipientsFor('all').toUsers.includes(u.unit3) && base.activeUnits().length === 2);
   const inc = await field.join('CEDAR7', 'unit', 'Unit 3', 'Hale, Dominguez', 2, 'Cedar Fork Fire Department');
   await until(() => base.member(u.unit3).status === 'available');
-  check('checking in again makes it available with its head count, and logs it', inc.id === INC() && base.member(u.unit3).checked_out_at === null && base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Unit 3 checked in with 2 people'));
+  check('checking in again makes it available with its head count, and logs it', inc.id === INC() && base.member(u.unit3).checked_out_at === null && base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Unit 3 checked in as Jordan Lee Hale, 512 555 0133, licence scanned with 2 people'));
 }
 
 // People: a record per responder, riding with a unit. The board with its find box and chips, the
@@ -454,7 +454,7 @@ async function people(check) {
   check('the unit\'s check-out takes its people with it, quietly, and the board says the unit checked out', outLines() === before && base.member(u.unit3).crew_count === 0 && await until(() => has('#people-page', '4 on scene on 2 units · 3 checked out')), text('#people-page .pp-count'));
   const inc = await field.join('CEDAR7', 'unit', 'Unit 3', null, null, null, [{ name: 'hale', qualifications: ['swift_water', 'emt'] }, { name: 'Dominguez', qualifications: ['paramedic'] }, { name: 'New Guy', role: 'Driver', qualifications: [] }]);
   await until(() => base.member(u.unit3).crew_count === 3);
-  check('checking the unit back in with its roster brings the names back and adds the new one', inc.id === INC() && base.member(u.unit3).crew === 'Hale, Dominguez, New Guy' && base.unitPeople(u.unit3).length === 3 && !base.person(PP[4]).checked_out_at && !!eventText(base, 'Unit 3 checked in with 3 people') && !!eventText(base, 'New Guy checked in with Unit 3') && base.person(pid).checked_out_at && await until(() => has('#people-page', '7 on scene on 3 units · 1 checked out')), text('#people-page .pp-count'));
+  check('checking the unit back in with its roster brings the names back and adds the new one', inc.id === INC() && base.member(u.unit3).crew === 'Hale, Dominguez, New Guy' && base.unitPeople(u.unit3).length === 3 && !base.person(PP[4]).checked_out_at && !!eventText(base, 'Unit 3 checked in as Jordan Lee Hale, 512 555 0133, licence scanned with 3 people') && !!eventText(base, 'New Guy checked in with Unit 3') && base.person(pid).checked_out_at && await until(() => has('#people-page', '7 on scene on 3 units · 1 checked out')), text('#people-page .pp-count'));
 
   $('#people [data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'check-in list (ics 211)'));
@@ -724,10 +724,14 @@ async function checkIn(check) {
   let bad = null;
   try { await d.join('NOPE22', 'unit', 'Unit 4', ''); } catch (e) { bad = e; }
   check('a wrong code is refused with the database\'s message', !!bad && /No active incident has the code NOPE22/.test(bad.message), bad && bad.message);
+  let noId = null;
+  try { await d.join(' cedar7 ', 'unit', 'Unit 4', 'Smoke'); } catch (e) { noId = e; }
+  check('a unit that has not said who it is cannot check in', !!noId && /Identify yourself first/.test(noId.message), noId && noId.message);
+  await d.saveProfile({ full_name: 'Sam Smoke', phone: '512 555 0144', licence_number: 'S1122334', licence_state: 'TX', id_source: 'typed' });
   const inc = await d.join(' cedar7 ', 'unit', 'Unit 4', 'Smoke');
   check('the code, trimmed and upper-cased, joins the incident', inc && inc.id === INC());
-  await until(() => base.units().some((u) => u.unit_name === 'Unit 4') && eventText(base, 'Unit 4 checked in'));
-  check('the base sees Unit 4 join, available in its resources list and in the log', base.units().some((u) => u.unit_name === 'Unit 4' && u.crew === 'Smoke' && u.status === 'available') && !!eventText(base, 'Unit 4 checked in') && has('#panel', 'unit 4', 'available'), text('#panel'));
+  await until(() => base.units().some((u) => u.unit_name === 'Unit 4') && eventText(base, 'Unit 4 checked in as Sam Smoke, 512 555 0144, licence typed'));
+  check('the base sees Unit 4 join, available in its resources list and in the log', base.units().some((u) => u.unit_name === 'Unit 4' && u.crew === 'Smoke' && u.status === 'available') && !!eventText(base, 'Unit 4 checked in as Sam Smoke, 512 555 0144, licence typed') && has('#panel', 'unit 4', 'available'), text('#panel'));
   await d.open(INC());
   check('Unit 4 can read the incident it joined', d.me().unit_name === 'Unit 4' && d.zones().length === 6);
   const made = await d.createIncident({ name: 'Smoke drill', period: 'OP 1', base: 'Depot', lat: 30.3, lng: -97.7, zoom: 14 });
@@ -1057,4 +1061,52 @@ async function join(check) {
   check('the phone\'s decoder reads the join link out of the base\'s QR', !!read && read.data === url, read && read.data);
   const { codeFromScan } = await import('../js/shared/qr.js');
   check('and the link means the code', codeFromScan(read ? read.data : '') === M().tables.ic_incidents[0].code);
+}
+
+// Who is behind each account: a name, a phone and a licence before a unit can check in, seen and
+// verified by Operations, never by another unit.
+async function identity(check) {
+  const U = USERS();
+  check('the base sees every member\'s profile, a unit only its own', base.profileOf(U.unit3) && base.profileOf(U.unit3).full_name === 'Jordan Lee Hale' && base.profileOf(U.unit1).verified_at && !base.profileOf(U.unit2).verified_at && (await field.myProfile()).full_name === 'Jordan Lee Hale' && !field.profileOf(U.unit1), JSON.stringify(field.profileOf(U.unit1)));
+  check('the resources rows carry the names, with a tick for the verified', has('#panel', 'ana ramirez ✓', 'minh nguyen', 'jordan lee hale') && !has('#panel', 'jordan lee hale ✓'), text('#panel').slice(0, 400));
+  $(`#panel [data-action="select-unit"][data-id="${U.unit3}"]`).click();
+  await until(() => has('#panel .title', 'unit 3') && $('#panel .ident'));
+  check('the unit panel shows the identity: name, phone, the licence tail and expiry, read from the barcode, not verified, with the photo loading', has('#panel .ident', 'jordan lee hale', '512 555 0133', 'tx ···5678', 'expires 2030-03-04', 'read from the barcode', 'not verified') && !!$('#panel .ident [data-action="verify-profile"]') && await until(() => $('#panel .id-box img') && !$('#panel .id-box img').hidden && $('#panel .id-box img').src), text('#panel .ident'));
+  $('#panel .ident [data-action="verify-profile"]').click();
+  await until(() => base.profileOf(U.unit3).verified_at);
+  check('Mark verified stamps the profile, logs it, and the unit sees it', !!base.profileOf(U.unit3).verified_by && !!eventText(base, 'Unit 3 (Jordan Lee Hale) identity verified by Operations') && await until(() => has('#panel .ident', 'verified')) && await until(() => field.profileOf(U.unit3) && field.profileOf(U.unit3).verified_at), logTexts()[0]);
+  $('#panel .ident [data-action="unverify-profile"]').click();
+  await until(() => !base.profileOf(U.unit3).verified_at);
+  check('and withdraws it again', !!eventText(base, 'Unit 3 (Jordan Lee Hale) identity verification withdrawn'));
+  const e1 = await (async () => { try { await field.verifyProfile(U.unit3, true); return null; } catch (e) { return e; } })();
+  check('a unit cannot verify', !!e1 && /Only Operations/.test(e1.message), e1 && e1.message);
+  const r2 = await field.sb.from('ic_profiles').update({ verified_at: new Date().toISOString(), verified_by: U.unit3 }).eq('user_id', U.unit3).select().single();
+  check('nor mark itself verified', !!r2.error && /Only Operations/.test(r2.error.message) && !base.profileOf(U.unit3).verified_at, JSON.stringify(r2.error));
+  await base.verifyProfile(U.unit3, true);
+  await until(() => base.profileOf(U.unit3).verified_at);
+  await field.saveProfile({ full_name: 'Jordan L. Hale' });
+  check('changing the name clears the verification', await until(() => base.profileOf(U.unit3) && !base.profileOf(U.unit3).verified_at && base.profileOf(U.unit3).full_name === 'Jordan L. Hale'), base.profileOf(U.unit3).full_name);
+  // a new account: no profile, no check-in
+  const c = window.supabase.createClient();
+  await c.auth.signInWithPassword({ email: 'newcomer@mock.local', password: 'any' });
+  const n = new Data(c);
+  await n.init();
+  const e3 = await (async () => { try { await n.join('CEDAR7', 'unit', 'Unit 9', null, null, 'Bastrop County FD', []); return null; } catch (e) { return e; } })();
+  check('an account that has not said who it is cannot check in as a unit', !!e3 && /Identify yourself first/.test(e3.message), e3 && e3.message);
+  await n.saveProfile({ full_name: 'Casey Brooks', phone: '512 555 0199', licence_number: 'B9988776', licence_state: 'TX', id_source: 'typed' });
+  const inc = await n.join('CEDAR7', 'unit', 'Unit 9', null, null, 'Bastrop County FD', [{ name: 'Casey Brooks', qualifications: ['emt'] }]);
+  await until(() => base.member(n.user.id));
+  check('once it has, it checks in and the log says who, with what', inc.code === 'CEDAR7' && await until(() => eventText(base, 'Unit 9 checked in as Casey Brooks, 512 555 0199, licence typed with 1 person')), logTexts()[0]);
+  check('the base now sees the newcomer\'s profile, the newcomer sees nobody else\'s', await until(() => base.profileOf(n.user.id) && base.profileOf(n.user.id).full_name === 'Casey Brooks') && !n.profileOf(U.unit3));
+  n.close();
+  $('[data-action="people"]') && $('[data-action="people"]').click();
+  await wait(300);
+  const btn = $('[data-action="print-211"]') || $('#panel [data-action="print-211"]');
+  if (btn) {
+    btn.click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
+    check('the 211 names who checked each unit in', has('#briefing-page', 'checked in by ana ramirez, 512 555 0111, licence tx ···3746, verified', 'checked in by casey brooks'), text('#briefing-page').slice(0, 400));
+    $('[data-action="close-briefing"]').click();
+    await until(() => $('#briefing').hidden);
+  }
 }

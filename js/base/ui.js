@@ -3,6 +3,7 @@
 import { divisionMapHtml } from './print-map.js';
 import { hiddenOverlays, boundsText } from '../shared/layers.js';
 import { joinUrl, qrSvg } from '../shared/qr.js';
+import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -64,7 +65,7 @@ function unitRowHtml(data, m, now) {
   const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span></span>
+      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : 'Identity not verified yet'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : ''}</span>` : ''; })()}</span>
       <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}</span></span>
     </button>`;
 }
@@ -456,10 +457,10 @@ export function form211Sections(data) {
     const rows = data.unitPeople(m.user_id);
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
     S.push({ title: `${unitLabel(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
-      lines: rows.length ? rows.map((px) => {
+      lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${p.verified_at ? ', verified' : ', not verified'}` : 'Checked in by an account with no identity given'; })()].concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
         return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${px.notes ? ' · ' + px.notes : ''}`;
-      }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`] });
+      }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]) });
   }
   const on = data.peopleOn();
   const byAgency = new Map();
@@ -554,6 +555,26 @@ function structureHtml(data, s) {
     </form>`;
 }
 
+// Who is behind an account: the profile given at check-in, and Operations' verdict on it.
+export function identityHtml(data, m) {
+  const p = data.profileOf(m.user_id);
+  if (!p) return `<div class="ident"><div class="k">Identity</div><div class="muted" style="font-size:12.5px">Nothing given yet${m.role === 'unit' ? ' · a unit cannot check in without one' : ''}</div></div>`;
+  const expired = p.licence_expires && licenceExpired(p.licence_expires);
+  const source = { scan: 'read from the barcode', photo: 'front photographed', typed: 'typed' }[p.id_source] || 'on file';
+  return `<div class="ident">
+    <div class="d-row"><span class="k" style="width:auto;flex:1">Identity</span>${p.verified_at ? `<span class="badge cleared">Verified ${hhmm(p.verified_at)}</span>` : '<span class="badge haz">Not verified</span>'}</div>
+    <div class="kv">
+      <span class="k">Name</span><span><strong>${esc(p.full_name) || '—'}</strong></span>
+      <span class="k">Phone</span><span>${p.phone ? `<a href="tel:${esc(p.phone.replace(/\s+/g, ''))}">${esc(p.phone)}</a>` : '—'}</span>
+      <span class="k">Licence</span><span>${p.licence_number ? `${esc(p.licence_state)} ${esc(licenceTail(p.licence_number))}${p.licence_expires ? ' · expires ' + esc(p.licence_expires) : ''}${expired ? ' <strong style="color:var(--danger)">expired</strong>' : ''}` : 'number not read'} · ${source}</span>
+      ${p.date_of_birth ? `<span class="k">Born</span><span>${esc(p.date_of_birth)}</span>` : ''}
+      ${p.address ? `<span class="k">Address</span><span>${esc(p.address)}</span>` : ''}
+    </div>
+    ${p.photo_path ? `<div class="photo-box id-box" data-id-photo="${esc(p.photo_path)}"><img alt="The front of ${esc(p.full_name)}'s licence" hidden><div class="muted" style="padding:28px 12px;text-align:center" data-photo-wait>Loading the licence…</div></div>` : '<div class="muted" style="font-size:12.5px">No photo of the licence</div>'}
+    <div class="d-row">${p.verified_at ? `<button class="btn sm" data-action="unverify-profile" data-id="${m.user_id}">Withdraw verification</button>` : `<button class="btn sm green" data-action="verify-profile" data-id="${m.user_id}" title="You have looked at the licence and it is this person">Mark verified</button>`}</div>
+  </div>`;
+}
+
 function unitHtml(data, m, state) {
   const pos = data.position(m.user_id);
   const zone = data.zones().find((z) => z.assigned_to === m.user_id);
@@ -566,6 +587,7 @@ function unitHtml(data, m, state) {
     <div class="title">${esc(unitLabel(m))} <span>${esc(m.crew || '')}</span></div>
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
+    ${identityHtml(data, m)}
     <div class="d-row"><span class="k">Set status</span>
       <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
       <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>

@@ -57,6 +57,7 @@
     <section class="card">
       <h2>Check in to an incident</h2>
       <form id="join-form" class="form">
+        <div class="you-line" id="join-you"></div>
         <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
         <div class="row-btns" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="btn sm" data-action="scan-code">Scan a code</button><span class="muted small">Operations' screen, a printed card or another unit's phone shows one.</span></div>
         <div class="row-2">
@@ -75,6 +76,23 @@
       <div id="join-list"><p class="muted">Loading…</p></div>
     </section>
   </div>
+</div>
+
+<div id="s-identify" class="sheet sheet-fixed" hidden>
+  <h2>Identify yourself</h2>
+  <p class="muted small">Once per account. Operations on any incident you check in to sees who is behind the unit; nobody else does. The barcode on the back of your driver's licence fills this in.</p>
+  <div class="row-btns" style="justify-content:flex-start"><button class="btn" data-action="id-scan">Scan the back of your licence</button><button class="btn" data-action="id-photo">Photo of the front</button></div>
+  <div class="card" id="id-read" hidden></div>
+  <div class="id-photo" id="id-photo-box" hidden><img id="id-photo-preview" alt="The front of your licence"></div>
+  <label class="k" for="id-name">Your name</label>
+  <input id="id-name" class="input" autocomplete="name" autocapitalize="words" maxlength="120">
+  <label class="k" for="id-phone">Phone</label>
+  <input id="id-phone" class="input" type="tel" autocomplete="tel" inputmode="tel" placeholder="512 555 0100" maxlength="30">
+  <details class="muted small"><summary>No licence to hand? Type its number</summary>
+    <div class="row-2" style="margin-top:6px"><input id="id-number" class="input" placeholder="Licence number" autocomplete="off" maxlength="40"><input id="id-state" class="input" placeholder="State" autocapitalize="characters" maxlength="3"></div>
+  </details>
+  <p class="msg" id="id-msg" role="status"></p>
+  <div class="sheet-btns"><button class="btn" data-action="id-cancel">Not now</button><button class="btn pri" data-action="id-save">Save</button></div>
 </div>
 
 <div id="s-scan" class="sheet sheet-fixed" hidden>
@@ -239,7 +257,7 @@
   <div id="s-menu" class="sheet" hidden>
     <h2>This incident</h2>
     <div class="kv" id="menu-facts"></div>
-    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="show-code">Show a code to join</button></div>
+    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="id-open">Your identity</button></div>
     <div class="k">Your status</div>
     <div id="menu-status"></div>
     <div class="k">People on the unit</div>

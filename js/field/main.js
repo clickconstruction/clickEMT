@@ -11,6 +11,7 @@ import { applyTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay } from '../shared/layers.js';
 import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
 import { startScan } from './scan.js';
+import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
 const AGENCY_KEY = 'ic.field.agency';
 const JOIN_KEY = 'ic.field.join';   // a code that arrived in the address (?join=), kept through sign-in
 const SEEN_ZONE = 'ic.field.seen.';
@@ -19,7 +20,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set() };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set() };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -137,6 +138,9 @@ async function showJoin() {
   try { const f = $('#join-form'); if (!f.agency.value) f.agency.value = localStorage.getItem(AGENCY_KEY) || ''; } catch (e) { /* storage blocked */ }
   const pending = pendingJoin();
   if (pending) { const f = $('#join-form'); f.code.value = pending; f.unit.focus(); toast('Code ' + pending + ' from the link. Name your unit and check in.'); }
+  try { await data.myProfile(); } catch (e) { console.warn(e); }
+  drawYouLine();
+  if (!data.profileComplete() && !state.identShown) { state.identShown = true; openIdentify(); }
   drawJoinPeople();
   const list = $('#join-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
@@ -192,6 +196,7 @@ $('#join-form').addEventListener('submit', async (e) => {
 // ---- the open incident
 async function openIncident(id) {
   await data.open(id);
+  if (!data.profile) data.myProfile().catch(() => {});
   localStorage.setItem(LAST_INCIDENT, id);
   show('app');
   screen('home');
@@ -604,11 +609,20 @@ function drawMiniOverlays() {
 
 // ---- the code to join: read with the camera at check-in, shown from the menu
 let scanner = null;
-async function openScan() {
+// mode 'join' reads a QR with the join code; mode 'licence' reads the PDF417 on the back of a licence
+async function openScan(mode = 'join') {
   $('#s-scan').hidden = false;
   $('#scan-msg').textContent = 'Opening the camera…';
+  $('#s-scan h2').textContent = mode === 'licence' ? 'Scan the back of your licence' : 'Scan the code';
   try {
     scanner = await startScan($('#scan-video'), (text) => {
+      if (mode === 'licence') {
+        const r = looksLikeLicence(text) ? parseLicence(text) : null;
+        if (!r) { $('#scan-msg').textContent = 'That is a barcode, but not a licence. Find the wide one on the back.'; return; }
+        closeScan();
+        takeLicence(r);
+        return;
+      }
       const code = codeFromScan(text);
       if (!code) { $('#scan-msg').textContent = 'That is a code, but not a join code. Try another.'; return; }
       closeScan();
@@ -616,9 +630,95 @@ async function openScan() {
       f.code.value = code;
       f.unit.focus();
       toast('Code ' + code + ' read');
-    });
-    $('#scan-msg').textContent = 'Point the camera at the code.';
+    }, { format: mode === 'licence' ? 'pdf417' : 'qr_code' });
+    $('#scan-msg').textContent = mode === 'licence' ? 'Hold the back of the licence flat in good light, the wide barcode filling the frame.' : 'Point the camera at the code.';
   } catch (err) { $('#scan-msg').textContent = err.message || String(err); }
+}
+
+// ---- Identify yourself: name, phone and licence, once per account
+function drawYouLine() {
+  const el = $('#join-you');
+  if (!el) return;
+  const p = data.profile;
+  if (data.profileComplete(p)) {
+    el.className = 'you-line';
+    el.innerHTML = `<span>Checking in as <strong>${esc(p.full_name)}</strong> · ${esc(p.phone)} · ${({ scan: 'licence scanned', photo: 'licence photographed', typed: 'licence typed' })[p.id_source] || 'licence on file'}${p.verified_at ? ' · verified' : ''}</span><button type="button" class="btn sm" data-action="id-open">Change</button>`;
+  } else {
+    el.className = 'you-line missing';
+    el.innerHTML = `<span>Say who you are before you check in: your name, your phone and your licence.</span><button type="button" class="btn sm" data-action="id-open">Identify yourself</button>`;
+  }
+}
+function openIdentify() {
+  const p = data.profile || {};
+  state.ident = { read: null, photo: null, source: p.id_source || '' };
+  $('#id-name').value = p.full_name || '';
+  $('#id-phone').value = p.phone || '';
+  $('#id-number').value = p.licence_number || '';
+  $('#id-state').value = p.licence_state || '';
+  $('#id-msg').textContent = '';
+  $('#id-photo-box').hidden = !p.photo_path;
+  if (p.photo_path) data.idPhotoUrl(p.photo_path).then((u) => { $('#id-photo-preview').src = u; }).catch(() => { $('#id-photo-box').hidden = true; });
+  drawIdRead(p.licence_number ? { fullName: p.full_name, dateOfBirth: p.date_of_birth, licenceNumber: p.licence_number, licenceState: p.licence_state, expires: p.licence_expires, address: p.address, fromRecord: true } : null);
+  $('#s-identify').hidden = false;
+}
+function closeIdentify() { $('#s-identify').hidden = true; }
+function drawIdRead(r) {
+  const box = $('#id-read');
+  if (!r) { box.hidden = true; box.innerHTML = ''; return; }
+  const exp = r.expires && licenceExpired(r.expires);
+  box.hidden = false;
+  box.innerHTML = `<div class="k">${r.fromRecord ? 'Licence on file' : 'Read from the licence'}</div>
+    <div><strong>${esc(r.fullName || '')}</strong>${r.dateOfBirth ? ' · born ' + esc(r.dateOfBirth) : ''}</div>
+    <div class="muted">${esc(r.licenceState || '')} ${esc(r.licenceNumber || '')}${r.expires ? ' · expires ' + esc(r.expires) : ''}${exp ? ' <span class="warn">· expired</span>' : ''}</div>
+    ${r.address ? `<div class="muted">${esc(r.address)}</div>` : ''}`;
+}
+function takeLicence(r) {
+  state.ident.read = r;
+  state.ident.source = 'scan';
+  if (r.fullName) $('#id-name').value = r.fullName;
+  $('#id-number').value = r.licenceNumber || '';
+  $('#id-state').value = r.licenceState || '';
+  drawIdRead(r);
+  $('#s-identify').hidden = false;
+  toast('Licence read' + (r.expires && licenceExpired(r.expires) ? ', but it has expired' : ''));
+  $('#id-phone').focus();
+}
+async function takeIdPhoto() {
+  let file;
+  try { file = await pickPhoto($('#camera-input')); } catch (e) { return; }
+  try {
+    const blob = await shrink(file);
+    state.ident.photo = blob;
+    if (state.ident.source !== 'scan') state.ident.source = 'photo';
+    $('#id-photo-preview').src = URL.createObjectURL(blob);
+    $('#id-photo-box').hidden = false;
+  } catch (err) { $('#id-msg').textContent = err.message || String(err); }
+}
+async function saveIdentity() {
+  const name = $('#id-name').value.trim(), phone = $('#id-phone').value.trim();
+  const number = $('#id-number').value.trim().toUpperCase(), st = $('#id-state').value.trim().toUpperCase();
+  const msg = $('#id-msg');
+  if (!name) { msg.textContent = 'Your name, as on the licence.'; $('#id-name').focus(); return; }
+  if (!phone) { msg.textContent = 'A phone Operations can reach you on.'; $('#id-phone').focus(); return; }
+  const p = data.profile || {};
+  if (!(state.ident.read || state.ident.photo || p.photo_path || number)) { msg.textContent = 'Scan the back of your licence, photograph the front, or type its number.'; return; }
+  msg.textContent = 'Saving…';
+  try {
+    const r = state.ident.read;
+    let photoPath = p.photo_path || null;
+    if (state.ident.photo) photoPath = await data.uploadIdPhoto(state.ident.photo);
+    const source = state.ident.source || (number ? 'typed' : p.id_source || '');
+    await data.saveProfile({
+      full_name: name, phone, licence_number: number || (r ? r.licenceNumber : p.licence_number) || '', licence_state: st || (r ? r.licenceState : p.licence_state) || '',
+      licence_expires: r ? r.expires : (p.licence_expires || null), date_of_birth: r ? r.dateOfBirth : (p.date_of_birth || null), address: r ? r.address : (p.address || ''),
+      id_source: source || 'typed', photo_path: photoPath
+    });
+    msg.textContent = '';
+    closeIdentify();
+    drawYouLine();
+    if (state.screen === 'menu' && data.incident) drawMenu();
+    toast('Saved. Operations sees this when you check in.');
+  } catch (err) { msg.textContent = err.message || String(err); }
 }
 function closeScan() { if (scanner) scanner.stop(); scanner = null; $('#s-scan').hidden = true; }
 function openShowCode() {
@@ -647,6 +747,7 @@ function drawMenu() {
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
     <span class="k">Code</span><span class="mono">${esc(inc.code)}</span>
     <span class="k">You</span><span>${esc(unitLabel(me))}${me && crewNames(me, data.people()) ? ' · ' + esc(crewNames(me, data.people())) : ''}</span>
+    ${data.profile ? `<span class="k">Identity</span><span>${esc(data.profile.full_name)} · ${esc(data.profile.phone)}${data.profile.licence_number ? ' · ' + esc(data.profile.licence_state) + ' ' + esc(licenceTail(data.profile.licence_number)) : ''}${data.profile.verified_at ? ' · verified by Operations' : ' · not yet verified'}</span>` : ''}
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
   $('#menu-outbox').textContent = state.outbox ? `${state.outbox} report${state.outbox === 1 ? '' : 's'} waiting for signal${state.outboxError ? ': ' + (state.outboxError.message || state.outboxError) : ''}` : 'Nothing waiting, everything is sent';
@@ -859,7 +960,12 @@ document.addEventListener('click', async (e) => {
       case 'refresh': await data.open(data.incident.id); toast('Reloaded'); break;
       case 'compass': try { await sensors.requestCompass(); toast('Compass on'); } catch (err) { toast(err.message, true); } break;
       case 'theme': applyTheme(btn.dataset.value); drawThemeChips(); break;
-      case 'scan-code': await openScan(); break;
+      case 'scan-code': await openScan('join'); break;
+      case 'id-open': openIdentify(); break;
+      case 'id-cancel': closeIdentify(); break;
+      case 'id-scan': await openScan('licence'); break;
+      case 'id-photo': await takeIdPhoto(); break;
+      case 'id-save': await saveIdentity(); break;
       case 'scan-cancel': closeScan(); break;
       case 'show-code': openShowCode(); break;
       case 'layer': await setMiniLayer(btn.dataset.value); break;

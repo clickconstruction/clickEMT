@@ -238,6 +238,11 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .zm-pri .btn { min-width: 32px; padding: 0 8px; }
 .zm-kv { row-gap: 6px; }
 @media (max-width: 600px) { .zm-head { grid-template-columns: 1fr 1fr; } .zm-name { grid-column: 1 / -1; } }
+.ident { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.id-box { max-height: 220px; }
+.id-box img { max-height: 220px; object-fit: contain; background: #D8D5CD; }
+.ur .who { font-weight: 400; color: var(--hazard-ink); font-size: 12px; }
+.ur .who.ok { color: var(--cleared); }
 .join-box { display: flex; gap: 12px; align-items: flex-start; }
 .qr-box { flex: none; width: 112px; height: 112px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-sizing: border-box; }
 .qr-box svg { width: 100%; height: 100%; display: block; }

@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 12;
+  const SEED_VERSION = 13;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -139,6 +139,12 @@
       ic_overlays: [
         { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2640, west: -97.7440, north: 30.2730, east: -97.7280 }, opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
       ],
+      ic_profiles: [
+        { user_id: U.ops, full_name: 'Marcus Bell', phone: '512 555 0101', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: 'photo', photo_path: U.ops + '/licence.jpg', verified_at: null, verified_by: null, created_at: ago(400), updated_at: ago(400) },
+        { user_id: U.unit1, full_name: 'Ana Ramirez', phone: '512 555 0111', licence_number: '19283746', licence_state: 'TX', licence_expires: '2029-06-30', date_of_birth: '1986-06-30', address: '22 Hill St, Cedar Fork, TX 78700', id_source: 'scan', photo_path: U.unit1 + '/licence.jpg', verified_at: ago(165), verified_by: U.ops, created_at: ago(400), updated_at: ago(165) },
+        { user_id: U.unit2, full_name: 'Minh Nguyen', phone: '512 555 0122', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: 'photo', photo_path: U.unit2 + '/licence.jpg', verified_at: null, verified_by: null, created_at: ago(300), updated_at: ago(300) },
+        { user_id: U.unit3, full_name: 'Jordan Lee Hale', phone: '512 555 0133', licence_number: '12345678', licence_state: 'TX', licence_expires: '2030-03-04', date_of_birth: '1990-03-04', address: '108 Pecan Ln, Cedar Fork, TX 78700', id_source: 'scan', photo_path: U.unit3 + '/licence.jpg', verified_at: null, verified_by: null, created_at: ago(200), updated_at: ago(170) }
+      ],
       ic_hazards: [
         { id: H1, incident_id: INC, user_id: U.unit3, zone_id: Z['A-2'], kind: 'Downed power line', note: 'Line across the park entrance', lat: 30.2668, lng: -97.7396, created_at: ago(20), resolved_at: null }
       ],
@@ -187,9 +193,10 @@
     ev(120, U.ops, 'ops', 'Imagery: Aerial 06:40, Civil Air Patrol added to the map', 'ic_overlays', OVL[0]);
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Division ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
-    ev(170, U.unit1, 'ops', 'Unit 1 checked in with 2 people');
-    ev(168, U.unit2, 'ops', 'Unit 2 checked in with 2 people');
-    ev(165, U.unit3, 'ops', 'Unit 3 checked in with 2 people');
+    ev(170, U.unit1, 'ops', 'Unit 1 checked in as Ana Ramirez, 512 555 0111, licence scanned with 2 people');
+    ev(165, U.ops, 'ops', 'Unit 1 (Ana Ramirez) identity verified by Operations');
+    ev(168, U.unit2, 'ops', 'Unit 2 checked in as Minh Nguyen, 512 555 0122, licence photographed with 2 people');
+    ev(165, U.unit3, 'ops', 'Unit 3 checked in as Jordan Lee Hale, 512 555 0133, licence scanned with 2 people');
     for (const p of t.ic_people) ev((Date.now() - new Date(p.checked_in_at)) / 60000 - 0.2, p.user_id, 'status', R.personLabel(p) + ' checked in with ' + R.unitLabel(t.ic_members.find((m) => m.user_id === p.user_id)), 'ic_people', p.id);
     ev(160, U.ops, 'ops', 'A-1 assigned to Unit 1', 'ic_zones', Z['A-1']);
     ev(159, U.ops, 'ops', 'A-3 assigned to Unit 2', 'ic_zones', Z['A-3']);
@@ -220,6 +227,7 @@
     ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '' }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null }),
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', created_at: now() }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
@@ -244,7 +252,10 @@
   const isMember = (inc, uid) => !!member(inc, uid);
   const isOps = (inc, uid) => { const m = member(inc, uid); return !!m && m.role === 'ops'; };
   const memberOf = (uid) => new Set(tables.ic_members.filter((m) => m.user_id === uid).map((m) => m.incident_id));
-  const visible = (table, row, mine) => mine.has(table === 'ic_incidents' ? row.id : row.incident_id);
+  // ic_sees_profile: your own, or anyone on an incident where you are Operations
+  const seesProfile = (who, uid) => who === uid || tables.ic_members.some((me) => me.user_id === uid && me.role === 'ops' && tables.ic_members.some((them) => them.incident_id === me.incident_id && them.user_id === who));
+  const profileComplete = (uid) => { const p = tables.ic_profiles.find((x) => x.user_id === uid); return !!(p && p.full_name && p.phone && (p.photo_path || p.licence_number)); };
+  const visible = (table, row, mine, uid) => (table === 'ic_profiles' ? seesProfile(row.user_id, uid) : mine.has(table === 'ic_incidents' ? row.id : row.incident_id));
   function allowed(table, op, row, uid) {
     if (!uid) return false;
     switch (table) {
@@ -261,6 +272,7 @@
       case 'ic_structures': return isMember(row.incident_id, uid);
       case 'ic_facilities': return isOps(row.incident_id, uid);
       case 'ic_overlays': return isOps(row.incident_id, uid);
+      case 'ic_profiles': return op === 'insert' ? row.user_id === uid : seesProfile(row.user_id, uid);
       case 'ic_people': return isMember(row.incident_id, uid) && (row.user_id === uid || isOps(row.incident_id, uid));   // a unit keeps its own people, Operations anyone's
       case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
@@ -530,6 +542,7 @@
     const rows = tables[table];
     if (table === 'ic_positions' || table === 'ic_members') return rows.find((r) => r.incident_id === given.incident_id && r.user_id === given.user_id) || null;
     if (table === 'ic_message_acks') return rows.find((r) => r.message_id === given.message_id && r.user_id === given.user_id) || null;
+    if (table === 'ic_profiles') return rows.find((r) => r.user_id === given.user_id) || null;
     return given.id ? rows.find((r) => r.id === given.id) || null : null;
   }
   function insertRow(table, p, uid, changes, onConflict) {
@@ -542,6 +555,7 @@
       return updateRow(table, existing, given, uid, changes);
     }
     const row = { ...(DEFAULTS[table] ? DEFAULTS[table]() : {}), ...given };
+    if (table === 'ic_profiles') { row.verified_at = null; row.verified_by = null; row.full_name = String(row.full_name || '').trim(); row.phone = String(row.phone || '').trim(); row.licence_number = String(row.licence_number || '').trim().toUpperCase(); row.licence_state = String(row.licence_state || '').trim().toUpperCase(); }   // ic_profile_before
     if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
     if (table === 'ic_overlays') row.created_by = row.created_by || uid;   // ic_overlay_before
     if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
@@ -572,6 +586,14 @@
         if (r.status === 'cleared') { r.secondary_done_at = now(); r.cleared_at = now(); if (!r.primary_done_at) r.primary_done_at = now(); }
         if (r.status === 'open' || r.status === 'active') r.cleared_at = null;
       }
+    }
+    if (table === 'ic_profiles') {   // ic_profile_before
+      r.updated_at = now();
+      r.full_name = String(r.full_name || '').trim(); r.phone = String(r.phone || '').trim(); r.licence_number = String(r.licence_number || '').trim().toUpperCase(); r.licence_state = String(r.licence_state || '').trim().toUpperCase();
+      const verChanged = (r.verified_at || null) !== (old.verified_at || null) || (r.verified_by || null) !== (old.verified_by || null);
+      if (verChanged && !system) { Object.assign(r, old); throw dbError('Only Operations marks a profile verified'); }
+      const idChanged = r.full_name !== old.full_name || r.licence_number !== old.licence_number || r.licence_state !== old.licence_state || (r.photo_path || null) !== (old.photo_path || null) || (r.date_of_birth || null) !== (old.date_of_birth || null);
+      if (idChanged && !verChanged) { r.verified_at = null; r.verified_by = null; }
     }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
@@ -671,9 +693,9 @@
       const changes = [];
       let out;
       try {
-        if (st.op === 'select') out = project(rows.filter((r) => visible(table, r, mine) && match(r)).map(copy), st.cols, mine);
+        if (st.op === 'select') out = project(rows.filter((r) => visible(table, r, mine, uid) && match(r)).map(copy), st.cols, mine);
         else if (st.op === 'insert' || st.op === 'upsert') out = [].concat(st.payload).map((p) => copy(insertRow(table, p, uid, changes, st.op === 'upsert' ? st.onConflict || 'id' : null)));
-        else if (st.op === 'update') out = rows.filter((r) => visible(table, r, mine) && match(r)).map((r) => copy(updateRow(table, r, st.payload, uid, changes)));
+        else if (st.op === 'update') out = rows.filter((r) => visible(table, r, mine, uid) && match(r)).map((r) => copy(updateRow(table, r, st.payload, uid, changes)));
         else throw dbError(`permission denied for table ${table}: nothing is deleted`, '42501');
       } catch (e) {
         if (!e.db) throw e;
@@ -762,6 +784,7 @@
         const code = String(a.p_code || '').trim().toUpperCase();
         const inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
         if (!inc) throw dbError('No active incident has the code ' + code);
+        if (a.p_role === 'unit' && !profileComplete(uid)) throw dbError('Identify yourself first: your name, your phone and your licence');
         const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count);
         const m = member(inc.id, uid);
         if (m) {
@@ -782,7 +805,9 @@
           }
         }
         const n = member(inc.id, uid).crew_count;
-        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
+        const pr = tables.ic_profiles.find((x) => x.user_id === uid);
+        const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '') + (pr.verified_at ? ', verified' : '') : '';
+        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
       } else if (name === 'ic_replay') {
         if (!isMember(a.p_incident, uid)) out = [];
@@ -800,6 +825,14 @@
           }
           out = [...last.values()].sort((x, y) => (x.user_id < y.user_id ? -1 : x.user_id > y.user_id ? 1 : x.at < y.at ? -1 : 1)).map((t) => ({ user_id: t.user_id, lat: t.lat, lng: t.lng, heading: t.heading, at: t.at }));
         }
+      } else if (name === 'ic_verify_profile') {
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations verifies');
+        if (!member(a.p_incident, a.p_user)) throw dbError('Not on this incident');
+        const pr = tables.ic_profiles.find((x) => x.user_id === a.p_user);
+        if (!pr) throw dbError('No profile to verify');
+        updateRow('ic_profiles', pr, { verified_at: a.p_ok ? now() : null, verified_by: a.p_ok ? uid : null }, uid, changes, true);
+        log(changes, a.p_incident, uid, 'ops', label(a.p_incident, a.p_user) + ' (' + pr.full_name + ') ' + (a.p_ok ? 'identity verified by Operations' : 'identity verification withdrawn'));
+        out = copy(pr);
       } else throw dbError(`Could not find the function public.${name} in the schema cache`, 'PGRST202');
     } catch (e) {
       if (!e.db) throw e;
@@ -837,10 +870,26 @@
     g.font = '20px system-ui, -apple-system, sans-serif'; g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillText('Mock imagery, drawn by dev/mock-supabase.js', 30, 96);
     return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
   }
+  function licencePlaceholder(pr) {
+    const c = document.createElement('canvas');
+    c.width = 860; c.height = 540;
+    const g = c.getContext('2d');
+    g.fillStyle = '#E9EEF3'; g.fillRect(0, 0, 860, 540);
+    g.fillStyle = '#1F4E79'; g.fillRect(0, 0, 860, 70);
+    g.fillStyle = '#fff'; g.font = 'bold 28px system-ui, -apple-system, sans-serif'; g.fillText((pr.licence_state || 'TX') + ' DRIVER LICENSE', 28, 46);
+    g.fillStyle = '#B9C3CC'; g.fillRect(28, 100, 220, 280);
+    g.fillStyle = '#1B1B18'; g.font = 'bold 30px system-ui, -apple-system, sans-serif'; g.fillText(pr.full_name.toUpperCase(), 280, 140);
+    g.font = '22px system-ui, -apple-system, sans-serif';
+    g.fillText('DL ' + (pr.licence_number || '—'), 280, 190); g.fillText('DOB ' + (pr.date_of_birth || '—'), 280, 230); g.fillText('EXP ' + (pr.licence_expires || '—'), 280, 270); g.fillText(pr.address || '', 280, 310);
+    g.font = '17px system-ui, -apple-system, sans-serif'; g.fillStyle = '#5C5A53'; g.fillText('Mock licence, drawn by dev/mock-supabase.js', 28, 510);
+    return new Promise((resolve) => c.toBlob(resolve, 'image/jpeg', 0.85));
+  }
   async function urlFor(path) {
     if (urls.has(path)) return urls.get(path);
     let blob = files.get(path);
     if (!blob) {
+      const pr = tables.ic_profiles.find((x) => x.photo_path === path);
+      if (pr) { blob = await licencePlaceholder(pr); files.set(path, blob); const u = URL.createObjectURL(blob); urls.set(path, u); return u; }
       const o = tables.ic_overlays.find((x) => x.storage_path === path);
       if (o) { blob = await aerialPlaceholder(o.name || 'Imagery'); files.set(path, blob); const u = URL.createObjectURL(blob); urls.set(path, u); return u; }
       const p = tables.ic_photos.find((x) => x.storage_path === path);

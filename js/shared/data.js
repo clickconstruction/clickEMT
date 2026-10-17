@@ -291,6 +291,11 @@ export class Data {
   waitingOn(message) { return (message.to_users || []).filter((u) => !this.ack(message.id, u)); }
   myInbox() { return this.user ? this.messages().filter((m) => (m.to_users || []).includes(this.user.id)) : []; }
   myUnanswered() { return this.myInbox().filter((m) => !this.ack(m.id, this.user.id)); }
+  // messages that carry a spot and still matter: waiting on someone, or sent in the last two hours
+  placedMessages() {
+    const since = Date.now() - 2 * 3600000;
+    return this.messages().filter((m) => m.lat != null && m.lng != null && (this.waitingOn(m).length > 0 || new Date(m.created_at).getTime() > since));
+  }
   // safety messages and PARs still waiting on someone: the base keeps them up until everyone has answered
   openSafety() { return this.messages().filter((m) => m.kind !== 'message' && this.waitingOn(m).length > 0); }
   // who a message goes to: 'all' (every unit), 'ops' (Operations), 'zone:<id>' (the unit assigned there), 'user:<id>'
@@ -401,9 +406,10 @@ export class Data {
     this.local('ic_events', data);
     return data;
   }
-  async sendMessage(id, { toUsers, toLabel, toZone, kind, text }) {
+  // urgency is one of URGENCY in rules.js or ''; lat/lng is the spot the message is about, when attached
+  async sendMessage(id, { toUsers, toLabel, toZone, kind, text, urgency, lat, lng }) {
     if (!toUsers || !toUsers.length) throw new Error('Nobody to send that to');
-    const row = { id: id || (crypto.randomUUID ? crypto.randomUUID() : undefined), incident_id: this.store.incident.id, from_user: this.user.id, to_users: toUsers, to_label: toLabel || '', to_zone: toZone || null, kind: kind || 'message', text };
+    const row = { id: id || (crypto.randomUUID ? crypto.randomUUID() : undefined), incident_id: this.store.incident.id, from_user: this.user.id, to_users: toUsers, to_label: toLabel || '', to_zone: toZone || null, kind: kind || 'message', text, urgency: urgency || '', lat: lat ?? null, lng: lng ?? null };
     const { data, error } = await this.sb.from('ic_messages').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_messages', data || row);

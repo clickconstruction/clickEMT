@@ -57,6 +57,10 @@ export function structureSummary(s) {
   if (s.hazards) parts.push('hazards ' + s.hazards);
   return parts.join(' · ');
 }
+// How urgent a message from the field is: the four words Operations acts on, not a number.
+export const URGENCY = [['now', 'Act on now'], ['nightfall', 'Before nightfall'], ['tomorrow', 'Can wait until tomorrow'], ['blocking', 'Blocks further operations']];
+export function urgencyLabel(u) { const r = URGENCY.find((x) => x[0] === u); return r ? r[1] : ''; }
+
 // A unit's resource status, as ICS names it.
 export const STATUS_LABEL = { assigned: 'Assigned', available: 'Available', out_of_service: 'Out of service', checked_out: 'Checked out' };
 export const OOS_REASONS = ['Rest', 'Fuel', 'Equipment', 'Medical', 'Weather', 'Other'];

@@ -45,6 +45,7 @@ async function reload() {
   document.body.appendChild(btn); btn.click(); btn.remove();
   const ok = await until(() => !$('#app').hidden && $('#inc-name').textContent === 'Cedar Fork Flooding' && $$('#zones .zr').length === 6 && $('#panel').textContent.includes('Join code'));
   if (!ok) throw new Error('the page did not reopen the seeded incident');
+  if ($('#logbox').classList.contains('closed')) $('[data-action="log-toggle"]').click();   // a folded log from an earlier run hides the rows the suites read
   base = new Data(window.sb);
   await base.init();
   await base.open(INC());
@@ -59,7 +60,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -93,7 +94,7 @@ async function baseActions(check) {
 
   $('#panel [data-action="set-priority"][data-p="3"]').click();
   await until(() => base.zone(a1).priority === 3 && eventText(base, 'A-1 priority set to 3'));
-  check('priority 3: the base\'s data has it, the row moves down with a 3, and the log says so', base.zone(a1).priority === 3 && $(`#zones .zr[data-id="${a1}"] .pb`).textContent === '3' && $$('#zones .zr .zr-id').map((e) => e.textContent).join(' ') === 'A-2 A-3 B-1 B-2 A-1 B-3' && logTexts()[0].endsWith('A-1 priority set to 3 Open zone'), logTexts()[0]);
+  check('priority 3: the base\'s data has it, the row moves down with a 3, and the log says so', base.zone(a1).priority === 3 && $(`#zones .zr[data-id="${a1}"] .pb`).textContent === '3' && $$('#zones .zr .zr-id').map((e) => e.textContent).join(' ') === 'A-2 A-3 B-1 B-2 A-1 B-3' && logTexts()[0].endsWith('A-1 priority set to 3 Open division'), logTexts()[0]);
   check('the event is by Operations and points at the zone', (() => { const e = eventText(base, 'A-1 priority set to 3'); return e && e.user_id === USERS().ops && e.kind === 'ops' && e.ref_table === 'ic_zones' && e.ref_id === a1; })());
   check('the zone\'s updated_at moved', M().tables.ic_zones.find((z) => z.id === a1).updated_at > M().tables.ic_zones.find((z) => z.id === a1).created_at);
 
@@ -277,6 +278,13 @@ async function messages(check) {
   $('[data-action="ack-message"]', row()).click();
   await until(() => base.ack(mid, u.ops));
   check('Operations acknowledges it from the panel, and the unit sees the acknowledgement', await until(() => has(`#panel .mrow[data-message="${mid}"]`, 'all 1 acknowledged')) && !!eventText(base, 'Operations acknowledged Unit 3: Copy') && await until(() => field.ack(mid, u.ops)));
+  const urgent = uuid();
+  await field.sendMessage(urgent, { ...field.recipientsFor('ops'), kind: 'message', text: 'Culvert washed out, road gone', urgency: 'now', lat: 30.2676, lng: -97.7388 });
+  await until(() => base.message(urgent));
+  check('a message carries how urgent it is and the spot it is about, and the base shows both', await until(() => has(`#panel .mrow[data-message="${urgent}"]`, 'act on now', 'culvert washed out')) && !!$(`#panel .mrow[data-message="${urgent}"] [data-action="pan-to"]`) && $$('#map .mpin.urg-now').length === 1, text(`#panel .mrow[data-message="${urgent}"]`));
+  check('the log says how urgent and that a location came with it', !!eventText(base, 'Unit 3 to Operations (act on now): Culvert washed out, road gone · location attached'), logTexts()[0]);
+  const badUrg = await field.sb.from('ic_messages').insert({ id: uuid(), incident_id: INC(), from_user: u.unit3, to_users: [u.ops], to_label: 'Operations', kind: 'message', text: 'x', urgency: 'asap' }).select().single();
+  check('urgency is one of the four words or nothing', !!badUrg.error && badUrg.error.code === '23514', JSON.stringify(badUrg.error));
   const forged = await field.sb.from('ic_messages').insert({ id: uuid(), incident_id: INC(), from_user: u.unit1, to_users: [u.ops], to_label: 'Operations', kind: 'message', text: 'Forged' }).select().single();
   check('a message must carry the sender\'s own user id', forged.error && forged.error.code === '42501' && !base.messages().some((m) => m.text === 'Forged'), JSON.stringify(forged.error));
 }
@@ -732,4 +740,38 @@ async function replay(check) {
   $('[data-action="replay-close"]').click();
   await until(() => $('#replay').hidden && $$('#map .umark:not(.ghost)').length === 3);
   check('Close puts the live units and photos back', $$('#map .umark.ghost').length === 0 && $$('#map .ppin').length === 3 && !$('#btn-replay').classList.contains('on'));
+}
+
+// The activity log: folded or open, filtered, searched, counted while folded, printed as the 214.
+async function log(check) {
+  const rows = () => $$('#log .log-row').length;
+  const all = rows();
+  check('the log is open with the morning in it, the hours marked between the rows', all >= 20 && $$('#log .log-sep').length >= 1 && !$('#logbox').classList.contains('closed') && has('#log-filters', 'all', 'from the field', 'messages', 'operations', 'notes'), `${all} rows, ${$$('#log .log-sep').length} separators`);
+  check('lines link to the thing they are about', $$('#log .llink[data-action="select-structure"]').length >= 1 && $$('#log .llink[data-action="select-facility"]').length >= 1 && $$('#log .llink[data-action="select-photo"]').length >= 3, $$('#log .llink').length);
+  $('[data-action="log-group"][data-group="field"]').click();
+  await until(() => rows() < all);
+  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
+  $('[data-action="log-group"][data-group="all"]').click();
+  await until(() => rows() === all);
+  const q = $('#log-search');
+  q.value = 'bus barn'; q.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => rows() === 1);
+  check('the search box finds a line', rows() === 1 && has('#log', 'bus barn'), text('#log'));
+  q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => rows() === all);
+  $('[data-action="log-toggle"]').click();
+  await until(() => $('#logbox').classList.contains('closed'));
+  check('the log folds to its latest line and remembers it', getComputedStyle($('#log')).display === 'none' && has('#log-latest', 'shelter open') && /"open":false/.test(localStorage.getItem('ic.base.log') || ''), text('#log-latest'));
+  await field.addNote('Pump truck at the bridge');
+  await until(() => !$('#log-new').hidden);
+  check('a line that arrives while it is folded is counted on the header, and the latest line is the new one', has('#log-new', '1 new') && has('#log-latest', 'pump truck'), text('#log-latest'));
+  $('[data-action="log-toggle"]').click();
+  await until(() => !$('#logbox').classList.contains('closed') && rows() === all + 1);
+  check('opening it shows the line and clears the count', $('#log-new').hidden && has('#log', 'pump truck at the bridge'));
+  $('[data-action="print-214"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'activity log (ics 214)'));
+  const lines = $$('#briefing-page p').map((p) => p.textContent);
+  check('Print 214 lays the whole period out oldest first', has('#briefing-page', 'entries, oldest first') && /incident opened/i.test(lines.find((l) => /^\d\d:\d\d/.test(l)) || '') && /pump truck/i.test(lines[lines.length - 1]), lines.slice(-1)[0]);
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
 }

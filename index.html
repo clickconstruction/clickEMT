@@ -6,6 +6,10 @@
 <title>Incident Map · Base</title>
 <meta name="description" content="The base map for an incident: zones, priorities, units in the field, their photos and what they have cleared.">
 <meta name="theme-color" content="#1F4E79">
+<script>
+  // the device's light/dark choice, before first paint (js/shared/theme.js keeps it)
+  try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -92,6 +96,7 @@
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
     <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
+    <button class="btn sm" data-action="theme" id="btn-theme" title="Light or dark, for this screen">Dark</button>
     <button class="btn sm" data-action="switch-incident">Switch incident</button>
     <button class="btn sm" data-action="sign-out">Sign out</button>
   </header>
@@ -141,8 +146,16 @@
         <span><span class="pb p1">1</span>Priority</span>
         <span>Wedge: the way a photo faces</span>
       </div>
-      <div class="log">
-        <div class="log-h">Activity log · ICS 214</div>
+      <div class="log" id="logbox">
+        <div class="log-h">
+          <button class="log-toggle" data-action="log-toggle" aria-expanded="true" aria-controls="log" title="Fold the log away to give the map the room, or open it"><span class="chev" aria-hidden="true">▾</span>Activity log · ICS 214<span class="log-new" id="log-new" hidden></span></button>
+          <span class="log-latest" id="log-latest"></span>
+          <span class="log-tools">
+            <span class="chips log-filters" id="log-filters"></span>
+            <input id="log-search" class="log-search" placeholder="Find in the log" aria-label="Find in the log" autocomplete="off">
+            <button class="btn sm" data-action="print-214" title="The whole log of this period, oldest first, to print or copy as text">Print 214</button>
+          </span>
+        </div>
         <div id="log"></div>
         <form id="note-form" class="note-form">
           <input name="text" placeholder="Add a note to the log" autocomplete="off">

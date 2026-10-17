@@ -2,14 +2,14 @@
 // map library from the CDN is cached on first use, map tiles are cached as they are seen (so a
 // zone the unit has looked at still draws without signal), and Supabase traffic always goes to
 // the network. Bump VERSION whenever a shell file changes.
-const VERSION = 'v13';
+const VERSION = 'v14';
 const SHELL_CACHE = 'shell-' + VERSION;
 const TILE_CACHE = 'tiles-v1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'field/', 'field/index.html', 'field/manifest.webmanifest',
   'css/shared.css', 'css/base.css', 'css/field.css',
-  'js/shared/rules.js', 'js/shared/data.js', 'js/shared/queue.js',
+  'js/shared/rules.js', 'js/shared/data.js', 'js/shared/queue.js', 'js/shared/theme.js',
   'js/base/main.js', 'js/base/map.js', 'js/base/ui.js', 'js/base/print-map.js',
   'js/field/main.js', 'js/field/sensors.js', 'js/field/camera.js',
   'supabase-client.js', 'config.js', 'vendor/supabase-js-2.108.0.min.js',

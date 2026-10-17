@@ -2,16 +2,24 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, logHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
+import { zonesHtml, panelHtml, logHtml, logFiltersHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
+import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
+const LOG_KEY = 'ic.base.log';   // this screen's log: folded or open, which group
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs() };
+function loadLogPrefs() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
+  return { open: saved.open !== false, group: saved.group || 'all', q: '', seenAt: null };
+}
+function saveLogPrefs() { try { localStorage.setItem(LOG_KEY, JSON.stringify({ open: state.log.open, group: state.log.group })); } catch (e) { /* storage blocked */ } }
 let map = null;
 let drawQueued = false;
 
@@ -133,6 +141,7 @@ async function openIncident(id) {
     });
   }
   map.trails = new Map();
+  markLogSeen();
   if (inc.boundary) map.fitPolygon(inc.boundary);
   else if (inc.center_lat != null && inc.center_lng != null) map.setView(inc.center_lat, inc.center_lng, inc.zoom || 14);
   else { const z = data.zones()[0]; if (z) map.fitPolygon(z.polygon); else map.setView(DEFAULT_VIEW[0], DEFAULT_VIEW[1], DEFAULT_VIEW[2]); }
@@ -197,7 +206,7 @@ function drawAll() {
     panel.innerHTML = panelHtml(data, state);
     if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
   }
-  $('#log').innerHTML = logHtml(data);
+  drawLog();
   const md = $('#mayday');
   const mh = maydayHtml(data);
   md.hidden = !mh;
@@ -211,23 +220,43 @@ function drawAll() {
   drawLive();
 }
 
-// One overlay draws the briefing, a division's 204, the situation report or the whole IAP.
+// The log under the map: folded to its latest line or open; new lines since the operator last
+// looked are counted on the header and tinted until the pointer comes over the log.
+function markLogSeen() { const n = data.events()[0]; state.log.seenAt = n ? n.at : null; }
+function unseenCount() { return state.log.seenAt ? data.events().filter((e) => e.at > state.log.seenAt).length : 0; }
+function drawLog() {
+  const box = $('#logbox');
+  box.classList.toggle('closed', !state.log.open);
+  $('[data-action="log-toggle"]').setAttribute('aria-expanded', String(state.log.open));
+  $('#log-filters').innerHTML = logFiltersHtml(data, state);
+  const unseen = unseenCount();
+  const badge = $('#log-new');
+  badge.hidden = !unseen;
+  badge.textContent = unseen + ' new';
+  const latest = data.events()[0];
+  $('#log-latest').textContent = !state.log.open && latest ? hhmm(latest.at) + '  ' + latest.text : '';
+  if (state.log.open) $('#log').innerHTML = logHtml(data, state);
+}
+$('#log-search').addEventListener('input', (e) => { state.log.q = e.target.value; drawLog(); });
+$('#logbox').addEventListener('pointerenter', () => { if (state.log.open && unseenCount()) { markLogSeen(); drawLog(); } });
+
+// One overlay draws the briefing, a division's 204, the situation report, the IAP or the 214.
 function drawBriefing() {
   if (!data.incident) return;
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  const html = kind === '204' ? form204Html(data, z) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
+  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
   const page = $('#briefing-page');
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
   page.className = 'briefing-page kind-' + kind;
-  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
+  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  return kind === '204' ? form204Text(data, z) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
+  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
 }
 // The maps' tiles are plain <image>s; give them a moment to arrive before the print dialog
 // takes a picture of the page.
@@ -322,6 +351,11 @@ $('#replay-slider').addEventListener('input', (e) => {
 });
 $('#replay-range').addEventListener('change', (e) => { if (state.replay) openReplay(e.target.value); });
 
+// the theme button names the other mode; the system's choice redraws the map's inked lines
+function drawTheme() { $('#btn-theme').textContent = currentTheme() === 'dark' ? 'Light' : 'Dark'; }
+drawTheme();
+if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!storedTheme()) { drawTheme(); queueDraw(); } });
+
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
   $('#live-dot').className = 'dot ' + (ok ? 'on' : (data.realtime === 'off' ? '' : 'bad'));
@@ -367,6 +401,10 @@ document.addEventListener('click', async (e) => {
       case 'replay': if (state.replay) closeReplay(); else await openReplay(); break;
       case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
       case 'replay-close': closeReplay(); break;
+      case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
+      case 'log-toggle': state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
+      case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
+      case 'print-214': openOverlay('214'); break;
       case 'select-unit': select({ type: 'unit', id }); break;
       case 'select-structure': select({ type: 'structure', id }); break;
       case 'select-facility': select({ type: 'facility', id }); break;

@@ -6,6 +6,10 @@
 <title>Incident Map · Field</title>
 <meta name="description" content="The field app: your zone, your location, photos that know which way they face, and one tap to mark an address or a zone clear.">
 <meta name="theme-color" content="#1F4E79">
+<script>
+  // the device's light/dark choice, before first paint (js/shared/theme.js keeps it)
+  try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Field">
@@ -201,10 +205,15 @@
 
   <div id="s-compose" class="sheet" hidden>
     <h2>Message Operations</h2>
-    <div class="k">Say</div>
-    <div class="chips" id="compose-chips"></div>
+    <div class="k">How urgent</div>
+    <div class="chips" id="compose-urgency"></div>
     <label class="k" for="compose-text" style="margin-top:4px">In your words</label>
-    <input id="compose-text" class="input" placeholder="What Operations should know" maxlength="500">
+    <input id="compose-text" class="input" placeholder="What Operations should know" maxlength="500" autocomplete="off">
+    <div class="chips" id="compose-chips"></div>
+    <div class="k">Where</div>
+    <div class="status-row"><button class="btn" data-action="compose-loc" id="compose-loc">Attach my location</button><span class="muted" id="compose-loc-text"></span></div>
+    <div id="compose-map" class="mini compose-map" hidden aria-label="Where this message is about"></div>
+    <p class="muted small" id="compose-map-hint" hidden>This is the spot Operations will see. Drag the pin to the exact place.</p>
     <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="send-compose">Send</button></div>
   </div>
 
@@ -219,6 +228,12 @@
     <div class="row-btns" style="justify-content:flex-start">
       <button class="btn sm" data-action="compass">Enable compass</button>
       <button class="btn sm" data-action="refresh">Reload data</button>
+    </div>
+    <div class="k">Screen</div>
+    <div class="chips" id="theme-chips">
+      <button class="chip" data-action="theme" data-value="">Follow the phone</button>
+      <button class="chip" data-action="theme" data-value="light">Light</button>
+      <button class="chip" data-action="theme" data-value="dark">Dark</button>
     </div>
     <p class="muted" style="font-size:12.5px;margin:0">To keep this app on your phone: in Safari press Share, then Add to Home Screen. In Chrome use Install app.</p>
     <div class="sheet-btns" style="flex-direction:column">

@@ -1,7 +1,7 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -569,17 +569,72 @@ export function sitrepFormHtml(data) {
     </form>`;
 }
 
-export function logHtml(data) {
-  const events = data.events();
-  if (!events.length) return '<p class="muted" style="padding:4px 12px">Nothing yet.</p>';
-  return events.map((e) => `
-    <div class="log-row log-${esc(e.kind)}">
+// ---- the activity log (ICS 214): folded or open, filtered by where a line came from, searched,
+// with the hours marked and every line linked to the thing it is about.
+export const LOG_GROUPS = [['all', 'All'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];
+const GROUP_OF = { photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
+export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
+export function logFilter(events, { group, q } = {}) {
+  const needle = (q || '').trim().toLowerCase();
+  return events.filter((e) => (!group || group === 'all' || logGroupOf(e.kind) === group) && (!needle || String(e.text).toLowerCase().includes(needle)));
+}
+function logLink(e) {
+  if (!e.ref_id) return '';
+  const id = esc(e.ref_id);
+  switch (e.ref_table) {
+    case 'ic_photos': return `<button class="llink" data-action="select-photo" data-id="${id}">View photo</button>`;
+    case 'ic_zones': return `<button class="llink" data-action="select-zone" data-id="${id}">Open division</button>`;
+    case 'ic_structures': return `<button class="llink" data-action="select-structure" data-id="${id}">Open structure</button>`;
+    case 'ic_facilities': return `<button class="llink" data-action="select-facility" data-id="${id}">Open facility</button>`;
+    case 'ic_objectives': return `<button class="llink" data-action="period">Open period</button>`;
+    default: return '';
+  }
+}
+export function logFiltersHtml(data, state) {
+  const events = data.events(), cur = (state.log && state.log.group) || 'all';
+  return LOG_GROUPS.map(([g, label]) => {
+    const n = g === 'all' ? events.length : events.filter((e) => logGroupOf(e.kind) === g).length;
+    return `<button class="chip${cur === g ? ' on' : ''}" data-action="log-group" data-group="${g}">${label} <span class="n">${n}</span></button>`;
+  }).join('');
+}
+export function logHtml(data, state) {
+  const all = data.events();
+  if (!all.length) return '<p class="muted" style="padding:4px 12px">Nothing yet.</p>';
+  const events = logFilter(all, (state && state.log) || {});
+  if (!events.length) return '<p class="muted" style="padding:4px 12px">Nothing matches.</p>';
+  const seenAt = state && state.log ? state.log.seenAt : null;
+  const out = [];
+  let lastHour = null;
+  for (const e of events) {
+    const h = new Date(e.at).getHours();
+    if (lastHour !== null && h !== lastHour) out.push(`<div class="log-sep">${String(h).padStart(2, '0')}:00 to ${String(h).padStart(2, '0')}:59</div>`);
+    lastHour = h;
+    out.push(`
+    <div class="log-row log-${esc(e.kind)}${seenAt && e.at > seenAt ? ' new' : ''}">
       <span class="t mono">${hhmm(e.at)}</span>
       <span>${esc(e.text)}</span>
-      ${e.ref_table === 'ic_photos' ? `<button class="llink" data-action="select-photo" data-id="${esc(e.ref_id)}">View photo</button>` : ''}
-      ${e.ref_table === 'ic_zones' ? `<button class="llink" data-action="select-zone" data-id="${esc(e.ref_id)}">Open zone</button>` : ''}
-    </div>`).join('');
+      ${logLink(e)}
+    </div>`);
+  }
+  return out.join('');
 }
+
+// The whole log of the period on paper, oldest first: the ICS 214 the Documentation Unit keeps.
+export function form214Sections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  const rows = data.eventsIn(p).slice().reverse();
+  return [
+    { title: 'Activity log, ICS 214', lines: [
+      inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+      p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+      p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
+      'Prepared by Operations, ' + new Date().toLocaleString()
+    ].filter(Boolean) },
+    { title: `${rows.length} entries, oldest first`, lines: rows.length ? rows.map((e) => `${hhmm(e.at)}  ${e.text}`) : ['Nothing yet'] }
+  ];
+}
+export function form214Html(data) { return sectionsHtml(form214Sections(data)); }
+export function form214Text(data) { return sectionsText(form214Sections(data)); }
 
 export function maydayHtml(data) {
   const alerts = data.alerts();
@@ -629,9 +684,9 @@ export function messageRowHtml(data, m) {
   const replies = acks.filter((a) => a.reply && a.reply !== 'Copy').map((a) => `${esc(unitLabel(data.member(a.user_id)))}: ${esc(a.reply)}${a.count != null ? ' (' + a.count + ')' : ''}`).join(' · ');
   return `
     <div class="mrow ${esc(m.kind)}" data-message="${m.id}">
-      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${esc(unitLabel(data.member(m.from_user)))}</span><span class="muted">to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}</div>
+      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${esc(unitLabel(data.member(m.from_user)))}</span><span class="muted">to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}${m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(urgencyLabel(m.urgency))}</span>` : ''}</div>
       <div class="mrow-text">${esc(m.text)}</div>
-      <div class="mrow-state">${state}${replies ? `<span class="muted">${replies}</span>` : ''}${mine ? `<button class="btn sm" data-action="ack-message" data-id="${m.id}" data-reply="Copy">Acknowledge</button>` : ''}</div>
+      <div class="mrow-state">${state}${replies ? `<span class="muted">${replies}</span>` : ''}${mine ? `<button class="btn sm" data-action="ack-message" data-id="${m.id}" data-reply="Copy">Acknowledge</button>` : ''}${m.lat != null && m.lng != null ? `<button class="btn sm" data-action="pan-to" data-lat="${m.lat}" data-lng="${m.lng}" title="${esc(latLngText(m.lat, m.lng))}">Show on map</button>` : ''}</div>
     </div>`;
 }
 

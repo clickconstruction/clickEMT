@@ -4,9 +4,10 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
+import { applyTheme, storedTheme } from '../shared/theme.js';
 const AGENCY_KEY = 'ic.field.agency';
 const SEEN_ZONE = 'ic.field.seen.';
 const POSITION_EVERY_MS = 10000;
@@ -14,8 +15,9 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary' };
-const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?', 'Other'];
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null };
+let composeMap = null, composeMarker = null, composeZone = null;
+const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
 const REPLIES = ['Copy', 'Will do', 'Cannot'];
 let mini = null, miniLayers = null, miniZoneId = null;
 let drawQueued = false;
@@ -126,6 +128,8 @@ async function showJoin() {
   } catch (err) { list.innerHTML = `<p class="msg">${esc(err.message || err)}</p>`; }
 }
 
+$('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
+
 $('#join-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target, msg = f.querySelector('[data-msg]');
@@ -182,9 +186,10 @@ function messageRow(m, big) {
     else if (m.kind === 'par') btns = `<div class="par-count"><span>People with you</span><button class="btn" data-action="par-less" data-id="${m.id}" aria-label="Fewer">−</button><span class="num">${parCount(m.id)}</span><button class="btn" data-action="par-more" data-id="${m.id}" aria-label="More">+</button></div><div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}">Missing someone</button></div>`;
     else btns = `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`;
   }
+  const marks = (m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(urgencyLabel(m.urgency))}</span>` : '') + (m.lat != null && m.lng != null ? '<span class="muted">· location attached</span>' : '');
   return `
     <div class="mrow ${esc(m.kind)}${mine ? ' mine' : ''}">
-      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${mine ? 'You' : esc(unitLabel(data.member(m.from_user)))}</span><span>to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}</div>
+      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${mine ? 'You' : esc(unitLabel(data.member(m.from_user)))}</span><span>to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}${marks}</div>
       <div class="mrow-text">${esc(m.text)}</div>
       ${state_ ? `<div class="mrow-state">${state_}</div>` : ''}
       ${btns}
@@ -197,22 +202,55 @@ function drawInbox() {
   setHtml($('#inbox-list'), rows.length ? rows.map((m) => messageRow(m)).join('') : '<p class="muted">No messages yet. Operations will see anything you send.</p>');
 }
 
+// ---- Message Operations: how urgent (the four words), the words, and the spot it is about
 function drawCompose() {
-  $('#compose-chips').innerHTML = QUICK.map((c, i) => `<button class="chip${state.composeI === i ? ' on' : ''}" data-action="cmp" data-i="${i}">${esc(c)}</button>`).join('');
+  $('#compose-urgency').innerHTML = URGENCY.map(([v, label]) => `<button class="chip${state.composeU === v ? ' on' : ''}" data-action="cmp-u" data-value="${v}">${esc(label)}</button>`).join('');
+  const typed = $('#compose-text').value.trim() !== '';
+  $('#compose-chips').hidden = typed;
+  $('#compose-chips').innerHTML = QUICK.map((c) => `<button class="chip" data-action="cmp" data-text="${esc(c)}">${esc(c)}</button>`).join('');
+  const loc = state.composeLoc;
+  $('#compose-loc').textContent = loc ? 'Remove location' : 'Attach my location';
+  $('#compose-loc-text').textContent = loc ? latLngText(loc.lat, loc.lng) : '';
+  $('#compose-map').hidden = !loc;
+  $('#compose-map-hint').hidden = !loc;
+  if (loc) drawComposeMap(loc);
+}
+// The spot: the unit's fix on a small map, as Operations will see it, with the pin free to drag.
+function drawComposeMap(loc) {
+  if (!composeMap) {
+    composeMap = L.map($('#compose-map'), { zoomControl: false, attributionControl: false, tap: false });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(composeMap);
+    composeZone = L.layerGroup().addTo(composeMap);
+    composeMarker = L.marker([loc.lat, loc.lng], { draggable: true, icon: L.divIcon({ html: '<span class="mpin urg-none"></span>', className: '', iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(composeMap);
+    composeMarker.on('dragend', () => { const p = composeMarker.getLatLng(); state.composeLoc = { lat: p.lat, lng: p.lng }; $('#compose-loc-text').textContent = latLngText(p.lat, p.lng) + ' · moved'; });
+    composeMap.on('click', (e) => { composeMarker.setLatLng(e.latlng); state.composeLoc = { lat: e.latlng.lat, lng: e.latlng.lng }; $('#compose-loc-text').textContent = latLngText(e.latlng.lat, e.latlng.lng) + ' · moved'; });
+  }
+  composeZone.clearLayers();
+  for (const z of data.zones()) { const pts = ringToLatLngs(z.polygon); if (pts.length >= 3) L.polygon(pts, { color: '#24588F', weight: 1.5, fillOpacity: 0.08, interactive: false }).addTo(composeZone); }
+  composeMarker.setLatLng([loc.lat, loc.lng]);
+  composeMap.setView([loc.lat, loc.lng], 17);
+  setTimeout(() => composeMap.invalidateSize(), 50);
+}
+function toggleComposeLocation() {
+  if (state.composeLoc) { state.composeLoc = null; drawCompose(); return; }
+  const p = sensors.pos;
+  if (!p) { toast('No GPS fix yet', true); return; }
+  state.composeLoc = { lat: p.lat, lng: p.lng };
+  drawCompose();
 }
 
 async function sendCompose() {
-  const words = $('#compose-text').value.trim();
-  const quick = QUICK[state.composeI] === 'Other' ? '' : QUICK[state.composeI];
-  const text = [quick, words].filter(Boolean).join('. ');
+  const text = $('#compose-text').value.trim();
   if (!text) { toast('Say something first', true); return; }
   const r = data.recipientsFor('ops');
   if (!r.toUsers.length) { toast('Nobody at Operations to send to', true); return; }
   const id = uuid();
-  data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, created_at: new Date().toISOString() });
-  await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text });
+  const loc = state.composeLoc;
+  const extra = { urgency: state.composeU || '', lat: loc ? loc.lat : null, lng: loc ? loc.lng : null };
+  data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, ...extra, created_at: new Date().toISOString() });
+  await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text, ...extra });
   state.lastSentAt = Date.now();
-  $('#compose-text').value = ''; state.composeI = 0;
+  $('#compose-text').value = ''; state.composeI = 0; state.composeU = ''; state.composeLoc = null;
   screen('inbox'); drawInbox();
   toast(navigator.onLine ? 'Sent to Operations' : 'Kept, it sends when there is signal');
   queueDraw();
@@ -440,7 +478,10 @@ function drawNearby() {
   setHtml($('#nearby'), rows.length ? `<div class="card"><div class="k">Nearby</div>${rows.join('')}</div>` : '');
 }
 
+function drawThemeChips() { const cur = storedTheme(); for (const c of document.querySelectorAll('#theme-chips .chip')) c.classList.toggle('on', c.dataset.value === cur); }
+
 function drawMenu() {
+  drawThemeChips();
   const inc = data.incident, me = data.me(), per = data.currentPeriod();
   $('#menu-facts').innerHTML = `
     <span class="k">Incident</span><span>${esc(inc.name)}</span>
@@ -662,6 +703,7 @@ document.addEventListener('click', async (e) => {
       case 'menu': screen('menu'); drawMenu(); break;
       case 'refresh': await data.open(data.incident.id); toast('Reloaded'); break;
       case 'compass': try { await sensors.requestCompass(); toast('Compass on'); } catch (err) { toast(err.message, true); } break;
+      case 'theme': applyTheme(btn.dataset.value); drawThemeChips(); break;
       case 'accept': localStorage.setItem(SEEN_ZONE + data.incident.id, btn.dataset.id); state.justCleared = null; queueDraw(); toast('Assignment accepted'); break;
       case 'camera': await takePhoto(); break;
       case 'note': state.noteI = Number(btn.dataset.i); drawPhotoFacts(); break;
@@ -706,7 +748,9 @@ document.addEventListener('click', async (e) => {
       }
       case 'check-out': await checkOut(); break;
       case 'compose': state.composeI = 0; screen('compose'); drawCompose(); break;
-      case 'cmp': state.composeI = Number(btn.dataset.i); drawCompose(); break;
+      case 'cmp': $('#compose-text').value = btn.dataset.text || ''; drawCompose(); break;
+      case 'cmp-u': state.composeU = state.composeU === btn.dataset.value ? '' : btn.dataset.value; drawCompose(); break;
+      case 'compose-loc': toggleComposeLocation(); break;
       case 'send-compose': await sendCompose(); break;
       case 'ack': await ackMessage(btn.dataset.id, btn.dataset.reply || 'Copy'); break;
     }

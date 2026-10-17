@@ -1,7 +1,7 @@
 // The base map: Leaflet over OpenStreetMap tiles, with the incident boundary, the zones and their
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
-import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, sampleAt, samplesBefore } from '../shared/rules.js';
+import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyLabel, sampleAt, samplesBefore } from '../shared/rules.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
 const TRAIL = 12;                 // positions kept per unit for the breadcrumb trail
@@ -24,6 +24,9 @@ function wedgePath() {
 }
 const WEDGE = wedgePath();
 
+// the lines drawn in ink follow the theme (css/shared.css --map-ink, --map-accent)
+function cssVar(name, fallback) { const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fallback; }
+
 function icon(html, className) {
   return L.divIcon({ html, className: className || '', iconSize: [0, 0], iconAnchor: [0, 0] });
 }
@@ -35,7 +38,7 @@ export class BaseMap {
     this.map = L.map(el, { zoomControl: true, attributionControl: true, zoomSnap: 0.5 });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map);
     this.layers = {};
-    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
+    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'messages', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
     this.replay = null;   // samples by unit while the base is replaying, else null
     this.unitMarkers = new Map();
     this.trails = new Map();
@@ -89,9 +92,10 @@ export class BaseMap {
     const g = this.layers.draft;
     g.clearLayers();
     if (!this.draft.length) return;
-    if (this.draft.length >= 3) L.polygon(this.draft, { color: '#1F4E79', weight: 2, dashArray: '6 4', fillColor: '#1F4E79', fillOpacity: 0.12 }).addTo(g);
-    else L.polyline(this.draft, { color: '#1F4E79', weight: 2, dashArray: '6 4' }).addTo(g);
-    for (const p of this.draft) L.circleMarker(p, { radius: 4, color: '#1F4E79', weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g);
+    const accent = cssVar('--map-accent', '#1F4E79');
+    if (this.draft.length >= 3) L.polygon(this.draft, { color: accent, weight: 2, dashArray: '6 4', fillColor: accent, fillOpacity: 0.12 }).addTo(g);
+    else L.polyline(this.draft, { color: accent, weight: 2, dashArray: '6 4' }).addTo(g);
+    for (const p of this.draft) L.circleMarker(p, { radius: 4, color: accent, weight: 2, fillColor: '#fff', fillOpacity: 1 }).addTo(g);
   }
 
   // ---- drawing the incident
@@ -100,7 +104,8 @@ export class BaseMap {
     const inc = data.incident;
     this.layers.boundary.clearLayers();
     if (inc && inc.boundary) {
-      L.polygon(ringToLatLngs(inc.boundary), { color: '#1B1B18', weight: 2.5, dashArray: '10 6', fillColor: '#1B1B18', fillOpacity: 0.03, interactive: false }).addTo(this.layers.boundary);
+      const ink = cssVar('--map-ink', '#1B1B18');
+      L.polygon(ringToLatLngs(inc.boundary), { color: ink, weight: 2.5, dashArray: '10 6', fillColor: ink, fillOpacity: 0.03, interactive: false }).addTo(this.layers.boundary);
     }
 
     this.layers.zones.clearLayers();
@@ -145,8 +150,21 @@ export class BaseMap {
     }
 
     this.renderPhotos(data, state);
+    this.renderMessages(data);
     if (this.replay) this.renderReplayUnits(data, state);
     else this.renderUnits(data, state);
+  }
+
+  // a message from the field that carries a spot: a bubble at the spot, coloured by how urgent
+  renderMessages(data) {
+    this.layers.messages.clearLayers();
+    if (this.replay || !data.placedMessages) return;
+    for (const m of data.placedMessages()) {
+      const who = unitLabel(data.member(m.from_user));
+      const mk = L.marker([m.lat, m.lng], { icon: icon(`<span class="mpin urg-${esc(m.urgency || 'none')}" title="${esc(who)}: ${esc(m.text)}"></span>`), keyboard: false, zIndexOffset: 700 }).addTo(this.layers.messages);
+      mk.bindTooltip(`${who}${m.urgency ? ' · ' + urgencyLabel(m.urgency) : ''}: ${m.text}`, { direction: 'top', offset: [0, -14] });
+      mk.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onUnit(m.from_user); });
+    }
   }
 
   // the photo pins; while replaying, only the ones taken by the moment shown

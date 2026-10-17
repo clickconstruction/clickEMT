@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 8;
+  const SEED_VERSION = 9;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -211,7 +211,7 @@
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now() }),
-    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', created_at: now() }),
+    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, created_at: now() }),
     ic_message_acks: () => ({ reply: '', count: null, acked_at: now() })
   };
 
@@ -269,6 +269,7 @@
     }
     if (table === 'ic_messages') {
       if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
+      if (!['', 'now', 'nightfall', 'tomorrow', 'blocking'].includes(r.urgency ?? '')) throw chk('ic_messages_urgency_check');
       if (r.text == null) throw nn('text');
       if (!r.from_user) throw nn('from_user');
     }
@@ -340,7 +341,8 @@
     if (table === 'ic_messages') {
       const kind = r.kind === 'safety' ? 'safety' : r.kind === 'par' ? 'par' : 'msg';
       const lead = r.kind === 'safety' ? 'SAFETY MESSAGE, ' : r.kind === 'par' ? 'PAR, ' : '';
-      log(changes, r.incident_id, r.from_user, kind, `${lead}${label(r.incident_id, r.from_user)} to ${r.to_label || 'everyone'}: ${r.text}`, 'ic_messages', r.id);
+      const urg = r.urgency ? ' (' + R.urgencyLabel(r.urgency).toLowerCase() + ')' : '';
+      log(changes, r.incident_id, r.from_user, kind, `${lead}${label(r.incident_id, r.from_user)} to ${r.to_label || 'everyone'}${urg}: ${r.text}${r.lat != null && r.lng != null ? ' · location attached' : ''}`, 'ic_messages', r.id);
     }
     if (table === 'ic_message_acks') {
       const m = tables.ic_messages.find((x) => x.id === r.message_id) || { kind: 'message', from_user: null };

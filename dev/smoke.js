@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1109,4 +1109,24 @@ async function identity(check) {
     $('[data-action="close-briefing"]').click();
     await until(() => $('#briefing').hidden);
   }
+}
+
+// The legend's status entries: pressed, the divisions in that status stand out on the map and in the list.
+async function legend(check) {
+  check('the legend entries are buttons with the counts', $$('[data-action="legend-status"]').length === 4 && $('[data-legend-count="active"]').textContent === '3' && $('[data-legend-count="open"]').textContent === '2' && $('[data-legend-count="cleared"]').textContent === '1' && $('#legend-hint').hidden, $$('[data-legend-count]').map((e) => e.textContent).join(','));
+  $('[data-action="legend-status"][data-status="active"]').click();
+  await until(() => $$('#map path.zone-hl').length === 3);
+  check('In progress lights the three active divisions on the map and fades the other three', $$('#map path.zone-hl').length === 3 && $$('#map path.zone-dim').length === 3 && $$('#map .zpill.hl').length === 3 && $$('#map .zpill.dim').length === 3, `${$$('#map path.zone-hl').length} lit, ${$$('#map path.zone-dim').length} dim`);
+  check('the list follows, the entry shows pressed, and the hint says what is shown', $$('#zones .zr.hl').length === 3 && $$('#zones .zr.dim').length === 3 && $('[data-action="legend-status"][data-status="active"]').classList.contains('on') && !$('#legend-hint').hidden && has('#legend-hint', '3 divisions in progress'), text('#legend-hint'));
+  $('[data-action="legend-status"][data-status="cleared"]').click();
+  await until(() => $$('#map path.zone-hl').length === 1);
+  check('another entry switches the highlight', $$('#map path.zone-hl').length === 1 && $$('#zones .zr.hl').length === 1 && has('#legend-hint', '1 division cleared'), text('#legend-hint'));
+  $('[data-action="legend-status"][data-status="cleared"]').click();
+  await until(() => $$('#map path.zone-hl').length === 0);
+  check('pressing it again shows all', $$('#map path.zone-dim').length === 0 && $$('#zones .zr.dim').length === 0 && $('#legend-hint').hidden);
+  $('[data-action="legend-status"][data-status="open"]').click();
+  await until(() => $$('#map path.zone-hl').length === 2);
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $$('#map path.zone-hl').length === 0);
+  check('Escape shows all too', $$('#zones .zr.dim').length === 0 && $('#legend-hint').hidden);
 }

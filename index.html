@@ -140,16 +140,17 @@
         <button class="btn sm" data-action="replay-close">Close</button>
       </div>
       <div class="legend">
-        <span><span class="sw open"></span>Not started</span>
-        <span><span class="sw active"></span>In progress</span>
-        <span><span class="sw primary"></span>Primary search done</span>
-        <span><span class="sw cleared"></span>Cleared</span>
+        <button class="legend-btn" data-action="legend-status" data-status="open" title="Show only the divisions not started"><span class="sw open"></span>Not started<span class="n" data-legend-count="open"></span></button>
+        <button class="legend-btn" data-action="legend-status" data-status="active" title="Show only the divisions in progress"><span class="sw active"></span>In progress<span class="n" data-legend-count="active"></span></button>
+        <button class="legend-btn" data-action="legend-status" data-status="primary" title="Show only the divisions with the primary search done"><span class="sw primary"></span>Primary search done<span class="n" data-legend-count="primary"></span></button>
+        <button class="legend-btn" data-action="legend-status" data-status="cleared" title="Show only the cleared divisions"><span class="sw cleared"></span>Cleared<span class="n" data-legend-count="cleared"></span></button>
         <span><span class="sdot cleared" style="width:9px;height:9px;border-color:#fff"></span>Structure searched</span>
         <span><span class="fmark fmark-staging inline">S</span>Facility: staging, shelter, hospital, command post</span>
         <span><span class="sw haz"></span>Hazard reported</span>
         <span><span class="sw bnd"></span>Incident boundary</span>
         <span><span class="pb p1">1</span>Priority</span>
         <span>Wedge: the way a photo faces</span>
+        <span class="legend-hint" id="legend-hint" hidden></span>
       </div>
       <div class="log" id="logbox">
         <div class="log-h">

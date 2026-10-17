@@ -17,7 +17,7 @@ export function zonesHtml(data, state) {
   const zones = data.zones();
   if (!zones.length) return '<p class="muted" style="padding:8px 14px">No divisions yet. Press Draw division and click the map to outline one.</p>';
   return zones.map((z) => `
-    <button class="zr${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}" data-action="select-zone" data-id="${z.id}">
+    <button class="zr${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}${state.highlight ? (z.status === state.highlight ? ' hl' : ' dim') : ''}" data-action="select-zone" data-id="${z.id}">
       <span class="pb p${z.priority}">${z.priority}</span>
       <span class="zr-main">
         <span class="zr-top"><span class="zr-id">${esc(z.code)}</span><span class="zr-name">${esc(z.name)}</span></span>

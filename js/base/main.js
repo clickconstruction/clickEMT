@@ -19,7 +19,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, people: { q: '', quals: new Set(), add: false, addUnit: null } };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, people: { q: '', quals: new Set(), add: false, addUnit: null } };
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
@@ -212,6 +212,7 @@ function drawAll() {
   $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
   $('#inc-code').textContent = 'Join code ' + inc.code;
   drawLog();
+  drawLegend();
   if (!$('#briefing').hidden) drawBriefing();
   if (!$('#people').hidden) drawPeople();
   drawLive();
@@ -237,6 +238,27 @@ function drawAll() {
   sf.hidden = !sh;
   sf.innerHTML = sh;
 }
+
+// The legend's status entries: pressed, the divisions in that status stand out and the rest fade.
+const LEGEND_WORDS = { open: 'not started', active: 'in progress', primary: 'with the primary search done', cleared: 'cleared' };
+function drawLegend() {
+  const counts = {};
+  for (const z of data.zones()) counts[z.status] = (counts[z.status] || 0) + 1;
+  for (const b of document.querySelectorAll('[data-action="legend-status"]')) {
+    const st = b.dataset.status;
+    b.classList.toggle('on', state.highlight === st);
+    b.setAttribute('aria-pressed', String(state.highlight === st));
+    const n = b.querySelector('[data-legend-count]');
+    if (n) n.textContent = counts[st] ? String(counts[st]) : '';
+  }
+  const hint = $('#legend-hint');
+  if (hint) {
+    const n = state.highlight ? (counts[state.highlight] || 0) : 0;
+    hint.hidden = !state.highlight;
+    hint.innerHTML = state.highlight ? `${n} division${n === 1 ? '' : 's'} ${esc(LEGEND_WORDS[state.highlight])} <button class="btn sm" data-action="legend-clear">Show all</button>` : '';
+  }
+}
+function setHighlight(status) { state.highlight = status || null; queueDraw(); }
 
 // Right-click (or a long press) on a division: a card with its rank, priority and the facts.
 function openZoneModal(id) {
@@ -601,6 +623,8 @@ document.addEventListener('click', async (e) => {
       case 'print-204': closeZoneModal(); openOverlay('204', id); break;
       case 'zone-modal-open': closeZoneModal(); select({ type: 'zone', id }); break;
       case 'zone-modal-close': closeZoneModal(); break;
+      case 'legend-status': setHighlight(state.highlight === btn.dataset.status ? null : btn.dataset.status); break;
+      case 'legend-clear': setHighlight(null); break;
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
       case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; break;
@@ -668,6 +692,7 @@ document.addEventListener('change', async (e) => {
 
 // While outlining, Backspace or Delete takes the last corner off (not while typing in a field).
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;
   if (!map || (map.mode !== 'boundary' && map.mode !== 'zone')) return;
   const t = e.target;

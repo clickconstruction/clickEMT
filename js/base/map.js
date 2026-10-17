@@ -157,11 +157,15 @@ export class BaseMap {
       const style = Object.assign({}, ZONE_STYLE[z.status] || ZONE_STYLE.open);
       if (z.hazard) { style.color = '#D9822B'; style.dashArray = '7 4'; }
       if (sel.type === 'zone' && sel.id === z.id) style.weight = 4;
+      // a legend entry pressed: its divisions stand out, the others fade
+      const hl = state.highlight ? (z.status === state.highlight ? 'hl' : 'dim') : '';
+      if (hl === 'hl') { style.weight = Math.max(style.weight, 4); style.fillOpacity = Math.min(0.75, style.fillOpacity + 0.25); style.className = 'zone-hl'; }
+      else if (hl === 'dim') { style.fillOpacity = style.fillOpacity * 0.2; style.opacity = 0.3; style.className = 'zone-dim'; }
       const poly = L.polygon(pts, style).addTo(this.layers.zones);
       poly.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onZone(z.id); });
       poly.on('contextmenu', (e) => { L.DomEvent.stop(e); if (!this.mode && this.cb.onZoneMenu) this.cb.onZoneMenu(z.id); });
       const c = centroid(z.polygon);
-      const label = L.marker(c, { icon: icon(`<button class="zpill${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}" type="button" aria-label="Zone ${esc(z.code)}"><span class="pb p${z.priority}">${z.priority}</span>${esc(z.code)}</button>`), interactive: true, keyboard: false }).addTo(this.layers.labels);
+      const label = L.marker(c, { icon: icon(`<button class="zpill${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}${hl ? ' ' + hl : ''}" type="button" aria-label="Zone ${esc(z.code)}"><span class="pb p${z.priority}">${z.priority}</span>${esc(z.code)}</button>`), interactive: true, keyboard: false }).addTo(this.layers.labels);
       label.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onZone(z.id); });
       label.on('contextmenu', (e) => { L.DomEvent.stop(e); if (!this.mode && this.cb.onZoneMenu) this.cb.onZoneMenu(z.id); });
     }

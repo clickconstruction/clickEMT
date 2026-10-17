@@ -4,6 +4,7 @@ Two views of one incident, for floods and other large-scale emergencies:
 
 - **Base** (`index.html`): the map at the base or forward operating base. Operations draws the incident boundary and the zones, sets each zone's priority, assigns units, and watches units move, photos arrive (with the direction each one faces) and zones turn green as the field marks them clear. The activity log is an ICS 214 in all but name.
 - **Field** (`field/`): the phone app a unit installs. It shares the unit's location, takes photos tagged with the compass heading, marks addresses and the zone clear with the search marking the team paints, reports hazards, and has one red button for "need help now". Reports are kept on the phone until there is signal.
+- **People**: every responder is a record, checked in by name with the unit from the phone, with a rank or role, an agency and qualifications (swift water, boat, rope, EMT, paramedic, K9, hazmat, drone), a buddy, and the time in and out; nothing is deleted. The unit's head count follows its people. The base has a People board (everyone by unit, with status, hours on scene, a find box and qualification chips, where Operations adds, moves, checks out or removes a person), the names are on the resources board, the briefing, the 203 and every 204, and the check-in list prints as the ICS 211.
 - **Agencies, public information and replay**: the incident names its lead agency and each period its unified command, and every report says who is in charge and who is on scene from where. Operations clears a photo for the Public Information Officer one at a time; nothing is public by default. Every position a unit reports is kept, and the base's Replay plays the period, the last hour or the whole incident back on a slider, with the photos appearing as they were taken.
 - **The map underneath, and your own imagery over it**: streets (OpenStreetMap) or satellite (Esri) on every screen, Google Maps streets and satellite when a key is set, and custom imagery Operations uploads by its corner coordinates, such as fresh aerial or satellite pictures, laid over the map for everyone with an opacity slider.
 - **A right-click card for a division**: its rank among the divisions, its priority (changeable right there), the unit, progress, hazards, photos and last activity, from the map or the list.
@@ -57,7 +58,7 @@ The data lives in the tabs' memory. A tab that opens while another mock tab is o
 const { run } = await import('/dev/smoke.js'); await run()
 ```
 
-It drives the base through the page (select a zone, set a priority, assign a unit, draw a zone and the boundary on the map, open a photo, acknowledge an alert, add a note) and the field through a second copy of the data module signed in as Unit 3 (a photo with a heading, an address clear, the zone clear with its marking, a hazard, an alert and standing down), and after each step checks what the base sees and what went into the log. It takes about 20 seconds and returns `{ passed, total, failed }`. `run({ only: ['fieldReports'] })` runs one suite; the suites are `seeded`, `baseActions`, `boundary`, `fieldReports`, `emergency`, `checkIn` and `permissions`.
+It drives the base through the page (select a zone, set a priority, assign a unit, draw a zone and the boundary on the map, open a photo, acknowledge an alert, add a note) and the field through a second copy of the data module signed in as Unit 3 (a photo with a heading, an address clear, the zone clear with its marking, a hazard, an alert and standing down), and after each step checks what the base sees and what went into the log. It takes about 20 seconds and returns `{ passed, total, failed }`. `run({ only: ['fieldReports'] })` runs one suite; the suites are `seeded`, `baseActions`, `boundary`, `fieldReports`, `emergency`, `messages`, `accountability`, `people`, `periods`, `assignment`, `search`, `facilities`, `reports`, `agencies`, `publicInfo`, `replay`, `log`, `layers`, `zoneCard`, `checkIn` and `permissions`.
 
 ## First run
 
@@ -73,7 +74,7 @@ index.html, js/base/      the base view (map.js draws the map, ui.js the sidebar
 field/, js/field/         the field app (sensors.js: GPS and compass, camera.js: the camera, main.js: screens and the outbox)
 js/shared/                rules.js (no DOM: headings, zone codes, polygons), data.js (Supabase), queue.js (the outbox)
 css/                      shared.css, base.css, field.css
-supabase/migrations/      the schema: tables, RLS, the triggers that write the log
+supabase/migrations/      the schema: tables, RLS, the triggers that write the log; supabase/tests/ the rule tests, run with sbq.py, rolled back
 sw.js, manifest.webmanifest, field/manifest.webmanifest, icons/
 dev/                      mock-supabase.js (the in-memory Supabase behind ?mock), smoke.js (the browser smoke test), test-rules.mjs,
                           sbq.py (runs SQL on the project with the Supabase CLI's login), make-icons.py (draws the icons)

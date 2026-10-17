@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
@@ -18,7 +18,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, people: { q: '', quals: new Set(), add: false, addUnit: null } };
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
@@ -161,6 +161,7 @@ async function openIncident(id) {
 }
 
 function select(sel) {
+  if (sel && sel.type === 'people') { openPeople(); return; }   // the board is a page of its own, not a panel
   state.selected = sel;
   queueDraw();
   if (sel && sel.type === 'photo') loadPhoto(sel.id);
@@ -211,6 +212,7 @@ function drawAll() {
   $('#inc-code').textContent = 'Join code ' + inc.code;
   drawLog();
   if (!$('#briefing').hidden) drawBriefing();
+  if (!$('#people').hidden) drawPeople();
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
   map.render(data, state);
@@ -301,18 +303,18 @@ function drawBriefing() {
   if (!data.incident) return;
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
+  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
   const page = $('#briefing-page');
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
   page.className = 'briefing-page kind-' + kind;
-  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
+  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
+  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === '211' ? form211Text(data) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
 }
 // The maps' tiles are plain <image>s; give them a moment to arrive before the print dialog
 // takes a picture of the page.
@@ -323,6 +325,24 @@ function mapsReady(root, ms = 3000) {
   return Promise.race([Promise.all(urls.map(one)), new Promise((done) => setTimeout(done, ms))]);
 }
 function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); }
+
+// ---- the People board: everyone on scene by unit, in a page of its own. The find box and the chips
+// live in state.people; the page is redrawn on every change unless a field in it has focus.
+function openPeople() { $('#people').hidden = false; drawPeople(); }
+function closePeople() { $('#people').hidden = true; state.people.add = false; }
+function drawPeople() {
+  if (!data.incident || $('#people').hidden) return;
+  const chips = peopleChipsHtml(data, state);
+  const bar = $('#people-quals');
+  if (bar.__html !== chips) { bar.__html = chips; bar.innerHTML = chips; }
+  $('#people-sub').textContent = data.incident.name + ' · ' + hhmm(new Date());
+  if ($('#people-q').value !== state.people.q) $('#people-q').value = state.people.q;
+  const page = $('#people-page');
+  const html = peopleBoardHtml(data, state);
+  const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+  if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
+}
+$('#people-q').addEventListener('input', (e) => { state.people.q = e.target.value; drawPeople(); });
 
 // ---- replay: the day played back from the position history (ic_tracks), on a slider under the map.
 // The samples are fetched once per range; the slider and Play only move the moment shown.
@@ -426,7 +446,8 @@ function fillOverlayBounds(force) {
   const f = $('#panel form[data-form="overlay-add"]');
   if (!f || !map) return;
   if (!force && f.south.value !== '') return;
-  const b = map.viewBounds();
+  let b;
+  try { b = map.viewBounds(); } catch (e) { return; }   // a map with no size yet (the pane still laying out) has no bounds
   for (const k of ['south', 'west', 'north', 'east']) f[k].value = b[k].toFixed(5);
 }
 document.addEventListener('input', (e) => {
@@ -485,12 +506,21 @@ document.addEventListener('click', async (e) => {
       case 'log-notable': await data.setNotable(id, btn.dataset.on === '1'); drawLog(); break;
       case 'log-popout': popOutLog(); break;
       case 'print-214': openOverlay('214'); break;
+      case 'people': if (LOG_ONLY) { selectFromLog({ type: 'people' }); break; } state.people.addUnit = btn.dataset.unit || state.people.addUnit; openPeople(); break;
+      case 'close-people': closePeople(); break;
+      case 'print-211': openOverlay('211'); break;
+      case 'people-qual': { const q = btn.dataset.q; if (state.people.quals.has(q)) state.people.quals.delete(q); else state.people.quals.add(q); drawPeople(); break; }
+      case 'people-add-toggle': state.people.add = !state.people.add; drawPeople(); if (state.people.add) { const f = $('#people-page form[data-form="person-add"]'); if (f) f.name.focus(); } break;
+      case 'person-out': await data.checkOutPerson(id); break;
+      case 'person-in': await data.checkInPerson(id); break;
+      case 'person-remove': { const p = data.person(id); if (p && confirm(`Take ${p.name} off the roster? The record is kept and can be put back.`)) { await data.archivePerson(id); toast(p.name + ' removed'); } break; }
+      case 'person-restore': await data.updatePerson(id, { archived_at: null }); break;
       case 'overlay-hide': setOverlayHidden(id, true); queueDraw(); break;
       case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
       case 'overlay-remove': { const o = data.overlay(id); if (o && window.confirm(`Remove "${o.name || 'this imagery'}" from the map for everyone? It is kept and can be put back.`)) { await data.archiveOverlay(id); toast('Imagery removed from the map'); } break; }
       case 'overlay-restore': await data.updateOverlay(id, { archived_at: null }); toast('Imagery put back'); break;
       case 'overlay-view-bounds': fillOverlayBounds(true); break;
-      case 'select-unit': select({ type: 'unit', id }); break;
+      case 'select-unit': if (btn.closest('#people')) closePeople(); select({ type: 'unit', id }); break;
       case 'select-structure': selectFromLog({ type: 'structure', id }); break;
       case 'select-facility': selectFromLog({ type: 'facility', id }); break;
       case 'place-facility': {
@@ -612,6 +642,8 @@ document.addEventListener('change', async (e) => {
   try {
     if (sel.dataset.select === 'zone-objective') { await data.updateZone(sel.dataset.id, { objective_id: sel.value || null }); sel.blur(); queueDraw(); }
     if (sel.dataset.range === 'overlay-opacity') { await data.updateOverlay(sel.dataset.id, { opacity: Number(sel.value) }); sel.blur(); queueDraw(); }
+    if (sel.dataset.select === 'person-unit') { const p = data.person(sel.dataset.id); await data.updatePerson(sel.dataset.id, { user_id: sel.value }); sel.blur(); if (p) toast(p.name + ' moved to ' + unitLabelOf(data.member(sel.value))); queueDraw(); }
+    if (sel.dataset.select === 'person-buddy') { await data.updatePerson(sel.dataset.id, { buddy_id: sel.value || null }); sel.blur(); queueDraw(); }
   } catch (err) { toast(err.message || String(err), true); }
 });
 
@@ -690,6 +722,15 @@ document.addEventListener('submit', async (e) => {
       toast('Imagery on the map for everyone');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
+    } else if (form.dataset.form === 'person-add') {
+      const name = form.name.value.trim();
+      if (!name) return;
+      const quals = [...form.querySelectorAll('input[name="q"]:checked')].map((i) => i.value);
+      await data.addPerson(crypto.randomUUID(), { userId: form.unit.value, name, role: form.role.value.trim(), agency: form.agency.value.trim(), qualifications: quals });
+      state.people.add = false; state.people.addUnit = form.unit.value;
+      toast(name + ' added to ' + unitLabelOf(data.member(form.unit.value)));
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();   // the page redraws only while no field in it has focus
+      drawPeople();
     } else if (form.dataset.form === 'incident-edit') {
       await data.setLeadAgency(form.lead_agency.value);
       toast('Saved');

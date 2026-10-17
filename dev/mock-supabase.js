@@ -13,12 +13,13 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 11;
+  const SEED_VERSION = 12;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
   const now = () => new Date().toISOString();
-  const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
+  let seedAt = 0;   // the moment a seed is made: every seeded time counts back from the same instant, so the three units' first positions coincide
+  const ago = (min) => new Date((seedAt || Date.now()) - min * 60000).toISOString();
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
   const copy = (r) => JSON.parse(JSON.stringify(r));
   const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -38,6 +39,7 @@
   const FAC = [ID('4', 1), ID('4', 2), ID('4', 3), ID('4', 4), ID('4', 5)];
   let trackId = 0;   // ic_tracks ids: an identity column
   const OVL = [ID('5', 1)];
+  const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
@@ -53,6 +55,7 @@
 
   // ---- the seeded incident: a river town near Austin, three hours into the first operational period
   function seed() {
+    seedAt = Date.now();
     const ring = (pts) => ({ type: 'Polygon', coordinates: [pts.map(([lat, lng]) => [lng, lat]).concat([[pts[0][1], pts[0][0]]])] });
     const zone = (i, code, name, priority, status, assigned, structures, cleared, extra) => ({
       id: Z[code], incident_id: INC, code, name, priority, status, hazard: false, assigned_to: assigned, structures, cleared,
@@ -124,6 +127,15 @@
         walk(U.unit2, [30.2566, -97.7400], [30.2614, -97.7420], 60, 300),
         walk(U.unit3, [30.2688, -97.7360], [30.2674, -97.7384], 60, 180)
       ),
+      // the people on the three units, checked in with them this morning; buddies in pairs
+      ic_people: [
+        { id: PEOPLE[0], incident_id: INC, user_id: U.unit1, name: 'Ramirez', role: 'Lt.', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[1], checked_in_at: ago(170), checked_out_at: null, notes: '', created_by: U.unit1, created_at: ago(170), updated_at: ago(170), archived_at: null },
+        { id: PEOPLE[1], incident_id: INC, user_id: U.unit1, name: 'Okafor', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic', 'boat'], buddy_id: PEOPLE[0], checked_in_at: ago(169.9), checked_out_at: null, notes: '', created_by: U.unit1, created_at: ago(169.9), updated_at: ago(169.9), archived_at: null },
+        { id: PEOPLE[2], incident_id: INC, user_id: U.unit2, name: 'Nguyen', role: 'Capt.', agency: 'Travis County Rescue', qualifications: ['boat', 'swift_water'], buddy_id: PEOPLE[3], checked_in_at: ago(168), checked_out_at: null, notes: 'Boat operator', created_by: U.unit2, created_at: ago(168), updated_at: ago(168), archived_at: null },
+        { id: PEOPLE[3], incident_id: INC, user_id: U.unit2, name: 'Patel', role: '', agency: 'Travis County Rescue', qualifications: ['emt', 'rope'], buddy_id: PEOPLE[2], checked_in_at: ago(167.9), checked_out_at: null, notes: '', created_by: U.unit2, created_at: ago(167.9), updated_at: ago(167.9), archived_at: null },
+        { id: PEOPLE[4], incident_id: INC, user_id: U.unit3, name: 'Hale', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[5], checked_in_at: ago(165), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(165), updated_at: ago(165), archived_at: null },
+        { id: PEOPLE[5], incident_id: INC, user_id: U.unit3, name: 'Dominguez', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic'], buddy_id: PEOPLE[4], checked_in_at: ago(164.9), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(164.9), updated_at: ago(164.9), archived_at: null }
+      ],
       ic_overlays: [
         { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2640, west: -97.7440, north: 30.2730, east: -97.7280 }, opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
       ],
@@ -178,6 +190,7 @@
     ev(170, U.unit1, 'ops', 'Unit 1 checked in with 2 people');
     ev(168, U.unit2, 'ops', 'Unit 2 checked in with 2 people');
     ev(165, U.unit3, 'ops', 'Unit 3 checked in with 2 people');
+    for (const p of t.ic_people) ev((Date.now() - new Date(p.checked_in_at)) / 60000 - 0.2, p.user_id, 'status', R.personLabel(p) + ' checked in with ' + R.unitLabel(t.ic_members.find((m) => m.user_id === p.user_id)), 'ic_people', p.id);
     ev(160, U.ops, 'ops', 'A-1 assigned to Unit 1', 'ic_zones', Z['A-1']);
     ev(159, U.ops, 'ops', 'A-3 assigned to Unit 2', 'ic_zones', Z['A-3']);
     ev(158, U.ops, 'ops', 'A-2 assigned to Unit 3', 'ic_zones', Z['A-2']);
@@ -207,6 +220,7 @@
     ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '' }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null }),
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', created_at: now() }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
@@ -247,6 +261,7 @@
       case 'ic_structures': return isMember(row.incident_id, uid);
       case 'ic_facilities': return isOps(row.incident_id, uid);
       case 'ic_overlays': return isOps(row.incident_id, uid);
+      case 'ic_people': return isMember(row.incident_id, uid) && (row.user_id === uid || isOps(row.incident_id, uid));   // a unit keeps its own people, Operations anyone's
       case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
@@ -289,12 +304,17 @@
       if (r.bounds == null) throw nn('bounds');
       if (!(r.opacity >= 0 && r.opacity <= 1)) throw chk('ic_overlays_opacity_check');
     }
+    if (table === 'ic_people') {
+      if (!r.name) throw nn('name');
+      if (!Array.isArray(r.qualifications) || r.qualifications.some((q) => !QUALS.includes(q))) throw chk('ic_people_qualifications_check');
+    }
     if (table === 'ic_facilities') {
       if (!['icp', 'staging', 'base', 'shelter', 'pod', 'hospital', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
       if (r.lat == null) throw nn('lat');
       if (r.lng == null) throw nn('lng');
     }
   }
+  const QUALS = ['swift_water', 'boat', 'rope', 'emt', 'paramedic', 'k9', 'hazmat', 'drone'];
   const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helispot: 'Helispot', other: 'Facility' };
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
   const overlayWhat = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
@@ -337,8 +357,38 @@
     tables.ic_tracks.push(t);
     changes.push(['INSERT', 'ic_tracks', t, null]);
   }
+  // ic_person_before: a trimmed name, the unit's agency unless said otherwise, a unit that is on the incident, a buddy who is someone else here
+  function personBefore(r, old) {
+    r.name = String(r.name ?? '').trim();
+    if (!r.name) throw dbError('a person needs a name');
+    r.role = String(r.role ?? '').trim(); r.notes = r.notes ?? ''; r.updated_at = now();
+    if (old && r.incident_id !== old.incident_id) throw dbError('a person stays on the incident they checked in to');
+    if (!member(r.incident_id, r.user_id)) throw dbError('that unit is not on this incident');
+    if (r.buddy_id && (r.buddy_id === r.id || !tables.ic_people.some((b) => b.id === r.buddy_id && b.incident_id === r.incident_id))) throw dbError('a buddy is another person on the same incident');
+    if (!r.agency) r.agency = member(r.incident_id, r.user_id).agency || '';
+  }
+  // ic_member_before: once a unit has people on record, its crew is their names and its head count how many are checked in
+  function crewFromPeople(m) {
+    const ppl = tables.ic_people.filter((p) => p.incident_id === m.incident_id && p.user_id === m.user_id && !p.archived_at);
+    if (!ppl.length) return;
+    const on = ppl.filter((p) => !p.checked_out_at).sort((a, b) => (a.checked_in_at < b.checked_in_at ? -1 : a.checked_in_at > b.checked_in_at ? 1 : a.created_at < b.created_at ? -1 : 1));
+    m.crew = on.length ? on.map((p) => p.name).join(', ') : null;
+    m.crew_count = on.length;
+  }
+  // ic_sync_crew: the unit follows its people; with nobody left on record its count is unknown again
+  function syncCrew(inc, user, uid, changes) {
+    const m = member(inc, user);
+    if (!m) return;
+    const any = tables.ic_people.some((p) => p.incident_id === inc && p.user_id === user && !p.archived_at);
+    updateRow('ic_members', m, any ? {} : { crew: null, crew_count: null }, uid, changes, true);
+  }
+  const personQuals = (r) => (r.qualifications && r.qualifications.length ? ' (' + R.qualsText(r.qualifications) + ')' : '');
   function afterInsert(table, r, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
+    if (table === 'ic_people') {
+      if (!r.archived_at && !quiet) log(changes, r.incident_id, uid, 'status', `${r.name}${personQuals(r)} checked in with ${label(r.incident_id, r.user_id)}`, 'ic_people', r.id);
+      syncCrew(r.incident_id, r.user_id, uid, changes);
+    }
     if (table === 'ic_positions') trackPosition(r, null, uid, changes);
     if (table === 'ic_facilities') log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' opened', 'ic_facilities', r.id);
     if (table === 'ic_overlays') log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' added to the map', 'ic_overlays', r.id);
@@ -384,6 +434,20 @@
   }
   function afterUpdate(table, r, old, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
+    if (table === 'ic_people') {   // ic_person_after
+      const unit = label(r.incident_id, r.user_id);
+      let line = null;
+      if (r.archived_at && !old.archived_at) line = `${r.name} removed from ${unit}`;
+      else if (!r.archived_at && old.archived_at) line = `${r.name}${personQuals(r)} put back on ${unit}`;
+      else if (r.archived_at) line = null;
+      else if (r.user_id !== old.user_id) line = `${r.name} moved from ${label(r.incident_id, old.user_id)} to ${unit}`;
+      else if (r.checked_out_at && !old.checked_out_at) line = `${r.name} checked out from ${unit}`;
+      else if (!r.checked_out_at && old.checked_out_at) line = `${r.name}${personQuals(r)} checked back in with ${unit}`;
+      else if (r.name !== old.name || r.role !== old.role || JSON.stringify(r.qualifications) !== JSON.stringify(old.qualifications)) line = `${r.name}${personQuals(r)} updated on ${unit}`;
+      if (line && !quiet) log(changes, r.incident_id, uid, 'status', line, 'ic_people', r.id);
+      syncCrew(r.incident_id, r.user_id, uid, changes);
+      if (r.user_id !== old.user_id) syncCrew(r.incident_id, old.user_id, uid, changes);
+    }
     if (table === 'ic_positions') trackPosition(r, old, uid, changes);
     if (table === 'ic_photos' && !!r.public_ok !== !!old.public_ok) log(changes, r.incident_id, uid, 'ops', `Photo from ${label(r.incident_id, r.user_id)} ${r.public_ok ? 'cleared for public information' : 'withdrawn from public information'}`, 'ic_photos', r.id);
     if (table === 'ic_overlays') {
@@ -419,6 +483,15 @@
         for (const z of tables.ic_zones.filter((z) => z.incident_id === r.incident_id && z.assigned_to === r.user_id)) {
           updateRow('ic_zones', z, z.status === 'active' ? { assigned_to: null, status: 'open' } : { assigned_to: null }, uid, changes, true);
         }
+        // the unit's people go with it, quietly: the unit's line says it
+        quiet = true;
+        try { for (const p of tables.ic_people.filter((p) => p.incident_id === r.incident_id && p.user_id === r.user_id && !p.archived_at && !p.checked_out_at)) updateRow('ic_people', p, { checked_out_at: now() }, uid, changes, true); }
+        finally { quiet = false; }
+      } else if (old.status === 'checked_out' && old.checked_out_at) {
+        // back on the incident: the people who left with it come back
+        quiet = true;
+        try { for (const p of tables.ic_people.filter((p) => p.incident_id === r.incident_id && p.user_id === r.user_id && !p.archived_at && p.checked_out_at && p.checked_out_at >= old.checked_out_at)) updateRow('ic_people', p, { checked_out_at: null }, uid, changes, true); }
+        finally { quiet = false; }
       }
     }
     if (table === 'ic_zones') {
@@ -471,6 +544,7 @@
     const row = { ...(DEFAULTS[table] ? DEFAULTS[table]() : {}), ...given };
     if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
     if (table === 'ic_overlays') row.created_by = row.created_by || uid;   // ic_overlay_before
+    if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -501,14 +575,18 @@
     }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
+    if (table === 'ic_people') personBefore(r, old);
     if (table === 'ic_structures') {   // ic_structure_before
       r.updated_at = now();
       if (r.status === 'searched' && (old.status !== 'searched' || !r.searched_at)) { r.searched_at = r.searched_at || now(); r.searched_by = r.searched_by || uid; }
     }
-    if (table === 'ic_members' && r.status !== old.status) {   // ic_member_before
-      r.status_at = now();
-      r.checked_out_at = r.status === 'checked_out' ? now() : null;
-      if (r.status !== 'out_of_service') r.status_note = '';
+    if (table === 'ic_members') {   // ic_member_before
+      if (r.status !== old.status) {
+        r.status_at = now();
+        r.checked_out_at = r.status === 'checked_out' ? now() : null;
+        if (r.status !== 'out_of_service') r.status_note = '';
+      }
+      crewFromPeople(r);
     }
     changes.push(['UPDATE', table, r, old]);
     afterUpdate(table, r, old, uid, changes);
@@ -687,16 +765,24 @@
         const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count);
         const m = member(inc.id, uid);
         if (m) {
-          const old = copy(m);
-          m.role = a.p_role; m.unit_name = unit ?? m.unit_name; m.crew = crew ?? m.crew; m.crew_count = count ?? m.crew_count; m.agency = agency || m.agency;
-          if (m.status === 'checked_out') { m.status = 'available'; m.status_at = now(); }
-          m.checked_out_at = null;
-          changes.push(['UPDATE', 'ic_members', m, old]);
+          updateRow('ic_members', m, { role: a.p_role, unit_name: unit ?? m.unit_name, crew: crew ?? m.crew, crew_count: count ?? m.crew_count, agency: agency || m.agency, status: m.status === 'checked_out' ? 'available' : m.status, checked_out_at: null }, uid, changes, true);
         } else {
           const nm = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: a.p_role, unit_name: unit, crew, crew_count: count, agency: agency || '' };
           tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]);
         }
-        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + (count != null ? ' with ' + count + (count === 1 ? ' person' : ' people') : ''));
+        // the roster: a name already on the unit is checked back in and updated, a new one is added
+        if (Array.isArray(a.p_people)) {
+          for (const person of a.p_people) {
+            const nm = trim(person && person.name);
+            if (!nm) continue;
+            const quals = Array.isArray(person.qualifications) ? person.qualifications : [];
+            const existing = tables.ic_people.filter((p) => p.incident_id === inc.id && p.user_id === uid && !p.archived_at && p.name.toLowerCase() === nm.toLowerCase()).sort((x, y) => (x.checked_in_at < y.checked_in_at ? 1 : -1))[0];
+            if (existing) updateRow('ic_people', existing, { checked_out_at: null, role: trim(person.role) || existing.role, qualifications: quals, notes: person.notes || existing.notes }, uid, changes, true);
+            else insertRow('ic_people', { incident_id: inc.id, user_id: uid, name: nm, role: trim(person.role) || '', qualifications: quals, notes: person.notes || '' }, uid, changes);
+          }
+        }
+        const n = member(inc.id, uid).crew_count;
+        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
       } else if (name === 'ic_replay') {
         if (!isMember(a.p_incident, uid)) out = [];
@@ -846,7 +932,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };

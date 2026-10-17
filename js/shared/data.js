@@ -1,14 +1,14 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map() };
 }
 
 function keyOf(table, row) {
@@ -68,8 +68,9 @@ export class Data {
     if (error) throw error;
     return data;
   }
-  async join(code, role, unitName, crew, crewCount, agency) {
-    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null });
+  // people is a list of { name, role, qualifications, notes }: the unit's roster, checked in with it
+  async join(code, role, unitName, crew, crewCount, agency, people) {
+    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null, p_people: Array.isArray(people) ? people : null });
     if (error) throw error;
     return data;
   }
@@ -94,7 +95,7 @@ export class Data {
   }
   async load(id) {
     const q = (t) => this.sb.from(t).select('*').eq('incident_id', id);
-    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities, overlays] = await Promise.all([
+    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities, overlays, people] = await Promise.all([
       this.sb.from('ic_incidents').select('*').eq('id', id).single(),
       q('ic_members'),
       q('ic_zones').order('code'),
@@ -109,15 +110,16 @@ export class Data {
       q('ic_objectives').order('number'),
       q('ic_structures'),
       q('ic_facilities'),
-      q('ic_overlays')
+      q('ic_overlays'),
+      q('ic_people').order('checked_in_at')
     ]);
-    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities, overlays]) if (r.error) throw r.error;
+    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities, overlays, people]) if (r.error) throw r.error;
     this.store.incident = inc.data;
     const put = (table, rows) => { const m = mapFor(this.store, table); for (const row of rows || []) m.set(keyOf(table, row), row); };
     put('ic_members', members.data); put('ic_zones', zones.data); put('ic_positions', positions.data);
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
-    put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data); put('ic_overlays', overlays.data);
+    put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data); put('ic_overlays', overlays.data); put('ic_people', people.data);
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
@@ -202,6 +204,30 @@ export class Data {
     if (z && this.structures(zoneId).length === 0) patch.cleared = Math.max(z.structures, z.cleared);
     return this.updateZone(zoneId, patch);
   }
+
+  // ---- people: a record per responder, riding with a unit. Checked-out people stay on the roster;
+  // archived ones are gone from every list but the history (all = true).
+  people(all) { return [...this.store.people.values()].filter((p) => all || !p.archived_at).sort((a, b) => (a.checked_in_at < b.checked_in_at ? -1 : a.checked_in_at > b.checked_in_at ? 1 : a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : a.name.localeCompare(b.name))); }
+  person(id) { return this.store.people.get(id) || null; }
+  unitPeople(userId, all) { return this.people(all).filter((p) => p.user_id === userId); }
+  // the people on scene: checked in, on a unit that has not checked out
+  peopleOn() { const out = new Set(this.units().filter((u) => u.status !== 'checked_out').map((u) => u.user_id)); return this.people().filter((p) => !p.checked_out_at && out.has(p.user_id)); }
+  async addPerson(id, { userId, name, role, agency, qualifications, buddyId, notes }) {
+    const row = { id, incident_id: this.store.incident.id, user_id: userId || this.user.id, name: (name || '').trim(), role: role || '', agency: agency || '', qualifications: qualifications || [], buddy_id: buddyId || null, notes: notes || '' };
+    const { data, error } = await this.sb.from('ic_people').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_people', data || Object.assign({ checked_in_at: new Date().toISOString(), checked_out_at: null, archived_at: null }, row));
+    return data || row;
+  }
+  async updatePerson(id, patch) {
+    const { data, error } = await this.sb.from('ic_people').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_people', data);
+    return data;
+  }
+  async checkOutPerson(id) { return this.updatePerson(id, { checked_out_at: new Date().toISOString() }); }
+  async checkInPerson(id) { return this.updatePerson(id, { checked_out_at: null }); }
+  async archivePerson(id) { return this.updatePerson(id, { archived_at: new Date().toISOString() }); }
 
   // ---- facilities (ICS 205 and 206, light) and the communications plan
   facilities(all) { return [...this.store.facilities.values()].filter((f) => all || !f.closed_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }

@@ -2,7 +2,7 @@
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
 import { hiddenOverlays, boundsText } from '../shared/layers.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -45,6 +45,17 @@ function statusDetail(data, m) {
   return 'Checked out' + (m.checked_out_at ? ' at ' + hhmm(m.checked_out_at) : '');
 }
 
+// The names on a unit: its people on record (checked out ones too, so a checked-out unit still
+// says who was on it), else the crew as typed at check-in.
+function unitNames(data, m) {
+  const rows = data.unitPeople(m.user_id);
+  return rows.length ? rows.map((p) => p.name).join(', ') : (m.crew || '');
+}
+// "Ramirez, Lt. · swift water, EMT": one person on a line of a report
+function personLine(p) { const q = qualsText(p.qualifications); return p.name + (p.role ? ', ' + p.role : '') + (q ? ' · ' + q : ''); }
+// the people of a unit as indented report lines, under the unit's own line
+function personLines(data, m) { return data.unitPeople(m.user_id).map((p) => '  ' + personLine(p) + (p.checked_out_at ? ' · checked out ' + hhmm(p.checked_out_at) : '')); }
+
 function unitRowHtml(data, m, now) {
   const pos = data.position(m.user_id);
   const sos = data.alerts().some((a) => a.user_id === m.user_id);
@@ -52,7 +63,7 @@ function unitRowHtml(data, m, now) {
   const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(m.crew || '')}${m.crew_count != null ? ' · ' + m.crew_count : ''}</span></span>
+      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span></span>
       <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}</span></span>
     </button>`;
 }
@@ -63,7 +74,7 @@ export function resourcesHtml(data) {
   if (!units.length) return '<p class="muted">No units have joined yet.</p>';
   const now = Date.now();
   const groups = ['assigned', 'available', 'out_of_service', 'checked_out'];
-  return `<div class="muted" style="font-size:12.5px">${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</div>` +
+  return `<div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</span><button class="btn sm" data-action="people" title="Everyone on scene by name, with qualifications, status and hours">People board</button></div>` +
     groups.map((s) => {
       const rows = units.filter((u) => u.status === s);
       if (!rows.length) return '';
@@ -300,6 +311,138 @@ export function zoneModalHtml(data, z) {
     </div>`;
 }
 
+// ---- people: a record per responder, riding with a unit
+
+function qualBadges(p) { return (p.qualifications || []).length ? `<span class="pp-quals">${QUALIFICATIONS.filter(([q]) => p.qualifications.includes(q)).map(([q, label]) => `<span class="badge q q-${q}">${esc(label)}</span>`).join('')}</span>` : '<span class="pp-quals muted">no qualifications listed</span>'; }
+
+// One person: who, what they are qualified for, where they stand, and what Operations can do about it.
+// Compact rows (the unit panel) leave out the unit and buddy pickers.
+export function personRowHtml(data, p, { compact, now } = {}) {
+  const ops = !!data.me() && data.me().role === 'ops';
+  const unit = data.member(p.user_id);
+  const unitOut = unit && unit.status === 'checked_out';
+  const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
+  const state = p.archived_at ? 'Removed ' + hhmm(p.archived_at)
+    : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
+    : (unitOut ? 'Unit checked out · ' : 'On scene ') + onSceneText(p, now) + ', since ' + hhmm(p.checked_in_at);
+  const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
+  const units = compact ? [] : data.members().filter((m) => m.status !== 'checked_out' || m.user_id === p.user_id).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  return `
+    <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}" data-person="${p.id}">
+      <span class="pp-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? `<span class="muted"> ${esc(p.role)}</span>` : ''}${p.agency && (!unit || p.agency !== unit.agency) ? `<span class="pp-agency muted">${esc(p.agency)}</span>` : ''}${p.notes ? `<span class="pp-agency muted">${esc(p.notes)}</span>` : ''}</span>
+      ${qualBadges(p)}
+      <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}</span>
+      <span class="pp-act">${ops && !p.archived_at ? `
+        ${compact ? '' : `<select class="sel" data-select="person-unit" data-id="${p.id}" aria-label="Unit" title="Move to another unit">${units.map((u) => `<option value="${u.user_id}"${u.user_id === p.user_id ? ' selected' : ''}>${esc(unitLabel(u))}</option>`).join('')}</select>
+        <select class="sel" data-select="person-buddy" data-id="${p.id}" aria-label="Buddy" title="Who this person pairs with"><option value="">No buddy</option>${mates.map((x) => `<option value="${x.id}"${p.buddy_id === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`}
+        ${p.checked_out_at ? `<button class="btn sm" data-action="person-in" data-id="${p.id}">Back in</button>` : `<button class="btn sm" data-action="person-out" data-id="${p.id}">Check out</button>`}
+        ${compact ? '' : `<button class="btn sm" data-action="person-remove" data-id="${p.id}" title="Takes the person off the roster; the record is kept">Remove</button>`}` : ops && p.archived_at ? `<button class="btn sm" data-action="person-restore" data-id="${p.id}">Put back</button>` : ''}</span>
+    </div>`;
+}
+
+// The unit panel's people: who is on it now, and the names as typed when nobody is on record.
+function unitPeopleHtml(data, m) {
+  const rows = data.unitPeople(m.user_id);
+  const on = rows.filter((p) => !p.checked_out_at);
+  return `
+    <div class="d-row"><span class="k" style="width:auto;flex:1">People on the unit · ${on.length}${rows.length > on.length ? ` <span style="font-weight:400">(${rows.length - on.length} checked out)</span>` : ''}</span><button class="btn sm" data-action="people">People board</button></div>
+    ${rows.length ? `<div class="pp-list compact">${rows.map((p) => personRowHtml(data, p, { compact: true })).join('')}</div>`
+      : `<div class="muted" style="font-size:12.5px">No names on record${m.crew ? `: crew "${esc(m.crew)}"${m.crew_count != null ? ', ' + m.crew_count + ' people' : ''} as typed at check-in` : ''}. The unit adds its people from its menu; you can add them on the People board.</div>`}`;
+}
+
+// The chips in the board's bar: every qualification with how many people on scene carry it.
+export function peopleChipsHtml(data, state) {
+  const on = data.peopleOn();
+  const cur = (state.people && state.people.quals) || new Set();
+  return QUALIFICATIONS.map(([q, label]) => `<button class="chip${cur.has(q) ? ' on' : ''}" data-action="people-qual" data-q="${q}" aria-pressed="${cur.has(q)}">${esc(label)} <span class="n">${on.filter((p) => (p.qualifications || []).includes(q)).length}</span></button>`).join('');
+}
+
+// The People board: everyone by unit, with the find box and the chips narrowing the list.
+export function peopleBoardHtml(data, state) {
+  const ps = state.people || {};
+  const all = data.people();
+  const on = data.peopleOn();
+  const ops = !!data.me() && data.me().role === 'ops';
+  const unitOf = (uid) => unitLabel(data.member(uid));
+  const shown = peopleMatch(all, { q: ps.q, quals: ps.quals, unitLabelOf: unitOf });
+  const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const want = [...(ps.quals || [])];
+  const narrowed = want.length || (ps.q || '').trim();
+  const count = narrowed ? `${shown.length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
+    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}`;
+  const now = Date.now();
+  const addForm = ops && ps.add ? `
+    <form class="inline-form pp-form" data-form="person-add">
+      <div class="row-2">
+        <label>Unit <select name="unit" class="sel">${members.filter((m) => m.status !== 'checked_out').map((m) => `<option value="${m.user_id}"${ps.addUnit === m.user_id ? ' selected' : ''}>${esc(unitLabel(m))}</option>`).join('')}</select></label>
+        <label>Name <input name="name" required maxlength="80" placeholder="Surname, or the full name" autocomplete="off"></label>
+      </div>
+      <div class="row-2">
+        <label>Rank or role <input name="role" maxlength="60" placeholder="Lt., Paramedic, Boat operator"></label>
+        <label>Agency <input name="agency" maxlength="120" placeholder="The unit's, unless different"></label>
+      </div>
+      <div class="chips">${QUALIFICATIONS.map(([q, label]) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="checkbox" name="q" value="${q}"> ${esc(label)}</label>`).join('')}</div>
+      <div class="row-btns"><button class="btn sm" type="button" data-action="people-add-toggle">Cancel</button><button class="btn pri sm" type="submit">Add to the unit</button></div>
+    </form>` : '';
+  const groups = members.map((m) => {
+    const rows = shown.filter((p) => p.user_id === m.user_id);
+    if (!rows.length) return '';
+    const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
+    const mine = data.unitPeople(m.user_id);
+    return `
+      <div class="pp-grp" data-unit="${m.user_id}">
+        <button class="pp-grp-h" data-action="select-unit" data-id="${m.user_id}" title="Open the unit">
+          <span class="ur-name">${esc(unitLabel(m))}</span>
+          <span class="badge st-${esc(m.status)}">${STATUS_LABEL[m.status] || m.status}</span>
+          <span class="muted">${[m.agency, zone ? 'in ' + zone.code : '', `${mine.filter((p) => !p.checked_out_at).length} on the unit${mine.length > mine.filter((p) => !p.checked_out_at).length ? ', ' + (mine.length - mine.filter((p) => !p.checked_out_at).length) + ' checked out' : ''}`].filter(Boolean).map(esc).join(' · ')}</span>
+        </button>
+        <div class="pp-list">${rows.map((p) => personRowHtml(data, p, { now })).join('')}</div>
+      </div>`;
+  }).join('');
+  const noNames = data.units().filter((u) => u.status !== 'checked_out' && !data.unitPeople(u.user_id).length);
+  return `
+    <div class="pp-top">
+      <span class="pp-count">${count}</span>
+      ${ops && !ps.add ? '<button class="btn sm" data-action="people-add-toggle">Add a person</button>' : ''}
+    </div>
+    ${addForm}
+    ${all.length ? (groups || '<p class="muted">Nobody matches. Clear the chips or the find box.</p>') : '<p class="muted">No people on record yet. A unit adds its people by name when it checks in on the phone, or you add them here.</p>'}
+    ${noNames.length ? `<p class="muted" style="font-size:12.5px">No names on record for ${noNames.map((u) => esc(unitLabel(u)) + (u.crew ? ' (crew "' + esc(u.crew) + '"' + (u.crew_count != null ? ', ' + u.crew_count : '') + ')' : '')).join(', ')}.</p>` : ''}`;
+}
+
+// The check-in list, ICS 211: everyone who checked in, by unit, with when and for how long.
+export function form211Sections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  const all = data.people();
+  const S = [];
+  S.push({ title: 'Check-in list, ICS 211', lines: [
+    inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    commandText(inc, p) || null,
+    'Prepared by Operations, ' + new Date().toLocaleString()
+  ].filter(Boolean) });
+  const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || '')).filter((m) => m.role === 'unit' || data.unitPeople(m.user_id).length);
+  for (const m of members) {
+    const rows = data.unitPeople(m.user_id);
+    const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
+    S.push({ title: `${unitLabel(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
+      lines: rows.length ? rows.map((px) => {
+        const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
+        return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${px.notes ? ' · ' + px.notes : ''}`;
+      }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`] });
+  }
+  const on = data.peopleOn();
+  const byAgency = new Map();
+  for (const px of all) byAgency.set(px.agency || 'No agency named', (byAgency.get(px.agency || 'No agency named') || 0) + 1);
+  const quals = QUALIFICATIONS.map(([q, label]) => [label, on.filter((px) => (px.qualifications || []).includes(q)).length]).filter((x) => x[1] > 0);
+  S.push({ title: 'Totals', lines: [
+    `${all.length} ${all.length === 1 ? 'person' : 'people'} checked in on ${data.units().length} unit${data.units().length === 1 ? '' : 's'} · ${on.length} on scene · ${all.length - on.length} checked out`,
+    all.length ? 'By agency: ' + [...byAgency.entries()].sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a} ${n}`).join(' · ') : null,
+    quals.length ? 'On scene by qualification: ' + quals.map(([l, n]) => `${l} ${n}`).join(' · ') : null
+  ].filter(Boolean) });
+  return S;
+}
+
 // ---- facilities and the communications plan
 
 export function facilitiesHtml(data) {
@@ -402,7 +545,7 @@ function unitHtml(data, m, state) {
     ${oos ? `<form class="inline-form" data-form="oos" data-id="${m.user_id}"><div class="chips">${OOS_REASONS.map((r, i) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="radio" name="reason" value="${esc(r)}"${i === 0 ? ' checked' : ''}> ${esc(r)}</label>`).join('')}</div><div class="row-btns"><button class="btn sm" type="button" data-action="oos-cancel">Cancel</button><button class="btn pri sm" type="submit">Out of service</button></div></form>` : ''}
     <div class="kv">
       <span class="k">Agency</span><span>${esc(m.agency) || 'not set'}</span>
-      <span class="k">People</span><span>${m.crew_count != null ? m.crew_count : 'not set'}</span>
+      <span class="k">Head count</span><span>${m.crew_count != null ? m.crew_count : 'not set'}</span>
       <span class="k">Assigned</span><span>${zone ? esc(zone.code + ' · ' + zone.name) : 'nothing yet'}</span>
       <span class="k">Standing in</span><span>${here ? esc(here.code) : 'no zone'}</span>
       <span class="k">Position</span><span class="mono">${pos ? esc(latLngText(pos.lat, pos.lng)) : 'none yet'}</span>
@@ -416,6 +559,7 @@ function unitHtml(data, m, state) {
       ${alert && !alert.acknowledged_at ? `<button class="btn sm danger" data-action="ack-alert" data-id="${alert.id}">Acknowledge</button>` : ''}
     </div>
     <div class="muted" style="font-size:12.5px">To send this unit somewhere, open a zone and press its name under Assigned to.</div>
+    ${unitPeopleHtml(data, m)}
     <div class="k">Message ${esc(unitLabel(m))}</div>
     ${composerHtml(data, 'user:' + m.user_id)}
     ${messagesHtml(data, (x) => x.from_user === m.user_id || (x.to_users || []).includes(m.user_id), 6)}`;
@@ -510,9 +654,9 @@ export function briefingSections(data) {
     const o = z.objective_id ? data.objective(z.objective_id) : null;
     return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '')}${o ? ' · objective ' + o.number : ''}`;
   })) });
-  S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(agenciesOn(data.activeUnits()).map(agencyLine), units.map((m) => {
+  S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(agenciesOn(data.activeUnits()).map(agencyLine), units.flatMap((m) => {
     const zone = zones.find((z) => z.assigned_to === m.user_id && z.status === 'active');
-    return `${unitLabel(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`;
+    return [`${unitLabel(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`].concat(personLines(data, m));
   })) });
   S.push({ title: 'Hazards still open', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · ${h.zone_id && data.zone(h.zone_id) ? data.zone(h.zone_id).code : 'outside the zones'} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None'] });
   const facilities = data.facilities();
@@ -541,7 +685,7 @@ export function form204Sections(data, z) {
     'Division supervisor: ' + (z.supervisor || 'not named'),
     'Radio channel: ' + (z.channel || 'not set')
   ], figure: divisionMapHtml(data, z) });
-  S.push({ title: 'Resources assigned', lines: unit ? [`${unitLabel(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`] : ['None yet'] });
+  S.push({ title: 'Resources assigned', lines: unit ? [`${unitLabel(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`].concat(personLines(data, unit)) : ['None yet'] });
   S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
   S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []) });
   S.push({ title: 'Known hazards', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None reported'] });
@@ -605,17 +749,18 @@ export function iapSections(data) {
     'Incident Commander: ' + ((p && p.ic_name) || 'not set'),
     'Operations Section Chief: ' + ((p && p.ops_chief) || 'not set'),
     'Safety Officer: ' + ((p && p.safety_officer) || 'not set')
-  ].concat(data.zones().filter((z) => z.supervisor).map((z) => `Division ${z.code} supervisor: ${z.supervisor}`), data.units().filter((u) => u.status !== 'checked_out').map((u) => `${unitLabel(u)}${u.crew ? ' (' + u.crew + ')' : ''}${u.agency ? ' · ' + u.agency : ''}`)) });
+  ].concat(data.zones().filter((z) => z.supervisor).map((z) => `Division ${z.code} supervisor: ${z.supervisor}`), data.units().filter((u) => u.status !== 'checked_out').flatMap((u) => [`${unitLabel(u)}${u.crew ? ' (' + u.crew + ')' : ''}${u.crew_count != null ? ' · ' + u.crew_count + ' people' : ''}${u.agency ? ' · ' + u.agency : ''}`].concat(personLines(data, u)))) });
   for (const z of data.zones()) {
     const unit = z.assigned_to ? data.member(z.assigned_to) : null;
     const o = z.objective_id ? data.objective(z.objective_id) : null;
     S.push({ title: `Assignment, ICS 204 · Division ${z.code}${z.name ? ' · ' + z.name : ''}`, lines: [
       `Priority ${z.priority}${o ? ' · objective ' + o.number : ''} · supervisor ${z.supervisor || 'not named'} · channel ${z.channel || 'not set'}`,
-      'Resources: ' + (unit ? unitLabel(unit) + (unit.crew ? ' (' + unit.crew + ')' : '') + (unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : '') : 'none yet'),
+      'Resources: ' + (unit ? unitLabel(unit) + (unit.crew ? ' (' + unit.crew + ')' : '') + (unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : '') : 'none yet')
+    ].concat(unit ? personLines(data, unit) : [], [
       'Work assignment: ' + (z.work_assignment || 'not written yet'),
       'Special instructions: ' + (z.instructions || 'none'),
       'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : '')
-    ], figure: divisionMapHtml(data, z) });
+    ]), figure: divisionMapHtml(data, z) });
   }
   const ch = data.channels();
   S.push({ title: 'Communications, ICS 205', lines: ch.length ? ch.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
@@ -628,7 +773,8 @@ export function iapSections(data) {
 
 // A section is its title and lines; one may also carry a figure (the division's map, already
 // HTML), which the page draws after the lines and the text leaves out.
-function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p>${esc(l)}</p>`).join('')}${s.figure || ''}</section>`).join(''); }
+// A line that starts with two spaces is drawn indented under the line before (a person under a unit).
+function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p${l.startsWith('  ') ? ' class="sub"' : ''}>${esc(l.trim())}</p>`).join('')}${s.figure || ''}</section>`).join(''); }
 function sectionsText(S) { return S.map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n'); }
 
 export function briefingHtml(data) { return sectionsHtml(briefingSections(data)); }
@@ -639,6 +785,8 @@ export function sitrepHtml(data) { return sectionsHtml(sitrepSections(data)); }
 export function sitrepText(data) { return sectionsText(sitrepSections(data)); }
 export function iapHtml(data) { return sectionsHtml(iapSections(data)); }
 export function iapText(data) { return sectionsText(iapSections(data)); }
+export function form211Html(data) { return sectionsHtml(form211Sections(data)); }
+export function form211Text(data) { return sectionsText(form211Sections(data)); }
 
 // The words of the situation report, edited above the report itself.
 export function sitrepFormHtml(data) {
@@ -674,6 +822,7 @@ function logLink(e) {
     case 'ic_structures': return `<button class="llink" data-action="select-structure" data-id="${id}">Open structure</button>`;
     case 'ic_facilities': return `<button class="llink" data-action="select-facility" data-id="${id}">Open facility</button>`;
     case 'ic_objectives': return `<button class="llink" data-action="period">Open period</button>`;
+    case 'ic_people': return `<button class="llink" data-action="people">Open people</button>`;
     default: return '';
   }
 }

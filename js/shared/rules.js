@@ -234,6 +234,45 @@ export function agencyLine(row) {
   return (row.agency || 'No agency named') + ': ' + row.units + (row.units === 1 ? ' unit' : ' units') + (row.people ? ', ' + row.people + ' people' : '');
 }
 
+// ---- people: a record per responder, riding with a unit. The qualifications a person can carry,
+// in the order they are listed everywhere (ic_qual_text in SQL says the same words for the log).
+export const QUALIFICATIONS = [['swift_water', 'Swift water'], ['boat', 'Boat'], ['rope', 'Rope'], ['emt', 'EMT'], ['paramedic', 'Paramedic'], ['k9', 'K9'], ['hazmat', 'Hazmat'], ['drone', 'Drone']];
+const QUAL_TEXT = { swift_water: 'swift water', boat: 'boat', rope: 'rope', emt: 'EMT', paramedic: 'paramedic', k9: 'K9', hazmat: 'hazmat', drone: 'drone' };
+export function qualLabel(q) { const r = QUALIFICATIONS.find((x) => x[0] === q); return r ? r[1] : q; }
+// "swift water, EMT": the same words and order as the database's log line
+export function qualsText(quals) {
+  const order = QUALIFICATIONS.map((q) => q[0]);
+  return (quals || []).slice().sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((q) => QUAL_TEXT[q] || q).join(', ');
+}
+// "Ramirez (swift water, EMT)"
+export function personLabel(p) { const q = qualsText(p.qualifications); return p.name + (q ? ' (' + q + ')' : ''); }
+// A person is on scene while checked in and not archived; a unit that checks out takes its people with it.
+export function personOn(p) { return !p.archived_at && !p.checked_out_at; }
+// "3 h 20 min" on scene, from check-in to check-out or now
+export function onSceneText(p, now = Date.now()) {
+  const from = new Date(p.checked_in_at).getTime(), to = p.checked_out_at ? new Date(p.checked_out_at).getTime() : now;
+  const m = Math.max(0, Math.round((to - from) / 60000));
+  if (m < 60) return m + ' min';
+  return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+}
+// The names on a unit: its people checked in (the database keeps crew in step), else the crew as typed.
+export function crewNames(unit, people) {
+  const on = (people || []).filter((p) => p.user_id === unit.user_id && personOn(p));
+  if (on.length) return on.map((p) => p.name).join(', ');
+  return (people || []).some((p) => p.user_id === unit.user_id && !p.archived_at) ? '' : (unit.crew || '');
+}
+// People matching a search and a set of qualifications (every one of them), for the board's find box.
+export function peopleMatch(people, { q, quals, unitLabelOf } = {}) {
+  const needle = (q || '').trim().toLowerCase();
+  const want = [...(quals || [])];
+  return people.filter((p) => {
+    if (want.some((w) => !(p.qualifications || []).includes(w))) return false;
+    if (!needle) return true;
+    const hay = [p.name, p.role, p.agency, qualsText(p.qualifications), p.notes, unitLabelOf ? unitLabelOf(p.user_id) : ''].join(' ').toLowerCase();
+    return hay.includes(needle);
+  });
+}
+
 // ---- replay: where each unit was at a moment, from the samples ic_replay returns
 // Samples come grouped by unit, each group in time order. The sample at a moment is the last one
 // at or before it; a unit with none yet is not on the map yet.

@@ -57,13 +57,14 @@
       <h2>Check in to an incident</h2>
       <form id="join-form" class="form">
         <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
-        <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
-        <label>Crew <input name="crew" placeholder="Ramirez, Okafor"></label>
         <div class="row-2">
-          <label>People on the unit <input name="count" type="number" min="1" max="99" inputmode="numeric" placeholder="2"></label>
+          <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
           <label>Agency <input name="agency" placeholder="Cedar Fork Fire Department"></label>
         </div>
-        <div class="row-btns"><button type="submit" class="btn pri">Check in</button></div>
+        <div class="k">People on the unit</div>
+        <p class="muted small" style="margin:0">Each person by name, and what they are qualified for. Operations sees them on the People board and the check-in list, and the head count follows.</p>
+        <div id="join-people" class="pp-list"></div>
+        <div class="row-btns" style="justify-content:space-between"><button type="button" class="btn sm" data-action="jp-add">Add a person</button><button type="submit" class="btn pri">Check in</button></div>
         <p class="msg" data-msg></p>
       </form>
     </section>
@@ -222,6 +223,13 @@
     <div class="kv" id="menu-facts"></div>
     <div class="k">Your status</div>
     <div id="menu-status"></div>
+    <div class="k">People on the unit</div>
+    <div id="menu-people"></div>
+    <div class="pp-add">
+      <div class="row-2"><input id="mp-name" class="input" placeholder="Name" autocapitalize="words" autocomplete="off" maxlength="80"><input id="mp-role" class="input" placeholder="Rank or role" autocomplete="off" maxlength="60"></div>
+      <div class="chips" id="mp-quals"></div>
+      <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="person-add">Add to the unit</button></div>
+    </div>
     <div class="k">Sending</div>
     <div id="menu-outbox" class="muted">Nothing waiting</div>
     <div class="k">Phone</div>

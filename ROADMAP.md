@@ -59,6 +59,13 @@ Ticked when it is on `main`.
 - [x] A public-safe flag on photos for the Public Information Officer (`ic_photos.public_ok`, ops only, logged); nothing is public by default. The home panel lists the cleared set; the situation report counts it.
 - [x] `ic_tracks`: every position a unit reports, written by a trigger; `ic_replay` thins it to one sample per unit per step, and the base's Replay bar plays the period, the last hour or the whole incident back on a slider, the photos appearing as they were taken.
 
+## 9. People
+
+- [x] `ic_people`: a record per responder riding with a unit, with a rank or role, an agency, qualifications from a fixed list, a buddy, check-in and check-out times and notes; archived, never deleted. Once a unit has people on record its crew and head count are theirs; its own check-out takes them along and its return brings them back. Every check-in, check-out, move and removal is a status line in the log.
+- [x] Field: the check-in form takes the people by name with qualification chips; the menu's crew stepper became the people list, with check-out and back-in per person and a row to add one.
+- [x] Base: the People board (everyone by unit, with status, hours on scene, a find box and chips for qualifications; Operations adds, moves, pairs, checks out and removes), names on the resources board and the unit panel, in the briefing's Resources, the IAP's 203 and every 204, and the check-in list printed as the ICS 211.
+- [ ] Tag hardware: a wristband or card per person read at check-in and at the division, so the roster and the 211 fill themselves. The records above are what the tags would write to.
+
 ## Left out on purpose
 
 Finance and Administration (time, procurement, claims, cost), Logistics ordering and supply, air operations, and the full organization chart. They are run from an emergency operations center with other tools; modelling them here would bury the field.

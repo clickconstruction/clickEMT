@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS } from '../shared/rules.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
@@ -16,7 +16,8 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set() };
+function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
 const REPLIES = ['Copy', 'Will do', 'Cannot'];
@@ -56,7 +57,9 @@ const outbox = new Outbox({
   ack: (p) => data.ackMessage(p.messageId, p.reply, p.count),
   status: (p) => data.setStatus(p.userId, p.status, p.note),
   structure: (p) => (p.update ? data.updateStructure(p.id, p.fields) : data.addStructure(p.id, p.fields)),
-  pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts)
+  pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts),
+  person: (p) => data.addPerson(p.id, p),
+  personPatch: (p) => data.updatePerson(p.id, p.patch)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -119,6 +122,7 @@ async function showJoin() {
   show('join');
   $('#join-user').textContent = data.user ? data.user.email : '';
   try { const f = $('#join-form'); if (!f.agency.value) f.agency.value = localStorage.getItem(AGENCY_KEY) || ''; } catch (e) { /* storage blocked */ }
+  drawJoinPeople();
   const list = $('#join-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
   try {
@@ -133,14 +137,36 @@ async function showJoin() {
 
 $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
 
+// The people on the unit at check-in: a row per person, name and rank or role typed, what they are
+// qualified for tapped. The rows live in state.joinPeople; the inputs are read back before a redraw.
+function qualChips(quals, action, extra) {
+  return QUALIFICATIONS.map(([q, label]) => `<button type="button" class="chip sm${quals.has(q) ? ' on' : ''}" data-action="${action}" data-q="${q}"${extra || ''} aria-pressed="${quals.has(q)}">${esc(label)}</button>`).join('');
+}
+function drawJoinPeople() {
+  $('#join-people').innerHTML = state.joinPeople.map((p, i) => `
+    <div class="pp-edit">
+      <div class="pp-edit-top"><input class="input" placeholder="Name" data-jp="name" data-i="${i}" value="${esc(p.name)}" autocapitalize="words" autocomplete="off" maxlength="80"><input class="input" placeholder="Rank or role" data-jp="role" data-i="${i}" value="${esc(p.role)}" autocomplete="off" maxlength="60">${state.joinPeople.length > 1 ? `<button type="button" class="btn pp-x" data-action="jp-remove" data-i="${i}" aria-label="Remove this person" title="Remove this person">×</button>` : ''}</div>
+      <div class="chips">${qualChips(p.quals, 'jp-qual', ` data-i="${i}"`)}</div>
+    </div>`).join('');
+}
+function syncJoinPeople() {
+  for (const el of document.querySelectorAll('#join-people [data-jp]')) { const p = state.joinPeople[Number(el.dataset.i)]; if (p) p[el.dataset.jp] = el.value; }
+}
+function joinPeopleList() {
+  syncJoinPeople();
+  return state.joinPeople.filter((p) => p.name.trim()).map((p) => ({ name: p.name.trim(), role: p.role.trim(), qualifications: [...p.quals] }));
+}
+
 $('#join-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target, msg = f.querySelector('[data-msg]');
   msg.textContent = 'Checking in…';
   try {
-    const inc = await data.join(f.code.value, 'unit', f.unit.value, f.crew.value, f.count.value, f.agency.value);
+    const inc = await data.join(f.code.value, 'unit', f.unit.value, null, null, f.agency.value, joinPeopleList());
     try { localStorage.setItem(AGENCY_KEY, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
     f.reset(); msg.textContent = '';
+    state.joinPeople = [blankPerson(), blankPerson()];
+    drawJoinPeople();
     await openIncident(inc.id);
   } catch (err) { msg.textContent = err.message || String(err); }
 });
@@ -330,9 +356,54 @@ function drawStatus() {
       ${st === 'out_of_service' && onZone ? btn('assigned', 'Back on my zone') : ''}
       ${st !== 'out_of_service' ? `<button class="btn" data-action="oos-pick">Out of service</button>` : ''}
     </div>
-    ${state.oosPick != null ? `<div class="chips" style="margin-top:8px">${OOS_REASONS.map((r, i) => `<button class="chip${state.oosPick === i ? ' on' : ''}" data-action="oos" data-i="${i}">${esc(r)}</button>`).join('')}</div><div class="status-row" style="margin-top:8px"><button class="btn pri" data-action="oos-go">Go out of service</button><button class="btn" data-action="oos-cancel">Cancel</button></div>` : ''}
-    <div class="par-count"><span>People on the unit</span><button class="btn" data-action="crew-less" aria-label="Fewer">−</button><span class="num">${me.crew_count != null ? me.crew_count : '?'}</span><button class="btn" data-action="crew-more" aria-label="More">+</button></div>`;
+    ${state.oosPick != null ? `<div class="chips" style="margin-top:8px">${OOS_REASONS.map((r, i) => `<button class="chip${state.oosPick === i ? ' on' : ''}" data-action="oos" data-i="${i}">${esc(r)}</button>`).join('')}</div><div class="status-row" style="margin-top:8px"><button class="btn pri" data-action="oos-go">Go out of service</button><button class="btn" data-action="oos-cancel">Cancel</button></div>` : ''}`;
   setHtml($('#menu-status'), html);
+  drawPeople();
+}
+
+// ---- the people on the unit: who is here, since when, and check-out one at a time
+function drawPeople() {
+  const me = data.me();
+  if (!me) return;
+  const rows = data.unitPeople(me.user_id);
+  const on = rows.filter((p) => !p.checked_out_at);
+  const html = (rows.length ? `<div class="muted small">${on.length} on the unit${rows.length > on.length ? ', ' + (rows.length - on.length) + ' checked out' : ''}. Operations counts them from here.</div>` : '<div class="muted small">No names on record yet. Add each person below, with what they are qualified for.</div>')
+    + rows.map((p) => {
+      const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
+      const sub = [qualsText(p.qualifications), p.checked_out_at ? 'checked out ' + hhmm(p.checked_out_at) : 'since ' + hhmm(p.checked_in_at) + ' · ' + onSceneText(p) + ' on scene', buddy ? 'with ' + buddy.name : ''].filter(Boolean).join(' · ');
+      return `<div class="pp-row${p.checked_out_at ? ' out' : ''}" data-person="${p.id}">
+        <span class="pp-main"><span class="pp-name">${esc(p.name)}${p.role ? ` <span class="role">${esc(p.role)}</span>` : ''}</span><span class="pp-sub">${esc(sub)}</span></span>
+        ${p.checked_out_at ? `<button class="btn sm" data-action="person-in" data-id="${p.id}">Back in</button>` : `<button class="btn sm" data-action="person-out" data-id="${p.id}">Check out</button>`}
+      </div>`;
+    }).join('');
+  setHtml($('#menu-people'), html);
+  setHtml($('#mp-quals'), qualChips(state.mpQuals, 'mp-qual'));
+}
+async function addPerson() {
+  const me = data.me();
+  const name = $('#mp-name').value.trim(), role = $('#mp-role').value.trim();
+  if (!me) return;
+  if (!name) { toast('Type the person\'s name first', true); $('#mp-name').focus(); return; }
+  const id = uuid();
+  const row = { id, incident_id: data.incident.id, user_id: me.user_id, name, role, agency: me.agency || '', qualifications: [...state.mpQuals], buddy_id: null, notes: '', checked_in_at: new Date().toISOString(), checked_out_at: null, archived_at: null };
+  data.local('ic_people', row);
+  $('#mp-name').value = ''; $('#mp-role').value = ''; state.mpQuals = new Set();
+  await outbox.add('person', { id, userId: me.user_id, name, role, agency: me.agency || '', qualifications: row.qualifications });
+  state.lastSentAt = Date.now();
+  toast(name + (navigator.onLine ? ' checked in with ' + unitLabel(me) : ' kept, it sends when there is signal'));
+  drawPeople();
+  queueDraw();
+}
+async function setPersonOut(id, out) {
+  const p = data.person(id);
+  if (!p) return;
+  const patch = { checked_out_at: out ? new Date().toISOString() : null };
+  data.local('ic_people', Object.assign({}, p, patch));
+  await outbox.add('personPatch', { id, patch });
+  state.lastSentAt = Date.now();
+  toast(p.name + (out ? ' checked out' : ' back on the unit'));
+  drawPeople();
+  queueDraw();
 }
 
 function myZone() {
@@ -359,7 +430,7 @@ function drawAll() {
   if (!data.incident || $('#app').hidden) return;
   const me = data.me();
   $('#me-name').textContent = unitLabel(me);
-  $('#me-crew').textContent = [me && me.crew, me && STATUS_LABEL[me.status], data.incident.name].filter(Boolean).join(' · ');
+  $('#me-crew').textContent = [me && crewNames(me, data.people()), me && STATUS_LABEL[me.status], data.incident.name].filter(Boolean).join(' · ');
 
   const gps = $('#gps-pill');
   if (sensors.error) { gps.className = 'live bad'; $('#gps-text').textContent = 'No GPS'; }
@@ -527,7 +598,7 @@ function drawMenu() {
     ${data.channels().length ? `<span class="k">Channels</span><span>${data.channels().map((c) => esc(c.use) + ' <strong>' + esc(c.channel) + '</strong>').join(' · ')}</span>` : ''}
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
     <span class="k">Code</span><span class="mono">${esc(inc.code)}</span>
-    <span class="k">You</span><span>${esc(unitLabel(me))}${me && me.crew ? ' · ' + esc(me.crew) : ''}</span>
+    <span class="k">You</span><span>${esc(unitLabel(me))}${me && crewNames(me, data.people()) ? ' · ' + esc(crewNames(me, data.people())) : ''}</span>
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
   $('#menu-outbox').textContent = state.outbox ? `${state.outbox} report${state.outbox === 1 ? '' : 's'} waiting for signal${state.outboxError ? ': ' + (state.outboxError.message || state.outboxError) : ''}` : 'Nothing waiting, everything is sent';
@@ -700,7 +771,7 @@ async function sendHazard() {
 function openHelp() {
   const p = sensors.pos, me = data.me(), z = myZone();
   $('#help-facts').innerHTML = `
-    <span class="k">Unit</span><span>${esc(unitLabel(me))}${me && me.crew ? ' · ' + esc(me.crew) : ''}</span>
+    <span class="k">Unit</span><span>${esc(unitLabel(me))}${me && crewNames(me, data.people()) ? ' · ' + esc(crewNames(me, data.people())) : ''}</span>
     <span class="k">Zone</span><span>${z ? esc(z.code + ' · ' + z.name) : 'none'}</span>
     <span class="k">Position</span><span class="mono">${p ? esc(latLngText(p.lat, p.lng)) : 'no GPS fix yet'}</span>
     <span class="k">Time</span><span>${hhmm(new Date())}</span>`;
@@ -775,14 +846,13 @@ document.addEventListener('click', async (e) => {
       case 'oos': state.oosPick = Number(btn.dataset.i); drawStatus(); break;
       case 'oos-cancel': state.oosPick = null; drawStatus(); break;
       case 'oos-go': await setMyStatus('out_of_service', OOS_REASONS[state.oosPick || 0]); break;
-      case 'crew-less': case 'crew-more': {
-        const me = data.me();
-        const n = Math.max(0, Math.min(99, (me.crew_count || 0) + (act === 'crew-more' ? 1 : -1)));
-        data.local('ic_members', Object.assign({}, me, { crew_count: n }));
-        drawStatus();
-        try { await data.updateMe({ crew_count: n }); } catch (err) { toast(err.message || String(err), true); }
-        break;
-      }
+      case 'jp-add': syncJoinPeople(); state.joinPeople.push(blankPerson()); drawJoinPeople(); { const last = document.querySelector('#join-people .pp-edit:last-child [data-jp="name"]'); if (last) last.focus(); } break;
+      case 'jp-remove': syncJoinPeople(); state.joinPeople.splice(Number(btn.dataset.i), 1); if (!state.joinPeople.length) state.joinPeople.push(blankPerson()); drawJoinPeople(); break;
+      case 'jp-qual': { syncJoinPeople(); const p = state.joinPeople[Number(btn.dataset.i)]; if (p) { if (p.quals.has(btn.dataset.q)) p.quals.delete(btn.dataset.q); else p.quals.add(btn.dataset.q); } drawJoinPeople(); break; }
+      case 'mp-qual': if (state.mpQuals.has(btn.dataset.q)) state.mpQuals.delete(btn.dataset.q); else state.mpQuals.add(btn.dataset.q); setHtml($('#mp-quals'), qualChips(state.mpQuals, 'mp-qual')); break;
+      case 'person-add': await addPerson(); break;
+      case 'person-out': await setPersonOut(btn.dataset.id, true); break;
+      case 'person-in': await setPersonOut(btn.dataset.id, false); break;
       case 'check-out': await checkOut(); break;
       case 'compose': state.composeI = 0; screen('compose'); drawCompose(); break;
       case 'cmp': $('#compose-text').value = btn.dataset.text || ''; drawCompose(); break;

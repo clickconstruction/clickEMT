@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -303,7 +303,8 @@ async function accountability(check) {
   await until(() => base.member(u.unit3).status === 'assigned');
   check('back on the zone clears the reason and logs it', base.member(u.unit3).status_note === '' && !!eventText(base, 'Unit 3 is assigned'));
   await field.updateMe({ crew_count: 3 });
-  check('a unit can change its head count, and the board shows it', await until(() => base.member(u.unit3).crew_count === 3 && has('#panel', '7 people in the field')), text('#panel'));
+  await wait(120);
+  check('a hand change to the head count is overruled while the unit has people on record', base.member(u.unit3).crew_count === 2 && has('#panel', '6 people in the field'), text('#panel'));
 
   $(`#panel [data-action="select-unit"][data-id="${u.unit2}"]`).click();
   await until(() => has('#panel .title', 'unit 2'));
@@ -359,6 +360,136 @@ async function accountability(check) {
   const inc = await field.join('CEDAR7', 'unit', 'Unit 3', 'Hale, Dominguez', 2, 'Cedar Fork Fire Department');
   await until(() => base.member(u.unit3).status === 'available');
   check('checking in again makes it available with its head count, and logs it', inc.id === INC() && base.member(u.unit3).checked_out_at === null && base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Unit 3 checked in with 2 people'));
+}
+
+// People: a record per responder, riding with a unit. The board with its find box and chips, the
+// names in every report, the field adding and checking out a person, the unit's count following its
+// people, Operations moving, adding and removing one, the unit's check-out taking its people along,
+// and the rules a unit cannot get round.
+async function people(check) {
+  const u = USERS(), PP = M().ids.people;
+  const rows = () => $$('#people-page .pp-row');
+  const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
+  check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1 ramirez, okafor · 2', 'unit 2 nguyen, patel · 2', 'unit 3 hale, dominguez · 2', '6 people in the field'), text('#panel'));
+  check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .llink[data-action="people"]').length === 6, logTexts().find((t) => /Ramirez/.test(t)));
+  $('.top [data-action="people"]').click();
+  await until(() => !$('#people').hidden && rows().length === 6);
+  check('the People board opens with everyone by unit: name, rank, qualifications, status and hours on scene', $$('#people-page .pp-grp').length === 3 && has('#people-page', '6 on scene on 3 units', 'unit 1', 'ramirez', 'lt.', 'swift water', 'emt', 'okafor', 'paramedic', 'boat', 'nguyen', 'capt.', 'boat operator', 'on scene 2 h', 'since'), text('#people-page').slice(0, 400));
+  check('the chips count who on scene carries each qualification', has('#people-quals', 'swift water 3', 'boat 2', 'rope 1', 'emt 3', 'paramedic 2', 'k9 0'), text('#people-quals'));
+  check('buddies are paired', $(`select[data-select="person-buddy"][data-id="${PP[0]}"]`).value === PP[1] && $(`select[data-select="person-buddy"][data-id="${PP[5]}"]`).value === PP[4]);
+  const q = $('#people-q');
+  q.value = 'nguyen'; q.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => rows().length === 1);
+  check('the find box narrows the board to a name', rows().length === 1 && has('#people-page', '1 of 6 people matching "nguyen"', 'unit 2'), text('#people-page .pp-count'));
+  q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => rows().length === 6);
+  $('#people-quals [data-action="people-qual"][data-q="swift_water"]').click();
+  await until(() => rows().length === 3);
+  $('#people-quals [data-action="people-qual"][data-q="emt"]').click();
+  await until(() => rows().length === 2);
+  check('two chips find the people who carry both', rows().length === 2 && !!row(PP[0]) && !!row(PP[4]) && has('#people-page', '2 of 6 people with swift water and emt'), text('#people-page .pp-count'));
+  $('#people-quals [data-action="people-qual"][data-q="swift_water"]').click();
+  $('#people-quals [data-action="people-qual"][data-q="emt"]').click();
+  await until(() => rows().length === 6);
+
+  const pid = uuid();
+  await field.addPerson(pid, { name: 'Smith', role: 'Probie', qualifications: ['rope'] });
+  await until(() => base.person(pid) && base.member(u.unit3).crew_count === 3);
+  check('the field adds a person: the base has it with the unit\'s agency, the count follows, and the log says who came in with what', base.person(pid).agency === 'Cedar Fork Fire Department' && base.member(u.unit3).crew === 'Hale, Dominguez, Smith' && base.member(u.unit3).crew_count === 3 && base.peopleInField() === 7 && !!eventText(base, 'Smith (rope) checked in with Unit 3') && await until(() => rows().length === 7 && has('#people-page', '7 on scene')), text('#people-page .pp-count'));
+  await field.checkOutPerson(pid);
+  await until(() => base.person(pid).checked_out_at && base.member(u.unit3).crew_count === 2);
+  check('the field checks a person out: the count goes back, the row is dimmed, and the log says so', base.member(u.unit3).crew === 'Hale, Dominguez' && !!eventText(base, 'Smith checked out from Unit 3') && await until(() => row(pid) && row(pid).classList.contains('out') && has('#people-page', '6 on scene on 3 units · 1 checked out')), text('#people-page .pp-count'));
+  await field.updateMe({ crew_count: 9 });
+  await wait(120);
+  check('a hand change to the head count is overruled while the unit has people on record', base.member(u.unit3).crew_count === 2, base.member(u.unit3).crew_count);
+
+  $(`#people-page .pp-row[data-person="${PP[4]}"] [data-action="person-out"]`).click();
+  await until(() => base.person(PP[4]).checked_out_at);
+  check('Operations checks Hale out from the board, and the unit is recounted', base.member(u.unit3).crew_count === 1 && base.member(u.unit3).crew === 'Dominguez' && !!eventText(base, 'Hale checked out from Unit 3') && await until(() => field.person(PP[4]) && field.person(PP[4]).checked_out_at));
+  await until(() => $(`#people-page .pp-row[data-person="${PP[4]}"] [data-action="person-in"]`));
+  $(`#people-page .pp-row[data-person="${PP[4]}"] [data-action="person-in"]`).click();
+  await until(() => !base.person(PP[4]).checked_out_at);
+  check('and back in, with the qualifications on the line', base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Hale (swift water, EMT) checked back in with Unit 3'), logTexts()[0]);
+  const bsel = $(`select[data-select="person-buddy"][data-id="${PP[4]}"]`);
+  bsel.value = ''; bsel.dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => base.person(PP[4]).buddy_id === null);
+  check('the buddy can be cleared from the board', base.person(PP[4]).buddy_id === null);
+  const usel = () => $(`select[data-select="person-unit"][data-id="${pid}"]`);
+  await until(() => usel());
+  usel().value = u.unit1; usel().dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => base.person(pid).user_id === u.unit1);
+  check('Operations moves Smith to Unit 1: the log says from where to where, and both units are recounted', !!eventText(base, 'Smith moved from Unit 3 to Unit 1') && base.member(u.unit1).crew_count === 2 && base.unitPeople(u.unit1).length === 3 && await until(() => row(pid) && row(pid).closest('.pp-grp').dataset.unit === u.unit1), logTexts()[0]);
+
+  $('#people-page [data-action="people-add-toggle"]').click();
+  await until(() => $('#people-page form[data-form="person-add"]'));
+  const af = $('#people-page form[data-form="person-add"]');
+  af.unit.value = u.unit2; af.name.value = 'Lee'; af.querySelector('input[value="k9"]').checked = true;
+  af.requestSubmit();
+  await until(() => base.people().some((p) => p.name === 'Lee'));
+  const lee = base.people().find((p) => p.name === 'Lee');
+  check('Operations adds a person from the board, with the unit\'s agency and the qualification ticked', lee.user_id === u.unit2 && lee.agency === 'Travis County Rescue' && lee.qualifications.join() === 'k9' && base.member(u.unit2).crew === 'Nguyen, Patel, Lee' && !!eventText(base, 'Lee (K9) checked in with Unit 2') && await until(() => !$('#people-page form[data-form="person-add"]') && row(lee.id)), logTexts()[0]);
+  const confirmWas = window.confirm; window.confirm = () => true;
+  try {
+    $(`#people-page .pp-row[data-person="${lee.id}"] [data-action="person-remove"]`).click();
+    await until(() => base.person(lee.id).archived_at);
+  } finally { window.confirm = confirmWas; }
+  check('Remove archives the person, never deletes: off the roster, in the history, logged, recounted', !!base.person(lee.id).archived_at && base.people().length === 7 && base.people(true).length === 8 && M().tables.ic_people.length === 8 && !!eventText(base, 'Lee removed from Unit 2') && base.member(u.unit2).crew_count === 2 && await until(() => rows().length === 7), logTexts()[0]);
+
+  const fail = async (fn) => { try { await fn(); return null; } catch (e) { return e; } };
+  const e1 = await fail(() => field.addPerson(uuid(), { userId: u.unit1, name: 'Intruder' }));
+  check('a unit cannot put a person on another unit', !!e1 && e1.code === '42501' && !base.people().some((p) => p.name === 'Intruder'), e1 && e1.message);
+  const e2 = await fail(() => field.updatePerson(PP[4], { user_id: u.unit1 }));
+  check('nor move one', !!e2 && e2.code === '42501' && base.person(PP[4]).user_id === u.unit3, e2 && e2.message);
+  const r3 = await field.sb.from('ic_people').insert({ id: uuid(), incident_id: INC(), user_id: u.unit3, name: 'Ninja', qualifications: ['ninja'] }).select().single();
+  check('qualifications come from the list', !!r3.error && r3.error.code === '23514', JSON.stringify(r3.error));
+  const r4 = await field.sb.from('ic_people').insert({ id: uuid(), incident_id: INC(), user_id: u.unit3, name: '   ' }).select().single();
+  check('a person needs a name', !!r4.error && /needs a name/.test(r4.error.message), JSON.stringify(r4.error));
+  const r5 = await field.sb.from('ic_people').delete().eq('id', PP[4]);
+  check('nothing is deleted', !!r5.error && base.person(PP[4]) && M().tables.ic_people.some((p) => p.id === PP[4]), JSON.stringify(r5.error));
+
+  const outLines = () => base.events().filter((e) => /^(Hale|Dominguez) checked out from Unit 3$/.test(e.text)).length;
+  const before = outLines();
+  await field.setStatus(u.unit3, 'checked_out');
+  await until(() => base.member(u.unit3).status === 'checked_out' && base.unitPeople(u.unit3).every((p) => p.checked_out_at));
+  check('the unit\'s check-out takes its people with it, quietly, and the board says the unit checked out', outLines() === before && base.member(u.unit3).crew_count === 0 && await until(() => has('#people-page', '4 on scene on 2 units · 3 checked out')), text('#people-page .pp-count'));
+  const inc = await field.join('CEDAR7', 'unit', 'Unit 3', null, null, null, [{ name: 'hale', qualifications: ['swift_water', 'emt'] }, { name: 'Dominguez', qualifications: ['paramedic'] }, { name: 'New Guy', role: 'Driver', qualifications: [] }]);
+  await until(() => base.member(u.unit3).crew_count === 3);
+  check('checking the unit back in with its roster brings the names back and adds the new one', inc.id === INC() && base.member(u.unit3).crew === 'Hale, Dominguez, New Guy' && base.unitPeople(u.unit3).length === 3 && !base.person(PP[4]).checked_out_at && !!eventText(base, 'Unit 3 checked in with 3 people') && !!eventText(base, 'New Guy checked in with Unit 3') && base.person(pid).checked_out_at && await until(() => has('#people-page', '7 on scene on 3 units · 1 checked out')), text('#people-page .pp-count'));
+
+  $('#people [data-action="print-211"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'check-in list (ics 211)'));
+  check('Print 211 lists everyone by unit with when they checked in and out, and the totals', ['check-in list, ics 211', 'unit 1 · cedar fork fire department · assigned · a-1', 'ramirez, lt. · swift water, emt · checked in', 'on scene', 'smith, probie · rope · checked in', 'checked out', 'unit 2 · travis county rescue', 'nguyen, capt. · swift water, boat', 'with patel', 'new guy, driver · checked in', 'totals', '8 people checked in on 3 units · 7 on scene · 1 checked out', 'by agency: cedar fork fire department 6 · travis county rescue 2', 'on scene by qualification: swift water 3'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 900));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('#people [data-action="close-people"]').click();
+  check('the board closes', $('#people').hidden);
+
+  $(`#zones .zr[data-id="${ZONE('A-1')}"]`).click();
+  await until(() => has('#panel .title', 'division a-1'));
+  $('#panel [data-action="print-204"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'division a-1 assignment'));
+  check('the 204 lists the unit\'s people under Resources assigned', has('#briefing-page', 'resources assigned', 'unit 1 (ramirez, okafor) · 2 people · cedar fork fire department · assigned', 'ramirez, lt. · swift water, emt', 'okafor · boat, paramedic', 'smith, probie · rope · checked out') && $$('#briefing-page p.sub').length === 3, text('#briefing-page').slice(0, 600));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="iap"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the IAP\'s 203 names every unit\'s people, and each 204 its own', has('#briefing-page', 'organization, ics 203', 'unit 1 (ramirez, okafor) · 2 people · cedar fork fire department', 'nguyen, capt. · swift water, boat', 'new guy, driver') && $$('#briefing-page p.sub').length >= 12, text('#briefing-page').slice(0, 800));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'briefing'));
+  check('the briefing\'s Resources name them too', has('#briefing-page', 'resources', '7 people in the field on 3 units', 'unit 3 (hale, dominguez, new guy) · 3 people', 'hale · swift water, emt'), text('#briefing-page').slice(0, 800));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $(`#panel [data-action="close-panel"]`) && $(`#panel [data-action="close-panel"]`).click();
+  await until(() => $(`#panel [data-action="select-unit"][data-id="${u.unit3}"]`));
+  $(`#panel [data-action="select-unit"][data-id="${u.unit3}"]`).click();
+  await until(() => has('#panel .title', 'unit 3'));
+  check('the unit panel lists its people with check-out at hand', $$('#panel .pp-row').length === 3 && has('#panel', 'people on the unit · 3', 'hale', 'swift water', 'new guy', 'driver') && $$('#panel .pp-row [data-action="person-out"]').length === 3, text('#panel'));
+  $('#log .llink[data-action="people"]').click();
+  await until(() => !$('#people').hidden);
+  check('a people line in the log opens the board', !$('#people').hidden);
+  $('#people [data-action="close-people"]').click();
 }
 
 // Operational periods and objectives: the header names the period and the IC, the Period panel

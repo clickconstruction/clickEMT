@@ -122,3 +122,22 @@ body { background: var(--bg-2); }
 .hmark { position: absolute; left: -10px; top: -10px; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 18px solid var(--safety); filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
 .leaflet-control-attribution { font-size: 9px; background: color-mix(in srgb, var(--panel) 85%, transparent) !important; color: var(--muted) !important; }
 
+
+/* people on the unit: the rows at check-in and in the menu, the chips for what each is qualified for */
+.chip.sm { min-height: 34px; padding: 5px 11px; font-size: 13px; }
+.pp-list { display: flex; flex-direction: column; gap: 10px; }
+.pp-edit { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.pp-edit .input { min-height: 44px; }
+.pp-edit-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+.pp-x { width: 44px; min-height: 44px; padding: 0; font-size: 20px; color: var(--muted); }
+.pp-edit .chips { gap: 6px; }
+.pp-row { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
+.pp-row:last-child { border-bottom: 0; }
+.pp-row.out { color: var(--muted); }
+.pp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pp-name { font-weight: 600; font-size: 15px; }
+.pp-name .role { font-weight: 400; color: var(--muted); }
+.pp-sub { font-size: 12.5px; color: var(--muted); }
+.pp-row .btn { min-height: 44px; }
+.pp-add { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--control-border); border-radius: 12px; }
+.pp-add .chips { gap: 6px; }

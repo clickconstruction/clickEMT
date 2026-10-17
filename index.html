@@ -94,6 +94,7 @@
     <span class="top-btns">
     <button class="btn sm" data-action="period">Period</button>
     <button class="btn sm" data-action="briefing">Briefing</button>
+    <button class="btn sm" data-action="people" title="Everyone on scene by name and unit: qualifications, status, hours on scene, and the check-in list (ICS 211)">People</button>
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
     <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
@@ -173,6 +174,19 @@
       <div id="panel" class="panel"></div>
     </aside>
   </div>
+</div>
+
+<div id="people" class="briefing people" hidden>
+  <div class="briefing-bar">
+    <strong>People</strong>
+    <span class="muted" id="people-sub"></span>
+    <input id="people-q" class="log-search people-q" placeholder="Find a name, role, unit or agency" aria-label="Find a person" autocomplete="off">
+    <span class="chips log-filters" id="people-quals"></span>
+    <span style="flex:1"></span>
+    <button class="btn sm" data-action="print-211" title="The check-in list, ICS 211: everyone by unit with when they checked in and out">Print 211</button>
+    <button class="btn sm" data-action="close-people">Close</button>
+  </div>
+  <div class="briefing-page people-page" id="people-page"></div>
 </div>
 
 <div id="briefing" class="briefing" hidden>

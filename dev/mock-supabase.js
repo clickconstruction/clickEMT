@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 10;
+  const SEED_VERSION = 11;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -161,7 +161,7 @@
       ],
       ic_events: []
     };
-    const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min) });
+    const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min), notable: false });
     ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1');
     ev(190, U.ops, 'ops', 'Lead agency: Cedar Fork Fire Department');
     ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan');
@@ -197,6 +197,7 @@
     ev(5, U.ops, 'ops', 'Objective 3 done: Shelter open and staffed at the high school', 'ic_objectives', OBJ[2]);
     ev(5, U.ops, 'note', 'Shelter open at Cedar Fork High School gym, Red Cross on site');
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
+    for (const e of t.ic_events) if (/^Shelter: High school gym opened$|^Hazard in A-2: downed power line/.test(e.text)) e.notable = true;   // marked by Operations for the 214
     return t;
   }
   function reset() { trackId = 0; tables = seed(); n = 0; }
@@ -216,7 +217,7 @@
     ic_tracks: () => ({ id: eventId(), heading: null, at: now() }),   // unique across tabs, as ic_events
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
-    ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now() }),
+    ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
     ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, created_at: now() }),
     ic_message_acks: () => ({ reply: '', count: null, acked_at: now() })
   };
@@ -241,7 +242,7 @@
       case 'ic_tracks': return false;
       case 'ic_hazards': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : isMember(row.incident_id, uid);
       case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
-      case 'ic_events': return op === 'insert' && row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid);
+      case 'ic_events': return op === 'insert' ? row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid) : isOps(row.incident_id, uid);   // only Operations marks a line notable
       case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
       case 'ic_structures': return isMember(row.incident_id, uid);
       case 'ic_facilities': return isOps(row.incident_id, uid);
@@ -302,7 +303,7 @@
   const label = (inc, uid) => R.unitLabel(member(inc, uid));
   const zoneCode = (zid) => { const z = zid && tables.ic_zones.find((x) => x.id === zid); return z ? z.code : 'the field'; };
   function log(changes, incident_id, user_id, kind, text, ref_table, ref_id) {
-    const e = { id: eventId(), incident_id, user_id: user_id || null, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: now() };
+    const e = { id: eventId(), incident_id, user_id: user_id || null, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: now(), notable: false };
     tables.ic_events.push(e);
     changes.push(['INSERT', 'ic_events', e, null]);
     return e;
@@ -487,6 +488,7 @@
     const next = { ...r };
     for (const k in patch) if (patch[k] !== undefined) next[k] = patch[k];
     constraints(table, next);
+    if (table === 'ic_events') for (const k of ['incident_id', 'user_id', 'kind', 'text', 'ref_table', 'ref_id', 'at']) if (next[k] !== r[k]) throw dbError('a log line is never changed, only marked notable');   // ic_event_before_update
     if (!system && !allowed(table, 'update', next, uid)) throw rlsError(table);
     Object.assign(r, next);
     if (table === 'ic_zones') {

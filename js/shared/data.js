@@ -434,6 +434,13 @@ export class Data {
     this.local('ic_events', data);
     return data;
   }
+  // Operations marks a log line as notable (it leads the printed 214); the only change a line ever takes
+  async setNotable(id, on) {
+    const { data, error } = await this.sb.from('ic_events').update({ notable: !!on }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_events', data);
+    return data;
+  }
   // urgency is one of URGENCY in rules.js or ''; lat/lng is the spot the message is about, when attached
   async sendMessage(id, { toUsers, toLabel, toZone, kind, text, urgency, lat, lng }) {
     if (!toUsers || !toUsers.length) throw new Error('Nobody to send that to');

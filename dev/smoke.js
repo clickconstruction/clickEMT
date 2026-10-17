@@ -743,7 +743,8 @@ async function replay(check) {
   check('Close puts the live units and photos back', $$('#map .umark.ghost').length === 0 && $$('#map .ppin').length === 3 && !$('#btn-replay').classList.contains('on'));
 }
 
-// The activity log: folded or open, filtered, searched, counted while folded, printed as the 214.
+// The activity log: folded or open, filtered, searched, counted while folded, marked notable,
+// printed as the 214, and popped out into its own window.
 async function log(check) {
   const rows = () => $$('#log .log-row').length;
   const all = rows();
@@ -769,12 +770,62 @@ async function log(check) {
   $('[data-action="log-toggle"]').click();
   await until(() => !$('#logbox').classList.contains('closed') && rows() === all + 1);
   check('opening it shows the line and clears the count', $('#log-new').hidden && has('#log', 'pump truck at the bridge'));
+  // notable: Operations stars a line, the chip keeps the marked lines, the 214 leads with them
+  const marked = () => $$('#log .log-row.notable').length;
+  check('the seeded marks show on their lines and the Notable chip counts them', marked() === 2 && $$('#log .nmark.on').length === 2 && $$('#log .nmark').length === rows() && has('#log-filters', 'notable 2') && !/★/.test(logTexts()[0]), `${marked()} marked, ${$$('#log .nmark').length} stars, ${text('#log-filters')}`);
+  const star = $('#log .log-row:not(.notable) .nmark');   // the newest unmarked line: the pump truck note
+  const evId = star.closest('.log-row').dataset.event;
+  star.click();
+  await until(() => marked() === 3);
+  const ev = () => base.events().find((e) => String(e.id) === evId);
+  check('a click on the star marks the line for every screen', marked() === 3 && ev().notable === true && ev().text === 'Pump truck at the bridge' && $(`#log .log-row[data-event="${evId}"] .nmark`).classList.contains('on') && has('#log-filters', 'notable 3'), text('#log-filters'));
+  $('[data-action="log-group"][data-group="notable"]').click();
+  await until(() => rows() === 3);
+  check('the Notable chip keeps only the marked lines', rows() === 3 && $$('#log .log-row').every((r) => r.classList.contains('notable')) && $('[data-action="log-group"][data-group="notable"]').classList.contains('on'), rows());
+  $('[data-action="log-group"][data-group="all"]').click();
+  await until(() => rows() === all + 1);
+  const fail = async (fn) => { try { await fn(); return null; } catch (e) { return e; } };
+  const e1 = await fail(() => field.setNotable(evId, false));
+  check('a unit cannot mark or unmark a line (ops only)', !!e1 && e1.code === '42501' && ev().notable === true, e1 && e1.message);
+  const r2 = await base.sb.from('ic_events').update({ text: 'Forged' }).eq('id', evId).select().single();
+  check('Operations cannot change a line\'s words, only its mark', !!r2.error && ev().text === 'Pump truck at the bridge' && M().tables.ic_events.every((e) => e.text !== 'Forged'), JSON.stringify(r2.error));
   $('[data-action="print-214"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'activity log (ics 214)'));
-  const lines = $$('#briefing-page p').map((p) => p.textContent);
-  check('Print 214 lays the whole period out oldest first', has('#briefing-page', 'entries, oldest first') && /incident opened/i.test(lines.find((l) => /^\d\d:\d\d/.test(l)) || '') && /pump truck/i.test(lines[lines.length - 1]), lines.slice(-1)[0]);
+  const secs = $$('#briefing-page section');
+  const full = $$('p', secs[secs.length - 1]).map((p) => p.textContent);   // the whole log is the last section
+  check('Print 214 lays the whole period out oldest first', has('#briefing-page', 'entries, oldest first') && /^\d\d:\d\d  Incident opened/.test(full[0]) && /pump truck/i.test(full[full.length - 1]), full.slice(-1)[0]);
+  const heads = $$('#briefing-page h2').map((h) => h.textContent);
+  const notableLines = secs[1] ? $$('p', secs[1]).map((p) => p.textContent) : [];
+  check('the 214 leads with the notable entries under their own heading, starred again in the full log', heads[1] === '3 notable entries' && /entries, oldest first$/.test(heads[2]) && notableLines.length === 3 && /^\d\d:\d\d  ★ Shelter: High school gym opened$/.test(notableLines[0]) && /★ Pump truck at the bridge$/.test(notableLines[2]) && /★ Pump truck/.test(full[full.length - 1]), heads.join(' | ') + ' / ' + notableLines.join(' | '));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
+  $(`#log .log-row[data-event="${evId}"] .nmark`).click();
+  await until(() => marked() === 2);
+  check('a second click takes the mark off again', marked() === 2 && ev().notable === false && has('#log-filters', 'notable 2'));
+  // the pop-out: the same page at #log in its own window draws the log alone and follows the same
+  // changes; here it is an iframe, since a script's window.open has no user gesture behind it
+  let opened = null;
+  const realOpen = window.open;
+  window.open = (url, name, features) => { opened = { url, name, features }; return window; };
+  try { $('[data-action="log-popout"]').click(); } finally { window.open = realOpen; }
+  check('Pop out opens this page at #log in a named window', !!opened && /\?mock#log$/.test(opened.url) && opened.name === 'ic-log' && /popup/.test(opened.features), opened && opened.url);
+  const frame = document.createElement('iframe');
+  frame.src = location.pathname + location.search + '#log';
+  frame.style.cssText = 'position:fixed;left:0;top:0;width:900px;height:480px;z-index:50;background:#fff;border:0';
+  document.body.appendChild(frame);
+  try {
+    const d = () => frame.contentDocument;
+    const $f = (sel) => (d() ? d().querySelector(sel) : null);
+    const loaded = await until(() => $f('html.log-only') && $f('#app') && !$f('#app').hidden && d().querySelectorAll('#log .log-row').length === all + 1, 8000);
+    const gone = (sel) => $f(sel) && frame.contentWindow.getComputedStyle($f(sel)).display === 'none';
+    check('the pop-out draws the log alone, open, with its chips and search; the map, the sidebar and the Pop out button left out', !!loaded && gone('#map') && gone('.side') && gone('.tools') && gone('[data-action="log-popout"]') && !gone('#log-filters') && !gone('#log-search') && !$f('#logbox').classList.contains('closed') && d().querySelectorAll('#log-filters .chip').length === 6 && d().title === 'Activity log · Cedar Fork Flooding' && $f('#inc-name').textContent === 'Cedar Fork Flooding', loaded ? d().title : 'did not load');
+    await field.addNote('The pop-out sees this');
+    const live = await until(() => $f('#log .log-row.new') && /The pop-out sees this/.test($f('#log').textContent) && !$f('#log-new').hidden, 6000);
+    check('a line that arrives shows in the pop-out, counted as new on its header', !!live && $f('#log-new').textContent === '1 new' && /The pop-out sees this/.test($f('#log .log-row').textContent), $f('#log-new') && $f('#log-new').textContent);
+    $f('#log .llink[data-action="select-structure"]').click();
+    const shown = await until(() => has('#panel', 'bus barn'), 4000);
+    check('a link in the pop-out opens the thing on the main screen', !!shown, text('#panel').slice(0, 120));
+  } finally { frame.remove(); }
 }
 
 // The map underneath and the imagery over it: streets or satellite per device, and custom imagery

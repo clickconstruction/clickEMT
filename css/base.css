@@ -131,6 +131,13 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .log-row.log-ops { border-left-color: var(--grey); } .log-row.log-note { border-left-color: #B8A14A; }
 .log-row .t { color: var(--muted); flex: none; }
 .log-row .llink { color: var(--accent-text); text-decoration: underline; margin-left: auto; flex: none; font-size: 12px; }
+/* the notable mark: a star drawn by CSS (so the rows' text stays plain to copy), faint on every
+   line for Operations, full on hover, amber once marked */
+.log-row .nmark { flex: none; font-size: 13px; line-height: 1; color: var(--muted); opacity: .3; padding: 0 1px; transition: opacity .1s; }
+.log-row .nmark::before { content: '★'; }
+.log-row:hover .nmark, .log-row .nmark:focus-visible { opacity: .8; }
+.log-row .nmark.on, .log-row:hover .nmark.on { color: var(--hazard-ink); opacity: 1; }
+.log-row.notable .x { font-weight: 600; }
 .note-form { display: flex; gap: 6px; padding: 6px 12px; border-top: 1px solid var(--line-soft); }
 .note-form input { flex: 1; border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; font-size: 13px; min-height: 32px; }
 
@@ -249,3 +256,13 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
   .side { width: auto; flex: none; }
   .zlist { max-height: none; }
 }
+
+/* The log alone in its own window (#log, the Pop out button): the header stays for the incident,
+   the period, the live dot and the clock; the map, the tools, the sidebar and the bars are left
+   out and the log fills the window, always open. */
+.log-only .top-btns, .log-only .tools, .log-only #map, .log-only #replay, .log-only .legend, .log-only .side, .log-only #mayday, .log-only #safety { display: none !important; }
+.log-only .body { flex-direction: row; overflow: hidden; }
+.log-only .mapcol { flex: 1; border: 0; }
+.log-only .log { flex: 1; min-height: 0; height: auto; border-top: 0; }   /* min-height lets #log scroll inside the window */
+.log-only .log-toggle { pointer-events: none; }
+.log-only .log-toggle .chev, .log-only [data-action="log-popout"] { display: none; }

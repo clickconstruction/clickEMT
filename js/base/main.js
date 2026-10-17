@@ -9,7 +9,11 @@ import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../sha
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
-const LOG_KEY = 'ic.base.log';   // this screen's log: folded or open, which group
+// #log is the log alone in its own window (the Pop out button), for a second screen: the same
+// page, the same Data, with the map, the tools and the sidebar left out and the log always open.
+const LOG_ONLY = location.hash === '#log';
+if (LOG_ONLY) document.documentElement.classList.add('log-only');
+const LOG_KEY = LOG_ONLY ? 'ic.base.log.popout' : 'ic.base.log';   // this screen's log: folded or open, which group
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
@@ -18,7 +22,7 @@ const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: nul
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
-  return { open: saved.open !== false, group: saved.group || 'all', q: '', seenAt: null };
+  return { open: LOG_ONLY || saved.open !== false, group: saved.group || 'all', q: '', seenAt: null };
 }
 function saveLogPrefs() { try { localStorage.setItem(LOG_KEY, JSON.stringify({ open: state.log.open, group: state.log.group })); } catch (e) { /* storage blocked */ } }
 let map = null;
@@ -127,7 +131,8 @@ async function openIncident(id) {
   localStorage.setItem(LAST_INCIDENT, id);
   state.selected = null; state.newZone = null; state.pendingPolygon = null;
   show('app');
-  if (!map) {
+  if (LOG_ONLY) document.title = 'Activity log · ' + inc.name;
+  if (!map && !LOG_ONLY) {
     map = new BaseMap($('#map'), {
       onZone: (zid) => select({ type: 'zone', id: zid }),
       onZoneMenu: (zid) => openZoneModal(zid),
@@ -144,12 +149,14 @@ async function openIncident(id) {
       onDraftChange: (n) => { $('#tool-hint').textContent = n === 0 ? 'Click the map to place the first corner.' : n < 3 ? `${n} of at least 3 points. Click the map to add the next corner, or Backspace to take the last one off.` : `${n} points. Click to add more, Backspace to take the last one off, or press Finish.`; }
     });
   }
-  map.trails = new Map();
   markLogSeen();
-  if (inc.boundary) map.fitPolygon(inc.boundary);
-  else if (inc.center_lat != null && inc.center_lng != null) map.setView(inc.center_lat, inc.center_lng, inc.zoom || 14);
-  else { const z = data.zones()[0]; if (z) map.fitPolygon(z.polygon); else map.setView(DEFAULT_VIEW[0], DEFAULT_VIEW[1], DEFAULT_VIEW[2]); }
-  map.invalidate();
+  if (map) {
+    map.trails = new Map();
+    if (inc.boundary) map.fitPolygon(inc.boundary);
+    else if (inc.center_lat != null && inc.center_lng != null) map.setView(inc.center_lat, inc.center_lng, inc.zoom || 14);
+    else { const z = data.zones()[0]; if (z) map.fitPolygon(z.polygon); else map.setView(DEFAULT_VIEW[0], DEFAULT_VIEW[1], DEFAULT_VIEW[2]); }
+    map.invalidate();
+  }
   drawAll();
 }
 
@@ -202,6 +209,10 @@ function drawAll() {
   const cur = data.currentPeriod();
   $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
   $('#inc-code').textContent = 'Join code ' + inc.code;
+  drawLog();
+  if (!$('#briefing').hidden) drawBriefing();
+  drawLive();
+  if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
   map.render(data, state);
   $('#zones').innerHTML = zonesHtml(data, state);
   const panel = $('#panel');
@@ -211,19 +222,16 @@ function drawAll() {
     if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
     fillOverlayBounds(false);
   }
-  drawLog();
   drawZoneModal();
   const md = $('#mayday');
   const mh = maydayHtml(data);
   md.hidden = !mh;
   md.innerHTML = mh;
   md.classList.toggle('ack', !!mh && data.alerts().every((a) => a.acknowledged_at));
-  if (!$('#briefing').hidden) drawBriefing();
   const sf = $('#safety');
   const sh = safetyHtml(data);
   sf.hidden = !sh;
   sf.innerHTML = sh;
-  drawLive();
 }
 
 // Right-click (or a long press) on a division: a card with its rank, priority and the facts.
@@ -270,6 +278,23 @@ function drawLog() {
 }
 $('#log-search').addEventListener('input', (e) => { state.log.q = e.target.value; drawLog(); });
 $('#logbox').addEventListener('pointerenter', () => { if (state.log.open && unseenCount()) { markLogSeen(); drawLog(); } });
+// The pop-out: the same page at #log in its own window, named so a second press brings it back
+// rather than opening another. A line's link there opens the thing on the main screen through
+// a channel between the windows (a message carries the incident, so another incident's log is ignored).
+const bus = 'BroadcastChannel' in window ? new BroadcastChannel('ic-base') : null;
+function popOutLog() {
+  const w = window.open(location.pathname + location.search + '#log', 'ic-log', 'popup=yes,width=980,height=640');
+  if (!w) toast('The browser blocked the window. Allow pop-ups for this site and try again', true);
+}
+function selectFromLog(sel) {
+  if (!LOG_ONLY) { select(sel); return; }
+  if (bus && data.incident) bus.postMessage({ incident: data.incident.id, select: sel });
+  else toast('Open it on the main screen', true);
+}
+if (bus && !LOG_ONLY) bus.onmessage = (e) => {
+  const m = e.data || {};
+  if (m.select && data.incident && m.incident === data.incident.id && !$('#app').hidden) select(m.select);
+};
 
 // One overlay draws the briefing, a division's 204, the situation report, the IAP or the 214.
 function drawBriefing() {
@@ -448,15 +473,17 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
-      case 'select-zone': select({ type: 'zone', id }); break;
-      case 'select-photo': select({ type: 'photo', id }); break;
+      case 'select-zone': selectFromLog({ type: 'zone', id }); break;
+      case 'select-photo': selectFromLog({ type: 'photo', id }); break;
       case 'photo-public': await data.setPhotoPublic(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Cleared for public information' : 'Withdrawn from public information'); break;
       case 'replay': if (state.replay) closeReplay(); else await openReplay(); break;
       case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
       case 'replay-close': closeReplay(); break;
       case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
-      case 'log-toggle': state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
+      case 'log-toggle': if (LOG_ONLY) break; state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
       case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
+      case 'log-notable': await data.setNotable(id, btn.dataset.on === '1'); drawLog(); break;
+      case 'log-popout': popOutLog(); break;
       case 'print-214': openOverlay('214'); break;
       case 'overlay-hide': setOverlayHidden(id, true); queueDraw(); break;
       case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
@@ -464,8 +491,8 @@ document.addEventListener('click', async (e) => {
       case 'overlay-restore': await data.updateOverlay(id, { archived_at: null }); toast('Imagery put back'); break;
       case 'overlay-view-bounds': fillOverlayBounds(true); break;
       case 'select-unit': select({ type: 'unit', id }); break;
-      case 'select-structure': select({ type: 'structure', id }); break;
-      case 'select-facility': select({ type: 'facility', id }); break;
+      case 'select-structure': selectFromLog({ type: 'structure', id }); break;
+      case 'select-facility': selectFromLog({ type: 'facility', id }); break;
       case 'place-facility': {
         const sel = $('#facility-kind');
         state.placeKind = sel ? sel.value : 'staging';
@@ -516,7 +543,7 @@ document.addEventListener('click', async (e) => {
         if (m && confirm(`Check ${unitLabelOf(m)} out? Its zones go back to not started.`)) await data.setStatus(id, 'checked_out');
         break;
       }
-      case 'period': state.periodNext = false; select({ type: 'period' }); break;
+      case 'period': state.periodNext = false; selectFromLog({ type: 'period' }); break;
       case 'period-next': state.periodNext = true; select({ type: 'period' }); break;
       case 'period-next-cancel': state.periodNext = false; queueDraw(); break;
       case 'objective-done': await data.updateObjective(id, { done_at: new Date().toISOString() }); break;

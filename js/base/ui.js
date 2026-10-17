@@ -654,14 +654,16 @@ export function sitrepFormHtml(data) {
     </form>`;
 }
 
-// ---- the activity log (ICS 214): folded or open, filtered by where a line came from, searched,
-// with the hours marked and every line linked to the thing it is about.
-export const LOG_GROUPS = [['all', 'All'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];
+// ---- the activity log (ICS 214): folded or open, filtered by where a line came from (or to the
+// lines Operations marked notable), searched, with the hours marked and every line linked to the
+// thing it is about.
+export const LOG_GROUPS = [['all', 'All'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];
 const GROUP_OF = { photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
 export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
+const inGroup = (e, g) => !g || g === 'all' || (g === 'notable' ? !!e.notable : logGroupOf(e.kind) === g);
 export function logFilter(events, { group, q } = {}) {
   const needle = (q || '').trim().toLowerCase();
-  return events.filter((e) => (!group || group === 'all' || logGroupOf(e.kind) === group) && (!needle || String(e.text).toLowerCase().includes(needle)));
+  return events.filter((e) => inGroup(e, group) && (!needle || String(e.text).toLowerCase().includes(needle)));
 }
 function logLink(e) {
   if (!e.ref_id) return '';
@@ -678,7 +680,7 @@ function logLink(e) {
 export function logFiltersHtml(data, state) {
   const events = data.events(), cur = (state.log && state.log.group) || 'all';
   return LOG_GROUPS.map(([g, label]) => {
-    const n = g === 'all' ? events.length : events.filter((e) => logGroupOf(e.kind) === g).length;
+    const n = events.filter((e) => inGroup(e, g)).length;
     return `<button class="chip${cur === g ? ' on' : ''}" data-action="log-group" data-group="${g}">${label} <span class="n">${n}</span></button>`;
   }).join('');
 }
@@ -688,16 +690,21 @@ export function logHtml(data, state) {
   const events = logFilter(all, (state && state.log) || {});
   if (!events.length) return '<p class="muted" style="padding:4px 12px">Nothing matches.</p>';
   const seenAt = state && state.log ? state.log.seenAt : null;
+  const ops = !!data.me() && data.me().role === 'ops';   // only Operations marks a line; everyone sees the mark
   const out = [];
   let lastHour = null;
   for (const e of events) {
     const h = new Date(e.at).getHours();
     if (lastHour !== null && h !== lastHour) out.push(`<div class="log-sep">${String(h).padStart(2, '0')}:00 to ${String(h).padStart(2, '0')}:59</div>`);
     lastHour = h;
+    const mark = ops
+      ? `<button class="nmark${e.notable ? ' on' : ''}" data-action="log-notable" data-id="${esc(e.id)}" data-on="${e.notable ? '0' : '1'}" aria-pressed="${e.notable ? 'true' : 'false'}" aria-label="Notable" title="${e.notable ? 'Notable: it leads the printed 214. Click to unmark' : 'Mark as notable: it leads the printed 214'}"></button>`
+      : e.notable ? '<span class="nmark on" title="Notable"></span>' : '';
     out.push(`
-    <div class="log-row log-${esc(e.kind)}${seenAt && e.at > seenAt ? ' new' : ''}">
+    <div class="log-row log-${esc(e.kind)}${seenAt && e.at > seenAt ? ' new' : ''}${e.notable ? ' notable' : ''}" data-event="${esc(e.id)}">
       <span class="t mono">${hhmm(e.at)}</span>
-      <span>${esc(e.text)}</span>
+      ${mark}
+      <span class="x">${esc(e.text)}</span>
       ${logLink(e)}
     </div>`);
   }
@@ -705,9 +712,13 @@ export function logHtml(data, state) {
 }
 
 // The whole log of the period on paper, oldest first: the ICS 214 the Documentation Unit keeps.
+// The lines Operations marked notable come first under their own heading (the form's notable
+// activities), then the full log with the same lines starred in place.
 export function form214Sections(data) {
   const inc = data.incident, p = data.currentPeriod();
   const rows = data.eventsIn(p).slice().reverse();
+  const notable = rows.filter((e) => e.notable);
+  const line = (e) => `${hhmm(e.at)}  ${e.notable ? '★ ' : ''}${e.text}`;
   return [
     { title: 'Activity log, ICS 214', lines: [
       inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
@@ -715,7 +726,8 @@ export function form214Sections(data) {
       p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
       'Prepared by Operations, ' + new Date().toLocaleString()
     ].filter(Boolean) },
-    { title: `${rows.length} entries, oldest first`, lines: rows.length ? rows.map((e) => `${hhmm(e.at)}  ${e.text}`) : ['Nothing yet'] }
+    { title: notable.length ? `${notable.length} notable ${notable.length === 1 ? 'entry' : 'entries'}` : 'Notable entries', lines: notable.length ? notable.map(line) : ['None marked'] },
+    { title: `${rows.length} entries, oldest first`, lines: rows.length ? rows.map(line) : ['Nothing yet'] }
   ];
 }
 export function form214Html(data) { return sectionsHtml(form214Sections(data)); }

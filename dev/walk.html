@@ -49,7 +49,22 @@
   .phone-box iframe { width: 375px; height: 812px; }
   .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: #111; padding: 8px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
   .toast[hidden] { display: none; }
-  @media (max-width: 900px) { aside { width: 300px; } }
+  .who { position: relative; }
+  .who-btn { display: flex; align-items: baseline; gap: 8px; min-width: 320px; text-align: left; padding: 5px 10px; }
+  .who-btn .role { font-weight: 600; font-size: 14px; }
+  .who-btn .name, .who-menu .name { color: var(--muted); font-size: 12px; }
+  .who-btn .caret { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .who-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 360px; max-height: calc(100vh - 80px); overflow: auto; background: #1f2228; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.5); padding: 4px; }
+  .who-menu [role="option"] { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "role num" "name num"; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+  .who-menu [role="option"]:hover, .who-menu [role="option"]:focus { background: #2a2e36; outline: none; }
+  .who-menu [role="option"][aria-selected="true"] { background: rgba(232,184,74,.14); }
+  .who-menu .role { grid-area: role; font-weight: 600; font-size: 15px; line-height: 1.25; }
+  .who-menu .name { grid-area: name; }
+  .who-menu .num { grid-area: num; align-self: center; color: var(--muted); font-size: 11px; padding-left: 14px; }
+  .who-head { margin: 4px 0 14px; }
+  .who-head .role { font-size: 21px; font-weight: 700; line-height: 1.2; }
+  .who-head .name { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  @media (max-width: 900px) { aside { width: 300px; } .who-btn { min-width: 220px; } }
 </style>
 </head>
 <body>
@@ -57,7 +72,10 @@
   <h1>Walk the app</h1>
   <div class="grp">
     <button id="prev" title="Previous persona">‹</button>
-    <select id="who" aria-label="Persona"></select>
+    <div class="who" id="who">
+      <button id="who-btn" class="who-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Persona"><span class="role" id="who-role"></span><span class="name" id="who-name"></span><span class="caret">▾</span></button>
+      <div class="who-menu" id="who-menu" role="listbox" hidden></div>
+    </div>
     <button id="next" title="Next persona">›</button>
   </div>
   <div class="grp" id="layout">
@@ -91,21 +109,21 @@
 (function () {
   'use strict';
   const PERSONAS = [
-    { n: 1, slug: '01-incident-commander', name: 'Dana Ruiz, Incident Commander', where: 'base' },
-    { n: 2, slug: '02-operations-section-chief', name: 'Marcus Bell, Operations Section Chief', where: 'base' },
-    { n: 3, slug: '03-unit-lead-on-foot', name: 'Lt. Ana Ramirez, unit lead on foot', where: 'phone' },
-    { n: 4, slug: '04-swift-water-boat-operator', name: 'Rosa Alvarez, swift-water boat operator', where: 'phone' },
-    { n: 5, slug: '05-safety-officer', name: 'Priya Natarajan, Safety Officer', where: 'both' },
-    { n: 6, slug: '06-documentation-unit', name: 'The Documentation Unit', where: 'base' },
-    { n: 7, slug: '07-public-information-officer', name: 'The Public Information Officer', where: 'base' },
-    { n: 8, slug: '08-mutual-aid-captain', name: 'Capt. Reyes, mutual-aid captain', where: 'phone' },
-    { n: 9, slug: '09-deputy-at-a-closed-bridge', name: 'Dep. Luis Moreno, deputy at a closed bridge', where: 'phone' },
-    { n: 10, slug: '10-shelter-desk', name: 'The shelter desk volunteer', where: 'phone' },
-    { n: 11, slug: '11-agency-administrator', name: 'The agency administrator', where: 'base' },
-    { n: 12, slug: '12-the-resident', name: 'The resident who refused to leave', where: 'both' }
+    { n: 1, slug: '01-incident-commander', role: 'Incident Commander', name: 'Dana Ruiz', where: 'base' },
+    { n: 2, slug: '02-operations-section-chief', role: 'Operations Section Chief', name: 'Marcus Bell', where: 'base' },
+    { n: 3, slug: '03-unit-lead-on-foot', role: 'Unit lead on foot', name: 'Lt. Ana Ramirez', where: 'phone' },
+    { n: 4, slug: '04-swift-water-boat-operator', role: 'Swift-water boat operator', name: 'Rosa Alvarez', where: 'phone' },
+    { n: 5, slug: '05-safety-officer', role: 'Safety Officer', name: 'Priya Natarajan', where: 'both' },
+    { n: 6, slug: '06-documentation-unit', role: 'Documentation Unit', name: 'one borrowed clerk', where: 'base' },
+    { n: 7, slug: '07-public-information-officer', role: 'Public Information Officer', name: '', where: 'base' },
+    { n: 8, slug: '08-mutual-aid-captain', role: 'Mutual-aid captain', name: 'Capt. Reyes, from two counties over', where: 'phone' },
+    { n: 9, slug: '09-deputy-at-a-closed-bridge', role: 'Sheriff\'s deputy at a closed bridge', name: 'Dep. Luis Moreno', where: 'phone' },
+    { n: 10, slug: '10-shelter-desk', role: 'Shelter desk volunteer', name: '', where: 'phone' },
+    { n: 11, slug: '11-agency-administrator', role: 'Agency administrator', name: '', where: 'base' },
+    { n: 12, slug: '12-the-resident', role: 'The resident who refused to leave', name: 'not a user', where: 'both' }
   ];
   const $ = (id) => document.getElementById(id);
-  const state = { mode: 'both', fit: true, guide: true, who: 1 };
+  const state = { mode: 'both', fit: true, guide: true, who: 1, modeChosen: false };
   const SIZES = { base: [1280, 800], phone: [395, 832] };
 
   // ---- the guide: docs/guides/<slug>.md drawn with a small renderer
@@ -134,9 +152,11 @@
       .replace(/<li><b>Base<\/b>\s*·?\s*/g, '<li class="on-base"><span class="chip base">Base</span>')
       .replace(/<li><b>Phone<\/b>\s*·?\s*/g, '<li class="on-phone"><span class="chip phone">Phone</span>');
   }
+  const head = (p) => '<div class="who-head"><div class="role">' + escape(p.role) + '</div>' + (p.name ? '<div class="name">' + escape(p.name) + '</div>' : '') + '</div>';
   async function showGuide() {
     const p = PERSONAS.find((x) => x.n === state.who) || PERSONAS[0];
-    $('who').value = String(p.n);
+    $('who-role').textContent = p.role; $('who-name').textContent = p.name;
+    for (const el of $('who-menu').children) el.setAttribute('aria-selected', el.dataset.n === String(p.n) ? 'true' : 'false');
     try { location.hash = '#' + p.n; } catch (e) { /* ignore */ }
     try { localStorage.setItem('ic.walk.who', String(p.n)); } catch (e) { /* ignore */ }
     const aside = $('aside');
@@ -144,7 +164,7 @@
     try {
       const r = await fetch('/docs/guides/' + p.slug + '.md', { cache: 'no-store' });
       if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
-      aside.innerHTML = md(await r.text());
+      aside.innerHTML = head(p) + md(await r.text()).replace(/^<h1>[\s\S]*?<\/h1>\n?/, '');
       aside.scrollTop = 0;
     } catch (e) {
       aside.innerHTML = '<p class="err">Could not load docs/guides/' + escape(p.slug) + '.md (' + escape(String(e.message || e)) + '). Serve the repo root with npm run serve and open this page from it.</p>';
@@ -152,9 +172,15 @@
   }
 
   // ---- layout: scale the frames to fit, or 1:1 and scroll
+  function setMode(mode) {
+    state.mode = mode;
+    for (const x of $('layout').querySelectorAll('button')) x.classList.toggle('on', x.dataset.mode === mode);
+  }
   function layout() {
     const stage = $('stage');
     const W = stage.clientWidth - 24, H = stage.clientHeight - 24, gap = 20;
+    // A narrow window (a phone, or a narrow pane) starts on one frame; Both would draw them too small to read.
+    if (!state.modeChosen && state.mode === 'both' && W < 900) setMode('phone');
     const showBase = state.mode !== 'phone', showPhone = state.mode !== 'base';
     $('slot-base').hidden = !showBase; $('slot-phone').hidden = !showPhone;
     let s = 1;
@@ -183,16 +209,28 @@
   }
 
   // ---- wiring
-  const sel = $('who');
-  for (const p of PERSONAS) { const o = document.createElement('option'); o.value = String(p.n); o.textContent = p.n + '. ' + p.name; sel.appendChild(o); }
-  sel.addEventListener('change', () => { state.who = Number(sel.value); showGuide(); });
+  const menu = $('who-menu'), btn = $('who-btn');
+  for (const p of PERSONAS) {
+    const o = document.createElement('button'); o.type = 'button'; o.setAttribute('role', 'option'); o.dataset.n = String(p.n);
+    o.innerHTML = '<span class="role">' + escape(p.role) + '</span>' + (p.name ? '<span class="name">' + escape(p.name) + '</span>' : '') + '<span class="num">' + p.n + '</span>';
+    o.addEventListener('click', () => { state.who = p.n; closeMenu(); showGuide(); btn.focus(); });
+    menu.appendChild(o);
+  }
+  function openMenu() { menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); const cur = menu.querySelector('[aria-selected="true"]'); if (cur) cur.focus(); }
+  function closeMenu() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  btn.addEventListener('click', () => { if (menu.hidden) openMenu(); else closeMenu(); });
+  document.addEventListener('click', (e) => { if (!$('who').contains(e.target)) closeMenu(); });
+  document.addEventListener('keydown', (e) => {
+    if (menu.hidden) return;
+    if (e.key === 'Escape') { closeMenu(); btn.focus(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); const items = [...menu.children]; const i = items.indexOf(document.activeElement);
+      items[e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1)].focus();
+    }
+  });
   $('prev').addEventListener('click', () => { state.who = state.who > 1 ? state.who - 1 : PERSONAS.length; showGuide(); });
   $('next').addEventListener('click', () => { state.who = state.who < PERSONAS.length ? state.who + 1 : 1; showGuide(); });
-  for (const b of $('layout').querySelectorAll('button')) b.addEventListener('click', () => {
-    state.mode = b.dataset.mode;
-    for (const x of $('layout').querySelectorAll('button')) x.classList.toggle('on', x === b);
-    layout();
-  });
+  for (const b of $('layout').querySelectorAll('button')) b.addEventListener('click', () => { state.modeChosen = true; setMode(b.dataset.mode); layout(); });
   $('fit').addEventListener('click', () => { state.fit = true; $('fit').classList.add('on'); $('one').classList.remove('on'); layout(); });
   $('one').addEventListener('click', () => { state.fit = false; $('one').classList.add('on'); $('fit').classList.remove('on'); layout(); });
   $('guide').addEventListener('click', () => { state.guide = !state.guide; $('aside').hidden = !state.guide; $('guide').classList.toggle('on', state.guide); layout(); });

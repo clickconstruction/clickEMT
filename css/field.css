@@ -57,6 +57,7 @@ body { background: var(--bg-2); }
 .fmark.inline { position: static; height: 24px; flex: none; }
 .fmark-icp { background: #1F4E79; } .fmark-staging { background: #6B5DBF; } .fmark-base { background: #3E3C36; } .fmark-shelter { background: #2F7A52; }
 .fmark-pod { background: #B86E00; } .fmark-hospital { background: #B3261E; } .fmark-helispot { background: #1B6F8A; } .fmark-other { background: #6B6860; }
+.fmark-camp { background: #5A6E2A; } .fmark-helibase { background: #0F556B; }
 .near { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .near:last-child { border-bottom: 0; }
 .near-main { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; }
@@ -161,3 +162,24 @@ body { background: var(--bg-2); }
 .pp-row .btn { min-height: 44px; }
 .pp-add { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--control-border); border-radius: 12px; }
 .pp-add .chips { gap: 6px; }
+
+/* your briefing and the hurt card (ICS-100, v24) */
+.brief { background: var(--control-bg); border: 1px solid var(--line); border-radius: 14px; padding: 4px 12px; display: flex; flex-direction: column; }
+.brief-sec { padding: 10px 0; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+.brief-sec:last-child { border-bottom: 0; }
+.brief-sec .k { margin: 0; }
+.brief-sec.warn .k { color: var(--hazard-ink); }
+.brief-text { font-size: 13.5px; }
+.brief-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.brief-row .btn { min-height: 32px; flex: none; text-decoration: none; }
+.hurt-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.hurt-row:last-child { border-bottom: 0; }
+.hurt-n { width: 28px; height: 28px; border-radius: 14px; background: var(--ink); color: var(--bg-2); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex: none; }
+.hurt-row.warn .hurt-n { background: var(--hazard); color: #1B1B18; }
+.hurt-row.warn .hurt-text { color: var(--hazard-ink); }
+.hurt-text { font-size: 13.5px; flex: 1; min-width: 0; }
+.hurt-btns { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.hurt-btns .btn { min-height: 34px; text-decoration: none; }
+.near.hurt-near { cursor: pointer; }
+.near.hurt-near .fmark { background: var(--danger); }
+.kind-chips { gap: 6px; }

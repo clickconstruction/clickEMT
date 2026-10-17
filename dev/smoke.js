@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -294,7 +294,7 @@ async function messages(check) {
 // with head counts and a missing report, and check-out giving zones back.
 async function accountability(check) {
   const u = USERS();
-  check('the resources board groups the three units as assigned, six people in the field', has('#panel', '6 people in the field on 3 units') && $$('#panel .grp').length === 1 && has('#panel .grp', 'assigned'), text('#panel'));
+  check('the resources board lists the three units by kind, six people in the field', has('#panel', '6 people in the field on 3 units') && $$('#panel .grp').length === 3 && has('#panel', 'engines', 'boat crews', 'swift-water teams'), text('#panel'));
 
   await field.setStatus(u.unit3, 'out_of_service', 'Fuel');
   await until(() => base.member(u.unit3).status === 'out_of_service');
@@ -370,7 +370,7 @@ async function people(check) {
   const u = USERS(), PP = M().ids.people;
   const rows = () => $$('#people-page .pp-row');
   const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
-  check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1 ramirez, okafor · 2', 'unit 2 nguyen, patel · 2', 'unit 3 hale, dominguez · 2', '6 people in the field'), text('#panel'));
+  check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1, engine ramirez, okafor · 2', 'unit 2, boat crew nguyen, patel · 2', 'unit 3, swift-water team hale, dominguez · 2', '6 people in the field'), text('#panel'));
   check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .llink[data-action="people"]').length === 6, logTexts().find((t) => /Ramirez/.test(t)));
   $('.top [data-action="people"]').click();
   await until(() => !$('#people').hidden && rows().length === 6);
@@ -458,7 +458,7 @@ async function people(check) {
 
   $('#people [data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'check-in list (ics 211)'));
-  check('Print 211 lists everyone by unit with when they checked in and out, and the totals', ['check-in list, ics 211', 'unit 1 · cedar fork fire department · assigned · a-1', 'ramirez, lt. · swift water, emt · checked in', 'on scene', 'smith, probie · rope · checked in', 'checked out', 'unit 2 · travis county rescue', 'nguyen, capt. · swift water, boat', 'with patel', 'new guy, driver · checked in', 'totals', '8 people checked in on 3 units · 7 on scene · 1 checked out', 'by agency: cedar fork fire department 6 · travis county rescue 2', 'on scene by qualification: swift water 3'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 900));
+  check('Print 211 lists everyone by unit with when they checked in and out, and the totals', ['check-in list, ics 211', 'unit 1, engine · cedar fork fire department · assigned · a-1', 'ramirez, lt. · swift water, emt · checked in', 'on scene', 'smith, probie · rope · checked in', 'checked out', 'unit 2, boat crew · travis county rescue', 'nguyen, capt. · swift water, boat', 'with patel', 'new guy, driver · checked in', 'totals', '8 people checked in on 3 units · 7 on scene · 1 checked out', 'by agency: cedar fork fire department 6 · travis county rescue 2', 'on scene by qualification: swift water 3'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 900));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('#people [data-action="close-people"]').click();
@@ -468,17 +468,17 @@ async function people(check) {
   await until(() => has('#panel .title', 'division a-1'));
   $('#panel [data-action="print-204"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'division a-1 assignment'));
-  check('the 204 lists the unit\'s people under Resources assigned', has('#briefing-page', 'resources assigned', 'unit 1 (ramirez, okafor) · 2 people · cedar fork fire department · assigned', 'ramirez, lt. · swift water, emt', 'okafor · boat, paramedic', 'smith, probie · rope · checked out') && $$('#briefing-page p.sub').length === 3, text('#briefing-page').slice(0, 600));
+  check('the 204 lists the unit\'s people under Resources assigned', has('#briefing-page', 'resources assigned', 'unit 1, engine (ramirez, okafor) · 2 people · cedar fork fire department · assigned', 'ramirez, lt. · swift water, emt', 'okafor · boat, paramedic', 'smith, probie · rope · checked out') && $$('#briefing-page p.sub').length === 3, text('#briefing-page').slice(0, 600));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
-  check('the IAP\'s 203 names every unit\'s people, and each 204 its own', has('#briefing-page', 'organization, ics 203', 'unit 1 (ramirez, okafor) · 2 people · cedar fork fire department', 'nguyen, capt. · swift water, boat', 'new guy, driver') && $$('#briefing-page p.sub').length >= 12, text('#briefing-page').slice(0, 800));
+  check('the IAP\'s 203 names every unit\'s people, and each 204 its own', has('#briefing-page', 'organization, ics 203', 'unit 1, engine (ramirez, okafor) · 2 people · cedar fork fire department', 'nguyen, capt. · swift water, boat', 'new guy, driver') && $$('#briefing-page p.sub').length >= 12, text('#briefing-page').slice(0, 800));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('[data-action="briefing"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'briefing'));
-  check('the briefing\'s Resources name them too', has('#briefing-page', 'resources', '7 people in the field on 3 units', 'unit 3 (hale, dominguez, new guy) · 3 people', 'hale · swift water, emt'), text('#briefing-page').slice(0, 800));
+  check('the briefing\'s Resources name them too', has('#briefing-page', 'resources', '7 people in the field on 3 units', 'unit 3, swift-water team (hale, dominguez, new guy) · 3 people', 'hale · swift water, emt'), text('#briefing-page').slice(0, 800));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $(`#panel [data-action="close-panel"]`) && $(`#panel [data-action="close-panel"]`).click();
@@ -531,6 +531,11 @@ async function periods(check) {
   pf.ic.value = 'Jordan Pike';
   pf.notes.value = 'Night operations: lights on every unit.';
   pf.requestSubmit();
+  await until(() => $('#transfer-dialog').open);
+  check('a new period with a different Incident Commander asks whether command is being transferred (v24)', has('#transfer-dialog', 'transfer command from dana ruiz to jordan pike'), text('#transfer-dialog').slice(0, 200));
+  $('#transfer-dialog input[name="notify"]').checked = false;
+  $('#transfer-dialog input[name="briefing"]').checked = false;
+  $('#transfer-dialog [data-action="transfer-go"]').click();
   await until(() => base.currentPeriod() && base.currentPeriod().number === 2);
   const p2 = base.currentPeriod();
   check('period 2 starts with the new IC, period 1 is closed, and the log says what came over', p2.ic_name === 'Jordan Pike' && p2.notes.startsWith('Night') && !!base.period(per).closed_at && !!eventText(base, 'Operational period 2 started, Incident Commander Jordan Pike, 2 objectives carried over'), logTexts()[0]);
@@ -564,7 +569,7 @@ async function assignment(check) {
   check('the unit sees its work assignment, instructions and channel', field.zone(a1).work_assignment.startsWith('Primary search') && field.zone(a1).channel === 'TAC 2');
   $('#panel [data-action="print-204"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'division a-1 assignment'));
-  check('Print the 204 opens the assignment list with the resources, the work, the instructions, the hazards and the progress', ['assignment list, ics 204', 'division a-1 · riverside drive', 'division supervisor: lt. okafor', 'radio channel: tac 2', 'resources assigned', 'unit 1 (ramirez, okafor)', 'work assignment', 'primary search of every structure', 'special instructions', 'stay out of moving water', 'period safety message', 'known hazards', 'none reported', 'progress', 'in progress · unit 1 · 9 of 24'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 400));
+  check('Print the 204 opens the assignment list with the resources, the work, the instructions, the hazards and the progress', ['assignment list, ics 204', 'division a-1 · riverside drive', 'division supervisor: lt. okafor', 'radio channel: tac 2', 'resources assigned', 'unit 1, engine (ramirez, okafor)', 'work assignment', 'primary search of every structure', 'special instructions', 'stay out of moving water', 'period safety message', 'known hazards', 'none reported', 'progress', 'in progress · unit 1 · 9 of 24'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 400));
   const pm = $('#briefing-page section.has-map svg.pmap');
   check('the 204 carries the division\'s map: OpenStreetMap tiles, the outline, its label, the north arrow, the scale bar, the credit and the legend', !!pm && $$('image', pm).length >= 4 && $$('image', pm).every((i) => /^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/.test(i.getAttribute('href'))) && !!$('.pm-division', pm) && $('.pm-label', pm).textContent.includes('A-1') && !!$('.pm-north', pm) && !!$('.pm-scale', pm) && pm.textContent.includes('© OpenStreetMap contributors') && pm.textContent.includes('Division A-1 · In progress'), pm ? pm.textContent.slice(0, 200) : 'no map');
   $('[data-action="close-briefing"]').click();
@@ -708,7 +713,7 @@ async function reports(check) {
 
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
-  check('the IAP stitches the 202, 203, a 204 per division, the 205, 206 and 208 together', ['objectives, ics 202', '1. primary search', 'organization, ics 203', 'incident commander: dana ruiz', 'division a-1 supervisor: lt. okafor', 'unit 1 (ramirez, okafor)', 'assignment, ics 204 · division a-1', 'work assignment: primary search of every structure', 'assignment, ics 204 · division b-3', 'communications, ics 205', 'command: cmd 1', 'medical, ics 206', 'dell seton', 'emergency traffic: tac 9', 'safety message, ics 208', 'swift water everywhere'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
+  check('the IAP stitches the 202, 203, a 204 per division, the 205, 206 and 208 together', ['objectives, ics 202', '1. primary search', 'organization, ics 203', 'incident commander: dana ruiz', 'division a-1 supervisor: lt. okafor', 'unit 1, engine (ramirez, okafor)', 'assignment, ics 204 · division a-1', 'work assignment: primary search of every structure', 'assignment, ics 204 · division b-3', 'communications, ics 205', 'command: cmd 1', 'medical, ics 206', 'dell seton', 'emergency traffic: tac 9', 'safety message, ics 208', 'swift water everywhere'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
   check('every division has its own 204 section', $$('#briefing-page h2').filter((h) => /ICS 204/.test(h.textContent)).length === 6);
   check('each division\'s 204 in the IAP carries its map, on a page of its own when printed', $$('#briefing-page section.has-map svg.pmap').length === 6 && $$('#briefing-page svg.pmap').map((m) => m.getAttribute('aria-label')).join(', ') === 'Map of Division A-1, Map of Division A-2, Map of Division A-3, Map of Division B-1, Map of Division B-2, Map of Division B-3' && $('#briefing-page').classList.contains('kind-iap'), $$('#briefing-page svg.pmap').map((m) => m.getAttribute('aria-label')).join(', '));
   $('[data-action="close-briefing"]').click();
@@ -1225,4 +1230,192 @@ async function sections(check) {
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('[data-action="people-close"]') && $('[data-action="people-close"]').click();
+}
+
+// ICS-100 (v24): the command staff and the agency representatives, the organization chart and its
+// span of control, a transfer of command that tells everyone, a unit's own briefing and the hurt
+// card from the data, the join card as the deployment briefing, a unit's kind, Camp and Helibase,
+// and the "You are released" chip.
+async function ics100(check) {
+  const u = USERS();
+  const { fieldBriefing, hurtLines, orgTree } = await import('../js/shared/briefings.js');
+  // 1 · the command staff and the agency representatives
+  $('[data-action="period"]').click();
+  await until(() => $('#panel form[data-form="period-edit"]'));
+  const pf = $('#panel form[data-form="period-edit"]');
+  check('the period form seats the PIO and the Liaison Officer, and lists the agencies on scene for their representatives', pf.pio.value === 'Lena Marsh' && pf.liaison.value === 'Tomás Herrera' && $$('#panel .rep-row').length === 2 && has('#panel .reps', 'cedar fork fire department', 'lead agency', 'travis county rescue') && $('#panel [data-rep="name"][data-agency="Travis County Rescue"]').value === 'Sam Whitaker', text('#panel .reps'));
+  pf.liaison.value = 'Ana Ortiz';
+  $('#panel [data-rep="phone"][data-agency="Travis County Rescue"]').value = '512 555 0199';
+  pf.requestSubmit();
+  await until(() => base.currentPeriod().liaison === 'Ana Ortiz' && base.periodAgencies()[0].phone === '512 555 0199');
+  check('saving logs the seat and the representative, and the field sees both', !!eventText(base, 'Operational period 1 updated, Liaison Ana Ortiz') && !!eventText(base, 'Travis County Rescue representative: Sam Whitaker, 512 555 0199') && await until(() => field.currentPeriod().liaison === 'Ana Ortiz' && field.periodAgencies().length === 1), logTexts().slice(0, 2).join(' | '));
+  $('[data-action="iap"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the 203 has the command staff, the agency representatives and the units with their kinds', has('#briefing-page', 'public information officer: lena marsh', 'liaison officer: ana ortiz', 'agency representatives', 'travis county rescue: sam whitaker · 512 555 0199', 'unit 2, boat crew (nguyen, patel)', 'division a-1 supervisor: lt. okafor · unit 1, engine'), text('#briefing-page').slice(0, 1200));
+  check('the IAP carries the 207 with the span of control', has('#briefing-page', 'organization chart, ics 207', 'operations section chief: marcus bell · 1 : 5') && $$('#briefing-page .org .org-div').length === 6, text('#briefing-page').slice(1200, 2000));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'shift-change'));
+  check('the briefing\'s command line names the PIO and the Liaison, and the agency representatives', has('#briefing-page', 'pio lena marsh · liaison ana ortiz', 'agency representatives: travis county rescue: sam whitaker'), text('#briefing-page').slice(0, 500));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="sitrep"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+  check('the situation report\'s public information line names the PIO', has('#briefing-page', '1 photo cleared for public release, to lena marsh (pio)'), text('#briefing-page').slice(-300));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+
+  // 2 · the organization chart (ICS 207) and the span of control
+  $('[data-action="org"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'organization chart'));
+  check('the Org chart opens from the header: the IC on top, three staff seats, four sections, a card per division with its supervisor, unit and people', has('#briefing-page .org-box.ic', 'dana ruiz', 'cedar fork fire department') && $$('#briefing-page .org-box.staff').length === 3 && $$('#briefing-page .org-box.general').length === 4 && $$('#briefing-page .org-div').length === 6 && has('#briefing-page .org-div.st-active', 'a-1', 'supervisor lt. okafor', 'unit 1, engine', 'ramirez, okafor') && !$('#briefing-page .org-warn'), text('#briefing-page').slice(0, 500));
+  check('Operations counts 1 : 5 (the cleared division is released), not orange', $$('#briefing-page .org-box.general .org-span')[0].textContent === '1 : 5' && !$('#briefing-page .org-span.over'), $$('#briefing-page .org-box.general .org-span')[0].textContent);
+  for (const i of [1, 2, 3]) await base.addZone({ code: 'C-' + i, name: 'Smoke ' + i, priority: 3, polygon: base.zone(ZONE('B-3')).polygon, structures: 1 });
+  check('with eight divisions the count turns orange and the page says what to do', await until(() => $('#briefing-page .org-span.over') && has('#briefing-page .org-warn', 'operations is at 1 : 8', 'group the divisions into branches')), text('#briefing-page .org-warn'));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'shift-change'));
+  check('the briefing\'s Needs attention carries the one-line warning', has('#briefing-page', 'needs attention', 'operations is at 1 : 8: past the span of control'), text('#briefing-page').slice(-900));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  for (const code of ['A-1', 'A-2', 'A-3', 'B-1']) await base.updateZone(ZONE(code), { branch: 'North' });
+  for (const code of ['B-2', 'B-3']) await base.updateZone(ZONE(code), { branch: 'South' });
+  for (const z of base.zones().filter((z) => z.code.startsWith('C-'))) await base.updateZone(z.id, { branch: 'South' });
+  await until(() => base.zones().every((z) => z.branch));
+  check('a branch is a word on the division, logged', await until(() => eventText(base, 'A-1 assignment updated, branch North')), logTexts()[0]);
+  const tree = orgTree(base);
+  check('grouped into two branches, Operations is at 1 : 2 and each branch under seven', tree.general[0].count === 2 && tree.branches.map((b) => b.name + ' ' + b.count).join(', ') === 'North 3, South 5' && tree.warnings.length === 0, JSON.stringify(tree.warnings) + ' ' + tree.general[0].count);
+  $(`#zones .zr[data-id="${ZONE('A-1')}"]`).click();
+  await until(() => $('#panel form[data-form="zone-edit"]') && $('#panel form[data-form="zone-edit"]').branch.value === 'North');
+  check('the division panel shows and edits the branch', $('#panel form[data-form="zone-edit"] input[name="branch"]').value === 'North' && has('#panel', 'branch north'));
+  $('#panel [data-action="print-204"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', '204'));
+  check('the 204\'s header reads Branch North · Division A-1, the unit with its kind, and the medical lines from the unit\'s own medics', has('#briefing-page', 'branch north · division a-1', 'unit 1, engine (ramirez, okafor)', 'medical, ics 206', '1. medic on your unit: okafor, paramedic. ramirez is an emt.', '2. call it on tac 9, emergency traffic', '3. nearest hospital: dell seton medical center'), text('#briefing-page').slice(0, 1400));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+
+  // 3 · transfer of command
+  $('[data-action="period"]').click();
+  await until(() => $('#panel form[data-form="period-edit"]'));
+  let f = $('#panel form[data-form="period-edit"]');
+  f.ic.value = 'Dana Ruiz-Ortega';
+  f.requestSubmit();
+  await until(() => $('#transfer-dialog').open);
+  check('a different Incident Commander name asks whether command is being transferred', has('#transfer-dialog', 'transfer command from dana ruiz to dana ruiz-ortega', 'tell everyone in the field', 'open the briefing', 'start a new operational period'), text('#transfer-dialog').slice(0, 300));
+  $('#transfer-dialog [data-action="transfer-rename"]').click();
+  await until(() => base.currentPeriod().ic_name === 'Dana Ruiz-Ortega');
+  check('Just change the name is a correction: the period is updated, the open command row renamed, no transfer logged', !$('#transfer-dialog').open && !!eventText(base, 'Operational period 1 updated, Incident Commander Dana Ruiz-Ortega') && base.commands().length === 1 && base.commands()[0].ic_name === 'Dana Ruiz-Ortega' && !base.events().some((e) => /^Command transferred/.test(e.text)), logTexts()[0]);
+  await until(() => $('#panel form[data-form="period-edit"]') && $('#panel form[data-form="period-edit"]').ic.value === 'Dana Ruiz-Ortega');
+  f = $('#panel form[data-form="period-edit"]');
+  f.ic.value = 'Marcus Bell'; f.ops.value = 'Jo Castillo';
+  f.requestSubmit();
+  await until(() => $('#transfer-dialog').open);
+  check('the sheet previews the message every unit will get', has('#transfer-dialog', 'every unit (3)', 'command transferred to marcus bell at', 'operations section chief is jo castillo'), text('#transfer-dialog'));
+  $('#transfer-dialog [data-action="transfer-go"]').click();
+  await until(() => base.currentCommand() && base.currentCommand().ic_name === 'Marcus Bell');
+  const cmd = base.currentCommand();
+  check('Transfer command: the old row is closed, the new one open with who handed over, the period\'s seats changed', base.commands().length === 2 && !!base.commands()[0].ended_at && cmd.from_name === 'Dana Ruiz-Ortega' && cmd.ops_chief === 'Jo Castillo' && base.currentPeriod().ic_name === 'Marcus Bell' && base.currentPeriod().ops_chief === 'Jo Castillo', JSON.stringify(base.commands()));
+  const line = base.events().find((e) => /^Command transferred/.test(e.text));
+  check('the log has a notable line, and no period-updated line for the name', !!line && line.text === 'Command transferred from Dana Ruiz-Ortega to Marcus Bell · Operations Section Chief Jo Castillo' && line.notable === true && line.ref_table === 'ic_commands' && !base.events().some((e) => /^Operational period 1 updated, Incident Commander Marcus Bell/.test(e.text)), line && line.text);
+  const msg = base.messages().find((m) => m.kind === 'safety' && /^Command transferred to Marcus Bell/.test(m.text));
+  check('every unit gets the safety-style message, on the yellow bar until all three answer', !!msg && msg.to_users.length === 3 && /Operations Section Chief is Jo Castillo\./.test(msg.text) && await until(() => !$('#safety').hidden && has('#safety', 'command transferred to marcus bell', 'waiting on unit 1, unit 2, unit 3')), msg && msg.text);
+  check('the briefing opened for the handover, with the new IC and the transfer line', !$('#briefing').hidden && has('#briefing-title', 'shift-change') && has('#briefing-page', 'incident commander marcus bell', 'command transferred at', 'from dana ruiz-ortega to marcus bell'), text('#briefing-page').slice(0, 500));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  check('Unit 3 has it as an unanswered safety message', await until(() => field.myUnanswered().some((m) => m.id === msg.id && m.kind === 'safety')));
+  await field.ackMessage(msg.id, 'Acknowledged');
+  check('its acknowledgement is logged like any safety message', await until(() => !!eventText(base, 'Unit 3 acknowledged Operations: Acknowledged')) && await until(() => has('#safety', 'waiting on unit 1, unit 2') && !has('#safety', 'unit 3')), text('#safety'));
+  check('the header reads IC Marcus Bell', await until(() => has('#inc-sub', 'ic marcus bell')), text('#inc-sub'));
+  $('[data-action="iap"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the 203 says who holds command since when, and who held it before', has('#briefing-page', 'incident commander: marcus bell · since', 'from dana ruiz-ortega', 'held command earlier: dana ruiz-ortega ·'), text('#briefing-page').slice(0, 500));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="print-214"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', '214'));
+  check('the 214 leads with the transfer as a notable entry and its header carries the handover', has('#briefing-page', 'notable', '★ command transferred from dana ruiz-ortega to marcus bell', 'incident commander marcus bell · dana ruiz-ortega ·'), text('#briefing-page').slice(0, 600));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="period"]').click();
+  await until(() => $('#panel [data-action="period-next"]'));
+  $('#panel [data-action="period-next"]').click();
+  await until(() => $('#panel form[data-form="period-start"]'));
+  const sf = $('#panel form[data-form="period-start"]');
+  check('the start form carries the PIO and the Liaison over', sf.pio.value === 'Lena Marsh' && sf.liaison.value === 'Ana Ortiz' && sf.ic.value === 'Marcus Bell', sf.ic.value);
+  sf.ic.value = 'Priya Natarajan';
+  sf.requestSubmit();
+  await until(() => $('#transfer-dialog').open);
+  check('a new period with a different IC asks too, the period start part of it', has('#transfer-dialog', 'transfer command from marcus bell to priya natarajan', 'start operational period 2'), text('#transfer-dialog').slice(0, 300));
+  $('#transfer-dialog input[name="notify"]').checked = false;
+  $('#transfer-dialog input[name="briefing"]').checked = false;
+  $('#transfer-dialog [data-action="transfer-go"]').click();
+  await until(() => base.currentPeriod() && base.currentPeriod().number === 2);
+  const p2 = base.currentPeriod();
+  check('period 2 starts with the new IC, the transfer logged, no message this time, the representatives carried over', p2.ic_name === 'Priya Natarajan' && p2.pio === 'Lena Marsh' && base.currentCommand().ic_name === 'Priya Natarajan' && base.commands().length === 3 && !!eventText(base, 'Command transferred from Marcus Bell to Priya Natarajan · Operations Section Chief Jo Castillo') && base.messages().filter((m) => /^Command transferred/.test(m.text)).length === 1 && base.periodAgencies(p2.id).length === 1 && base.periodAgencies(p2.id)[0].phone === '512 555 0199' && $('#briefing').hidden, logTexts().slice(0, 3).join(' | '));
+  const bad = await (async () => { try { await field.transferCommand('Nobody'); return null; } catch (e) { return e; } })();
+  check('a unit cannot transfer command', !!bad && /Only Operations/.test(bad.message), bad && bad.message);
+
+  // 4 · your briefing on the phone: the sections the phone draws, from the field's own data
+  const fb = fieldBriefing(field, { me: field.me(), at: [30.2674, -97.7384] });
+  check('Unit 3\'s briefing has the eight items, every line from the incident as it is now', fb.map((s) => s.key).join() === 'situation,job,with,area,radio,supplies,shift,safety' && fb[0].text.includes('Cedar Fork Flooding, OP 2') && fb[1].lead === 'Division A-2, Pecan Mobile Home Park.' && fb[1].text.includes('Supervisor: not named. Priority 1.') && fb[2].text.includes('On Unit 3: Hale (swift water, EMT), Dominguez (paramedic).') && fb[2].text.includes('Next door: Unit 1 in A-1, Unit 2 in B-1.') && fb[2].text.includes('Operations: Jo Castillo at Cedar Fork High School, front office.') && fb[3].text.startsWith('A-2 on the map, 18 structures, 6 cleared. Staging: High school east lot,') && fb[4].text === 'TAC 2 for your division. Command on CMD 1. Emergency traffic on TAC 9. Plain English, no codes.' && fb[7].warn && fb[7].lead === 'No safety message written for this period.' && fb[7].text.startsWith('Hazard open: downed power line'), JSON.stringify(fb.map((s) => [s.lead, s.text])).slice(0, 600));
+
+  // 5 · if someone is hurt
+  const hl = hurtLines(field, { unit: field.me(), at: [30.2674, -97.7384] });
+  check('the hurt card names the medic on the unit, the emergency channel, the nearest hospital with its distance and directions, and the check-out reminder', hl.length === 4 && hl[0].text === 'Medic on your unit: Dominguez, paramedic. Hale is an EMT.' && hl[1].text.startsWith('Call it on TAC 9, emergency traffic') && /^Nearest hospital: Dell Seton Medical Center, 0\.8 mi\. Trauma center, 12 minutes from the base\. 512 555 0100\. No ambulance on scene/.test(hl[2].text) && hl[2].directions.includes('30.278') && hl[3].text.includes('Finance needs it for the claim'), hl.map((l) => l.text).join(' | '));
+  const c4 = window.supabase.createClient();
+  await c4.auth.signInWithPassword({ email: 'unit4@mock.local', password: 'any' });
+  const d4 = new Data(c4); await d4.init();
+  await d4.saveProfile({ full_name: 'Sam Smoke', phone: '512 555 0144', licence_number: 'S1122334', licence_state: 'TX', id_source: 'typed' });
+  await d4.join('CEDAR7', 'unit', 'Unit 4', null, null, 'Bastrop County', [{ name: 'Novak', role: '', qualifications: ['boat'] }], 'boat');
+  await d4.open(INC());
+  await base.updateFacility(M().ids.facilities[3], { closed_at: new Date().toISOString() });
+  await until(() => d4.facility(M().ids.facilities[3]).closed_at);
+  const h4 = hurtLines(d4, { unit: d4.me(), at: [30.2556, -97.7400] });
+  check('with no medic on the unit and no hospital placed, both lines go orange and the nearest medic is named', h4[0].warn === true && /^No medic on Unit 4\. Nearest medic: Unit 2, Patel \(rope, EMT\), in B-1, 0\.\d mi\.$/.test(h4[0].text) && h4[2].warn === true && h4[2].text.startsWith('No hospital placed on the map'), h4[0].text + ' | ' + h4[2].text);
+  await base.updateFacility(M().ids.facilities[3], { closed_at: null });
+  check('checking in with a kind says so in the line', !!eventText(base, 'Unit 4, boat crew checked in as Sam Smoke, 512 555 0144, licence typed with 1 person') && base.member(d4.user.id).kind === 'boat', logTexts().slice(0, 4).join(' | '));
+  d4.close();
+
+  // 6 · the join card as the deployment briefing
+  $('[data-action="close-panel"]').click();
+  await until(() => $('#panel [data-action="print-join"]'));
+  $('#panel [data-action="print-join"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
+  check('the join card carries the six deployment lines and what to bring, from the data, and when it was printed', has('#briefing-page', 'deployment briefing', 'incident: cedar fork flooding · lead agency cedar fork fire department · ic priya natarajan', 'check in at: staging, high school east lot · units wait here between assignments', 'your assignment: given at check-in by operations. the period', 'report by:', 'for the operational period 3 briefing at staging', 'getting there: high school east lot at 30.25560, -97.74000', 'radio: command cmd 1 · tactical, division a tac 2', 'bring: not set', 'who to ask for', 'staging: sam whitaker (logistics) · operations: jo castillo', 'printed') && has('#briefing-page', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 1400));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+
+  // 7 · a unit's kind: the board, the panel, the request
+  check('the resources board groups the units by kind with counts, Unit 4 among the boat crews', has('#panel', 'engines 1', 'boat crews 2', 'swift-water teams 1', 'unit 4, boat crew') && $$('#panel .badge.kind').length >= 3, text('#panel').slice(0, 500));
+  $('#panel [data-action="board-mode"][data-mode="status"]').click();
+  await until(() => $('#panel .grp .badge.st-assigned'));
+  check('or by status, the T-card rack', has('#panel .grp', 'assigned') && has('#panel', 'available'), text('#panel').slice(0, 300));
+  $('#panel [data-action="board-mode"][data-mode="kind"]').click();
+  await until(() => $('#panel .grp .badge.kind'));
+  $(`#panel [data-action="select-unit"][data-id="${u.unit2}"]`).click();
+  await until(() => has('#panel .title', 'unit 2, boat crew') && $('#panel [data-action="set-kind"]'));
+  $('#panel [data-action="set-kind"][data-kind="high_water"]').click();
+  await until(() => base.member(u.unit2).kind === 'high_water');
+  check('Operations changes a unit\'s kind from its panel, logged, seen by the field', !!eventText(base, 'Unit 2 is a high-water vehicle') && await until(() => has('#panel .title', 'unit 2, high-water vehicle')) && await until(() => field.member(u.unit2).kind === 'high_water'), logTexts()[0]);
+  $('#panel [data-action="set-kind"][data-kind="boat"]').click();
+  await until(() => base.member(u.unit2).kind === 'boat');
+  const rid = uuid();
+  await field.addRequest({ id: rid, kind: 'water', what: 'boat crew', quantity: 2, urgency: 'now', note: 'Two houses with people on the roof', zoneId: ZONE('A-2'), lat: 30.2674, lng: -97.7384 });
+  $('[data-action="close-panel"]').click();
+  await until(() => $(`#panel .req[data-request="${rid}"]`));
+  check('a request for boat crews says which are on scene now, nearest to the division first', has(`#panel .req[data-request="${rid}"]`, 'on scene now:', 'unit 2, boat crew on b-1', 'unit 4, boat crew at staging'), text(`#panel .req[data-request="${rid}"]`));
+  check('the field\'s check-in keeps the kind when none is given', !!(await field.join('CEDAR7', 'unit', 'Unit 3', null, null, null, null)) && await until(() => base.member(u.unit3).kind === 'swift_water' && eventText(base, 'Unit 3 checked in as Jordan Lee Hale, 512 555 0133, licence scanned')));
+  const badKind = await (async () => { try { await field.setKind(u.unit3, 'tank'); return null; } catch (e) { return e; } })();
+  check('a kind off the list is refused', !!badKind && badKind.code === '23514', badKind && badKind.message);
+
+  // 8 · Camp and Helibase; the "You are released" chip
+  check('Camp and Helibase can be placed', $$('#facility-kind option').map((o) => o.value).includes('camp') && $$('#facility-kind option').map((o) => o.value).includes('helibase'));
+  await base.addFacility({ kind: 'camp', name: 'Fairgrounds camp', lat: 30.258, lng: -97.736 });
+  check('a camp is logged by its name and drawn with its letter', await until(() => eventText(base, 'Camp: Fairgrounds camp opened')) && await until(() => $$('#map .fmark-camp').length === 1), logTexts()[0]);
+  const chip = $('#panel form[data-form="message"] [data-action="msg-chip"][data-text^="You are released"]');
+  chip.click();
+  const composer = $('#panel form[data-form="message"]');
+  check('the "You are released" chip fills the message with the staging area and the radio', composer.text.value === 'You are released. Return to staging, High school east lot, return the radio to Logistics, and check out on your phone. Thank you.', composer.text.value);
 }

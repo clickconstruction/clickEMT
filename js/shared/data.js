@@ -1,7 +1,7 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
@@ -9,7 +9,7 @@ const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map() };
 }
 
 function keyOf(table, row) {
@@ -71,9 +71,10 @@ export class Data {
     if (error) throw error;
     return data;
   }
-  // people is a list of { name, role, qualifications, notes }: the unit's roster, checked in with it
-  async join(code, role, unitName, crew, crewCount, agency, people) {
-    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null, p_people: Array.isArray(people) ? people : null });
+  // people is a list of { name, role, qualifications, notes }: the unit's roster, checked in with it;
+  // kind is what the unit is (UNIT_KINDS in rules.js), kept from the last check-in when not given
+  async join(code, role, unitName, crew, crewCount, agency, people, kind) {
+    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null, p_people: Array.isArray(people) ? people : null, p_kind: kind || null });
     if (error) throw error;
     return data;
   }
@@ -124,6 +125,10 @@ export class Data {
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
     put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data); put('ic_overlays', overlays.data); put('ic_people', people.data);
     try { const { data: reqs } = await q('ic_requests').order('created_at', { ascending: false }); put('ic_requests', reqs); } catch (e) { /* a client without the table */ }
+    try {   // the command staff's agency representatives and who has held command (migration 0016)
+      const [ag, cm] = await Promise.all([q('ic_period_agencies'), q('ic_commands').order('started_at')]);
+      put('ic_period_agencies', ag.data); put('ic_commands', cm.data);
+    } catch (e) { /* a client without the tables */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
       const { data: profs } = ids.length ? await this.sb.from('ic_profiles').select('*').in('user_id', ids) : { data: [] };
@@ -375,8 +380,8 @@ export class Data {
     const from = period.starts_at, to = period.closed_at || null;
     return this.events().filter((e) => e.at >= from && (!to || e.at <= to));
   }
-  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified }) {
-    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '' });
+  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison }) {
+    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '' });
     if (error) throw error;
     this.local('ic_periods', data);
     return data;
@@ -387,6 +392,37 @@ export class Data {
     this.local('ic_periods', data);
     return data;
   }
+  // ---- the command staff's agency representatives (ic_period_agencies): one per agency per period, for the Liaison Officer
+  periodAgencies(periodId) {
+    const pid = periodId || (this.currentPeriod() && this.currentPeriod().id);
+    return [...this.store.period_agencies.values()].filter((a) => a.period_id === pid && !a.archived_at).sort((a, b) => a.agency.localeCompare(b.agency));
+  }
+  async savePeriodAgency({ periodId, agency, name, phone }) {
+    const pid = periodId || this.currentPeriod().id;
+    const existing = this.periodAgencies(pid).find((a) => a.agency === agency);
+    const row = { incident_id: this.store.incident.id, period_id: pid, agency, name: (name || '').trim(), phone: (phone || '').trim() };
+    const { data, error } = existing
+      ? await this.sb.from('ic_period_agencies').update({ name: row.name, phone: row.phone }).eq('id', existing.id).select().single()
+      : await this.sb.from('ic_period_agencies').insert(row).select().single();
+    if (error) throw error;
+    this.local('ic_period_agencies', data);
+    return data;
+  }
+
+  // ---- who holds command (ic_commands): the open row is the Incident Commander now; a transfer
+  // closes it, opens the next, writes the notable line and tells every unit (ic_transfer_command)
+  commands() { return [...this.store.commands.values()].sort((a, b) => (a.started_at < b.started_at ? -1 : 1)); }
+  currentCommand() { return this.commands().filter((c) => !c.ended_at).slice(-1)[0] || null; }
+  // ops is the Operations Section Chief under the incoming IC (the form's value); left out, the period's stays
+  async transferCommand(to, { notify = true, at = '', ops = null } = {}) {
+    const { data, error } = await this.sb.rpc('ic_transfer_command', { p_incident: this.store.incident.id, p_to: to, p_notify: notify !== false, p_at: at || '', p_ops: ops == null ? null : String(ops) });
+    if (error) throw error;
+    this.local('ic_commands', data);
+    const p = this.currentPeriod();
+    if (p) this.local('ic_periods', Object.assign({}, p, { ic_name: data.ic_name, ops_chief: data.ops_chief }));
+    return data;
+  }
+
   async addObjective(text) {
     const p = this.currentPeriod();
     if (!p) throw new Error('Start an operational period first');
@@ -569,6 +605,8 @@ export class Data {
   }
   // resource status, as ICS names it: assigned, available, out_of_service (with a reason), checked_out
   async setStatus(userId, status, note) { return this.updateMember(userId, { status, status_note: note || '' }); }
+  // what a unit is: one of UNIT_KINDS in rules.js, or '' for not said
+  async setKind(userId, kind) { return this.updateMember(userId, { kind: kind || '' }); }
   // the PAR: a message of kind 'par'; each unit answers with a head count, or that someone is missing
   async startPar(target, text) {
     const r = this.recipientsFor(target || 'all');

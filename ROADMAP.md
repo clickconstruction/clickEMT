@@ -66,6 +66,14 @@ Ticked when it is on `main`.
 - [x] Base: the People board (everyone by unit, with status, hours on scene, a find box and chips for qualifications; Operations adds, moves, pairs, checks out and removes), names on the resources board and the unit panel, in the briefing's Resources, the IAP's 203 and every 204, and the check-in list printed as the ICS 211.
 - [ ] Tag hardware: a wristband or card per person read at check-in and at the division, so the roster and the 211 fill themselves. The records above are what the tags would write to.
 
+## 10. ICS-100 (v24)
+
+- [x] Command staff: the Public Information Officer and the Liaison Officer on the period (`ic_periods.pio`, `liaison`), carried over like the other seats; the agency representatives the Liaison keeps (`ic_period_agencies`, one per agency on scene per period, drawn from the units), on the period form, the 203, the briefing and the sitrep's public information line.
+- [x] The organization chart (ICS 207) drawn from the data, with the span of control counted on every box and a warning on the briefing past seven; a `branch` word on a division groups the 207, the 203 and the 204.
+- [x] Transfer of command: a different Incident Commander on the period form or at the start of a period asks; the transfer tells every unit (acknowledged like a safety message), opens the briefing, writes a notable line, and `ic_commands` keeps who held command when for the 203 and the 214. "Just change the name" is the typo path.
+- [x] Your briefing on the phone, assembled from the data and shown once after check-in; If someone is hurt on the Nearest card, the menu and each 204's Medical section; the join card as the deployment briefing.
+- [x] A unit's kind (`ic_members.kind`): set at check-in and on the unit panel, the board grouped by kind, "Unit 2, boat crew" on the 203 and 204, a request's "On scene now". Camp and Helibase as facility kinds; a "You are released" chip for Operations.
+
 ## Left out on purpose
 
-Finance and Administration (time, procurement, claims, cost), Logistics ordering and supply, air operations, and the full organization chart. They are run from an emergency operations center with other tools; modelling them here would bury the field.
+Finance and Administration (procurement, claims, cost), Logistics ordering and supply, air operations, NIMS typing (Type 1 to 4) and strike team / task force labels, and unit leaders within the sections. They are run from an emergency operations center with other tools; modelling them here would bury the field.

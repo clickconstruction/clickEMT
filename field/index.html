@@ -64,6 +64,9 @@
           <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
           <label>Agency <input name="agency" placeholder="Cedar Fork Fire Department"></label>
         </div>
+        <div class="k">What the unit is</div>
+        <p class="muted small" style="margin:0">What Operations asks for and Logistics fills: an engine, a boat crew, a swift-water team. Set once; Operations can change it.</p>
+        <div class="chips kind-chips" id="join-kind"></div>
         <div class="k">People on the unit</div>
         <p class="muted small" style="margin:0">Each person by name, and what they are qualified for. Operations sees them on the People board and the check-in list, and the head count follows.</p>
         <div id="join-people" class="pp-list"></div>
@@ -274,6 +277,23 @@
     <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="send-compose">Send</button></div>
   </div>
 
+  <div id="s-briefing" class="sheet" hidden>
+    <div class="sheet-head"><h2>Your briefing</h2><span class="muted small" id="briefing-sub"></span></div>
+    <p class="muted small">Assembled from the incident as it is now; it changes when Operations changes something. Kept in the menu.</p>
+    <div class="brief" id="briefing-list"></div>
+    <div class="sheet-btns"><button class="btn" data-action="briefing-later">Read later</button><button class="btn pri" data-action="briefed" style="flex:2">Briefed, go to the map</button></div>
+  </div>
+
+  <div id="s-hurt" class="sheet" hidden>
+    <h2>If someone is hurt</h2>
+    <p class="muted small" id="hurt-sub">Answered from what the incident already knows: who on the unit is a medic, the emergency channel, the nearest hospital. The same lines print on your 204 under Medical (ICS 206).</p>
+    <div class="brief" id="hurt-list"></div>
+    <div class="sheet-btns" style="flex-direction:column">
+      <button class="btn danger" data-action="help" style="min-height:60px;font-size:18px">Need help now</button>
+      <button class="btn" data-action="home">Back</button>
+    </div>
+  </div>
+
   <div id="s-showcode" class="sheet" hidden>
     <h2>Join this incident</h2>
     <p class="muted small">Anyone who scans this with their phone lands on the field app with the code filled in. They still sign in with their own account and name their unit.</p>
@@ -286,7 +306,9 @@
   <div id="s-menu" class="sheet" hidden>
     <h2>This incident</h2>
     <div class="kv" id="menu-facts"></div>
-    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="id-open">Your identity</button></div>
+    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="briefing">Your briefing</button><button class="btn sm" data-action="hurt">If someone is hurt</button><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="id-open">Your identity</button></div>
+    <div class="k">What the unit is</div>
+    <div class="chips kind-chips" id="menu-kind"></div>
     <div class="k">Your status</div>
     <div id="menu-status"></div>
     <div class="k">People on the unit</div>

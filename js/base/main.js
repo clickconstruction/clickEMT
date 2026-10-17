@@ -2,8 +2,8 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
+import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
 import { codeFromSearch } from '../shared/qr.js';
@@ -15,11 +15,13 @@ const LAST_INCIDENT = 'ic.base.incident';
 const LOG_ONLY = location.hash === '#log';
 if (LOG_ONLY) document.documentElement.classList.add('log-only');
 const LOG_KEY = LOG_ONLY ? 'ic.base.log.popout' : 'ic.base.log';   // this screen's log: folded or open, which group
+const BOARD_KEY = 'ic.base.board';   // the resources board: by kind or by status, a device setting
 const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null } };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null }, board: loadBoardPref(), transfer: null };
+function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
@@ -328,18 +330,18 @@ function drawBriefing() {
   if (!data.incident) return;
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'join' ? joinCardHtml(data) : kind === 'hours' ? hoursHtml(data, state) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : briefingHtml(data);
+  const html = kind === '204' ? form204Html(data, z) : kind === '214' ? form214Html(data) : kind === '211' ? form211Html(data) : kind === 'join' ? joinCardHtml(data) : kind === 'hours' ? hoursHtml(data, state) : kind === 'sitrep' ? sitrepFormHtml(data) + sitrepHtml(data) : kind === 'iap' ? iapHtml(data) : kind === 'org' ? orgHtml(data) : briefingHtml(data);
   const page = $('#briefing-page');
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
   page.className = 'briefing-page kind-' + kind;
-  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card' : kind === 'hours' ? 'Hours on scene' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : 'Shift-change briefing';
+  $('#briefing-title').textContent = kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card · deployment briefing' : kind === 'hours' ? 'Hours on scene' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : kind === 'org' ? 'Organization chart (ICS 207)' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
   const kind = z ? '204' : (state.print || 'briefing');
-  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === '211' ? form211Text(data) : kind === 'join' ? joinCardText(data) : kind === 'hours' ? hoursCsvText(data, state) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : briefingText(data);
+  return kind === '204' ? form204Text(data, z) : kind === '214' ? form214Text(data) : kind === '211' ? form211Text(data) : kind === 'join' ? joinCardText(data) : kind === 'hours' ? hoursCsvText(data, state) : kind === 'sitrep' ? sitrepText(data) : kind === 'iap' ? iapText(data) : kind === 'org' ? orgText(data) : briefingText(data);
 }
 // The maps' tiles are plain <image>s; give them a moment to arrive before the print dialog
 // takes a picture of the page.
@@ -350,6 +352,42 @@ function mapsReady(root, ms = 3000) {
   return Promise.race([Promise.all(urls.map(one)), new Promise((done) => setTimeout(done, ms))]);
 }
 function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); }
+
+// ---- transfer of command: a different name in the Incident Commander seat asks whether command is
+// being handed over (ICS-100: a full briefing and notification to all personnel) or just mistyped.
+// The pending save waits in state.transfer until the answer.
+function askTransfer(t) {
+  state.transfer = Object.assign({ preview: transferText(t.to, t.ops, hhmm(new Date())) }, t);
+  $('#transfer-dialog-body').innerHTML = transferDialogHtml(data, state.transfer);
+  const dlg = $('#transfer-dialog');
+  if (!dlg.open) dlg.showModal();
+}
+function closeTransfer() { const dlg = $('#transfer-dialog'); if (dlg.open) dlg.close(); state.transfer = null; }
+// the plain save the form asked for: an edit of the period, or the start of the next one
+async function savePending(t) {
+  if (t.mode === 'start') { const p = await data.startPeriod(t.payload); state.periodNext = false; toast('Operational period ' + p.number + ' started'); }
+  else { await data.updatePeriod(t.periodId, t.patch); toast('Period saved'); }
+  queueDraw();
+}
+async function doTransfer() {
+  const t = state.transfer;
+  if (!t) return;
+  const body = $('#transfer-dialog-body');
+  const notify = body.querySelector('input[name="notify"]').checked, briefing = body.querySelector('input[name="briefing"]').checked, period = body.querySelector('input[name="period"]').checked;
+  closeTransfer();
+  const c = await data.transferCommand(t.to, { notify, at: hhmm(new Date()), ops: t.ops });
+  if (t.mode === 'start') await savePending(t);
+  else {
+    const patch = Object.assign({}, t.patch, { ic_name: c.ic_name, ops_chief: c.ops_chief });
+    await data.updatePeriod(t.periodId, patch);
+    if (period) { const cur = data.currentPeriod(); const p = await data.startPeriod({ endsAt: new Date(Date.now() + 12 * 3600000).toISOString(), ic: c.ic_name, ops: cur.ops_chief, safety: cur.safety_officer, notes: cur.notes, carry: true, planning: cur.planning_chief, logistics: cur.logistics_chief, finance: cur.finance_chief, unified: cur.unified, pio: cur.pio, liaison: cur.liaison }); toast('Operational period ' + p.number + ' started'); }
+  }
+  toast('Command transferred to ' + c.ic_name + (notify ? ' · every unit is told' : ''));
+  queueDraw();
+  if (briefing) openOverlay('briefing');
+}
+$('#transfer-dialog').addEventListener('close', () => { state.transfer = null; });
+$('#transfer-dialog').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeTransfer(); });
 
 // ---- the People board: everyone on scene by unit, in a page of its own. The find box and the chips
 // live in state.people; the page is redrawn on every change unless a field in it has focus.
@@ -641,6 +679,13 @@ document.addEventListener('click', async (e) => {
       case 'objective-done': await data.updateObjective(id, { done_at: new Date().toISOString() }); break;
       case 'objective-undo': await data.updateObjective(id, { done_at: null }); break;
       case 'briefing': openOverlay('briefing'); break;
+      case 'org': openOverlay('org'); break;
+      case 'board-mode': state.board = btn.dataset.mode === 'status' ? 'status' : 'kind'; try { localStorage.setItem(BOARD_KEY, state.board); } catch (err) { /* storage blocked */ } queueDraw(); break;
+      case 'set-kind': await data.setKind(id, btn.dataset.kind || ''); toast(btn.dataset.kind ? unitLabelOf(data.member(id)) + ' is a ' + kindText(btn.dataset.kind) : 'Kind cleared'); break;
+      case 'msg-chip': { const f = btn.closest('form'); if (f && f.text) { f.text.value = btn.dataset.text || ''; f.text.focus(); } break; }
+      case 'transfer-go': await doTransfer(); break;
+      case 'transfer-rename': { const t = state.transfer; closeTransfer(); if (t) await savePending(t); break; }
+      case 'transfer-cancel': closeTransfer(); break;
       case 'print-204': closeZoneModal(); openOverlay('204', id); break;
       case 'zone-modal-open': closeZoneModal(); select({ type: 'zone', id }); break;
       case 'zone-modal-close': closeZoneModal(); break;
@@ -750,7 +795,7 @@ document.addEventListener('submit', async (e) => {
       select({ type: 'zone', id: z.id });
       toast('Division ' + z.code + ' saved');
     } else if (form.dataset.form === 'zone-edit') {
-      await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0, work_assignment: form.work_assignment.value.trim(), instructions: form.instructions.value.trim(), channel: form.channel.value.trim(), supervisor: form.supervisor.value.trim() });
+      await data.updateZone(form.dataset.id, { code: form.code.value.trim().toUpperCase(), name: form.name.value.trim(), structures: Number(form.structures.value) || 0, work_assignment: form.work_assignment.value.trim(), instructions: form.instructions.value.trim(), channel: form.channel.value.trim(), supervisor: form.supervisor.value.trim(), branch: form.branch.value.trim() });
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
@@ -821,14 +866,25 @@ document.addEventListener('submit', async (e) => {
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'period-edit') {
-      await data.updatePeriod(form.dataset.id, { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim() });
-      toast('Period saved');
-      queueDraw();
+      const cur = data.period(form.dataset.id);
+      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim() };
+      // the agency representatives: one row per agency, saved when changed
+      const reps = new Map();
+      for (const el of form.querySelectorAll('[data-rep]')) { const r = reps.get(el.dataset.agency) || { agency: el.dataset.agency }; r[el.dataset.rep] = el.value.trim(); reps.set(el.dataset.agency, r); }
+      for (const r of reps.values()) {
+        const was = data.periodAgencies(form.dataset.id).find((a) => a.agency === r.agency);
+        if ((was ? was.name : '') !== (r.name || '') || (was ? was.phone : '') !== (r.phone || '')) await data.savePeriodAgency({ periodId: form.dataset.id, agency: r.agency, name: r.name, phone: r.phone });
+      }
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      const from = cur ? cur.ic_name : '';
+      if (from && patch.ic_name && patch.ic_name !== from) { askTransfer({ mode: 'edit', from, to: patch.ic_name, ops: patch.ops_chief, periodId: form.dataset.id, patch }); return; }
+      await savePending({ mode: 'edit', periodId: form.dataset.id, patch });
     } else if (form.dataset.form === 'period-start') {
-      const p = await data.startPeriod({ endsAt: timeToIso(form.ends.value), ic: form.ic.value, ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value });
-      state.periodNext = false;
-      toast('Operational period ' + p.number + ' started');
-      queueDraw();
+      const cur = data.currentPeriod();
+      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value };
+      const from = cur ? cur.ic_name : '';
+      if (from && payload.ic && payload.ic !== from) { askTransfer({ mode: 'start', from, to: payload.ic, ops: payload.ops.trim(), payload }); return; }
+      await savePending({ mode: 'start', payload });
     } else if (form.dataset.form === 'oos') {
       await data.setStatus(form.dataset.id, 'out_of_service', form.reason.value);
       state.oosFor = null;

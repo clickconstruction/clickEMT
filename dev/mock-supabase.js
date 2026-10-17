@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 14;
+  const SEED_VERSION = 15;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -40,6 +40,8 @@
   let trackId = 0;   // ic_tracks ids: an identity column
   const OVL = [ID('5', 1)];
   const REQ = [ID('7', 1), ID('7', 2), ID('7', 3)];
+  const AGY = [ID('8', 1)];   // the agency representatives the Liaison Officer keeps
+  const CMD = [ID('9', 1)];   // who has held command
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
@@ -61,7 +63,7 @@
     const zone = (i, code, name, priority, status, assigned, structures, cleared, extra) => ({
       id: Z[code], incident_id: INC, code, name, priority, status, hazard: false, assigned_to: assigned, structures, cleared,
       cleared_at: null, marking: null, polygon: null, objective_id: code[0] === 'A' ? OBJ[0] : code === 'B-3' ? null : OBJ[1],
-      work_assignment: '', instructions: '', channel: code[0] === 'A' ? 'TAC 2' : code === 'B-3' ? '' : 'TAC 3', supervisor: '',
+      work_assignment: '', instructions: '', channel: code[0] === 'A' ? 'TAC 2' : code === 'B-3' ? '' : 'TAC 3', supervisor: '', branch: '',
       primary_done_at: null, secondary_done_at: null,
       created_at: ago(183 - i), updated_at: ago(183 - i), ...extra
     });
@@ -91,7 +93,7 @@
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
       ic_periods: [
-        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '',
+        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '', pio: 'Lena Marsh', liaison: 'Tomás Herrera',
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
       ],
       ic_objectives: [
@@ -100,10 +102,10 @@
         { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), created_at: ago(186) }
       ],
       ic_members: [
-        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null },
-        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null },
-        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null },
-        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null }
+        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null },
+        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null },
+        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null },
+        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null }
       ],
       ic_zones: [
         zone(1, 'A-1', 'Riverside Drive, east', 1, 'active', U.unit1, 24, 9, { updated_at: ago(45), supervisor: 'Lt. Okafor', work_assignment: 'Primary search of every structure, paint the marking on each, report waterlines and anyone who refuses to leave', instructions: 'Stay out of moving water. The utility crew for the line at the park entrance is on its way.', polygon: ring([[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]]) }),
@@ -141,6 +143,12 @@
         { id: REQ[0], incident_id: INC, user_id: U.ops, zone_id: Z['B-2'], kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', note: 'Two houses with people on the roof', lat: null, lng: null, status: 'filled', answer: 'Boat 1, Travis County Rescue', status_by: U.ops, status_at: ago(130), created_at: ago(190), updated_at: ago(130), archived_at: null },
         { id: REQ[1], incident_id: INC, user_id: U.ops, zone_id: null, kind: 'fuel', what: 'fuel truck, diesel', quantity: 1, urgency: 'nightfall', note: 'At staging by 18:00', lat: null, lng: null, status: 'ordered', answer: 'County yard, due 17:45', status_by: U.ops, status_at: ago(90), created_at: ago(120), updated_at: ago(90), archived_at: null },
         { id: REQ[2], incident_id: INC, user_id: U.unit1, zone_id: Z['A-1'], kind: 'equipment', what: 'portable lights', quantity: 4, urgency: 'nightfall', note: 'No street lights, search runs past dark', lat: 30.2681, lng: -97.7318, status: 'asked', answer: '', status_by: null, status_at: null, created_at: ago(25), updated_at: ago(25), archived_at: null }
+      ],
+      ic_period_agencies: [
+        { id: AGY[0], incident_id: INC, period_id: PER, agency: 'Travis County Rescue', name: 'Sam Whitaker', phone: '512 555 0150', created_at: ago(168), updated_at: ago(168), archived_at: null }
+      ],
+      ic_commands: [
+        { id: CMD[0], incident_id: INC, period_id: PER, ic_name: 'Dana Ruiz', from_name: '', ops_chief: 'Marcus Bell', started_at: ago(189), ended_at: null, transferred_by: U.ops, created_at: ago(189) }
       ],
       ic_overlays: [
         { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2640, west: -97.7440, north: 30.2730, east: -97.7280 }, opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
@@ -188,7 +196,7 @@
     const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min), notable: false });
     ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1');
     ev(190, U.ops, 'ops', 'Lead agency: Cedar Fork Fire Department');
-    ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan');
+    ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan, PIO Lena Marsh, Liaison Tomás Herrera');
     for (const o of t.ic_objectives) ev(189 - o.number, U.ops, 'ops', 'Objective ' + o.number + ' set: ' + o.text, 'ic_objectives', o.id);
     ev(189, U.ops, 'ops', 'Command post: Cedar Fork High School, front office opened', 'ic_facilities', FAC[0]);
     ev(188, U.ops, 'ops', 'Staging area: High school east lot opened', 'ic_facilities', FAC[1]);
@@ -204,10 +212,11 @@
     ev(120, U.ops, 'ops', 'Imagery: Aerial 06:40, Civil Air Patrol added to the map', 'ic_overlays', OVL[0]);
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Division ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
-    ev(170, U.unit1, 'ops', 'Unit 1 checked in as Ana Ramirez, 512 555 0111, licence scanned with 2 people');
+    ev(170, U.unit1, 'ops', 'Unit 1, engine checked in as Ana Ramirez, 512 555 0111, licence scanned with 2 people');
     ev(165, U.ops, 'ops', 'Unit 1 (Ana Ramirez) identity verified by Operations');
-    ev(168, U.unit2, 'ops', 'Unit 2 checked in as Minh Nguyen, 512 555 0122, licence photographed with 2 people');
-    ev(165, U.unit3, 'ops', 'Unit 3 checked in as Jordan Lee Hale, 512 555 0133, licence scanned with 2 people');
+    ev(168, U.unit2, 'ops', 'Unit 2, boat crew checked in as Minh Nguyen, 512 555 0122, licence photographed with 2 people');
+    ev(167.5, U.ops, 'ops', 'Travis County Rescue representative: Sam Whitaker, 512 555 0150');
+    ev(165, U.unit3, 'ops', 'Unit 3, swift-water team checked in as Jordan Lee Hale, 512 555 0133, licence scanned with 2 people');
     for (const p of t.ic_people) ev((Date.now() - new Date(p.checked_in_at)) / 60000 - 0.2, p.user_id, 'status', R.personLabel(p) + ' checked in with ' + R.unitLabel(t.ic_members.find((m) => m.user_id === p.user_id)), 'ic_people', p.id);
     ev(160, U.ops, 'ops', 'A-1 assigned to Unit 1', 'ic_zones', Z['A-1']);
     ev(159, U.ops, 'ops', 'A-3 assigned to Unit 2', 'ic_zones', Z['A-3']);
@@ -240,11 +249,13 @@
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
-    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', created_at: now() }),
+    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', created_at: now() }),
+    ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
+    ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
     ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
-    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null }),
-    ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
+    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '' }),
+    ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, taken_at: now(), created_at: now() }),
@@ -281,6 +292,8 @@
       case 'ic_alerts': return op === 'insert' ? row.user_id === uid && isMember(row.incident_id, uid) : (row.user_id === uid || isOps(row.incident_id, uid));
       case 'ic_events': return op === 'insert' ? row.user_id === uid && row.kind === 'note' && isMember(row.incident_id, uid) : isOps(row.incident_id, uid);   // only Operations marks a line notable
       case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
+      case 'ic_period_agencies': return isOps(row.incident_id, uid);
+      case 'ic_commands': return false;   // written by ic_transfer_command and the period trigger alone
       case 'ic_structures': return isMember(row.incident_id, uid);
       case 'ic_facilities': return isOps(row.incident_id, uid);
       case 'ic_overlays': return isOps(row.incident_id, uid);
@@ -314,6 +327,7 @@
       if (!['ops', 'unit'].includes(r.role)) throw chk('ic_members_role_check');
       if (!['assigned', 'available', 'out_of_service', 'checked_out'].includes(r.status)) throw chk('ic_members_status_check');
       if (r.crew_count != null && !(r.crew_count >= 0 && r.crew_count <= 99)) throw chk('ic_members_crew_count_check');
+      if (!['', 'engine', 'boat', 'swift_water', 'high_water', 'ambulance', 'search', 'k9', 'drone', 'pump', 'other'].includes(r.kind ?? '')) throw chk('ic_members_kind_check');
     }
     if (table === 'ic_messages') {
       if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
@@ -324,6 +338,8 @@
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
     if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
     if (table === 'ic_periods' && r.number == null) throw nn('number');
+    if (table === 'ic_period_agencies') { if (!String(r.agency || '').trim()) throw dbError('name the agency'); if (!r.period_id) throw nn('period_id'); }
+    if (table === 'ic_commands' && !r.ic_name) throw nn('ic_name');
     if (table === 'ic_requests') {
       if (!String(r.what || '').trim()) throw dbError('say what is needed');
       if (!['people', 'water', 'medical', 'fuel', 'equipment', 'supplies', 'other'].includes(r.kind)) throw chk('ic_requests_kind_check');
@@ -341,13 +357,17 @@
       if (!Array.isArray(r.qualifications) || r.qualifications.some((q) => !QUALS.includes(q))) throw chk('ic_people_qualifications_check');
     }
     if (table === 'ic_facilities') {
-      if (!['icp', 'staging', 'base', 'shelter', 'pod', 'hospital', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
+      if (!['icp', 'staging', 'base', 'camp', 'shelter', 'pod', 'hospital', 'helibase', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
       if (r.lat == null) throw nn('lat');
       if (r.lng == null) throw nn('lng');
     }
   }
   const QUALS = ['swift_water', 'boat', 'rope', 'emt', 'paramedic', 'k9', 'hazmat', 'drone'];
-  const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helispot: 'Helispot', other: 'Facility' };
+  const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', camp: 'Camp', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helibase: 'Helibase', helispot: 'Helispot', other: 'Facility' };
+  // ic_kind_text: the words for a unit's kind, as UNIT_KINDS in rules.js
+  const KIND_TEXT = { engine: 'engine', boat: 'boat crew', swift_water: 'swift-water team', high_water: 'high-water vehicle', ambulance: 'ambulance', search: 'search team', k9: 'K9 team', drone: 'drone team', pump: 'pump crew', other: 'other' };
+  // ic_transfer_text: the words every unit gets on a transfer of command
+  const transferText = (to, ops, at) => 'Command transferred to ' + to + (at ? ' at ' + at : '') + '.' + (ops ? ' Operations Section Chief is ' + ops + '.' : '') + ' Your assignment, your division and your channel do not change.';
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
   const overlayWhat = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
   const requestLine = (r) => (r.quantity > 1 ? r.quantity + ' ' : '') + r.what;
@@ -416,7 +436,23 @@
     updateRow('ic_members', m, any ? {} : { crew: null, crew_count: null }, uid, changes, true);
   }
   const personQuals = (r) => (r.qualifications && r.qualifications.length ? ' (' + R.qualsText(r.qualifications) + ')' : '');
+  // ic_period_command: the first Incident Commander named establishes command; a changed name on a
+  // plain save corrects the open row (a typo), a handover goes through ic_transfer_command
+  function periodCommand(r, old, uid, changes) {
+    if (quiet || r.closed_at || !r.ic_name) return;
+    if (old && r.ic_name === old.ic_name) return;
+    const cur = tables.ic_commands.filter((c) => c.incident_id === r.incident_id && !c.ended_at).sort((a, b) => (a.started_at < b.started_at ? 1 : -1))[0] || null;
+    if (!cur) {
+      const c = { ...DEFAULTS.ic_commands(), incident_id: r.incident_id, period_id: r.id, ic_name: r.ic_name, ops_chief: r.ops_chief || '', transferred_by: uid };
+      tables.ic_commands.push(c); changes.push(['INSERT', 'ic_commands', c, null]);
+    } else if (cur.ic_name !== r.ic_name) {
+      const o = copy(cur); cur.ic_name = r.ic_name; changes.push(['UPDATE', 'ic_commands', cur, o]);
+    }
+  }
+  const agencyRepLine = (r) => r.agency + ' representative: ' + (r.name || 'not set') + (r.phone ? ', ' + r.phone : '');
   function afterInsert(table, r, uid, changes) {
+    if (table === 'ic_periods') periodCommand(r, null, uid, changes);
+    if (table === 'ic_period_agencies' && !quiet) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
     if (table === 'ic_people') {
       if (!r.archived_at && !quiet) log(changes, r.incident_id, uid, 'status', `${r.name}${personQuals(r)} checked in with ${label(r.incident_id, r.user_id)}`, 'ic_people', r.id);
@@ -471,6 +507,8 @@
   }
   function afterUpdate(table, r, old, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
+    if (table === 'ic_periods') periodCommand(r, old, uid, changes);
+    if (table === 'ic_period_agencies' && !quiet && (r.name !== old.name || r.phone !== old.phone)) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
     if (table === 'ic_people') {   // ic_person_after
       const unit = label(r.incident_id, r.user_id);
       let line = null;
@@ -507,7 +545,7 @@
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
       else if (r.text !== old.text) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} is now: ${r.text}`, 'ic_objectives', r.id);
     }
-    if (table === 'ic_periods' && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || '') || (r.planning_chief || '') !== (old.planning_chief || '') || (r.logistics_chief || '') !== (old.logistics_chief || '') || (r.finance_chief || '') !== (old.finance_chief || ''))) {
+    if (table === 'ic_periods' && !quiet && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || '') || (r.planning_chief || '') !== (old.planning_chief || '') || (r.logistics_chief || '') !== (old.logistics_chief || '') || (r.finance_chief || '') !== (old.finance_chief || '') || (r.pio || '') !== (old.pio || '') || (r.liaison || '') !== (old.liaison || ''))) {
       log(changes, r.incident_id, uid, 'ops', `Operational period ${r.number} updated`
         + (r.ic_name !== old.ic_name ? ', Incident Commander ' + (r.ic_name || 'not set') : '')
         + (r.ops_chief !== old.ops_chief ? ', Operations ' + (r.ops_chief || 'not set') : '')
@@ -515,9 +553,12 @@
         + ((r.logistics_chief || '') !== (old.logistics_chief || '') ? ', Logistics ' + (r.logistics_chief || 'not set') : '')
         + ((r.finance_chief || '') !== (old.finance_chief || '') ? ', Finance ' + (r.finance_chief || 'not set') : '')
         + (r.safety_officer !== old.safety_officer ? ', Safety ' + (r.safety_officer || 'not set') : '')
+        + ((r.pio || '') !== (old.pio || '') ? ', PIO ' + (r.pio || 'not set') : '')
+        + ((r.liaison || '') !== (old.liaison || '') ? ', Liaison ' + (r.liaison || 'not set') : '')
         + ((r.unified || '') !== (old.unified || '') ? ', unified command ' + (r.unified || 'cleared') : ''));
     }
-    if (table === 'ic_periods' && JSON.stringify(r.sitrep ?? {}) !== JSON.stringify(old.sitrep ?? {})) log(changes, r.incident_id, uid, 'ops', `Situation report updated for operational period ${r.number}`);
+    if (table === 'ic_periods' && !quiet && JSON.stringify(r.sitrep ?? {}) !== JSON.stringify(old.sitrep ?? {})) log(changes, r.incident_id, uid, 'ops', `Situation report updated for operational period ${r.number}`);
+    if (table === 'ic_members' && (r.kind || '') !== (old.kind || '') && !quiet) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + (r.kind ? ' is a ' + KIND_TEXT[r.kind] : ': kind cleared'));
     if (table === 'ic_members' && r.status !== old.status) {
       const who = label(r.incident_id, r.user_id);
       const text = r.status === 'available' ? `${who} is available${old.status === 'out_of_service' ? ', back in service' : ''}`
@@ -553,8 +594,8 @@
         put('ops', r.assigned_to == null ? `${r.code} released from ${label(r.incident_id, old.assigned_to)}` : `${r.code} assigned to ${label(r.incident_id, r.assigned_to)}`);
       }
       if (r.code !== old.code || r.name !== old.name) put('ops', `Division ${old.code} is now ${r.code}${r.name !== '' ? ' · ' + r.name : ''}`);
-      if (r.work_assignment !== old.work_assignment || r.instructions !== old.instructions || r.channel !== old.channel || r.supervisor !== old.supervisor) {
-        put('ops', `${r.code} assignment updated${r.channel !== old.channel ? ', channel ' + (r.channel || 'cleared') : ''}${r.supervisor !== old.supervisor ? ', supervisor ' + (r.supervisor || 'cleared') : ''}`);
+      if (r.work_assignment !== old.work_assignment || r.instructions !== old.instructions || r.channel !== old.channel || r.supervisor !== old.supervisor || (r.branch || '') !== (old.branch || '')) {
+        put('ops', `${r.code} assignment updated${r.channel !== old.channel ? ', channel ' + (r.channel || 'cleared') : ''}${r.supervisor !== old.supervisor ? ', supervisor ' + (r.supervisor || 'cleared') : ''}${(r.branch || '') !== (old.branch || '') ? ', branch ' + (r.branch || 'cleared') : ''}`);
       }
     }
     if (table === 'ic_hazards' && r.resolved_at && !old.resolved_at) log(changes, r.incident_id, uid, 'hazard', `Hazard resolved in ${zoneCode(r.zone_id)}: ${String(r.kind).toLowerCase()}`, 'ic_hazards', r.id);
@@ -592,6 +633,7 @@
     if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
     if (table === 'ic_overlays') row.created_by = row.created_by || uid;   // ic_overlay_before
     if (table === 'ic_requests') { row.what = String(row.what || '').trim(); row.status = 'asked'; row.answer = ''; row.status_by = null; row.status_at = null; }   // ic_request_before
+    if (table === 'ic_period_agencies') { row.agency = String(row.agency || '').trim(); row.name = String(row.name || '').trim(); row.phone = String(row.phone || '').trim(); if (tables.ic_period_agencies.some((a) => a.period_id === row.period_id && a.agency === row.agency)) throw dbError('duplicate key value violates unique constraint "ic_period_agencies_period_id_agency_key"', '23505'); }   // ic_period_agency_before
     if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
@@ -632,6 +674,7 @@
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
     if (table === 'ic_requests') { r.updated_at = now(); r.what = String(r.what || '').trim(); if (r.status !== old.status || r.answer !== old.answer) { r.status_by = uid; r.status_at = now(); } }   // ic_request_before
+    if (table === 'ic_period_agencies') { r.updated_at = now(); r.name = String(r.name || '').trim(); r.phone = String(r.phone || '').trim(); }   // ic_period_agency_before
     if (table === 'ic_people') personBefore(r, old);
     if (table === 'ic_structures') {   // ic_structure_before
       r.updated_at = now();
@@ -792,22 +835,28 @@
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations starts a period');
         const cur = tables.ic_periods.filter((p) => p.incident_id === a.p_incident && !p.closed_at).sort((x, y) => y.number - x.number)[0] || null;
         const maxN = tables.ic_periods.filter((p) => p.incident_id === a.p_incident).reduce((n, p) => Math.max(n, p.number), 0);
-        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '' };
+        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '', pio: trim(a.p_pio) || '', liaison: trim(a.p_liaison) || '' };
         tables.ic_periods.push(np); changes.push(['INSERT', 'ic_periods', np, null]);
+        periodCommand(np, null, uid, changes);
         let n = 0;
         if (cur) {
           const old = copy(cur); cur.closed_at = now(); changes.push(['UPDATE', 'ic_periods', cur, old]);
-          if (a.p_carry !== false) {
-            quiet = true;
-            try {
+          quiet = true;
+          try {
+            // the agency representatives come over with the seats
+            for (const ag of tables.ic_period_agencies.filter((x) => x.period_id === cur.id && !x.archived_at)) {
+              const na = { ...DEFAULTS.ic_period_agencies(), incident_id: ag.incident_id, period_id: np.id, agency: ag.agency, name: ag.name, phone: ag.phone };
+              tables.ic_period_agencies.push(na); changes.push(['INSERT', 'ic_period_agencies', na, null]);
+            }
+            if (a.p_carry !== false) {
               for (const o of tables.ic_objectives.filter((x) => x.period_id === cur.id && !x.done_at).sort((x, y) => x.number - y.number)) {
                 n += 1;
                 const no = { ...DEFAULTS.ic_objectives(), incident_id: a.p_incident, period_id: np.id, number: n, text: o.text };
                 tables.ic_objectives.push(no); changes.push(['INSERT', 'ic_objectives', no, null]);
                 for (const z of tables.ic_zones.filter((z) => z.objective_id === o.id)) updateRow('ic_zones', z, { objective_id: no.id }, uid, changes, true);
               }
-            } finally { quiet = false; }
-          }
+            }
+          } finally { quiet = false; }
         }
         const inc = tables.ic_incidents.find((i) => i.id === a.p_incident);
         const oldInc = copy(inc); inc.current_period_id = np.id; inc.period = 'OP ' + np.number; changes.push(['UPDATE', 'ic_incidents', inc, oldInc]);
@@ -820,14 +869,18 @@
         const inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
         if (!inc) throw dbError('No active incident has the code ' + code);
         if (a.p_role === 'unit' && !profileComplete(uid)) throw dbError('Identify yourself first: your name, your phone and your licence');
-        const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count);
+        const unit = trim(a.p_unit_name), crew = trim(a.p_crew), agency = trim(a.p_agency), count = a.p_crew_count == null ? null : Number(a.p_crew_count), kind = trim(a.p_kind);
+        if (kind && !KIND_TEXT[kind]) throw dbError(`new row for relation "ic_members" violates check constraint "ic_members_kind_check"`, '23514');
         const m = member(inc.id, uid);
-        if (m) {
-          updateRow('ic_members', m, { role: a.p_role, unit_name: unit ?? m.unit_name, crew: crew ?? m.crew, crew_count: count ?? m.crew_count, agency: agency || m.agency, status: m.status === 'checked_out' ? 'available' : m.status, checked_out_at: null }, uid, changes, true);
-        } else {
-          const nm = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: a.p_role, unit_name: unit, crew, crew_count: count, agency: agency || '' };
-          tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]);
-        }
+        quiet = true;   // the check-in line says the kind; no line of its own
+        try {
+          if (m) {
+            updateRow('ic_members', m, { role: a.p_role, unit_name: unit ?? m.unit_name, crew: crew ?? m.crew, crew_count: count ?? m.crew_count, agency: agency || m.agency, kind: kind || m.kind || '', status: m.status === 'checked_out' ? 'available' : m.status, checked_out_at: null }, uid, changes, true);
+          } else {
+            const nm = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: a.p_role, unit_name: unit, crew, crew_count: count, agency: agency || '', kind: kind || '' };
+            tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]);
+          }
+        } finally { quiet = false; }
         // the roster: a name already on the unit is checked back in and updated, a new one is added
         if (Array.isArray(a.p_people)) {
           for (const person of a.p_people) {
@@ -842,8 +895,30 @@
         const n = member(inc.id, uid).crew_count;
         const pr = tables.ic_profiles.find((x) => x.user_id === uid);
         const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '') + (pr.verified_at ? ', verified' : '') : '';
-        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + ' checked in' + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
+        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (a.p_role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + ' checked in' + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
+      } else if (name === 'ic_transfer_command') {
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations transfers command');
+        const to = trim(a.p_to);
+        if (!to) throw dbError('name the incoming Incident Commander');
+        const p = tables.ic_periods.filter((x) => x.incident_id === a.p_incident && !x.closed_at).sort((x, y) => y.number - x.number)[0] || null;
+        if (!p) throw dbError('Start an operational period first');
+        const cur = tables.ic_commands.filter((c) => c.incident_id === a.p_incident && !c.ended_at).sort((x, y) => (x.started_at < y.started_at ? 1 : -1))[0] || null;
+        const frm = (cur && cur.ic_name) || p.ic_name || '';
+        if (frm === to) throw dbError(to + ' already holds command');
+        const ops = a.p_ops == null ? (p.ops_chief || '') : String(a.p_ops).trim();
+        if (cur) { const o = copy(cur); cur.ended_at = now(); changes.push(['UPDATE', 'ic_commands', cur, o]); }
+        const nc = { ...DEFAULTS.ic_commands(), incident_id: a.p_incident, period_id: p.id, ic_name: to, from_name: frm, ops_chief: ops, transferred_by: uid };
+        tables.ic_commands.push(nc); changes.push(['INSERT', 'ic_commands', nc, null]);
+        quiet = true;
+        try { updateRow('ic_periods', p, { ic_name: to, ops_chief: ops }, uid, changes, true); } finally { quiet = false; }
+        const e = log(changes, a.p_incident, uid, 'ops', 'Command transferred' + (frm ? ' from ' + frm : '') + ' to ' + to + (ops ? ' · Operations Section Chief ' + ops : ''), 'ic_commands', nc.id);
+        e.notable = true;
+        if (a.p_notify !== false) {
+          const who = tables.ic_members.filter((m) => m.incident_id === a.p_incident && m.role === 'unit' && m.status !== 'checked_out').map((m) => m.user_id);
+          if (who.length) insertRow('ic_messages', { incident_id: a.p_incident, from_user: uid, to_users: who, to_label: 'everyone', kind: 'safety', text: transferText(to, ops, trim(a.p_at) || '') }, uid, changes);
+        }
+        out = copy(nc);
       } else if (name === 'ic_replay') {
         if (!isMember(a.p_incident, uid)) out = [];
         else {
@@ -1021,7 +1096,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };

@@ -5,7 +5,8 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS } from '../shared/rules.js';
+import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -37,7 +38,7 @@ export function panelHtml(data, state) {
   if (sel.type === 'structure') { const s = data.structure(sel.id); if (s) return structureHtml(data, s); }
   if (sel.type === 'facility') { const f = data.facility(sel.id); if (f) return facilityHtml(data, f); }
   if (sel.type === 'unit') { const m = data.member(sel.id); if (m) return unitHtml(data, m, state); }
-  return homeHtml(data);
+  return homeHtml(data, state);
 }
 
 function statusDetail(data, m) {
@@ -66,23 +67,36 @@ function unitRowHtml(data, m, now) {
   const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : 'Identity not verified yet'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : ''}</span>` : ''; })()}</span>
+      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : 'Identity not verified yet'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : ''}</span>` : ''; })()}</span>
       <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}</span></span>
     </button>`;
 }
 
-// The resources board: units by status, the ICS T-card rack in a list.
-export function resourcesHtml(data) {
+// The resources board: units by what they are (engines, boat crews ...: what a request asks for),
+// with the units asked for and not on scene, or by status, the ICS T-card rack in a list.
+export function resourcesHtml(data, state) {
   const units = data.units();
   if (!units.length) return '<p class="muted">No units have joined yet.</p>';
   const now = Date.now();
-  const groups = ['assigned', 'available', 'out_of_service', 'checked_out'];
-  return `<div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</span><button class="btn sm" data-action="people" title="Everyone on scene by name, with qualifications, status and hours">People board</button></div>` +
-    groups.map((s) => {
+  const mode = (state && state.board) || 'kind';
+  const head = `<div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</span>
+    <span class="chips board-mode"><button class="chip${mode === 'kind' ? ' on' : ''}" data-action="board-mode" data-mode="kind" aria-pressed="${mode === 'kind'}">By kind</button><button class="chip${mode === 'status' ? ' on' : ''}" data-action="board-mode" data-mode="status" aria-pressed="${mode === 'status'}">By status</button></span>
+    <button class="btn sm" data-action="people" title="Everyone on scene by name, with qualifications, status and hours">People board</button></div>`;
+  if (mode === 'status') {
+    return head + ['assigned', 'available', 'out_of_service', 'checked_out'].map((s) => {
       const rows = units.filter((u) => u.status === s);
       if (!rows.length) return '';
       return `<div class="grp"><span class="badge st-${s}">${STATUS_LABEL[s]}</span><span class="muted">${rows.length}</span></div>` + rows.map((m) => unitRowHtml(data, m, now)).join('');
     }).join('');
+  }
+  const on = units.filter((u) => u.status !== 'checked_out'), out = units.filter((u) => u.status === 'checked_out');
+  const asked = data.openRequests().map((r) => ({ r, kinds: kindsAsked(r) })).filter((x) => x.kinds.length);
+  const groups = UNIT_KINDS.map(([k, , plural]) => ({ key: k, label: plural, rows: on.filter((u) => u.kind === k), asks: asked.filter((x) => x.kinds.includes(k)) })).filter((g) => g.rows.length || g.asks.length);
+  const unknown = on.filter((u) => !unitKind(u.kind));
+  if (unknown.length) groups.push({ key: '', label: 'Kind not set', rows: unknown, asks: [] });
+  return head + groups.map((g) => `<div class="grp"><span class="badge kind">${esc(g.label)}</span> <span class="muted">${g.rows.length}${g.asks.length ? ` · ${g.asks.length} asked${g.asks.some((x) => x.r.status === 'ordered') ? ', ' + (g.asks.filter((x) => x.r.status === 'ordered').length === g.asks.length ? 'ordered' : 'some ordered') : ''}` : ''}</span></div>` +
+      (g.rows.length ? g.rows.map((m) => unitRowHtml(data, m, now)).join('') : `<div class="muted" style="font-size:12.5px;padding:0 0 6px">none on scene · ${g.asks.map((x) => requestLine(x.r) + ' ' + (REQUEST_STATUS[x.r.status] || x.r.status).toLowerCase()).join(' · ')}</div>`)).join('') +
+    (out.length ? `<div class="grp"><span class="badge st-checked_out">Checked out</span><span class="muted">${out.length}</span></div>` + out.map((m) => unitRowHtml(data, m, now)).join('') : '');
 }
 
 // The PAR: who has answered the latest one, and with what.
@@ -99,7 +113,7 @@ export function parHtml(data) {
   return head + `<div class="muted" style="font-size:12.5px">Started ${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${waiting.length ? waiting.length + ' still to answer' : 'everyone answered'}</div>${rows}`;
 }
 
-function homeHtml(data) {
+function homeHtml(data, state) {
   const inc = data.incident;
   return `
     <div class="k">Join code for field phones</div>
@@ -112,7 +126,7 @@ function homeHtml(data) {
       </div>
     </div>
     <div class="k" style="margin-top:6px">Resources</div>
-    ${resourcesHtml(data)}
+    ${resourcesHtml(data, state)}
     ${parHtml(data)}
     ${requestsHtml(data)}
     <div class="k" style="margin-top:6px">Message the field</div>
@@ -205,13 +219,17 @@ export function imageryHtml(data) {
 // The field app's address, for the join link the QR carries.
 export function fieldJoinUrl(code) { return joinUrl(code, new URL('field/', document.baseURI)); }
 
-// The join card: a page for the wall of the command post or a unit's dashboard.
+// The join card is the deployment briefing: ICS-100's six lines (the incident, where to check in,
+// the assignment, when to report, how to get there, the radio) and what to bring, drawn from the
+// incident, around the code a unit scans. A page for the wall of the command post or an email ahead.
 export function joinCardSections(data) {
   const inc = data.incident, p = data.currentPeriod();
+  const now = new Date();
   return [
-    { title: 'Check in with your phone', lines: [inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''), p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : ''].filter(Boolean) },
-    { title: 'Join code', lines: [inc.code] },
-    { title: 'How', lines: ['Scan the code, or open ' + fieldJoinUrl(inc.code).replace(/\?.*$/, '') + ' and type it.', 'Sign in with the account your agency gave you, name your unit and the people on it, then press Check in.', 'Anyone with this code can join as a unit. Keep it to the people who should.'] }
+    { title: 'Deployment briefing', lines: deploymentLines(data, now).map(([k, v]) => k + ': ' + v) },
+    { title: 'Who to ask for', lines: [whoToAsk(data)] },
+    { title: 'Check in with your phone', lines: [inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''), p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : '', 'Join code ' + inc.code, 'Scan the code, or open ' + fieldJoinUrl(inc.code).replace(/\?.*$/, '') + ' and type it.', 'Say who you are (name, phone, licence), name your unit, what it is and the people on it, then press Check in. Your briefing opens after check-in; everything you send keeps until there is signal.', 'Anyone with this code can join as a unit. Keep it to the people who should.'].filter(Boolean) },
+    { title: 'Printed', lines: [now.toLocaleDateString() + ' ' + hhmm(now) + ' · the lines above are the incident as it was then'] }
   ];
 }
 export function joinCardHtml(data) {
@@ -232,7 +250,8 @@ export function agenciesHtml(data) {
   return `
     <div class="k" style="margin-top:6px">Agencies on scene</div>
     ${cmd ? `<div style="font-size:13px">${esc(cmd)}</div>` : '<div class="muted" style="font-size:12.5px">No lead agency named yet. Name it under Incident below; the period names the unified command.</div>'}
-    ${rows.length ? rows.map((r) => `<div class="agency-row"><span>${esc(r.agency || 'No agency named')}</span><span class="muted">${r.units} unit${r.units === 1 ? '' : 's'}${r.people ? ' · ' + r.people + ' people' : ''}</span></div>`).join('') : ''}`;
+    ${rows.length ? rows.map((r) => { const rep = data.periodAgencies().find((a) => a.agency === r.agency); return `<div class="agency-row"><span>${esc(r.agency || 'No agency named')}${rep && (rep.name || rep.phone) ? `<span class="muted"> · ${esc(rep.name || 'representative')}${rep.phone ? ', ' + esc(rep.phone) : ''}</span>` : ''}</span><span class="muted">${r.units} unit${r.units === 1 ? '' : 's'}${r.people ? ' · ' + r.people + ' people' : ''}</span></div>`; }).join('') : ''}
+    <div class="muted" style="font-size:12px">Each agency's representative and phone are kept on the period, under Period.</div>`;
 }
 
 // The Public Information Officer's set: photos Operations has cleared. Nothing is public by default.
@@ -254,7 +273,7 @@ function zoneHtml(data, z, state) {
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">Division ${esc(z.code)} <span>${esc(z.name)}</span></div>
-    <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>${z.channel ? `<span class="badge">Radio ${esc(z.channel)}</span>` : ''}${z.supervisor ? `<span class="muted" style="font-size:12px">Supervisor ${esc(z.supervisor)}</span>` : ''}</div>
+    <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>${z.channel ? `<span class="badge">Radio ${esc(z.channel)}</span>` : ''}${z.supervisor ? `<span class="muted" style="font-size:12px">Supervisor ${esc(z.supervisor)}</span>` : ''}${z.branch ? `<span class="muted" style="font-size:12px">Branch ${esc(z.branch)}</span>` : ''}</div>
     ${hazards.map((h) => `<div class="hazline">Hazard · ${esc(h.kind)}${h.note ? ' · ' + esc(h.note) : ''} · ${esc(unitLabel(data.member(h.user_id)))} at ${hhmm(h.created_at)}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>`).join('')}
     <div class="d-row"><span class="k">Priority</span>
       ${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}">Priority ${p}</button>`).join('')}
@@ -280,6 +299,11 @@ function zoneHtml(data, z, state) {
         <label>Radio channel <input name="channel" value="${esc(z.channel || '')}" placeholder="TAC 2"></label>
         <label>Division supervisor <input name="supervisor" value="${esc(z.supervisor || '')}" placeholder="Name"></label>
       </div>
+      <div class="row-2">
+        <label>Branch <input name="branch" value="${esc(z.branch || '')}" placeholder="North of the river" list="branches" maxlength="60"></label>
+        <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">A word that groups divisions on the 207 and the 203 when Operations has more than ${SPAN_MAX} reporting to it. Empty is fine.</span>
+      </div>
+      <datalist id="branches">${[...new Set(data.zones().map((x) => (x.branch || '').trim()).filter(Boolean))].map((b) => `<option value="${esc(b)}"></option>`).join('')}</datalist>
       <div class="row-btns"><button class="btn sm" type="button" data-action="print-204" data-id="${z.id}">Print the 204</button><button class="btn sm" type="submit">Save</button></div>
     </form>
     <div class="k">Structures searched</div>
@@ -482,7 +506,7 @@ export function form211Sections(data) {
   for (const m of members) {
     const rows = data.unitPeople(m.user_id);
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
-    S.push({ title: `${unitLabel(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
+    S.push({ title: `${unitWithKind(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
       lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${p.verified_at ? ', verified' : ', not verified'}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
         return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${px.notes ? ' · ' + px.notes : ''}`;
@@ -602,6 +626,7 @@ export function requestCardHtml(data, r) {
     <div class="req-top">${r.urgency ? `<span class="badge urg-${esc(r.urgency)}">${esc(urgencyLabel(r.urgency))}</span>` : ''}<span class="badge st-req-${esc(r.status)}">${esc(REQUEST_STATUS[r.status] || r.status)}</span><span class="muted">${hhmm(r.created_at)} · ${esc(who)}${z ? ' · ' + esc(z.code) : ''}</span></div>
     <div class="req-line">${esc(requestLine(r))}</div>
     ${r.note ? `<div class="muted" style="font-size:12.5px">${esc(r.note)}</div>` : ''}
+    ${(() => { if (!['asked', 'approved', 'ordered'].includes(r.status)) return ''; const m = unitsForRequest(r, { units: data.units(), zones: data.zones(), positions: data.positions() }); return m.length ? `<div class="req-onscene"><strong>On scene now:</strong> ${esc(onSceneLine(m))}${m.length > 3 ? ' · and ' + (m.length - 3) + ' more' : ''}. Open a division and press the unit's name to reassign it.</div>` : ''; })()}
     ${r.answer ? `<div style="font-size:12.5px">${esc(r.answer)}${r.status_at ? ' · ' + hhmm(r.status_at) : ''}</div>` : ''}
     ${next.length ? `<form class="req-answer" data-form="request-answer" data-id="${r.id}"><input name="answer" placeholder="${r.status === 'approved' ? 'Who is coming and when' : 'A word for the unit (optional)'}" maxlength="200" autocomplete="off">${next.map(([st, label]) => `<button class="btn sm${st === 'filled' ? ' green' : st === 'declined' ? '' : ' pri'}" name="status" value="${st}">${label}</button>`).join('')}</form>` : ''}
     ${r.lat != null && r.lng != null ? `<button class="plink" data-action="pan-to" data-lat="${r.lat}" data-lng="${r.lng}">Show on map</button>` : ''}
@@ -701,9 +726,10 @@ function unitHtml(data, m, state) {
   const oos = state && state.oosFor === m.user_id;
   return `
     <button class="back" data-action="close-panel">Back to units</button>
-    <div class="title">${esc(unitLabel(m))} <span>${esc(m.crew || '')}</span></div>
+    <div class="title">${esc(unitWithKind(m))} <span>${esc(m.crew || '')}</span></div>
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
+    ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
     ${identityHtml(data, m)}
     ${demobHtml(m)}
     ${unitRequestsHtml(data, m)}
@@ -757,9 +783,11 @@ function newZoneHtml(data, state) {
 
 function timeValue(iso) { if (!iso) return ''; const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
 
-function periodFormHtml(p, next, state) {
+function periodFormHtml(data, p, next, state) {
   const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()), unified: p ? p.unified || '' : '' } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at), unified: p.unified || '' };
   d.planning = p ? p.planning_chief || '' : ''; d.logistics = p ? p.logistics_chief || '' : ''; d.finance = p ? p.finance_chief || '' : '';
+  d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : '';
+  const reps = next ? [] : agencyReps(data, p);
   return `
     <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
       <div class="row-2">
@@ -778,7 +806,15 @@ function periodFormHtml(p, next, state) {
         <label>Finance / Admin Section Chief <input name="finance" value="${esc(d.finance)}"></label>
         <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">Empty seats print as "not set". The names carry into the next period.</span>
       </div>
+      <div class="row-2">
+        <label>Public Information Officer <input name="pio" value="${esc(d.pio)}" placeholder="Who the cleared photos go to"></label>
+        <label>Liaison Officer <input name="liaison" value="${esc(d.liaison)}" placeholder="The other agencies' contact"></label>
+      </div>
       <label>Unified command <input name="unified" value="${esc(d.unified)}" placeholder="The other agencies' Incident Commanders, if more than one agency is in charge" maxlength="200"></label>
+      ${next ? '<div class="muted" style="font-size:12px">The agency representatives carry over with the seats.</div>' : `
+      <div class="k">Agency representatives · for the Liaison Officer</div>
+      ${reps.length ? `<div class="reps">${reps.map((r) => `<div class="rep-row"><span class="rep-agency">${esc(r.agency)}<span class="muted"> · ${r.units ? r.units + ' unit' + (r.units === 1 ? '' : 's') : 'no unit on scene now'}</span></span>${r.lead ? '<span class="muted">lead agency · the IC</span><span class="muted">—</span>' : `<input data-rep="name" data-agency="${esc(r.agency)}" value="${esc(r.name)}" placeholder="Representative" aria-label="${esc(r.agency)} representative" maxlength="80"><input data-rep="phone" data-agency="${esc(r.agency)}" value="${esc(r.phone)}" placeholder="Phone" aria-label="${esc(r.agency)} phone" type="tel" maxlength="30">`}</div>`).join('')}</div>` : '<div class="muted" style="font-size:12px">An agency with a unit on scene appears here on its own (the agency is on the unit at check-in).</div>'}
+      <div class="muted" style="font-size:12px">One row per agency on scene, drawn from the units. The name and phone are kept with the period and printed on the 203.</div>`}
       <label>Safety message and notes for the period <textarea name="notes" rows="2">${esc(d.notes)}</textarea></label>
       ${next ? `<label class="chk"><input type="checkbox" name="carry" checked> Carry open objectives and assignments into the new period</label>` : ''}
       <div class="row-btns">${next ? '<button class="btn sm" type="button" data-action="period-next-cancel">Cancel</button>' : ''}<button class="btn pri sm" type="submit">${next ? 'Start period ' + ((p ? p.number : 0) + 1) : 'Save'}</button></div>
@@ -793,7 +829,8 @@ export function periodHtml(data, state) {
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${p ? 'Operational period ' + p.number : 'No operational period yet'} <span>${p ? esc(periodLabel(p)).replace('OP ' + p.number + ' · ', '') : ''}</span></div>
-    ${p ? periodFormHtml(p, false, state) : '<div class="muted" style="font-size:12.5px">An incident runs in operational periods, usually 12 hours, each with its objectives and its command names.</div>'}
+    ${p ? periodFormHtml(data, p, false, state) : '<div class="muted" style="font-size:12.5px">An incident runs in operational periods, usually 12 hours, each with its objectives and its command names.</div>'}
+    ${commandsHtml(data)}
     ${p ? `
     <div class="k">Objectives (ICS 202)</div>
     ${objectives.length ? objectives.map((o) => `
@@ -804,9 +841,67 @@ export function periodHtml(data, state) {
     <form class="composer" data-form="objective"><div class="composer-row"><input name="text" placeholder="Add an objective" required maxlength="300" autocomplete="off"><button class="btn pri sm" type="submit">Add</button></div></form>` : ''}
     <div class="k">Shift change</div>
     <div class="d-row"><button class="btn sm" data-action="briefing">Briefing</button>${state.periodNext ? '' : `<button class="btn sm" data-action="period-next">Start period ${(p ? p.number : 0) + 1}</button>`}</div>
-    ${state.periodNext ? periodFormHtml(p, true, state) : ''}
+    ${state.periodNext ? periodFormHtml(data, p, true, state) : ''}
     ${earlier.length ? `<div class="k">Earlier periods</div>${earlier.map((x) => `<div class="muted" style="font-size:12.5px">${esc(periodLabel(x))}${x.ic_name ? ' · IC ' + esc(x.ic_name) : ''}</div>`).join('')}` : ''}`;
 }
+
+// Who has held command: the open row is the Incident Commander now, the rest the history the 203
+// and the 214 print. Changing the IC's name on the form asks whether it is a handover.
+function commandsHtml(data) {
+  const rows = data.commands();
+  if (!rows.length) return '';
+  return `<div class="k">Command</div><div class="muted" style="font-size:12.5px">${commandLines(rows).reverse().map(esc).join('<br>')}</div><div class="muted" style="font-size:12px">A different name in the Incident Commander seat asks whether command is being transferred; a transfer tells every unit and is a notable line on the 214.</div>`;
+}
+// The sheet that asks before a handover: what ICS-100 requires, each a tick.
+export function transferDialogHtml(data, t) {
+  const p = data.currentPeriod() || {};
+  const units = data.recipientsFor('all').toUsers.length;
+  return `
+    <h2 class="td-title">Transfer command${t.from ? ' from ' + esc(t.from) : ''} to ${esc(t.to)}?</h2>
+    <p class="muted" style="margin:0;font-size:13px">ICS-100: a transfer of command always requires a full briefing for the incoming Incident Commander and notification to all personnel. Both happen here.</p>
+    <label class="td-opt"><input type="checkbox" name="notify" checked${units ? '' : ' disabled'}><span><strong>Tell everyone in the field.</strong> A message to ${units ? 'every unit (' + units + ')' : 'every unit (none on scene now)'}, acknowledged one tap each, like a safety message: "${esc(t.preview)}"</span></label>
+    <label class="td-opt"><input type="checkbox" name="briefing" checked><span><strong>Open the briefing for the handover.</strong> The shift-change briefing, assembled from the data, for the incoming IC to read with the outgoing one: situation, divisions, units, hazards, open requests, the safety message.</span></label>
+    ${t.mode === 'start' ? `<label class="td-opt"><input type="checkbox" name="period" checked disabled><span><strong>Start operational period ${(p.number || 0) + 1}</strong> with ${esc(t.to)} as Incident Commander, as the form says.</span></label>`
+      : `<label class="td-opt"><input type="checkbox" name="period"><span><strong>Start a new operational period now.</strong> Off by default: a transfer mid-period keeps the period and its objectives.</span></label>`}
+    <div class="row-btns" style="justify-content:space-between;margin-top:6px"><button class="btn sm" type="button" data-action="transfer-rename" title="A typo: the name changes and the log says the period was updated, not that command moved">Just change the name</button><span style="display:flex;gap:8px"><button class="btn sm" type="button" data-action="transfer-cancel">Cancel</button><button class="btn pri sm" type="button" data-action="transfer-go">Transfer command</button></span></div>`;
+}
+
+// The organization chart (ICS 207): drawn from the seats, the divisions and their supervisors, the
+// units and their people. The count on a box is its span of control; past SPAN_MAX it turns orange.
+export function orgChartHtml(data) {
+  const t = orgTree(data);
+  const span = (n, over, label) => `<span class="org-span${over ? ' over' : ''}" title="${esc(label || 'span of control')}">1 : ${n}</span>`;
+  const box = (seat, name, extra, cls) => `<div class="org-box${cls ? ' ' + cls : ''}${name ? '' : ' empty'}"><div class="org-seat">${esc(seat)}</div><div class="org-name">${esc(name || 'not set')}</div>${extra || ''}</div>`;
+  const division = (d) => `<div class="org-div st-${esc(d.zone.status)}${d.over ? ' over' : ''}">
+      <div class="org-div-top"><strong>${esc(d.zone.code)}${d.zone.name ? ' ' + esc(d.zone.name) : ''}</strong>${d.cleared ? '<span class="muted">cleared</span>' : d.unit ? span(d.count, d.over, 'the supervisor over the unit\'s people') : '<span class="muted">not started</span>'}</div>
+      <div class="muted">${d.cleared ? 'released' : (d.zone.supervisor ? 'supervisor ' + esc(d.zone.supervisor) : 'no supervisor') + ' · ' + (d.unit ? esc(unitWithKind(d.unit)) + (d.people.length ? ' · ' + esc(d.people.join(', ')) : d.unit.crew ? ' · ' + esc(d.unit.crew) : '') : 'no unit')}</div>
+    </div>`;
+  const general = t.general.map((g) => `<div class="org-box general${g.over ? ' over' : ''}${g.name ? '' : ' empty'}"><div class="org-seat-row"><span class="org-seat">${esc(g.seat)}</span>${g.key === 'ops' ? span(g.count, g.over, 'Operations over its branches and divisions') : ''}</div><div class="org-name">${esc(g.name || 'not set')}</div><div class="muted">${esc(g.note)}</div></div>`).join('');
+  const branches = t.branches.map((b) => `<div class="org-branch${b.over ? ' over' : ''}"><div class="org-branch-h"><strong>Branch ${esc(b.name)}</strong>${span(b.count, b.over, 'the branch over its divisions')}</div><div class="org-grid">${b.divisions.map(division).join('')}</div></div>`).join('');
+  return `<div class="org">
+    ${t.warnings.length ? `<div class="org-warn">${t.warnings.map((w) => `<div><strong>Span of control:</strong> ${esc(w)}. ICS-100 recommends one supervisor to five, three to seven at most. ${/^Operations/.test(w) ? 'Group the divisions into branches (a word on each division), or seat a deputy.' : /^Branch/.test(w) ? 'Split the branch, or seat a deputy.' : 'Split the unit, or name a second supervisor.'}</div>`).join('')}</div>` : ''}
+    <div class="org-col">
+      ${box('Incident Commander', t.ic.name, `<div class="org-sub">${esc(t.ic.agency || '')}${t.ic.unified ? (t.ic.agency ? ' · ' : '') + 'unified command with ' + esc(t.ic.unified) : ''}</div>`, 'ic')}
+      <div class="org-line"></div>
+      <div class="org-row">${t.staff.map((s) => box(s.seat, s.name, '', 'staff')).join('')}</div>
+      <div class="org-line"></div>
+      <div class="org-grid general-row">${general}</div>
+      <div class="org-line left"></div>
+      ${branches}
+      ${t.loose.length ? `${t.branches.length ? '<div class="org-branch-h"><strong>Reporting to Operations</strong></div>' : ''}<div class="org-grid">${t.loose.map(division).join('')}</div>` : (t.branches.length ? '' : '<p class="muted">No divisions drawn yet.</p>')}
+    </div>
+  </div>`;
+}
+export function orgSections(data) {
+  const inc = data.incident, p = data.currentPeriod();
+  return [{ title: 'Organization chart, ICS 207', lines: [
+    inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
+    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    'Drawn from the period\'s seats, the divisions and their supervisors, the units and their people · prepared ' + new Date().toLocaleString()
+  ].concat(orgLines(data)), figure: orgChartHtml(data) }];
+}
+export function orgHtml(data) { return sectionsHtml(orgSections(data)); }
+export function orgText(data) { return sectionsText(orgSections(data)); }
 
 // The briefing is built once as sections of lines, then shown as a page or copied as text.
 export function briefingSections(data) {
@@ -821,8 +916,10 @@ export function briefingSections(data) {
   S.push({ title: 'Incident', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set')].join(' · ') : null,
+    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set'), 'PIO ' + (p.pio || 'not set'), 'Liaison ' + (p.liaison || 'not set')].join(' · ') : null,
     commandText(inc, p) || null,
+    transferLine(data, p),
+    agencyRepLines(data, p).length ? 'Agency representatives: ' + agencyRepLines(data, p).join(' · ') : null,
     'Briefing made ' + new Date().toLocaleString()
   ].filter(Boolean) });
   if (p && p.notes) S.push({ title: 'Safety message and notes', lines: [p.notes] });
@@ -836,7 +933,7 @@ export function briefingSections(data) {
   })) });
   S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(agenciesOn(data.activeUnits()).map(agencyLine), units.flatMap((m) => {
     const zone = zones.find((z) => z.assigned_to === m.user_id && z.status === 'active');
-    return [`${unitLabel(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`].concat(personLines(data, m));
+    return [`${unitWithKind(m)}${m.crew ? ' (' + m.crew + ')' : ''}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${m.status_note ? ': ' + m.status_note : ''}${zone ? ' · ' + zone.code : ''}`].concat(personLines(data, m));
   })) });
   S.push({ title: 'Hazards still open', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · ${h.zone_id && data.zone(h.zone_id) ? data.zone(h.zone_id).code : 'outside the zones'} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None'] });
   const facilities = data.facilities();
@@ -844,7 +941,8 @@ export function briefingSections(data) {
   const channels = data.channels();
   S.push({ title: 'Communications (ICS 205)', lines: channels.length ? channels.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
-    .concat(waiting.map((m) => `${m.kind === 'par' ? 'PAR' : 'Safety message'} from ${hhmm(m.created_at)} still waiting on ${data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ')}`));
+    .concat(waiting.map((m) => `${m.kind === 'par' ? 'PAR' : 'Safety message'} from ${hhmm(m.created_at)} still waiting on ${data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ')}`))
+    .concat(orgTree(data).warnings.map((w) => `${w}: past the span of control ICS-100 recommends (one to ${SPAN_MAX} at most). See the organization chart.`));
   S.push({ title: 'Needs attention', lines: attention.length ? attention : ['Nothing outstanding'] });
   const log = data.eventsIn(p).slice(0, 40);
   S.push({ title: p ? 'Log of this period, newest first' : 'Log, newest first', lines: log.length ? log.map((e) => `${hhmm(e.at)}  ${e.text}`) : ['Nothing yet'] });
@@ -861,16 +959,17 @@ export function form204Sections(data, z) {
   S.push({ title: 'Assignment list, ICS 204', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-    'Division ' + z.code + (z.name ? ' · ' + z.name : '') + ' · priority ' + z.priority + (o ? ' · objective ' + o.number + ': ' + o.text : ''),
-    'Division supervisor: ' + (z.supervisor || 'not named'),
+    (z.branch ? 'Branch ' + z.branch + ' · ' : '') + 'Division ' + z.code + (z.name ? ' · ' + z.name : '') + ' · priority ' + z.priority + (o ? ' · objective ' + o.number + ': ' + o.text : ''),
+    'Division supervisor: ' + (z.supervisor || 'not named') + (p && p.ops_chief ? ' · Operations Section Chief: ' + p.ops_chief : ''),
     'Radio channel: ' + (z.channel || 'not set')
   ], figure: divisionMapHtml(data, z) });
-  S.push({ title: 'Resources assigned', lines: unit ? [`${unitLabel(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`].concat(personLines(data, unit)) : ['None yet'] });
+  S.push({ title: 'Resources assigned', lines: unit ? [`${unitWithKind(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`].concat(personLines(data, unit)) : ['None yet'] });
   S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
   S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []) });
   S.push({ title: 'Known hazards', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None reported'] });
   const plan = data.channels();
   S.push({ title: 'Communications', lines: ['Division channel: ' + (z.channel || 'not set')].concat(plan.length ? plan.map((c) => `${c.use}: ${c.channel}`) : ['No incident plan set']) });
+  S.push({ title: 'Medical, ICS 206 · if someone is hurt', lines: hurtText(data, { unit, at: centroid(z.polygon) }).map((l, i) => (l.startsWith('! ') ? '! ' : '') + (i + 1) + '. ' + l.replace(/^! /, '')) });
   const places = data.facilities().filter((f) => ['staging', 'shelter', 'hospital', 'icp'].includes(f.kind));
   S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '')].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
@@ -892,6 +991,7 @@ export function sitrepSections(data) {
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
     p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
     commandText(inc, p) || null,
+    transferLine(data, p),
     'Prepared by Operations, ' + new Date().toLocaleString()
   ].filter(Boolean) });
   S.push({ title: 'Situation', lines: [sr.summary || 'Not written yet'] });
@@ -910,8 +1010,14 @@ export function sitrepSections(data) {
   S.push({ title: 'Outlook for the next period', lines: [sr.outlook || 'Not written yet'] });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => facilityLabel(f)) : ['None set'] });
   const pub = data.publicPhotos().length;
-  S.push({ title: 'Public information', lines: [pub ? `${pub} photo${pub === 1 ? '' : 's'} cleared for public release` : 'No photos cleared for public release'] });
+  S.push({ title: 'Public information', lines: [(pub ? `${pub} photo${pub === 1 ? '' : 's'} cleared for public release` : 'No photos cleared for public release') + (p && p.pio ? `, to ${p.pio} (PIO)` : ' · no Public Information Officer seated') + '. Nothing is public by default.'] });
   return S;
+}
+// "Command transferred at 14:20 from Dana Ruiz to Marcus Bell", when it happened in this period
+function transferLine(data, p) {
+  const c = data.currentCommand();
+  if (!c || !p || !c.from_name || c.started_at < p.starts_at) return null;
+  return `Command transferred at ${hhmm(c.started_at)} from ${c.from_name} to ${c.ic_name}`;
 }
 
 // The Incident Action Plan: the forms stitched together for the briefing and the truck.
@@ -924,25 +1030,41 @@ export function iapSections(data) {
     'Prepared ' + new Date().toLocaleString()
   ] });
   S.push({ title: 'Objectives, ICS 202', lines: (p ? data.objectives(p.id) : []).length ? data.objectives(p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ''}`) : ['None set'] });
+  const cmd = data.currentCommand(), earlier = data.commands().filter((c) => c.ended_at);
+  const reps = agencyRepLines(data, p);
+  const byBranch = new Map();
+  for (const z of data.zones()) { const b = (z.branch || '').trim(); if (!byBranch.has(b)) byBranch.set(b, []); byBranch.get(b).push(z); }
+  const divLine = (z) => `Division ${z.code} supervisor: ${z.supervisor || 'not named'}${z.assigned_to ? ' · ' + unitWithKind(data.member(z.assigned_to)) : ' · no unit'}${z.status === 'cleared' ? ' · cleared' : ''}`;
   S.push({ title: 'Organization, ICS 203', lines: [
     'Command: ' + (commandText(inc, p) || 'lead agency not set'),
-    'Incident Commander: ' + ((p && p.ic_name) || 'not set'),
-    'Operations Section Chief: ' + ((p && p.ops_chief) || 'not set'),
-    'Planning Section Chief: ' + ((p && p.planning_chief) || 'not set'),
-    'Logistics Section Chief: ' + ((p && p.logistics_chief) || 'not set'),
-    'Finance / Administration Section Chief: ' + ((p && p.finance_chief) || 'not set'),
-    'Safety Officer: ' + ((p && p.safety_officer) || 'not set')
-  ].concat(data.zones().filter((z) => z.supervisor).map((z) => `Division ${z.code} supervisor: ${z.supervisor}`), data.units().filter((u) => u.status !== 'checked_out').flatMap((u) => [`${unitLabel(u)}${u.crew ? ' (' + u.crew + ')' : ''}${u.crew_count != null ? ' · ' + u.crew_count + ' people' : ''}${u.agency ? ' · ' + u.agency : ''}`].concat(personLines(data, u)))) });
+    'Incident Commander: ' + ((p && p.ic_name) || 'not set') + (cmd ? ' · since ' + hhmm(cmd.started_at) + (cmd.from_name ? ', from ' + cmd.from_name : '') : ''),
+    earlier.length ? 'Held command earlier: ' + commandLines(earlier).join('; ') : null,
+    'Command staff',
+    '  Safety Officer: ' + ((p && p.safety_officer) || 'not set'),
+    '  Public Information Officer: ' + ((p && p.pio) || 'not set'),
+    '  Liaison Officer: ' + ((p && p.liaison) || 'not set'),
+    'Agency representatives' + (reps.length ? '' : ': none on scene besides the lead agency')
+  ].concat(reps.map((l) => '  ' + l), [
+    'General staff',
+    '  Operations Section Chief: ' + ((p && p.ops_chief) || 'not set'),
+    '  Planning Section Chief: ' + ((p && p.planning_chief) || 'not set'),
+    '  Logistics Section Chief: ' + ((p && p.logistics_chief) || 'not set'),
+    '  Finance / Administration Section Chief: ' + ((p && p.finance_chief) || 'not set'),
+    'Operations'
+  ], [...byBranch.entries()].flatMap(([b, zs]) => (b ? [`  Branch ${b}`].concat(zs.map((z) => '    ' + divLine(z))) : zs.map((z) => '  ' + divLine(z)))),
+    ['Resources'], data.units().filter((u) => u.status !== 'checked_out').flatMap((u) => [`  ${unitWithKind(u)}${u.crew ? ' (' + u.crew + ')' : ''}${u.crew_count != null ? ' · ' + u.crew_count + ' people' : ''}${u.agency ? ' · ' + u.agency : ''}`].concat(personLines(data, u).map((l) => '  ' + l)))).filter(Boolean) });
+  S.push(orgSections(data)[0]);
   for (const z of data.zones()) {
     const unit = z.assigned_to ? data.member(z.assigned_to) : null;
     const o = z.objective_id ? data.objective(z.objective_id) : null;
-    S.push({ title: `Assignment, ICS 204 · Division ${z.code}${z.name ? ' · ' + z.name : ''}`, lines: [
+    S.push({ title: `Assignment, ICS 204 · ${z.branch ? 'Branch ' + z.branch + ' · ' : ''}Division ${z.code}${z.name ? ' · ' + z.name : ''}`, lines: [
       `Priority ${z.priority}${o ? ' · objective ' + o.number : ''} · supervisor ${z.supervisor || 'not named'} · channel ${z.channel || 'not set'}`,
-      'Resources: ' + (unit ? unitLabel(unit) + (unit.crew ? ' (' + unit.crew + ')' : '') + (unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : '') : 'none yet')
+      'Resources: ' + (unit ? unitWithKind(unit) + (unit.crew ? ' (' + unit.crew + ')' : '') + (unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : '') : 'none yet')
     ].concat(unit ? personLines(data, unit) : [], [
       'Work assignment: ' + (z.work_assignment || 'not written yet'),
       'Special instructions: ' + (z.instructions || 'none'),
-      'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : '')
+      'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : ''),
+      'If someone is hurt: ' + hurtText(data, { unit, at: centroid(z.polygon) }).map((l) => l.replace(/^! /, '')).slice(0, 3).join(' ')
     ]), figure: divisionMapHtml(data, z) });
   }
   const ch = data.channels();
@@ -957,7 +1079,8 @@ export function iapSections(data) {
 // A section is its title and lines; one may also carry a figure (the division's map, already
 // HTML), which the page draws after the lines and the text leaves out.
 // A line that starts with two spaces is drawn indented under the line before (a person under a unit).
-function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${s.lines.map((l) => `<p${l.startsWith('  ') ? ' class="sub"' : ''}>${esc(l.trim())}</p>`).join('')}${s.figure || ''}</section>`).join(''); }
+// A line that starts with "! " is a warning (something missing), drawn orange; the text keeps the mark.
+function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${s.lines.map((l) => { const depth = (/^( *)/.exec(l)[1].length / 2) | 0; return `<p${l.startsWith('! ') ? ' class="warn"' : depth >= 2 ? ' class="sub sub2"' : depth === 1 ? ' class="sub"' : ''}>${esc(l.trim().replace(/^! /, ''))}</p>`; }).join('')}${s.figure || ''}</section>`).join(''); }
 function sectionsText(S) { return S.map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n'); }
 
 export function briefingHtml(data) { return sectionsHtml(briefingSections(data)); }
@@ -1055,7 +1178,7 @@ export function form214Sections(data) {
     { title: 'Activity log, ICS 214', lines: [
       inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
       p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-      p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
+      p && p.ic_name ? 'Incident Commander ' + p.ic_name + (data.commands().length > 1 ? ' · ' + commandLines(data.commands()).join('; ') : '') : null,
       'Prepared by Operations, ' + new Date().toLocaleString()
     ].filter(Boolean) },
     { title: notable.length ? `${notable.length} notable ${notable.length === 1 ? 'entry' : 'entries'}` : 'Notable entries', lines: notable.length ? notable.map(line) : ['None marked'] },
@@ -1098,7 +1221,18 @@ export function composerHtml(data, target, placeholder) {
         <input name="text" placeholder="${esc(placeholder || 'Message')}" autocomplete="off" required maxlength="500">
         <button class="btn pri sm" type="submit">Send</button>
       </div>
+      <div class="chips msg-chips">${messageChips(data).map((c) => `<button class="chip" type="button" data-action="msg-chip" data-text="${esc(c.text)}" title="${esc(c.text)}">${esc(c.label)}</button>`).join('')}</div>
     </form>`;
+}
+// The words Operations sends most, one tap each; "You are released" is demobilization's base side.
+export function messageChips(data) {
+  const staging = data.facilities().find((f) => f.kind === 'staging');
+  return [
+    { label: 'Hold where you are', text: 'Hold where you are and stand by for Operations.' },
+    { label: 'Return to staging', text: `Return to staging${staging ? ', ' + (staging.name || 'the staging area') : ''} and report in.` },
+    { label: 'PAR', text: 'PAR: head count to Operations, everyone accounted for or not.' },
+    { label: 'You are released', text: `You are released. Return to staging${staging ? ', ' + (staging.name || 'the staging area') : ''}, return the radio to Logistics, and check out on your phone. Thank you.` }
+  ];
 }
 
 export function messageRowHtml(data, m) {

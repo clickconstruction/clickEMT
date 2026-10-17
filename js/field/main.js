@@ -4,7 +4,8 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS } from '../shared/rules.js';
+import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 
 const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
@@ -16,12 +17,13 @@ import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, D
 const AGENCY_KEY = 'ic.field.agency';
 const JOIN_KEY = 'ic.field.join';   // a code that arrived in the address (?join=), kept through sign-in
 const SEEN_ZONE = 'ic.field.seen.';
+const BRIEFED = 'ic.field.briefed.';   // the check-in the unit was briefed for (its joined_at), per incident
 const POSITION_EVERY_MS = 10000;
 const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set() };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -46,7 +48,7 @@ function toast(msg, bad) {
 function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; }
 function screen(name) {
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt']) $('#s-' + s).hidden = name !== s;
   if (name === 'home') { state.pending = null; if (mini) setTimeout(() => mini.invalidateSize(), 50); }
 }
 
@@ -143,6 +145,7 @@ async function showJoin() {
   drawYouLine();
   if (!data.profileComplete() && !state.identShown) { state.identShown = true; openIdentify(); }
   drawJoinPeople();
+  drawJoinKind();
   const list = $('#join-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
   try {
@@ -165,6 +168,9 @@ $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden 
 function qualChips(quals, action, extra) {
   return QUALIFICATIONS.map(([q, label]) => `<button type="button" class="chip sm${quals.has(q) ? ' on' : ''}" data-action="${action}" data-q="${q}"${extra || ''} aria-pressed="${quals.has(q)}">${esc(label)}</button>`).join('');
 }
+// what the unit is, one tap at check-in (kept from the last check-in when nothing is picked)
+function kindChips(cur, action) { return UNIT_KINDS.map(([k, label]) => `<button type="button" class="chip sm${cur === k ? ' on' : ''}" data-action="${action}" data-kind="${k}" aria-pressed="${cur === k}">${esc(label)}</button>`).join(''); }
+function drawJoinKind() { setHtml($('#join-kind'), kindChips(state.joinKind, 'jp-kind')); }
 function drawJoinPeople() {
   $('#join-people').innerHTML = state.joinPeople.map((p, i) => `
     <div class="pp-edit">
@@ -185,12 +191,13 @@ $('#join-form').addEventListener('submit', async (e) => {
   const f = e.target, msg = f.querySelector('[data-msg]');
   msg.textContent = 'Checking in…';
   try {
-    const inc = await data.join(f.code.value, 'unit', f.unit.value, null, null, f.agency.value, joinPeopleList());
+    const inc = await data.join(f.code.value, 'unit', f.unit.value, null, null, f.agency.value, joinPeopleList(), state.joinKind);
     try { localStorage.setItem(AGENCY_KEY, f.agency.value.trim()); } catch (e) { /* storage blocked */ }
     f.reset(); msg.textContent = '';
     clearPendingJoin();
-    state.joinPeople = [blankPerson(), blankPerson()];
-    drawJoinPeople();
+    state.joinPeople = [blankPerson(), blankPerson()]; state.joinKind = '';
+    drawJoinPeople(); drawJoinKind();
+    state.briefOnce = true;   // your briefing opens once the incident is open
     await openIncident(inc.id);
   } catch (err) { msg.textContent = err.message || String(err); }
 });
@@ -214,6 +221,32 @@ async function openIncident(id) {
   sensors.start();
   outbox.flush();
   drawAll();
+  const me = data.me();
+  let briefedFor = null;
+  try { briefedFor = localStorage.getItem(BRIEFED + id); } catch (e) { /* storage blocked */ }
+  if (me && me.role === 'unit' && (state.briefOnce || briefedFor !== me.joined_at)) { state.briefOnce = false; openBriefing(); }
+}
+
+// ---- your briefing: ICS-100's briefing items for this unit, assembled from the data (js/shared/briefings.js),
+// shown once after check-in and kept in the menu. Live updates redraw it while it is open.
+function openBriefing() { screen('briefing'); drawBriefingSheet(); }
+function drawBriefingSheet() {
+  const me = data.me(), p = sensors.pos;
+  $('#briefing-sub').textContent = unitWithKind(me) + ' · ' + hhmm(new Date());
+  const S = fieldBriefing(data, { me, at: p ? [p.lat, p.lng] : null });
+  const action = (s) => s.action === 'map' ? `<button class="btn sm" data-action="briefing-map">Show on map</button>` : s.action === 'ask' ? `<button class="btn sm" data-action="ask">Ask</button>` : s.action === 'hurt' ? `<button class="btn sm" data-action="hurt">Open the card</button>` : '';
+  setHtml($('#briefing-list'), S.map((s) => `<div class="brief-sec${s.warn ? ' warn' : ''}"><div class="k">${esc(s.title)}</div><div class="brief-row"><span class="brief-text">${s.lead ? '<strong>' + esc(s.lead) + '</strong> ' : ''}${esc(s.text)}</span>${action(s)}</div></div>`).join(''));
+}
+function markBriefed() { const me = data.me(); try { if (me) localStorage.setItem(BRIEFED + data.incident.id, me.joined_at); } catch (e) { /* storage blocked */ } }
+
+// ---- if someone is hurt: the IAP's fourth question for this unit, from the unit's qualifications,
+// the communications plan and the facilities. On the Nearest card, in the menu and under Safety.
+function openHurt() { screen('hurt'); drawHurt(); }
+function drawHurt() {
+  const me = data.me(), p = sensors.pos;
+  const L = hurtLines(data, { unit: me, at: p ? [p.lat, p.lng] : null });
+  const lead = (t) => { const i = t.indexOf('. '); return i > 0 ? '<strong>' + esc(t.slice(0, i + 1)) + '</strong>' + esc(t.slice(i + 1)) : esc(t); };   // the first sentence in bold, as on the card
+  setHtml($('#hurt-list'), L.map((l) => `<div class="hurt-row${l.warn ? ' warn' : ''}"><span class="hurt-n">${l.n}</span><div class="hurt-text">${lead(l.text)}${l.directions || l.ask ? `<div class="hurt-btns">${l.directions ? `<a class="btn sm" href="${esc(l.directions)}" target="_blank" rel="noopener">Directions</a>` : ''}${l.ask ? '<button class="btn sm" data-action="ask-ambulance">Ask for the ambulance</button>' : ''}</div>` : ''}</div></div>`).join(''));
 }
 
 // ---- messages: the inbox, the card on the home screen, the safety takeover
@@ -346,6 +379,16 @@ async function answerPar(id, allAccounted) {
   else { if (state.screen === 'safety') drawSafety(); toast('Head count sent: ' + count); }
   queueDraw();
 }
+async function setMyKind(kind) {
+  const me = data.me();
+  if (!me) return;
+  const next = me.kind === kind ? '' : kind;
+  data.local('ic_members', Object.assign({}, me, { kind: next }));
+  try { await data.setKind(me.user_id, next); } catch (e) { toast(e.message || String(e), true); return; }
+  toast(next ? unitLabel(me) + ' is a ' + kindText(next) : 'Kind cleared');
+  drawMenu();
+  queueDraw();
+}
 async function setMyStatus(status, note) {
   const me = data.me();
   if (!me) return;
@@ -365,6 +408,14 @@ function drawAsk() {
   $('#ask-where').textContent = zone ? `For ${zone.code} ${zone.name || ''}, where you are · your spot goes with it` : (sensors.pos ? 'Your spot goes with it' : 'No GPS fix yet; the request goes without a spot');
   const mine = data.myRequests().slice(0, 6);
   $('#ask-mine').innerHTML = mine.length ? mine.map((r) => `<div class="req-row"><span class="req-dot ${esc(r.status)}"></span><span style="flex:1"><strong>${esc(requestLine(r))}</strong><br><span class="muted" style="font-size:12px">${esc(REQUEST_STATUS[r.status] || r.status)}${r.answer ? ' · ' + esc(r.answer) : ''} · ${hhmm(r.status_at || r.created_at)}</span></span>${r.status === 'asked' ? `<button class="btn sm" data-action="ask-withdraw" data-id="${r.id}">Withdraw</button>` : ''}</div>`).join('') : '<div class="muted small">Nothing asked yet.</div>';
+}
+// the hurt card's shortcut: an ambulance, act on now, with the spot
+function askAmbulance() {
+  state.ask = { kind: 'medical', urgency: 'now' };
+  screen('ask'); drawAsk();
+  $('#ask-what').value = 'ambulance';
+  $('#ask-note').value = 'Someone is hurt';
+  $('#ask-note').focus();
 }
 async function sendAsk() {
   const what = $('#ask-what').value.trim() || REQUEST_KINDS.find(([v]) => v === state.ask.kind)[1].toLowerCase();
@@ -575,6 +626,8 @@ function drawAll() {
 
   if (state.screen === 'menu') drawMenu();
   if (state.screen === 'photo') drawPhotoFacts();
+  if (state.screen === 'briefing') drawBriefingSheet();
+  if (state.screen === 'hurt') drawHurt();
 }
 
 function wedgeHtml(h) {
@@ -629,6 +682,10 @@ function drawNearby() {
     if (!f) continue;
     rows.push(`<div class="near"><span class="fmark fmark-${esc(f.kind)} inline">${esc(facilityKind(f.kind)[2])}</span><span class="near-main"><span class="near-name">${esc(f.name || facilityKind(f.kind)[1])}</span><span class="muted">${esc(facilityKind(f.kind)[1])}${n ? ' · ' + milesText(n.distance) : ''}${f.contact ? ' · ' + esc(f.contact) : ''}</span></span><a class="btn sm" href="${directionsUrl(f.lat, f.lng)}" target="_blank" rel="noopener">Directions</a></div>`);
   }
+  // the hurt card rides on the Nearest card: the medic on the unit, or the nearest one
+  const me = data.me();
+  const hurt = me ? hurtLines(data, { unit: me, at: p ? [p.lat, p.lng] : null })[0] : null;
+  if (hurt) rows.push(`<div class="near hurt-near" data-action="hurt" role="button" tabindex="0"><span class="fmark inline">+</span><span class="near-main"><span class="near-name">If someone is hurt</span><span class="${hurt.warn ? 'warn' : 'muted'}" style="${hurt.warn ? 'color:var(--hazard-ink)' : ''}">${esc(hurt.text.replace(/^Medic on your unit: /, 'Medic: ').split('. ')[0])}</span></span><button class="btn sm" data-action="hurt" type="button">Open</button></div>`);
   setHtml($('#nearby'), rows.length ? `<div class="card"><div class="k">Nearby</div>${rows.join('')}</div>` : '');
 }
 
@@ -801,10 +858,11 @@ function drawMenu() {
     ${data.channels().length ? `<span class="k">Channels</span><span>${data.channels().map((c) => esc(c.use) + ' <strong>' + esc(c.channel) + '</strong>').join(' · ')}</span>` : ''}
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
     <span class="k">Code</span><span class="mono">${esc(inc.code)}</span>
-    <span class="k">You</span><span>${esc(unitLabel(me))}${me && crewNames(me, data.people()) ? ' · ' + esc(crewNames(me, data.people())) : ''}</span>
+    <span class="k">You</span><span>${esc(unitWithKind(me))}${me && crewNames(me, data.people()) ? ' · ' + esc(crewNames(me, data.people())) : ''}</span>
     ${data.profile ? `<span class="k">Identity</span><span>${esc(data.profile.full_name)} · ${esc(data.profile.phone)}${data.profile.licence_number ? ' · ' + esc(data.profile.licence_state) + ' ' + esc(licenceTail(data.profile.licence_number)) : ''}${data.profile.verified_at ? ' · verified by Operations' : ' · not yet verified'}</span>` : ''}
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
+  setHtml($('#menu-kind'), kindChips(me ? me.kind : '', 'me-kind'));
   $('#menu-outbox').textContent = state.outbox ? `${state.outbox} report${state.outbox === 1 ? '' : 's'} waiting for signal${state.outboxError ? ': ' + (state.outboxError.message || state.outboxError) : ''}` : 'Nothing waiting, everything is sent';
   drawStatus();
 }
@@ -1071,7 +1129,15 @@ document.addEventListener('click', async (e) => {
       case 'ask-kind': state.ask.kind = btn.dataset.value; drawAsk(); break;
       case 'ask-urgency': state.ask.urgency = btn.dataset.value; drawAsk(); break;
       case 'ask-send': await sendAsk(); break;
-      case 'ask-withdraw': await data.withdrawRequest(id); drawAsk(); toast('Withdrawn'); break;
+      case 'ask-withdraw': await data.withdrawRequest(btn.dataset.id); drawAsk(); toast('Withdrawn'); break;
+      case 'ask-ambulance': askAmbulance(); break;
+      case 'briefing': openBriefing(); break;
+      case 'briefing-later': screen(state.screen === 'briefing' ? 'home' : 'menu'); queueDraw(); break;
+      case 'briefed': markBriefed(); screen('home'); queueDraw(); toast('Briefed. Your briefing stays in the menu.'); break;
+      case 'briefing-map': markBriefed(); screen('home'); queueDraw(); { const z = myZone(); if (z && mini) mini.fitBounds(L.latLngBounds(ringToLatLngs(z.polygon)), { padding: [16, 16] }); } break;
+      case 'hurt': openHurt(); break;
+      case 'jp-kind': state.joinKind = state.joinKind === btn.dataset.kind ? '' : btn.dataset.kind; drawJoinKind(); break;
+      case 'me-kind': await setMyKind(btn.dataset.kind); break;
       case 'checkout-confirm': await checkOut(); break;
       case 'cmp': $('#compose-text').value = btn.dataset.text || ''; drawCompose(); break;
       case 'cmp-u': state.composeU = state.composeU === btn.dataset.value ? '' : btn.dataset.value; drawCompose(); break;

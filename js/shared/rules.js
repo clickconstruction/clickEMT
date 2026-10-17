@@ -9,7 +9,7 @@ export const DAMAGE = [['unknown', 'Unknown'], ['affected', 'Affected'], ['minor
 export const STRUCTURE_STATUS = { not_searched: 'Not searched', in_progress: 'Being searched', searched: 'Searched' };
 
 // The places an incident runs from and sends people to, with the letter drawn on the map.
-export const FACILITY_KINDS = [['icp', 'Command post', 'CP'], ['staging', 'Staging area', 'S'], ['base', 'Base', 'B'], ['shelter', 'Shelter', 'SH'], ['pod', 'Point of distribution', 'POD'], ['hospital', 'Hospital', 'H'], ['helispot', 'Helispot', 'HL'], ['other', 'Facility', 'F']];
+export const FACILITY_KINDS = [['icp', 'Command post', 'CP'], ['staging', 'Staging area', 'S'], ['base', 'Base', 'B'], ['camp', 'Camp', 'C'], ['shelter', 'Shelter', 'SH'], ['pod', 'Point of distribution', 'POD'], ['hospital', 'Hospital', 'H'], ['helibase', 'Helibase', 'HB'], ['helispot', 'Helispot', 'HL'], ['other', 'Facility', 'F']];
 export function facilityKind(kind) { return FACILITY_KINDS.find((k) => k[0] === kind) || FACILITY_KINDS[FACILITY_KINDS.length - 1]; }
 export function facilityLabel(f) { return facilityKind(f.kind)[1] + (f.name ? ': ' + f.name : ''); }
 
@@ -100,6 +100,45 @@ export function ago(iso, now = Date.now()) {
 export function unitLabel(member) {
   if (!member) return 'Someone';
   return member.role === 'ops' ? 'Operations' : (member.unit_name || 'A unit');
+}
+
+// What a unit is (ICS-100's single resource): the kind Operations asks for and Logistics fills.
+// [key, label, plural, the words in a line]; ic_kind_text in SQL says the same words.
+export const UNIT_KINDS = [['engine', 'Engine', 'Engines', 'engine'], ['boat', 'Boat crew', 'Boat crews', 'boat crew'], ['swift_water', 'Swift-water team', 'Swift-water teams', 'swift-water team'], ['high_water', 'High-water vehicle', 'High-water vehicles', 'high-water vehicle'], ['ambulance', 'Ambulance', 'Ambulances', 'ambulance'], ['search', 'Search team', 'Search teams', 'search team'], ['k9', 'K9 team', 'K9 teams', 'K9 team'], ['drone', 'Drone team', 'Drone teams', 'drone team'], ['pump', 'Pump crew', 'Pump crews', 'pump crew'], ['other', 'Other', 'Other', 'other']];
+export function unitKind(kind) { return UNIT_KINDS.find((k) => k[0] === kind) || null; }
+export function kindText(kind) { const k = unitKind(kind); return k && k[0] !== 'other' ? k[3] : ''; }
+// "Unit 2, boat crew": how a unit reads on the 203, the 204 and the board
+export function unitWithKind(member) { const t = member ? kindText(member.kind) : ''; return unitLabel(member) + (t ? ', ' + t : ''); }
+// Which kinds of unit answer a request: the words in what was asked for first ("2 boat crews"),
+// else the request's kind (a boat or water team, an ambulance, a pump).
+const KIND_WORDS = [['boat', /\bboats?\b/i], ['swift_water', /swift[\s-]?water/i], ['high_water', /high[\s-]?water|deuce|lmtv/i], ['ambulance', /ambulance|medic\b|ems\b/i], ['engine', /\bengine/i], ['search', /search team|search crew/i], ['k9', /\bk-?9\b|dog/i], ['drone', /drone|uas\b/i], ['pump', /pump/i]];
+const KINDS_FOR_REQUEST = { water: ['boat', 'swift_water', 'high_water'], medical: ['ambulance'] };
+export function kindsAsked(r) {
+  const words = KIND_WORDS.filter(([, re]) => re.test(r.what || '')).map(([k]) => k);
+  return words.length ? words : (KINDS_FOR_REQUEST[r.kind] || []);
+}
+// The units on scene of the kinds a request asks for, nearest to the request's division (or its
+// spot) first: [{ unit, zone, distance }], distance in metres when both ends are known.
+export function unitsForRequest(r, { units, zones, positions }) {
+  const kinds = kindsAsked(r);
+  if (!kinds.length) return [];
+  const z = r.zone_id ? zones.find((x) => x.id === r.zone_id) : null;
+  const to = z ? centroid(z.polygon) : (r.lat != null && r.lng != null ? [r.lat, r.lng] : null);
+  return units.filter((u) => u.status !== 'checked_out' && kinds.includes(u.kind)).map((u) => {
+    const zone = zones.find((x) => x.assigned_to === u.user_id && x.status === 'active') || null;
+    const pos = positions.find((p) => p.user_id === u.user_id) || null;
+    const from = pos ? [pos.lat, pos.lng] : (zone ? centroid(zone.polygon) : null);
+    return { unit: u, zone, distance: to && from ? distanceM(from, to) : null };
+  }).sort((a, b) => (a.distance ?? 1e12) - (b.distance ?? 1e12));
+}
+
+// The message every unit gets on a transfer of command, the same words as ic_transfer_text in SQL.
+export function transferText(to, ops, at) {
+  return 'Command transferred to ' + to + (at ? ' at ' + at : '') + '.' + (ops ? ' Operations Section Chief is ' + ops + '.' : '') + ' Your assignment, your division and your channel do not change.';
+}
+// "Dana Ruiz · 02:41 to 14:20": who held command when, oldest first (ic_commands)
+export function commandLines(commands) {
+  return commands.slice().sort((a, b) => (a.started_at < b.started_at ? -1 : 1)).map((c) => c.ic_name + ' · ' + (c.ended_at ? hhmm(c.started_at) + ' to ' + hhmm(c.ended_at) : 'since ' + hhmm(c.started_at)) + (c.from_name ? ', from ' + c.from_name : ''));
 }
 
 export function pct(zone) {

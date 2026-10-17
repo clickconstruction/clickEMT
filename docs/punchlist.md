@@ -11,7 +11,7 @@ the personas who hit them, and add a "Re-walk after vN" section there, as v25 di
 
 | # | What | Size | After | Found by |
 |---|---|---|---|---|
-| 1 | Write the re-walk after v26 | an hour | now | the v26 release, cut short |
+| 1 | Write the re-walk after v26 (done 17 October, `docs: re-walk after v26`) | an hour | now | the v26 release, cut short |
 | 2 | v27 Members and roles, and personal records that clear by rule | medium | 1 | the agency administrator (3 jobs he could not do) |
 | 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
 | 4 | v29 Accountability by name | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
@@ -32,6 +32,8 @@ tests green), but its session was stopped while re-walking. Five screenshots wer
 - Append "Re-walk after v26" to `docs/walkthroughs.md` with a table (item, who, what they saw, verdict), using the
   saved screenshots where they fit, and a "Still bites" list.
 - Commit as `docs: re-walk after v26`.
+
+**Done** 17 October 2026: the section is in [walkthroughs.md](walkthroughs.md). Its "Still bites" list is six small things (the toast over a sheet's buttons, the house record's save below the fold, the desk's briefing and quick chips, a street in Find a person, the briefing re-shown on a shared phone) that belong with item 5, and two dev notes (a redraw that waits for a frame that never comes in a hidden pane; the mock's accounts are per tab).
 
 ## 2. v27 Members and roles, and personal records that clear by rule
 

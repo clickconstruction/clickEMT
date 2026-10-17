@@ -150,7 +150,10 @@ function homeHtml(data, state) {
     <form class="inline-form" data-form="incident-edit">
       <label>Lead agency <input name="lead_agency" value="${esc(inc.lead_agency || '')}" placeholder="Cedar Fork Fire Department" maxlength="120"></label>
       <div class="row-btns"><button class="btn sm" type="submit">Save</button></div>
-    </form>`;
+    </form>
+    ${inc.status === 'closed'
+      ? `<div class="d-row"><span class="badge haz">Closed</span><span class="muted" style="font-size:12.5px;flex:1">${inc.personal_cleared_at ? 'Personal records cleared ' + esc(new Date(inc.personal_cleared_at).toLocaleDateString()) + ' by rule.' : inc.clear_personal_at ? 'Personal records clear by rule on ' + esc(new Date(inc.clear_personal_at).toLocaleDateString()) + '; Clear now and Keep 30 more days are on the incident picker.' : ''}</span><button class="btn sm" data-action="reopen-incident">Reopen incident</button></div>`
+      : `<div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">Closing ends the incident for every phone and starts the 30 days after which its personal records clear by rule.</span><button class="btn sm" data-action="close-incident">Close incident</button></div>`}`;
 }
 
 // The Operations code (migration 0019): joining with it makes someone Operations, so it is read here

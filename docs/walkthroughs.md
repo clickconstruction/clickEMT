@@ -420,3 +420,24 @@ Items 2 and 6 of "What to fix first" are clear: every one of the shelter desk's 
 - **The mock's accounts are per tab.** A second tab gives an unknown email a new user id, so the desk's account could not reopen its incident there until its id was set by hand (`window.__mock.users`). Sharing the accounts over the BroadcastChannel with the tables would end it.
 
 Seen again but outside this release: the already-in row still gives the period as typed ("07:00 to 19:00") while the menu says "09:31 to 19:00"; the mock's GPS stands Rosa in A-2 while she is assigned to B-1, so her house record was filed under A-2.
+
+---
+
+## Re-walk after v27
+
+The screens v27 added, walked on 2026-10-17 after commit 0ea25c2 (members and roles, personal records that clear by rule) in the same mock on the base at 1280 × 800, as the agency administrator (persona 11), whose three LOST jobs this release was for. The Browser pane was hidden, so the walk read the screen's text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| 8 · Job 1, accounts for every member | Administrator | People → a second tab, Members: "4 members · 1 Operations", then a row per member: "Unit 1, engine · Ana Ramirez · 512 555 0111 / Cedar Fork Fire Department · in A-1 / Unit / Verified 10:44 · Assigned / Open · Make Operations · Remove". The opener's row reads "Operations · opened the incident" and carries no buttons. The line above says what the codes do and that removing keeps everything sent. Accounts are still made on the phone; the hole (anyone with the card could be Operations) is closed by the codes and this list, as decided. | Clear |
+| 5 · Job 5, open an incident and print the join card | Administrator | The home panel: "JOIN CODE FOR FIELD PHONES · CEDAR7 · Copy · Print a join card · Copy the link", then "OPERATIONS CODE · MR7KQ2VD · Copy · New code · Whoever joins with this code is Operations and can run the incident. Give it by radio or phone, never on paper; the join card carries the units' code only." The picker's third card now reads "Join as Operations with the Operations code: Operations gives it by radio or phone; it is on the Operations home panel, never on the join card. The six-letter join code on the card joins field units only." | Clear |
+| 10 · Job 3, clear the licence records after an incident | Administrator | First: nothing on the screen closed an incident (the data module could, the base never offered it), so the 30 days could never start. Fixed in this walk: the home panel's Incident section ends "Closing ends the incident for every phone and starts the 30 days after which its personal records clear by rule · Close incident" (and "Reopen incident" on a closed one). After Close, the picker's row: "Cedar Fork Flooding · closed · Personal records clear by rule on 11/16/2026: licences, dates of birth, addresses, licence photos and the names of people sheltered · Clear now · Keep 30 more days". Keep moved it to 12/16/2026. Clear now: "Personal records cleared 10/17/2026 by rule · the names, the log and the forms stay". The 214: "Incident closed · personal records clear by rule in 30 days", "Personal records kept 30 more days", "Personal records cleared by rule: 4 licence records, 5 sheltered people's names". | Clear, after the fix |
+
+Items 8 and 10 of "What to fix first" are clear; item 9 (the Google Maps key) is v28.
+
+**Still bites, small:**
+
+- **Nothing says a closed incident can be reopened.** Reopen is on the home panel, reached by opening the closed incident from the picker; the picker's row only says "closed".
+- **Make a unit asks the unit's name in the browser's own prompt**, not a sheet in the app's style.
+- **"Prove nothing a crew sent can be lost"** (the administrator's job 4) still has no one place that says so; the Members tab's line ("removing a member keeps everything they sent") is the nearest.
+- **Dates on the picker are the browser's short form** (11/16/2026) while the log counts days ("in 30 days"); on a shared machine set to another locale the two will not read alike.

@@ -728,6 +728,14 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'keep-personal': await data.keepPersonal(id, 30); toast('Kept 30 more days'); await showPicker(); break;
+      case 'close-incident': {
+        if (!confirm(`Close ${data.incident.name}? Phones can no longer check in with its code, and its personal records clear by rule in 30 days (the picker shows the date). It can be reopened.`)) break;
+        await data.closeIncident();
+        toast('Incident closed');
+        closeReplay(); data.close(); localStorage.removeItem(LAST_INCIDENT); await showPicker();
+        break;
+      }
+      case 'reopen-incident': await data.updateIncident({ status: 'active' }); toast('Incident reopened; the clearing clock stopped'); break;
       case 'verify-profile': await data.verifyProfile(id, true); toast('Marked verified'); break;
       case 'unverify-profile': await data.verifyProfile(id, false); toast('Verification withdrawn'); break;
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;

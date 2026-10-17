@@ -6,7 +6,7 @@ import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
 import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
-import { orgTree, orgLines, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
+import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -975,18 +975,22 @@ function timeValue(iso) { if (!iso) return ''; const d = new Date(iso); return S
 function periodFormHtml(data, p, next, state) {
   const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()), unified: p ? p.unified || '' : '' } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at), unified: p.unified || '' };
   d.planning = p ? p.planning_chief || '' : ''; d.logistics = p ? p.logistics_chief || '' : ''; d.finance = p ? p.finance_chief || '' : '';
-  d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : '';
+  d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : ''; d.deputy = p ? p.deputy || '' : '';
   d.rotation = p && p.rotation_minutes != null ? p.rotation_minutes : data.rotationMinutes();
   const reps = next ? [] : agencyReps(data, p);
   return `
     <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
       <div class="row-2">
         <label>Incident Commander <input name="ic" value="${esc(d.ic)}"></label>
-        <label>Operations Section Chief <input name="ops" value="${esc(d.ops)}"></label>
+        <label>Deputy Incident Commander <input name="deputy" value="${esc(d.deputy)}" placeholder="ICS-100's remedy for a span past seven" maxlength="120"></label>
       </div>
       <div class="row-2">
+        <label>Operations Section Chief <input name="ops" value="${esc(d.ops)}"></label>
         <label>Safety Officer <input name="safety" value="${esc(d.safety)}"></label>
+      </div>
+      <div class="row-2">
         <label>Planned end <input name="ends" type="time" value="${esc(d.ends)}"></label>
+        <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">The deputy prints on the 203 and sits under the IC on the 207, which points at the seat when a span passes seven.</span>
       </div>
       <div class="row-2">
         <label>Planning Section Chief <input name="planning" value="${esc(d.planning)}"></label>
@@ -1073,9 +1077,11 @@ export function orgChartHtml(data) {
   const general = t.general.map((g) => `<div class="org-box general${g.over ? ' over' : ''}${g.name ? '' : ' empty'}"><div class="org-seat-row"><span class="org-seat">${esc(g.seat)}</span>${g.key === 'ops' ? span(g.count, g.over, 'Operations over its branches and divisions') : ''}</div><div class="org-name">${esc(g.name || 'not set')}</div><div class="muted">${esc(g.note)}</div></div>`).join('');
   const branches = t.branches.map((b) => `<div class="org-branch${b.over ? ' over' : ''}"><div class="org-branch-h"><strong>Branch ${esc(b.name)}</strong>${span(b.count, b.over, 'the branch over its divisions')}</div><div class="org-grid">${b.divisions.map(division).join('')}</div></div>`).join('');
   return `<div class="org">
-    ${t.warnings.length ? `<div class="org-warn">${t.warnings.map((w) => `<div><strong>Span of control:</strong> ${esc(w)}. ICS-100 recommends one supervisor to five, three to seven at most. ${/^Operations/.test(w) ? 'Group the divisions into branches (a word on each division), or seat a deputy.' : /^Branch/.test(w) ? 'Split the branch, or seat a deputy.' : 'Split the unit, or name a second supervisor.'}</div>`).join('')}</div>` : ''}
+    ${t.warnings.length ? `<div class="org-warn">${t.warnings.map((w) => `<div><strong>Span of control:</strong> ${esc(w)}. ICS-100 recommends one supervisor to five, three to seven at most. ${/^Operations/.test(w) ? 'Group the divisions into branches (a word on each division), or seat a deputy.' + esc(deputyAdvice(t)) : /^Branch/.test(w) ? 'Split the branch, or seat a deputy.' + esc(deputyAdvice(t)) : 'Split the unit, or name a second supervisor.'}</div>`).join('')}</div>` : ''}
     <div class="org-col">
       ${box('Incident Commander', t.ic.name, `<div class="org-sub">${esc(t.ic.agency || '')}${t.ic.unified ? (t.ic.agency ? ' · ' : '') + 'unified command with ' + esc(t.ic.unified) : ''}</div>`, 'ic')}
+      <div class="org-line"></div>
+      <div class="org-row">${box('Deputy Incident Commander', t.ic.deputy, t.ic.deputy ? '' : `<div class="org-sub">${t.warnings.length ? 'add a deputy: the span of control is past seven' : 'the seat is on the Period sheet'}</div>`, 'deputy' + (!t.ic.deputy && t.warnings.length ? ' over' : ''))}</div>
       <div class="org-line"></div>
       <div class="org-row">${t.staff.map((s) => box(s.seat, s.name, '', 'staff')).join('')}</div>
       <div class="org-line"></div>
@@ -1111,7 +1117,7 @@ export function briefingSections(data) {
   S.push({ title: 'Incident', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set'), 'PIO ' + (p.pio || 'not set'), 'Liaison ' + (p.liaison || 'not set')].join(' · ') : null,
+    p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Deputy ' + (p.deputy || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set'), 'PIO ' + (p.pio || 'not set'), 'Liaison ' + (p.liaison || 'not set')].join(' · ') : null,
     commandText(inc, p) || null,
     transferLine(data, p),
     agencyRepLines(data, p).length ? 'Agency representatives: ' + agencyRepLines(data, p).join(' · ') : null,
@@ -1245,6 +1251,7 @@ export function iapSections(data) {
     'Incident Commander: ' + ((p && p.ic_name) || 'not set') + (cmd ? ' · since ' + hhmm(cmd.started_at) + (cmd.from_name ? ', from ' + cmd.from_name : '') : ''),
     earlier.length ? 'Held command earlier: ' + commandLines(earlier).join('; ') : null,
     'Command staff',
+    '  Deputy Incident Commander: ' + ((p && p.deputy) || 'not set'),
     '  Safety Officer: ' + ((p && p.safety_officer) || 'not set'),
     '  Public Information Officer: ' + ((p && p.pio) || 'not set'),
     '  Liaison Officer: ' + ((p && p.liaison) || 'not set'),

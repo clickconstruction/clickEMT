@@ -411,6 +411,9 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .org-box.ic .org-sub { font-size: 12px; opacity: .8; }
 .org-box.empty .org-name { color: var(--muted); font-weight: 500; }
 .org-box.empty { border-style: dashed; }
+.org-box.deputy { min-width: 200px; }
+.org-box.deputy.over { border: 2px dashed var(--hazard); }
+.org-box.deputy.over .org-sub { color: var(--hazard-ink); }
 .org-seat { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .org-seat-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .org-name { font-weight: 600; }

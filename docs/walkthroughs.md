@@ -491,3 +491,22 @@ Rosa's and Ana's PAR jobs are clear; v24's "People with you − 1 +" for a two-p
 - **Two PARs in a row stack on the phone.** Operations started a second PAR before everyone had answered the first; Ana's phone showed two cards, each needing an answer. The base's bar showed both too. A second PAR could close the first, or the phone could answer the newest for both.
 - **The Missing someone list has no "all of them".** A crew whose whole boat is out of contact ticks every name; a one-tap "Everyone" would do.
 - **The names on the card are the people checked in, not where they are.** A crew that split (two on the bank, one in the boat) has no way to say so; that is the People and tags work.
+
+---
+
+## Re-walk after v31
+
+The Deputy seat, walked on 2026-10-17 after migration 0022 in the mock through the `ics100` smoke suite's steps: the base at 1280 × 800 as Operations. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The period sheet | Marcus | Operational period: "Incident Commander · Deputy Incident Commander" on the first row (the placeholder "ICS-100's remedy for a span past seven"), then Operations and Safety, then Planned end with the note "The deputy prints on the 203 and sits under the IC on the 207, which points at the seat when a span passes seven." Saved "Chief Al Barnes": the 214 "Operational period 1 updated, Deputy Chief Al Barnes". | Clear |
+| The 207 with eight divisions and no deputy | Marcus | The orange warning: "Span of control: Operations is at 1 : 8. ICS-100 recommends one supervisor to five, three to seven at most. Group the divisions into branches (a word on each division), or seat a deputy. The Deputy seat on the Period sheet is empty: add a deputy." Under the IC box a dashed orange box: "Deputy Incident Commander · not set · add a deputy: the span of control is past seven". | Clear |
+| The 207 once the deputy is named | Marcus | The box reads "Deputy Incident Commander · Chief Al Barnes", plain; the warning ends "Deputy: Chief Al Barnes." until the branches bring Operations back under seven. | Clear |
+| The 203 | Marcus | "Deputy Incident Commander: Chief Al Barnes" under the Incident Commander's line, "not set" before the seat was filled. | Clear |
+| The next period | Marcus | Start the next period carries the deputy with the other seats; the 214 "Operational period 2 started, Incident Commander Priya Natarajan, Deputy Chief Al Barnes, 2 objectives carried over". | Clear |
+
+**Still bites, small:**
+
+- **The phone does not name the deputy.** Your briefing's "Operations: …" line and the menu's command line say who holds command, not the deputy; a unit that needs the deputy finds them on the printed 203.
+- **The warning's advice is in prose.** "add a deputy" is words in the orange box, not a link to the period sheet; the sheet is one click away on the home panel.

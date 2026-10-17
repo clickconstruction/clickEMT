@@ -448,7 +448,7 @@ async function doTransfer() {
   else {
     const patch = Object.assign({}, t.patch, { ic_name: c.ic_name, ops_chief: c.ops_chief });
     await data.updatePeriod(t.periodId, patch);
-    if (period) { const cur = data.currentPeriod(); const p = await data.startPeriod({ endsAt: new Date(Date.now() + 12 * 3600000).toISOString(), ic: c.ic_name, ops: cur.ops_chief, safety: cur.safety_officer, notes: cur.notes, carry: true, planning: cur.planning_chief, logistics: cur.logistics_chief, finance: cur.finance_chief, unified: cur.unified, pio: cur.pio, liaison: cur.liaison }); toast('Operational period ' + p.number + ' started'); }
+    if (period) { const cur = data.currentPeriod(); const p = await data.startPeriod({ endsAt: new Date(Date.now() + 12 * 3600000).toISOString(), ic: c.ic_name, ops: cur.ops_chief, safety: cur.safety_officer, notes: cur.notes, carry: true, planning: cur.planning_chief, logistics: cur.logistics_chief, finance: cur.finance_chief, unified: cur.unified, pio: cur.pio, liaison: cur.liaison, rotation: cur.rotation_minutes, deputy: cur.deputy }); toast('Operational period ' + p.number + ' started'); }
   }
   toast('Command transferred to ' + c.ic_name + (notify ? ' · every unit is told' : ''));
   queueDraw();
@@ -1112,7 +1112,7 @@ document.addEventListener('submit', async (e) => {
       queueDraw();
     } else if (form.dataset.form === 'period-edit') {
       const cur = data.period(form.dataset.id);
-      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim(), rotation_minutes: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : undefined };
+      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim(), rotation_minutes: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : undefined, deputy: form.deputy ? form.deputy.value.trim() : undefined };
       // the agency representatives: one row per agency, saved when changed
       const reps = new Map();
       for (const el of form.querySelectorAll('[data-rep]')) { const r = reps.get(el.dataset.agency) || { agency: el.dataset.agency }; r[el.dataset.rep] = el.value.trim(); reps.set(el.dataset.agency, r); }
@@ -1126,7 +1126,7 @@ document.addEventListener('submit', async (e) => {
       await savePending({ mode: 'edit', periodId: form.dataset.id, patch });
     } else if (form.dataset.form === 'period-start') {
       const cur = data.currentPeriod();
-      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value, rotation: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : null };
+      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value, rotation: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : null, deputy: form.deputy ? form.deputy.value.trim() : '' };
       const from = cur ? cur.ic_name : '';
       if (from && payload.ic && payload.ic !== from) { askTransfer({ mode: 'start', from, to: payload.ic, ops: payload.ops.trim(), payload }); return; }
       await savePending({ mode: 'start', payload });

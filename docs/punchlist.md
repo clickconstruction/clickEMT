@@ -16,7 +16,7 @@ the personas who hit them, and add a "Re-walk after vN" section there, as v25 di
 | 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers (shipped 17 October) | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
 | 4 | v29 Accountability by name (shipped 17 October) | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
 | 5 | Small fixes, any time (done 17 October, v30) | small | — | testing and hand-over notes |
-| 6 | Decisions only Grace can make | — | — | testing and hand-over notes |
+| 6 | Decisions only Grace can make (answered 17 October; the Deputy seat shipped as v31) | — | — | testing and hand-over notes |
 
 ---
 
@@ -202,14 +202,21 @@ Each is a few lines. Commit app fixes with a version bump; test-only fixes as `s
 
 ## 6. Decisions only Grace can make
 
+Answered by Grace on 17 October 2026:
+
 - **The hazard outline after the last hazard is resolved.** Resolving a hazard does not clear the division's orange
-  outline. Keep it as "a hazard was reported here", or clear it when the last one is resolved?
+  outline. *Decided: keep it, as "a hazard was reported here". No change.*
 - **One division per unit, or several?** Pressing another unit under "Assigned to" adds it to the division rather than
-  moving it, so a unit can end up on two divisions (Unit 3 on A-2 and B-4 in a walkthrough).
+  moving it, so a unit can end up on two divisions (Unit 3 on A-2 and B-4 in a walkthrough). *Decided: several. A unit
+  may be on more than one division; adding rather than moving stands. No change.*
 - **The period's label.** The picker, the home panel and the phone's incident row show the period as typed ("07:00 to
-  19:00"); every report shows the real times ("03:33 to 19:00"). Drop the typed label, or derive it?
+  19:00"); every report shows the real times ("03:33 to 19:00"). *Decided: keep the typed label where it is; the
+  reports keep the real times. No change.*
 - **A deputy seat.** ICS-100's other remedy for a span of control past seven is a deputy; the 207 warning suggests one
-  but the period has no seat for it.
+  but the period has no seat for it. *Decided: yes. A Deputy seat on the period beside the IC, Safety, PIO and
+  Liaison, on the period sheet, carried into the next period, printed on the 203, drawn on the 207, with the
+  span-of-control warning pointing at it. Built and shipped the same day as `The Deputy seat (v31)`: migration
+  `0022_deputy.sql`, rule test `supabase/tests/deputy.sql`, the seat checked in the `ics100` smoke suite.*
 - **Already decided not to build:** per-person "last seen" notes for boat crews (trackers instead), invite-by-email
   accounts, a transport board ("who is on the next bus" is the shelter card's Expected line for now), NIMS resource
   typing (Type 1 to 4) and strike team / task force labels.

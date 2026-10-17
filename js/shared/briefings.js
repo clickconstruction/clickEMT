@@ -52,21 +52,25 @@ export function orgTree(data) {
   ];
   const icCount = staff.filter((s) => s.name).length + general.filter((g) => g.name).length;
   return {
-    incident: inc, period: p, ic: { name: p.ic_name || '', agency: inc.lead_agency || '', unified: p.unified || '', count: icCount },
+    incident: inc, period: p, ic: { name: p.ic_name || '', deputy: p.deputy || '', agency: inc.lead_agency || '', unified: p.unified || '', count: icCount },
     staff, general, branches, loose, warnings, channels
   };
 }
+// the warning's other remedy (v31): the Deputy seat on the period, empty or filled
+export function deputyAdvice(t) { return t.ic.deputy ? ' Deputy: ' + t.ic.deputy + '.' : ' The Deputy seat on the Period sheet is empty: add a deputy.'; }
 // the 207 as lines, for the IAP and the copied text
 export function orgLines(data) {
   const t = orgTree(data);
   const L = [];
   L.push('Incident Commander: ' + (t.ic.name || 'not set') + (t.ic.agency ? ' (' + t.ic.agency + ')' : '') + (t.ic.unified ? ' · unified command with ' + t.ic.unified : ''));
+  L.push('Deputy Incident Commander: ' + (t.ic.deputy || 'not set'));
   for (const s of t.staff) L.push(`${s.seat}: ${s.name || 'not set'}`);
   for (const g of t.general) L.push(`${g.seat} Section Chief: ${g.name || 'not set'}` + (g.key === 'ops' ? ` · 1 : ${g.count}` + (g.over ? ' · over the span of control' : '') : '') + (g.note ? ' · ' + g.note : ''));
   const div = (d) => `  Division ${d.zone.code}${d.zone.name ? ' ' + d.zone.name : ''} · ${d.cleared ? 'cleared, released' : 'supervisor ' + (d.zone.supervisor || 'not named')}${d.unit ? ' · ' + unitWithKind(d.unit) + (d.people.length ? ' · ' + d.people.join(', ') : '') + ` · 1 : ${d.count}` + (d.over ? ' · over the span of control' : '') : d.cleared ? '' : ' · no unit'}`;
   for (const b of t.branches) { L.push(`Branch ${b.name} · 1 : ${b.count}${b.over ? ' · over the span of control' : ''}`); for (const d of b.divisions) L.push(div(d)); }
   if (t.loose.length) { if (t.branches.length) L.push('Reporting to Operations'); for (const d of t.loose) L.push(div(d)); }
-  for (const w of t.warnings) L.push('! ' + w + '. ICS-100 recommends one supervisor to five, three to seven at most.');
+  for (const w of t.warnings) L.push('! ' + w + '. ICS-100 recommends one supervisor to five, three to seven at most.' + deputyAdvice(t));
+
   return L;
 }
 

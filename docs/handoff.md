@@ -22,18 +22,19 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v30**, "Small fixes from the punchlist" (after v29, "Accountability by name"). The service worker reads `v30`.
-- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0021` in
+- `main` is at **v31**, "The Deputy seat" (after v30, "Small fixes from the punchlist"). The service worker reads `v31`.
+- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0022` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
-  (`parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
+  (`deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
   10 of 10, `ics100.sql`, `people.sql`). v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
-- **Open work:** four decisions for Grace (punchlist item 6) and the "Still bites" lists of the re-walks after v26 to v29
-  in [walkthroughs.md](walkthroughs.md); items 1 to 5 shipped on 17 October. All in [punchlist.md](punchlist.md).
+- **Open work:** the "Still bites" lists of the re-walks after v26 to v29 in [walkthroughs.md](walkthroughs.md); items
+  1 to 5 shipped on 17 October, and Grace's four item 6 decisions are recorded (three no change, the Deputy seat built
+  in v31). All in [punchlist.md](punchlist.md).
 
 ## Read these first
 

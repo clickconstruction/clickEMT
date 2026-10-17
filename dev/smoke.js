@@ -137,7 +137,7 @@ async function baseActions(check) {
   $('#note-form').requestSubmit();
   await until(() => eventText(base, 'Smoke test note for the log'));
   const note = eventText(base, 'Smoke test note for the log');
-  check('a note goes into the log as a note event by Operations', !!note && note.kind === 'note' && note.user_id === USERS().ops && /Smoke test note for the log$/.test(logTexts()[0]) && $('#note-form input').value === '', logTexts()[0]);
+  check('a note goes into the log as a note event by Operations', !!note && note.kind === 'note' && note.user_id === USERS().ops && await until(() => /Smoke test note for the log$/.test(logTexts()[0])) && $('#note-form input').value === '', logTexts()[0]);
   check('the field client sees the note', await until(() => eventText(field, 'Smoke test note for the log')));
 }
 
@@ -1251,7 +1251,7 @@ async function ics100(check) {
   check('saving logs the seat and the representative, and the field sees both', !!eventText(base, 'Operational period 1 updated, Liaison Ana Ortiz') && !!eventText(base, 'Travis County Rescue representative: Sam Whitaker, 512 555 0199') && await until(() => field.currentPeriod().liaison === 'Ana Ortiz' && field.periodAgencies().length === 1), logTexts().slice(0, 2).join(' | '));
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
-  check('the 203 has the command staff, the agency representatives and the units with their kinds', has('#briefing-page', 'public information officer: lena marsh', 'liaison officer: ana ortiz', 'agency representatives', 'travis county rescue: sam whitaker · 512 555 0199', 'unit 2, boat crew (nguyen, patel)', 'division a-1 supervisor: lt. okafor · unit 1, engine'), text('#briefing-page').slice(0, 1200));
+  check('the 203 has the command staff, the agency representatives and the units with their kinds', has('#briefing-page', 'deputy incident commander: not set', 'public information officer: lena marsh', 'liaison officer: ana ortiz', 'agency representatives', 'travis county rescue: sam whitaker · 512 555 0199', 'unit 2, boat crew (nguyen, patel)', 'division a-1 supervisor: lt. okafor · unit 1, engine'), text('#briefing-page').slice(0, 1200));
   check('the IAP carries the 207 with the span of control', has('#briefing-page', 'organization chart, ics 207', 'operations section chief: marcus bell · 1 : 5') && $$('#briefing-page .org .org-div').length === 6, text('#briefing-page').slice(1200, 2000));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
@@ -1273,11 +1273,26 @@ async function ics100(check) {
   check('Operations counts 1 : 5 (the cleared division is released), not orange', $$('#briefing-page .org-box.general .org-span')[0].textContent === '1 : 5' && !$('#briefing-page .org-span.over'), $$('#briefing-page .org-box.general .org-span')[0].textContent);
   for (const i of [1, 2, 3]) await base.addZone({ code: 'C-' + i, name: 'Smoke ' + i, priority: 3, polygon: base.zone(ZONE('B-3')).polygon, structures: 1 });
   check('with eight divisions the count turns orange and the page says what to do', await until(() => $('#briefing-page .org-span.over') && has('#briefing-page .org-warn', 'operations is at 1 : 8', 'group the divisions into branches')), text('#briefing-page .org-warn'));
+  check('the warning points at the empty Deputy seat, and the seat under the IC turns orange (v31)', has('#briefing-page .org-warn', 'the deputy seat on the period sheet is empty: add a deputy') && !!$('#briefing-page .org-box.deputy.over.empty') && has('#briefing-page .org-box.deputy', 'deputy incident commander', 'not set', 'add a deputy: the span of control is past seven'), text('#briefing-page .org-box.deputy'));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('[data-action="briefing"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'shift-change'));
   check('the briefing\'s Needs attention carries the one-line warning', has('#briefing-page', 'needs attention', 'operations is at 1 : 8: past the span of control'), text('#briefing-page').slice(-900));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  // the Deputy seat (v31): named on the period sheet, logged, drawn under the IC, the warning names them
+  $('[data-action="period"]').click();
+  await until(() => $('#panel form[data-form="period-edit"]'));
+  const pf2 = $('#panel form[data-form="period-edit"]');
+  check('the period sheet has the Deputy seat beside the Incident Commander, empty', pf2.deputy && pf2.deputy.value === '' && pf2.deputy.closest('.row-2') === pf2.ic.closest('.row-2'), String(!!pf2.deputy));
+  pf2.deputy.value = 'Chief Al Barnes';
+  pf2.requestSubmit();
+  await until(() => base.currentPeriod().deputy === 'Chief Al Barnes');
+  check('naming the deputy is logged like the other seats, and the field sees it', !!eventText(base, 'Operational period 1 updated, Deputy Chief Al Barnes') && await until(() => field.currentPeriod().deputy === 'Chief Al Barnes'), logTexts()[0]);
+  $('[data-action="org"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'organization chart'));
+  check('the 207 draws the deputy under the IC and the warning names them instead', has('#briefing-page .org-box.deputy', 'chief al barnes') && !$('#briefing-page .org-box.deputy.over') && !$('#briefing-page .org-box.deputy.empty') && has('#briefing-page .org-warn', 'deputy: chief al barnes') && !has('#briefing-page .org-warn', 'add a deputy'), text('#briefing-page .org-warn'));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   for (const code of ['A-1', 'A-2', 'A-3', 'B-1']) await base.updateZone(ZONE(code), { branch: 'North' });
@@ -1330,7 +1345,7 @@ async function ics100(check) {
   check('the header reads IC Marcus Bell', await until(() => has('#inc-sub', 'ic marcus bell')), text('#inc-sub'));
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
-  check('the 203 says who holds command since when, and who held it before', has('#briefing-page', 'incident commander: marcus bell · since', 'from dana ruiz-ortega', 'held command earlier: dana ruiz-ortega ·'), text('#briefing-page').slice(0, 500));
+  check('the 203 says who holds command since when, and who held it before, and prints the deputy', has('#briefing-page', 'incident commander: marcus bell · since', 'from dana ruiz-ortega', 'held command earlier: dana ruiz-ortega ·', 'deputy incident commander: chief al barnes'), text('#briefing-page').slice(0, 500));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('[data-action="print-214"]').click();
@@ -1343,7 +1358,7 @@ async function ics100(check) {
   $('#panel [data-action="period-next"]').click();
   await until(() => $('#panel form[data-form="period-start"]'));
   const sf = $('#panel form[data-form="period-start"]');
-  check('the start form carries the PIO and the Liaison over', sf.pio.value === 'Lena Marsh' && sf.liaison.value === 'Ana Ortiz' && sf.ic.value === 'Marcus Bell', sf.ic.value);
+  check('the start form carries the PIO, the Liaison and the Deputy over', sf.pio.value === 'Lena Marsh' && sf.liaison.value === 'Ana Ortiz' && sf.ic.value === 'Marcus Bell' && sf.deputy.value === 'Chief Al Barnes', sf.ic.value + ' / ' + sf.deputy.value);
   sf.ic.value = 'Priya Natarajan';
   sf.requestSubmit();
   await until(() => $('#transfer-dialog').open);
@@ -1353,7 +1368,7 @@ async function ics100(check) {
   $('#transfer-dialog [data-action="transfer-go"]').click();
   await until(() => base.currentPeriod() && base.currentPeriod().number === 2);
   const p2 = base.currentPeriod();
-  check('period 2 starts with the new IC, the transfer logged, no message this time, the representatives carried over', p2.ic_name === 'Priya Natarajan' && p2.pio === 'Lena Marsh' && base.currentCommand().ic_name === 'Priya Natarajan' && base.commands().length === 3 && !!eventText(base, 'Command transferred from Marcus Bell to Priya Natarajan · Operations Section Chief Jo Castillo') && base.messages().filter((m) => /^Command transferred/.test(m.text)).length === 1 && base.periodAgencies(p2.id).length === 1 && base.periodAgencies(p2.id)[0].phone === '512 555 0199' && $('#briefing').hidden, logTexts().slice(0, 3).join(' | '));
+  check('period 2 starts with the new IC, the transfer logged, no message this time, the representatives carried over', p2.ic_name === 'Priya Natarajan' && p2.pio === 'Lena Marsh' && p2.deputy === 'Chief Al Barnes' && base.events().some((e) => /^Operational period 2 started, Incident Commander Priya Natarajan, Deputy Chief Al Barnes/.test(e.text)) && base.currentCommand().ic_name === 'Priya Natarajan' && base.commands().length === 3 && !!eventText(base, 'Command transferred from Marcus Bell to Priya Natarajan · Operations Section Chief Jo Castillo') && base.messages().filter((m) => /^Command transferred/.test(m.text)).length === 1 && base.periodAgencies(p2.id).length === 1 && base.periodAgencies(p2.id)[0].phone === '512 555 0199' && $('#briefing').hidden, logTexts().slice(0, 3).join(' | '));
   const bad = await (async () => { try { await field.transferCommand('Nobody'); return null; } catch (e) { return e; } })();
   check('a unit cannot transfer command', !!bad && /Only Operations/.test(bad.message), bad && bad.message);
 

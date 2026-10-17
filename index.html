@@ -110,6 +110,7 @@
         <button class="btn sm" data-action="draw-boundary" id="btn-boundary">Draw boundary</button>
         <button class="btn sm" data-action="draw-zone" id="btn-zone" title="A division is an area of the map given to a unit">Draw division</button>
         <span class="hint" id="tool-hint">Click a division, a unit or a photo pin to open it.</span>
+        <select class="sel layer-pick" id="layer-pick" aria-label="The map underneath" title="The map underneath: streets, satellite, or Google Maps when a key is set in config.js"></select>
         <span id="draw-btns" hidden>
           <button class="btn pri sm" data-action="finish-draw">Finish</button>
           <button class="btn sm" data-action="undo-point" id="btn-undo-point" title="Backspace or Delete does this too" hidden>Remove last point</button>
@@ -182,6 +183,8 @@
   </div>
   <div class="briefing-page" id="briefing-page"></div>
 </div>
+
+<dialog id="zone-dialog" class="zdialog" aria-label="Division details"><div id="zone-dialog-body"></div></dialog>
 
 <div id="toast" class="toast" hidden></div>
 

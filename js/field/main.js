@@ -8,6 +8,7 @@ import { compass, hhmm, ago, pct, unitLabel, zoneAt, ringToLatLngs, latLngText, 
 
 const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
+import { availableLayers, layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay } from '../shared/layers.js';
 const AGENCY_KEY = 'ic.field.agency';
 const SEEN_ZONE = 'ic.field.seen.';
 const POSITION_EVERY_MS = 10000;
@@ -19,7 +20,9 @@ const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, cl
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
 const REPLIES = ['Copy', 'Will do', 'Cannot'];
-let mini = null, miniLayers = null, miniZoneId = null;
+let mini = null, miniLayers = null, miniZoneId = null, miniBase = null;
+const miniOverlays = new Map();   // overlay id → { layer, stamp }
+const overlayUrls = new Map();
 let drawQueued = false;
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -150,7 +153,8 @@ async function openIncident(id) {
   screen('home');
   if (!mini) {
     mini = L.map($('#mini'), { zoomControl: false, attributionControl: true, dragging: true, tap: false });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(mini);
+    mini.createPane('imagery').style.zIndex = 250;
+    setMiniLayer(storedLayer() || 'streets');
     miniLayers = { zone: L.layerGroup().addTo(mini), pins: L.layerGroup().addTo(mini), me: L.layerGroup().addTo(mini) };
     mini.setView([30.2672, -97.7431], 13);
   }
@@ -433,6 +437,7 @@ function icon(html) { return L.divIcon({ html, className: '', iconSize: [0, 0], 
 
 function drawMini(zone) {
   if (!mini) return;
+  drawMiniOverlays();
   miniLayers.zone.clearLayers();
   miniLayers.pins.clearLayers();
   miniLayers.me.clearLayers();
@@ -478,10 +483,41 @@ function drawNearby() {
   setHtml($('#nearby'), rows.length ? `<div class="card"><div class="k">Nearby</div>${rows.join('')}</div>` : '');
 }
 
+// the map underneath the mini map: a device setting, from the menu
+async function setMiniLayer(id) {
+  const def = layerDef(id);
+  let layer;
+  try { layer = await makeBaseLayer(def); } catch (err) { toast(err.message || String(err), true); if (def.id !== 'streets') return setMiniLayer('streets'); return; }
+  if (miniBase) mini.removeLayer(miniBase);
+  miniBase = layer.addTo(mini);
+  storeLayer(def.id);
+  drawLayerChips();
+}
+function drawLayerChips() {
+  const cur = storedLayer() || 'streets';
+  $('#layer-chips').innerHTML = availableLayers().map((l) => `<button class="chip${l.id === cur ? ' on' : ''}" data-action="layer" data-value="${l.id}">${esc(l.name)}</button>`).join('');
+}
+// the imagery Operations put on the map, on the mini map too
+function drawMiniOverlays() {
+  if (!mini) return;
+  const want = new Map();
+  for (const o of data.overlays()) {
+    const url = overlayUrls.get(o.storage_path);
+    if (!url) {
+      if (!overlayUrls.has(o.storage_path)) { overlayUrls.set(o.storage_path, null); data.overlayUrl(o.storage_path).then((u) => { overlayUrls.set(o.storage_path, u); drawMiniOverlays(); }).catch(() => overlayUrls.delete(o.storage_path)); }
+      continue;
+    }
+    want.set(o.id, { o, url, stamp: o.updated_at + '|' + url + '|' + JSON.stringify(o.bounds) + '|' + o.opacity });
+  }
+  for (const [id, cur] of miniOverlays) if (!want.has(id) || want.get(id).stamp !== cur.stamp) { mini.removeLayer(cur.layer); miniOverlays.delete(id); }
+  for (const [id, w] of want) if (!miniOverlays.has(id)) miniOverlays.set(id, { layer: makeOverlay(w.o, w.url, 'imagery').addTo(mini), stamp: w.stamp });
+}
+
 function drawThemeChips() { const cur = storedTheme(); for (const c of document.querySelectorAll('#theme-chips .chip')) c.classList.toggle('on', c.dataset.value === cur); }
 
 function drawMenu() {
   drawThemeChips();
+  drawLayerChips();
   const inc = data.incident, me = data.me(), per = data.currentPeriod();
   $('#menu-facts').innerHTML = `
     <span class="k">Incident</span><span>${esc(inc.name)}</span>
@@ -704,6 +740,7 @@ document.addEventListener('click', async (e) => {
       case 'refresh': await data.open(data.incident.id); toast('Reloaded'); break;
       case 'compass': try { await sensors.requestCompass(); toast('Compass on'); } catch (err) { toast(err.message, true); } break;
       case 'theme': applyTheme(btn.dataset.value); drawThemeChips(); break;
+      case 'layer': await setMiniLayer(btn.dataset.value); break;
       case 'accept': localStorage.setItem(SEEN_ZONE + data.incident.id, btn.dataset.id); state.justCleared = null; queueDraw(); toast('Assignment accepted'); break;
       case 'camera': await takePhoto(); break;
       case 'note': state.noteI = Number(btn.dataset.i); drawPhotoFacts(); break;

@@ -2,6 +2,7 @@
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
 import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyLabel, sampleAt, samplesBefore } from '../shared/rules.js';
+import { layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay, hiddenOverlays } from '../shared/layers.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
 const TRAIL = 12;                 // positions kept per unit for the breadcrumb trail
@@ -36,7 +37,12 @@ export class BaseMap {
     this.el = el;
     this.cb = cb;
     this.map = L.map(el, { zoomControl: true, attributionControl: true, zoomSnap: 0.5 });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map);
+    // the layer underneath (streets, satellite, Google) and the custom imagery over it, under everything drawn
+    this.base = null; this.baseId = null;
+    this.map.createPane('imagery').style.zIndex = 250;
+    this.overlayLayers = new Map();   // overlay id → { layer, stamp }
+    this.overlayUrls = new Map();     // storage path → signed url
+    this.setBaseLayer(storedLayer() || 'streets');
     this.layers = {};
     for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'messages', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
     this.replay = null;   // samples by unit while the base is replaying, else null
@@ -44,6 +50,7 @@ export class BaseMap {
     this.trails = new Map();
     this.mode = null;
     this.draft = [];
+    this.map.on('contextmenu', (e) => { if (e.originalEvent) e.originalEvent.preventDefault(); });   // no browser menu over the map
     this.map.on('click', (e) => {
       if (!this.mode) { this.cb.onBlank && this.cb.onBlank(); return; }
       if (this.mode === 'structures') { this.cb.onPlace && this.cb.onPlace(e.latlng.lat, e.latlng.lng); return; }
@@ -53,6 +60,39 @@ export class BaseMap {
       this.cb.onDraftChange && this.cb.onDraftChange(this.draft.length);
     });
   }
+
+  // ---- the layer underneath: a device setting, swapped in place
+  async setBaseLayer(id) {
+    const def = layerDef(id);
+    let layer;
+    try { layer = await makeBaseLayer(def); } catch (err) { this.cb.onError && this.cb.onError(err); if (def.id === 'streets') return; return this.setBaseLayer('streets'); }
+    if (this.base) this.map.removeLayer(this.base);
+    this.base = layer.addTo(this.map);
+    this.baseId = def.id;
+    storeLayer(def.id);
+    return def.id;
+  }
+  // ---- the imagery: one image per active overlay this device has not hidden; urls arrive later
+  renderOverlays(data, urlFor) {
+    const hidden = hiddenOverlays();
+    const want = new Map();
+    for (const o of data.overlays ? data.overlays() : []) {
+      if (hidden.has(o.id)) continue;
+      const url = this.overlayUrls.get(o.storage_path);
+      if (!url) {
+        if (!this.overlayUrls.has(o.storage_path)) {
+          this.overlayUrls.set(o.storage_path, null);
+          urlFor(o.storage_path).then((u) => { this.overlayUrls.set(o.storage_path, u); this.renderOverlays(data, urlFor); }).catch(() => this.overlayUrls.delete(o.storage_path));
+        }
+        continue;
+      }
+      want.set(o.id, { o, url, stamp: o.updated_at + '|' + url + '|' + JSON.stringify(o.bounds) + '|' + o.opacity });
+    }
+    for (const [id, cur] of this.overlayLayers) if (!want.has(id) || want.get(id).stamp !== cur.stamp) { this.map.removeLayer(cur.layer); this.overlayLayers.delete(id); }
+    for (const [id, w] of want) if (!this.overlayLayers.has(id)) this.overlayLayers.set(id, { layer: makeOverlay(w.o, w.url, 'imagery').addTo(this.map), stamp: w.stamp });
+  }
+  setOverlayOpacity(id, opacity) { const cur = this.overlayLayers.get(id); if (cur) cur.layer.setOpacity(Number(opacity)); }
+  viewBounds() { const b = this.map.getBounds(); return { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() }; }
 
   setView(lat, lng, zoom) { this.map.setView([lat, lng], zoom || 14); }
   fitPolygon(polygon) {
@@ -102,6 +142,7 @@ export class BaseMap {
   render(data, state) {
     const sel = state.selected || {};
     const inc = data.incident;
+    if (this.cb.overlayUrl) this.renderOverlays(data, this.cb.overlayUrl);
     this.layers.boundary.clearLayers();
     if (inc && inc.boundary) {
       const ink = cssVar('--map-ink', '#1B1B18');
@@ -118,9 +159,11 @@ export class BaseMap {
       if (sel.type === 'zone' && sel.id === z.id) style.weight = 4;
       const poly = L.polygon(pts, style).addTo(this.layers.zones);
       poly.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onZone(z.id); });
+      poly.on('contextmenu', (e) => { L.DomEvent.stop(e); if (!this.mode && this.cb.onZoneMenu) this.cb.onZoneMenu(z.id); });
       const c = centroid(z.polygon);
       const label = L.marker(c, { icon: icon(`<button class="zpill${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}" type="button" aria-label="Zone ${esc(z.code)}"><span class="pb p${z.priority}">${z.priority}</span>${esc(z.code)}</button>`), interactive: true, keyboard: false }).addTo(this.layers.labels);
       label.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onZone(z.id); });
+      label.on('contextmenu', (e) => { L.DomEvent.stop(e); if (!this.mode && this.cb.onZoneMenu) this.cb.onZoneMenu(z.id); });
     }
 
     this.layers.structures.clearLayers();

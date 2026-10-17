@@ -1,6 +1,7 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
+import { hiddenOverlays, boundsText } from '../shared/layers.js';
 import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS } from '../shared/rules.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -101,6 +102,7 @@ function homeHtml(data) {
     ${channelsHtml(data)}
     ${agenciesHtml(data)}
     ${publicHtml(data)}
+    ${imageryHtml(data)}
     <div class="k" style="margin-top:6px">Incident</div>
     <div class="kv">
       <span class="k">Period</span><span>${esc(inc.period || 'not set')}</span>
@@ -111,6 +113,47 @@ function homeHtml(data) {
     <form class="inline-form" data-form="incident-edit">
       <label>Lead agency <input name="lead_agency" value="${esc(inc.lead_agency || '')}" placeholder="Cedar Fork Fire Department" maxlength="120"></label>
       <div class="row-btns"><button class="btn sm" type="submit">Save</button></div>
+    </form>`;
+}
+
+// Custom imagery over the map: fresh aerial or satellite pictures by their corner coordinates.
+export function imageryHtml(data) {
+  const hidden = hiddenOverlays();
+  const active = data.overlays(), gone = data.overlays(true).filter((o) => o.archived_at);
+  const row = (o) => `
+    <div class="ovl-row" data-overlay="${o.id}">
+      <div class="ovl-top"><span class="ur-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) + ' · ' : ''}added ${hhmm(o.created_at)}</span></div>
+      <div class="muted mono" style="font-size:11.5px">${esc(boundsText(o.bounds))}</div>
+      <div class="ovl-ctl">
+        <label class="ovl-op">Opacity <input type="range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity"></label>
+        ${hidden.has(o.id) ? `<button class="btn sm" data-action="overlay-show" data-id="${o.id}" title="Hidden on this screen only">Show</button>` : `<button class="btn sm" data-action="overlay-hide" data-id="${o.id}" title="Hides it on this screen only">Hide</button>`}
+        <button class="btn sm" data-action="overlay-remove" data-id="${o.id}" title="Takes it off the map for everyone; it is kept">Remove</button>
+      </div>
+    </div>`;
+  return `
+    <div class="k" style="margin-top:6px">Map imagery</div>
+    <div class="muted" style="font-size:12.5px">A picture laid over the map for every screen: fresh aerial or satellite imagery, a drone mosaic, a scanned plan. Give its corner coordinates; the map's view fills them in.</div>
+    ${active.length ? active.map(row).join('') : ''}
+    ${gone.length ? `<div class="muted" style="font-size:12px">${gone.length} removed: ${gone.map((o) => `${esc(o.name || 'imagery')} <button class="plink" data-action="overlay-restore" data-id="${o.id}">put back</button>`).join(', ')}</div>` : ''}
+    <form class="inline-form" data-form="overlay-add">
+      <label>Picture (PNG or JPEG, up to 50 MB) <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required></label>
+      <div class="row-2">
+        <label>Name <input name="name" placeholder="Aerial 06:40, Civil Air Patrol" maxlength="120"></label>
+        <label>Taken at <input name="taken" type="datetime-local"></label>
+      </div>
+      <div class="row-2">
+        <label>South edge, latitude <input name="south" type="number" step="any" required></label>
+        <label>West edge, longitude <input name="west" type="number" step="any" required></label>
+      </div>
+      <div class="row-2">
+        <label>North edge, latitude <input name="north" type="number" step="any" required></label>
+        <label>East edge, longitude <input name="east" type="number" step="any" required></label>
+      </div>
+      <div class="row-2">
+        <label>Opacity <input name="opacity" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+        <button class="btn sm" type="button" data-action="overlay-view-bounds" title="Fill the corners with what the map shows now">Use the map's view</button>
+      </div>
+      <div class="row-btns"><button class="btn pri sm" type="submit">Put it on the map</button></div>
     </form>`;
 }
 
@@ -212,6 +255,48 @@ function photoHtml(data, p) {
       <button class="btn sm" data-action="pan-to" data-lat="${p.lat}" data-lng="${p.lng}">Show on map</button>
       <a class="btn sm" data-photo-link target="_blank" rel="noopener" hidden>Open full size</a>
       <button class="btn sm${p.public_ok ? '' : ' green'}" data-action="photo-public" data-id="${p.id}" data-ok="${p.public_ok ? '0' : '1'}" title="Nothing is public until Operations clears it. The Public Information Officer takes only cleared photos.">${p.public_ok ? 'Withdraw from public' : 'Clear for public information'}</button>
+    </div>`;
+}
+
+// The right-click card for a division: its rank among the divisions, its priority (changeable
+// here), and the facts at a glance. Left-click still opens the full panel.
+export function zoneModalHtml(data, z) {
+  const zones = data.zones();
+  const rank = zones.findIndex((x) => x.id === z.id) + 1;
+  const unit = z.assigned_to ? data.member(z.assigned_to) : null;
+  const o = z.objective_id ? data.objective(z.objective_id) : null;
+  const hazards = data.hazards().filter((h) => h.zone_id === z.id);
+  const photos = data.photos().filter((p) => p.zone_id === z.id);
+  const structs = data.structures(z.id);
+  const help = structs.reduce((n, s) => n + (s.people_needing_help || 0), 0);
+  const last = data.events().find((e) => e.ref_table === 'ic_zones' && e.ref_id === z.id);
+  const statusCls = z.status === 'cleared' ? 'cleared' : z.status === 'primary' ? 'primary' : (z.status === 'active' ? 'active' : '');
+  return `
+    <div class="zm-head">
+      <div class="zm-name"><div class="k">Division</div><div class="zm-title">${esc(z.code)} <span>${esc(z.name)}</span></div>
+        <div class="d-row" style="margin-top:6px"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>${z.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div></div>
+      <div class="zm-rank"><div class="k">Rank</div><div class="zm-big">${rank}<span class="zm-of">of ${zones.length}</span></div><div class="muted zm-note">by priority, then code</div></div>
+      <div class="zm-rank"><div class="k">Priority</div><div class="zm-big"><span class="pb p${z.priority} zm-pb">${z.priority}</span></div>
+        <div class="zm-pri">${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}" aria-label="Priority ${p}">${p}</button>`).join('')}</div></div>
+    </div>
+    <div class="bar"><div class="bar-fill" style="width:${pct(z)}%"></div></div>
+    <div class="kv zm-kv">
+      <span class="k">Assigned to</span><span>${unit ? esc(unitLabel(unit)) + (unit.crew ? ' · ' + esc(unit.crew) : '') : 'nobody yet'}</span>
+      <span class="k">Structures</span><span>${z.cleared} of ${z.structures} cleared${structs.length ? ' · ' + structs.length + ' on record' : ''}${help ? ' · <strong>' + help + ' people needing help</strong>' : ''}</span>
+      <span class="k">Objective</span><span>${o ? o.number + '. ' + esc(o.text) : 'none'}</span>
+      <span class="k">Supervisor</span><span>${esc(z.supervisor) || 'not named'}</span>
+      <span class="k">Radio</span><span>${esc(z.channel) || 'not set'}</span>
+      <span class="k">Hazards</span><span>${hazards.length ? hazards.map((h) => esc(h.kind) + (h.note ? ' (' + esc(h.note) + ')' : '')).join(', ') : 'none open'}</span>
+      <span class="k">Photos</span><span>${photos.length}${photos.length ? ', last ' + hhmm(photos[0].taken_at) : ''}</span>
+      ${z.work_assignment ? `<span class="k">Work</span><span>${esc(z.work_assignment)}</span>` : ''}
+      ${z.instructions ? `<span class="k">Instructions</span><span>${esc(z.instructions)}</span>` : ''}
+      <span class="k">Last activity</span><span>${last ? hhmm(last.at) + ' · ' + esc(last.text) : 'nothing yet'}</span>
+    </div>
+    <div class="row-btns">
+      <button class="btn sm" data-action="zoom-zone" data-id="${z.id}">Zoom to it</button>
+      <button class="btn sm" data-action="print-204" data-id="${z.id}">Print 204</button>
+      <button class="btn pri sm" data-action="zone-modal-open" data-id="${z.id}">Open in the panel</button>
+      <button class="btn sm" data-action="zone-modal-close">Close</button>
     </div>`;
 }
 

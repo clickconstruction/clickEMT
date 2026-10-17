@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 9;
+  const SEED_VERSION = 10;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -37,6 +37,7 @@
   const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9)];
   const FAC = [ID('4', 1), ID('4', 2), ID('4', 3), ID('4', 4), ID('4', 5)];
   let trackId = 0;   // ic_tracks ids: an identity column
+  const OVL = [ID('5', 1)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
   const users = [
     { id: U.ops, email: 'ops@mock.local' }, { id: U.unit1, email: 'unit1@mock.local' },
@@ -123,6 +124,9 @@
         walk(U.unit2, [30.2566, -97.7400], [30.2614, -97.7420], 60, 300),
         walk(U.unit3, [30.2688, -97.7360], [30.2674, -97.7384], 60, 180)
       ),
+      ic_overlays: [
+        { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2640, west: -97.7440, north: 30.2730, east: -97.7280 }, opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
+      ],
       ic_hazards: [
         { id: H1, incident_id: INC, user_id: U.unit3, zone_id: Z['A-2'], kind: 'Downed power line', note: 'Line across the park entrance', lat: 30.2668, lng: -97.7396, created_at: ago(20), resolved_at: null }
       ],
@@ -168,6 +172,7 @@
     ev(186, U.ops, 'ops', 'Communications plan updated: Command CMD 1, Tactical, Division A TAC 2, Tactical, Division B TAC 3, Emergency traffic TAC 9');
     ev(150, U.ops, 'ops', 'Shelter: High school gym opened', 'ic_facilities', FAC[2]);
     ev(100, U.ops, 'ops', 'Point of distribution: Fairgrounds gate opened', 'ic_facilities', FAC[4]);
+    ev(120, U.ops, 'ops', 'Imagery: Aerial 06:40, Civil Air Patrol added to the map', 'ic_overlays', OVL[0]);
     ev(186, U.ops, 'ops', 'Incident boundary redrawn');
     for (const z of t.ic_zones) ev(183 - Number(z.code.slice(-1)) - (z.code[0] === 'B' ? 3 : 0), U.ops, 'ops', 'Division ' + z.code + ' drawn, priority ' + z.priority, 'ic_zones', z.id);
     ev(170, U.unit1, 'ops', 'Unit 1 checked in with 2 people');
@@ -200,6 +205,7 @@
   const DEFAULTS = {
     ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '' }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null }),
+    ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', created_at: now() }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null }),
@@ -239,6 +245,7 @@
       case 'ic_periods': return op === 'update' && isOps(row.incident_id, uid);
       case 'ic_structures': return isMember(row.incident_id, uid);
       case 'ic_facilities': return isOps(row.incident_id, uid);
+      case 'ic_overlays': return isOps(row.incident_id, uid);
       case 'ic_objectives': return isOps(row.incident_id, uid);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && isMember(row.incident_id, uid);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && isMember(row.incident_id, uid);
@@ -276,6 +283,11 @@
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
     if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
     if (table === 'ic_periods' && r.number == null) throw nn('number');
+    if (table === 'ic_overlays') {
+      if (!r.storage_path) throw nn('storage_path');
+      if (r.bounds == null) throw nn('bounds');
+      if (!(r.opacity >= 0 && r.opacity <= 1)) throw chk('ic_overlays_opacity_check');
+    }
     if (table === 'ic_facilities') {
       if (!['icp', 'staging', 'base', 'shelter', 'pod', 'hospital', 'helispot', 'other'].includes(r.kind)) throw chk('ic_facilities_kind_check');
       if (r.lat == null) throw nn('lat');
@@ -284,6 +296,7 @@
   }
   const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', helispot: 'Helispot', other: 'Facility' };
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
+  const overlayWhat = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
 
   // ---- the triggers: the log (ic_events), updated_at, a hazard's flag on its zone
   const label = (inc, uid) => R.unitLabel(member(inc, uid));
@@ -327,6 +340,7 @@
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
     if (table === 'ic_positions') trackPosition(r, null, uid, changes);
     if (table === 'ic_facilities') log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' opened', 'ic_facilities', r.id);
+    if (table === 'ic_overlays') log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' added to the map', 'ic_overlays', r.id);
     if (table === 'ic_zones') log(changes, r.incident_id, uid, 'ops', `Division ${r.code} drawn, priority ${r.priority}`, 'ic_zones', r.id);
     if (table === 'ic_photos') {
       log(changes, r.incident_id, r.user_id, 'photo', `${label(r.incident_id, r.user_id)} sent a photo from ${zoneCode(r.zone_id)}${r.heading == null ? '' : ', facing ' + R.compass(r.heading)}${r.note !== '' ? ': ' + r.note : ''}`, 'ic_photos', r.id);
@@ -371,6 +385,11 @@
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
     if (table === 'ic_positions') trackPosition(r, old, uid, changes);
     if (table === 'ic_photos' && !!r.public_ok !== !!old.public_ok) log(changes, r.incident_id, uid, 'ops', `Photo from ${label(r.incident_id, r.user_id)} ${r.public_ok ? 'cleared for public information' : 'withdrawn from public information'}`, 'ic_photos', r.id);
+    if (table === 'ic_overlays') {
+      if (r.archived_at && !old.archived_at) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' removed from the map', 'ic_overlays', r.id);
+      else if (!r.archived_at && old.archived_at) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' put back on the map', 'ic_overlays', r.id);
+      else if (r.name !== old.name || JSON.stringify(r.bounds) !== JSON.stringify(old.bounds)) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' updated', 'ic_overlays', r.id);
+    }
     if (table === 'ic_facilities') {
       if (r.closed_at && !old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' closed', 'ic_facilities', r.id);
       else if (!r.closed_at && old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' reopened', 'ic_facilities', r.id);
@@ -450,6 +469,7 @@
     }
     const row = { ...(DEFAULTS[table] ? DEFAULTS[table]() : {}), ...given };
     if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
+    if (table === 'ic_overlays') row.created_by = row.created_by || uid;   // ic_overlay_before
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -478,6 +498,7 @@
       }
     }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
+    if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
     if (table === 'ic_structures') {   // ic_structure_before
       r.updated_at = now();
       if (r.status === 'searched' && (old.status !== 'searched' || !r.searched_at)) { r.searched_at = r.searched_at || now(); r.searched_by = r.searched_by || uid; }
@@ -715,10 +736,25 @@
     g.font = '17px system-ui, -apple-system, sans-serif'; g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillText('Mock photo, drawn by dev/mock-supabase.js', 32, 572);
     return new Promise((resolve) => c.toBlob(resolve, 'image/jpeg', 0.8));
   }
+  function aerialPlaceholder(name) {
+    const c = document.createElement('canvas');
+    c.width = 1000; c.height = 600;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(96,110,84,0.85)'; g.fillRect(0, 0, 1000, 600);
+    let seed = 7; const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${120 + rnd() * 90 | 0},${110 + rnd() * 60 | 0},${90 + rnd() * 40 | 0},0.9)`; const w = 10 + rnd() * 40, h = 8 + rnd() * 30; g.fillRect(rnd() * 1000, rnd() * 600, w, h); }
+    g.strokeStyle = 'rgba(210,205,190,0.9)'; g.lineWidth = 6; for (let y = 60; y < 600; y += 110) { g.beginPath(); g.moveTo(0, y); g.lineTo(1000, y + 20); g.stroke(); }
+    g.fillStyle = 'rgba(70,100,140,0.85)'; g.beginPath(); g.moveTo(0, 420); g.bezierCurveTo(300, 380, 600, 520, 1000, 440); g.lineTo(1000, 600); g.lineTo(0, 600); g.closePath(); g.fill();
+    g.fillStyle = '#fff'; g.font = 'bold 36px system-ui, -apple-system, sans-serif'; g.fillText(name, 30, 60);
+    g.font = '20px system-ui, -apple-system, sans-serif'; g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillText('Mock imagery, drawn by dev/mock-supabase.js', 30, 96);
+    return new Promise((resolve) => c.toBlob(resolve, 'image/png'));
+  }
   async function urlFor(path) {
     if (urls.has(path)) return urls.get(path);
     let blob = files.get(path);
     if (!blob) {
+      const o = tables.ic_overlays.find((x) => x.storage_path === path);
+      if (o) { blob = await aerialPlaceholder(o.name || 'Imagery'); files.set(path, blob); const u = URL.createObjectURL(blob); urls.set(path, u); return u; }
       const p = tables.ic_photos.find((x) => x.storage_path === path);
       if (!p) return null;
       blob = await placeholder(label(p.incident_id, p.user_id) + (p.note ? ' · ' + p.note : ''), zoneCode(p.zone_id) + (p.heading == null ? '' : ' · facing ' + R.compass(p.heading)) + ' · ' + hhmm(p.taken_at));
@@ -808,7 +844,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };

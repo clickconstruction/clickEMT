@@ -91,7 +91,6 @@
 .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .tools .hint { font-size: 12.5px; color: var(--muted); }
 .map { flex: 1; min-height: 320px; background: var(--panel-2); }
-.map .leaflet-tile-pane { filter: var(--map-dim); }
 .leaflet-bar a, .leaflet-bar a:hover { background: var(--control-bg); color: var(--ink); border-bottom-color: var(--line); }
 .leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 85%, transparent) !important; color: var(--muted) !important; }
 .leaflet-control-attribution a { color: var(--accent-text) !important; }
@@ -214,6 +213,30 @@
 .replay .replay-time { font-size: 14px; font-weight: 600; min-width: 48px; }
 .replay .hint { font-size: 12.5px; color: var(--muted); flex-basis: 100%; order: 10; }   /* the log line takes its own row under the controls */
 .badge.pub { background: var(--tint-green); color: var(--cleared); font-size: 11px; vertical-align: middle; }
+/* the right-click card for a division */
+.zdialog { border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; background: var(--panel); color: var(--ink); width: min(600px, 94vw); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+.zdialog::backdrop { background: rgba(0,0,0,.45); }
+.zdialog #zone-dialog-body { display: flex; flex-direction: column; gap: 12px; }
+.zm-head { display: grid; grid-template-columns: 1fr auto auto; gap: 18px; align-items: start; }
+.zm-title { font-size: 22px; font-weight: 600; line-height: 1.15; }
+.zm-title span { font-weight: 400; color: var(--ink-2); font-size: 16px; }
+.zm-rank { text-align: center; min-width: 76px; }
+.zm-big { font-size: 30px; font-weight: 600; line-height: 1.1; display: flex; align-items: baseline; justify-content: center; gap: 4px; }
+.zm-of { font-size: 13px; font-weight: 400; color: var(--muted); }
+.zm-note { font-size: 11px; }
+.zm-pb.pb { width: 34px; height: 34px; border-radius: 17px; font-size: 17px; }
+.zm-pri { display: flex; gap: 4px; justify-content: center; margin-top: 6px; }
+.zm-pri .btn { min-width: 32px; padding: 0 8px; }
+.zm-kv { row-gap: 6px; }
+@media (max-width: 600px) { .zm-head { grid-template-columns: 1fr 1fr; } .zm-name { grid-column: 1 / -1; } }
+.layer-pick { margin-left: auto; min-height: 30px; font-size: 12.5px; }
+.ovl-row { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.ovl-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.ovl-ctl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ovl-op { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex: 1; min-width: 140px; }
+.ovl-op input { flex: 1; accent-color: var(--accent); }
+.inline-form input[type=file] { border: 0; padding: 4px 0; min-height: 0; font-size: 12.5px; }
+.inline-form input[type=range] { border: 0; padding: 0; accent-color: var(--accent); }
 .agency-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0; border-bottom: 1px solid var(--line-soft); }
 
 @media (max-width: 900px) {

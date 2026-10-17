@@ -1,13 +1,14 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays'];
 const BUCKET = 'ic-photos';
+const OVERLAY_BUCKET = 'ic-overlays';
 const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map() };
 }
 
 function keyOf(table, row) {
@@ -93,7 +94,7 @@ export class Data {
   }
   async load(id) {
     const q = (t) => this.sb.from(t).select('*').eq('incident_id', id);
-    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities] = await Promise.all([
+    const [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities, overlays] = await Promise.all([
       this.sb.from('ic_incidents').select('*').eq('id', id).single(),
       q('ic_members'),
       q('ic_zones').order('code'),
@@ -107,15 +108,16 @@ export class Data {
       q('ic_periods').order('number'),
       q('ic_objectives').order('number'),
       q('ic_structures'),
-      q('ic_facilities')
+      q('ic_facilities'),
+      q('ic_overlays')
     ]);
-    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities]) if (r.error) throw r.error;
+    for (const r of [inc, members, zones, positions, photos, hazards, alerts, events, messages, acks, periods, objectives, structures, facilities, overlays]) if (r.error) throw r.error;
     this.store.incident = inc.data;
     const put = (table, rows) => { const m = mapFor(this.store, table); for (const row of rows || []) m.set(keyOf(table, row), row); };
     put('ic_members', members.data); put('ic_zones', zones.data); put('ic_positions', positions.data);
     put('ic_photos', photos.data); put('ic_hazards', hazards.data); put('ic_alerts', alerts.data); put('ic_events', events.data);
     put('ic_messages', messages.data); put('ic_message_acks', acks.data);
-    put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data);
+    put('ic_periods', periods.data); put('ic_objectives', objectives.data); put('ic_structures', structures.data); put('ic_facilities', facilities.data); put('ic_overlays', overlays.data);
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
@@ -226,6 +228,30 @@ export class Data {
     this.store.incident = data; this.emit('change', { table: 'ic_incidents', row: data });
     return data;
   }
+
+  // ---- custom imagery (ic_overlays): a picture over the map by its corner coordinates, ops only
+  overlays(all) { return [...this.store.overlays.values()].filter((o) => all || !o.archived_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
+  overlay(id) { return this.store.overlays.get(id) || null; }
+  async addOverlay(file, { name, bounds, opacity, takenAt }) {
+    const id = crypto.randomUUID();
+    const ext = (/\.(png|jpe?g|webp|gif)$/i.exec(file.name || '') || ['', 'png'])[1].toLowerCase().replace('jpeg', 'jpg');
+    const path = this.store.incident.id + '/' + id + '.' + ext;
+    const up = await this.sb.storage.from(OVERLAY_BUCKET).upload(path, file, { contentType: file.type || 'image/png', upsert: false });
+    if (up.error) throw up.error;
+    const row = { id, incident_id: this.store.incident.id, name: name || '', storage_path: path, bounds, opacity: opacity == null ? 0.8 : Number(opacity), taken_at: takenAt || null, created_by: this.user.id };
+    const { data, error } = await this.sb.from('ic_overlays').insert(row).select().single();
+    if (error) throw error;
+    this.local('ic_overlays', data);
+    return data;
+  }
+  async updateOverlay(id, patch) {
+    const { data, error } = await this.sb.from('ic_overlays').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_overlays', data);
+    return data;
+  }
+  async archiveOverlay(id) { return this.updateOverlay(id, { archived_at: new Date().toISOString() }); }
+  async overlayUrl(path) { return this.signedUrl(OVERLAY_BUCKET, path); }
 
   // ---- operational periods and objectives (ICS 202)
   periods() { return [...this.store.periods.values()].sort((a, b) => a.number - b.number); }
@@ -360,12 +386,14 @@ export class Data {
     this.local('ic_photos', data);
     return data;
   }
-  async photoUrl(path) {
-    const hit = this.urlCache.get(path);
+  async photoUrl(path) { return this.signedUrl(BUCKET, path); }
+  async signedUrl(bucket, path) {
+    const key = bucket + '/' + path;
+    const hit = this.urlCache.get(key);
     if (hit && hit.until > Date.now()) return hit.url;
-    const { data, error } = await this.sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+    const { data, error } = await this.sb.storage.from(bucket).createSignedUrl(path, 3600);
     if (error) throw error;
-    this.urlCache.set(path, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
+    this.urlCache.set(key, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
     return data.signedUrl;
   }
   async addHazard(id, { kind, note, lat, lng, zoneId }) {

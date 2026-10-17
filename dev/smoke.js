@@ -20,6 +20,7 @@ const M = () => window.__mock;
 const logTexts = () => $$('#log .log-row').map((r) => r.innerText.replace(/\s+/g, ' ').trim());
 const eventText = (data, t) => data.events().find((e) => e.text === t) || null;
 const uuid = () => crypto.randomUUID();
+const tinyPng = () => new Promise((resolve) => { const c = document.createElement('canvas'); c.width = 40; c.height = 30; const g = c.getContext('2d'); g.fillStyle = 'rgba(90,120,80,0.8)'; g.fillRect(0, 0, 40, 30); c.toBlob(resolve, 'image/png'); });
 const tinyJpeg = () => new Promise((resolve) => { const c = document.createElement('canvas'); c.width = 32; c.height = 24; const g = c.getContext('2d'); g.fillStyle = '#5B8FC9'; g.fillRect(0, 0, 32, 24); c.toBlob(resolve, 'image/jpeg', 0.7); });
 // A click on the map at an offset from its centre, as Leaflet sees a real one (it reads clientX/Y).
 function mapClick(dx, dy) {
@@ -60,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, checkIn, permissions };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, checkIn, permissions };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -774,4 +775,77 @@ async function log(check) {
   check('Print 214 lays the whole period out oldest first', has('#briefing-page', 'entries, oldest first') && /incident opened/i.test(lines.find((l) => /^\d\d:\d\d/.test(l)) || '') && /pump truck/i.test(lines[lines.length - 1]), lines.slice(-1)[0]);
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
+}
+
+// The map underneath and the imagery over it: streets or satellite per device, and custom imagery
+// Operations uploads by its corners for every screen.
+async function layers(check) {
+  const pick = $('#layer-pick');
+  const tileHosts = () => [...new Set($$('#map img.leaflet-tile').map((t) => new URL(t.src).hostname))];
+  check('the picker offers Streets and Satellite, Google only with a key, and starts on Streets', $$('option', pick).map((o) => o.value).join(' ') === 'streets satellite' && pick.value === 'streets' && tileHosts().some((h) => /openstreetmap/.test(h)), $$('option', pick).map((o) => o.value).join(' ') + ' ' + tileHosts());
+  pick.value = 'satellite'; pick.dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => tileHosts().includes('server.arcgisonline.com') && !tileHosts().some((h) => /openstreetmap/.test(h)), 6000);
+  check('Satellite swaps the tiles underneath and is remembered on this device', tileHosts().includes('server.arcgisonline.com') && localStorage.getItem('ic.map.layer') === 'satellite', tileHosts());
+  pick.value = 'streets'; pick.dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => tileHosts().some((h) => /openstreetmap/.test(h)) && !tileHosts().includes('server.arcgisonline.com'), 6000);
+  check('and back to Streets', localStorage.getItem('ic.map.layer') === 'streets', tileHosts());
+
+  const ovl = M().ids.overlays[0];
+  check('the seeded imagery is on the map and listed under Map imagery', base.overlays().length === 1 && await until(() => $$('#map img.imagery').length === 1, 6000) && has('#panel', 'map imagery', 'aerial 06:40, civil air patrol'), text('#panel'));
+  const form = () => $('#panel form[data-form="overlay-add"]');
+  const f = form();
+  check('the upload form has the map\'s view as its corners', !!f && Number(f.north.value) > Number(f.south.value) && Number(f.east.value) > Number(f.west.value), f && f.north.value + ' ' + f.south.value);
+  const corners = { south: Number(f.south.value), west: Number(f.west.value), north: Number(f.north.value), east: Number(f.east.value) };
+  const dt = new DataTransfer(); dt.items.add(new File([await tinyPng()], 'drone.png', { type: 'image/png' })); f.file.files = dt.files;
+  f.name.value = 'Drone pass 14:10'; f.opacity.value = '0.6';
+  f.requestSubmit();
+  await until(() => base.overlays().length === 2, 6000);
+  const o = base.overlays()[1];
+  check('saving uploads the picture and keeps its corners and opacity, logs it, and both maps show it', o.name === 'Drone pass 14:10' && o.storage_path.endsWith('.png') && o.bounds.north === corners.north && o.bounds.west === corners.west && Number(o.opacity) === 0.6 && !!eventText(base, 'Imagery: Drone pass 14:10 added to the map') && await until(() => $$('#map img.imagery').length === 2, 6000) && await until(() => field.overlays().length === 2), logTexts()[0]);
+  const r = $(`#panel [data-range="overlay-opacity"][data-id="${o.id}"]`);
+  r.value = '0.3'; r.dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => Number(base.overlay(o.id).opacity) === 0.3);
+  check('the opacity slider sets it for everyone', Number(base.overlay(o.id).opacity) === 0.3 && await until(() => field.overlay(o.id) && Number(field.overlay(o.id).opacity) === 0.3));
+  $(`#panel [data-action="overlay-hide"][data-id="${o.id}"]`).click();
+  await until(() => $$('#map img.imagery').length === 1);
+  check('Hide takes it off this screen only', $$('#map img.imagery').length === 1 && (localStorage.getItem('ic.map.hidden') || '').includes(o.id) && !base.overlay(o.id).archived_at && !!$(`#panel [data-action="overlay-show"][data-id="${o.id}"]`));
+  $(`#panel [data-action="overlay-show"][data-id="${o.id}"]`).click();
+  await until(() => $$('#map img.imagery').length === 2);
+  const confirmWas = window.confirm; window.confirm = () => true;
+  try {
+    $(`#panel [data-action="overlay-remove"][data-id="${ovl}"]`).click();
+    await until(() => base.overlay(ovl).archived_at);
+  } finally { window.confirm = confirmWas; }
+  check('Remove archives it for everyone, never deletes, logs it, and offers to put it back', !!base.overlay(ovl).archived_at && M().tables.ic_overlays.length === 2 && !!eventText(base, 'Imagery: Aerial 06:40, Civil Air Patrol removed from the map') && await until(() => $$('#map img.imagery').length === 1) && await until(() => has('#panel', '1 removed')) && await until(() => field.overlays().length === 1), logTexts()[0]);
+  $(`#panel [data-action="overlay-restore"][data-id="${ovl}"]`).click();
+  await until(() => !base.overlay(ovl).archived_at);
+  check('Put back restores it', await until(() => $$('#map img.imagery').length === 2) && !!eventText(base, 'Imagery: Aerial 06:40, Civil Air Patrol put back on the map'));
+  const e1 = await (async () => { try { await field.addOverlay(new File([await tinyPng()], 'x.png', { type: 'image/png' }), { name: 'Nope', bounds: corners }); return null; } catch (e) { return e; } })();
+  check('a unit cannot put imagery on the map', !!e1 && e1.code === '42501' && base.overlays().length === 2, e1 && e1.message);
+  const e2 = await (async () => { try { await field.updateOverlay(o.id, { opacity: 1 }); return null; } catch (e) { return e; } })();
+  check('nor change it', !!e2 && e2.code === '42501', e2 && e2.message);
+}
+
+// Right-click on a division, on the map or in the list: a card with its rank, its priority and the facts.
+async function zoneCard(check) {
+  const dlg = $('#zone-dialog');
+  const menu = (el) => el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, view: window, button: 2 }));
+  menu($(`#zones .zr[data-id="${ZONE('A-2')}"]`));
+  await until(() => dlg.open);
+  check('right-click on a row opens the card with the division, its rank, priority, unit and progress', dlg.open && has('#zone-dialog', 'a-2', 'pecan mobile home park', 'rank', '2', 'of 6', 'priority', 'unit 3', '6 of 18 cleared', 'hazard', 'downed power line', 'radio', 'tac 2', 'last activity'), text('#zone-dialog'));
+  $('#zone-dialog [data-action="set-priority"][data-p="3"]').click();
+  await until(() => base.zone(ZONE('A-2')).priority === 3);
+  check('the priority changes from the card and the rank follows', await until(() => has('#zone-dialog', '5', 'of 6')) && $('#zone-dialog [data-action="set-priority"][data-p="3"]').classList.contains('on') && $$('#zones .zr .zr-id').map((e) => e.textContent).join(' ') === 'A-1 A-3 B-1 B-2 A-2 B-3', text('#zone-dialog .zm-head'));
+  $('#zone-dialog [data-action="set-priority"][data-p="1"]').click();
+  await until(() => base.zone(ZONE('A-2')).priority === 1);
+  $('#zone-dialog [data-action="zone-modal-close"]').click();
+  await until(() => !dlg.open);
+  check('Close shuts it', !dlg.open);
+  const pill = $$('#map .zpill').find((b) => b.textContent.includes('A-3'));
+  menu(pill);
+  await until(() => dlg.open);
+  check('right-click on the map label opens it for that division', dlg.open && has('#zone-dialog', 'a-3', 'cedar fork elementary', 'cleared at'), text('#zone-dialog .zm-head'));
+  $('#zone-dialog [data-action="zone-modal-open"]').click();
+  await until(() => !dlg.open && has('#panel .title', 'a-3'));
+  check('Open in the panel closes the card and selects the division', !dlg.open && has('#panel .title', 'division a-3'));
 }

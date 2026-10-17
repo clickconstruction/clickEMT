@@ -2,9 +2,10 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, logHtml, logFiltersHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
+import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
@@ -13,7 +14,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs() };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null };
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
@@ -129,6 +130,7 @@ async function openIncident(id) {
   if (!map) {
     map = new BaseMap($('#map'), {
       onZone: (zid) => select({ type: 'zone', id: zid }),
+      onZoneMenu: (zid) => openZoneModal(zid),
       onPhoto: (pid) => select({ type: 'photo', id: pid }),
       onUnit: (uid) => select({ type: 'unit', id: uid }),
       onStructure: (sid) => select({ type: 'structure', id: sid }),
@@ -136,6 +138,8 @@ async function openIncident(id) {
       onFacility: (fid) => select({ type: 'facility', id: fid }),
       onPlaceFacility: (lat, lng) => placeFacility(lat, lng),
       onHazard: (hid) => { const h = data.hazards(true).find((x) => x.id === hid); if (h && h.zone_id) select({ type: 'zone', id: h.zone_id }); },
+      overlayUrl: (path) => data.overlayUrl(path),
+      onError: (err) => toast(err.message || String(err), true),
       onBlank: () => { if (state.selected && state.selected.type !== 'newzone') select(null); },
       onDraftChange: (n) => { $('#tool-hint').textContent = n === 0 ? 'Click the map to place the first corner.' : n < 3 ? `${n} of at least 3 points. Click the map to add the next corner, or Backspace to take the last one off.` : `${n} points. Click to add more, Backspace to take the last one off, or press Finish.`; }
     });
@@ -205,8 +209,10 @@ function drawAll() {
   if (!focused) {
     panel.innerHTML = panelHtml(data, state);
     if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
+    fillOverlayBounds(false);
   }
   drawLog();
+  drawZoneModal();
   const md = $('#mayday');
   const mh = maydayHtml(data);
   md.hidden = !mh;
@@ -219,6 +225,31 @@ function drawAll() {
   sf.innerHTML = sh;
   drawLive();
 }
+
+// Right-click (or a long press) on a division: a card with its rank, priority and the facts.
+function openZoneModal(id) {
+  if (!data.zone(id)) return;
+  state.modalZone = id;
+  drawZoneModal();
+  const dlg = $('#zone-dialog');
+  if (!dlg.open) dlg.showModal();
+}
+function closeZoneModal() { const dlg = $('#zone-dialog'); if (dlg.open) dlg.close(); state.modalZone = null; }
+function drawZoneModal() {
+  const z = state.modalZone ? data.zone(state.modalZone) : null;
+  if (!z) { if ($('#zone-dialog').open) closeZoneModal(); return; }
+  const html = zoneModalHtml(data, z);
+  const body = $('#zone-dialog-body');
+  if (body.__html !== html) { body.__html = html; body.innerHTML = html; }
+}
+$('#zone-dialog').addEventListener('close', () => { state.modalZone = null; });
+$('#zone-dialog').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeZoneModal(); });   // the backdrop
+document.addEventListener('contextmenu', (e) => {
+  const row = e.target.closest('#zones .zr');
+  if (!row) return;
+  e.preventDefault();
+  openZoneModal(row.dataset.id);
+});
 
 // The log under the map: folded to its latest line or open; new lines since the operator last
 // looked are counted on the header and tinted until the pointer comes over the log.
@@ -356,6 +387,28 @@ function drawTheme() { $('#btn-theme').textContent = currentTheme() === 'dark' ?
 drawTheme();
 if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!storedTheme()) { drawTheme(); queueDraw(); } });
 
+// ---- the map underneath and the imagery over it
+function fillLayerPick() {
+  const pick = $('#layer-pick');
+  pick.innerHTML = availableLayers().map((l) => `<option value="${l.id}">${esc(l.name)}${l.source ? ' · ' + esc(l.source) : ''}</option>`).join('');
+  pick.value = storedLayer() || 'streets';
+  if (!pick.value) pick.value = 'streets';
+}
+fillLayerPick();
+$('#layer-pick').addEventListener('change', async (e) => { if (!map) return; const id = await map.setBaseLayer(e.target.value); if (id) e.target.value = id; });
+// the upload form's corners: the map's view, unless Operations has typed its own
+function fillOverlayBounds(force) {
+  const f = $('#panel form[data-form="overlay-add"]');
+  if (!f || !map) return;
+  if (!force && f.south.value !== '') return;
+  const b = map.viewBounds();
+  for (const k of ['south', 'west', 'north', 'east']) f[k].value = b[k].toFixed(5);
+}
+document.addEventListener('input', (e) => {
+  const r = e.target.closest('[data-range="overlay-opacity"]');
+  if (r && map) map.setOverlayOpacity(r.dataset.id, r.value);
+});
+
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
   $('#live-dot').className = 'dot ' + (ok ? 'on' : (data.realtime === 'off' ? '' : 'bad'));
@@ -405,6 +458,11 @@ document.addEventListener('click', async (e) => {
       case 'log-toggle': state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
       case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
       case 'print-214': openOverlay('214'); break;
+      case 'overlay-hide': setOverlayHidden(id, true); queueDraw(); break;
+      case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
+      case 'overlay-remove': { const o = data.overlay(id); if (o && window.confirm(`Remove "${o.name || 'this imagery'}" from the map for everyone? It is kept and can be put back.`)) { await data.archiveOverlay(id); toast('Imagery removed from the map'); } break; }
+      case 'overlay-restore': await data.updateOverlay(id, { archived_at: null }); toast('Imagery put back'); break;
+      case 'overlay-view-bounds': fillOverlayBounds(true); break;
       case 'select-unit': select({ type: 'unit', id }); break;
       case 'select-structure': select({ type: 'structure', id }); break;
       case 'select-facility': select({ type: 'facility', id }); break;
@@ -464,7 +522,9 @@ document.addEventListener('click', async (e) => {
       case 'objective-done': await data.updateObjective(id, { done_at: new Date().toISOString() }); break;
       case 'objective-undo': await data.updateObjective(id, { done_at: null }); break;
       case 'briefing': openOverlay('briefing'); break;
-      case 'print-204': openOverlay('204', id); break;
+      case 'print-204': closeZoneModal(); openOverlay('204', id); break;
+      case 'zone-modal-open': closeZoneModal(); select({ type: 'zone', id }); break;
+      case 'zone-modal-close': closeZoneModal(); break;
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
       case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; break;
@@ -520,10 +580,11 @@ function timeToIso(hhmmValue) {
 }
 
 document.addEventListener('change', async (e) => {
-  const sel = e.target.closest('[data-select]');
+  const sel = e.target.closest('[data-select], [data-range]');
   if (!sel) return;
   try {
     if (sel.dataset.select === 'zone-objective') { await data.updateZone(sel.dataset.id, { objective_id: sel.value || null }); sel.blur(); queueDraw(); }
+    if (sel.dataset.range === 'overlay-opacity') { await data.updateOverlay(sel.dataset.id, { opacity: Number(sel.value) }); sel.blur(); queueDraw(); }
   } catch (err) { toast(err.message || String(err), true); }
 });
 
@@ -591,6 +652,16 @@ document.addEventListener('submit', async (e) => {
       await data.addObjective(text);
       form.text.value = '';
       form.text.blur();
+      queueDraw();
+    } else if (form.dataset.form === 'overlay-add') {
+      const file = form.file.files && form.file.files[0];
+      if (!file) { toast('Choose a picture first', true); return; }
+      const bounds = { south: Number(form.south.value), west: Number(form.west.value), north: Number(form.north.value), east: Number(form.east.value) };
+      if (!boundsOk(bounds)) { toast('The corners need south below north and west left of east', true); return; }
+      toast('Uploading the imagery…');
+      await data.addOverlay(file, { name: form.name.value.trim(), bounds, opacity: Number(form.opacity.value), takenAt: form.taken.value ? new Date(form.taken.value).toISOString() : null });
+      toast('Imagery on the map for everyone');
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'incident-edit') {
       await data.setLeadAgency(form.lead_agency.value);

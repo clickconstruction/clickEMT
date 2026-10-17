@@ -125,5 +125,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .mpin.urg-now, .mpin.urg-blocking { background: var(--danger); animation: blinkdot 1.2s ease-in-out 6; }
 .mpin.urg-nightfall { background: var(--hazard); }
 
+/* the streets tiles dim in dark mode; satellite imagery and custom imagery stay as they are */
+.leaflet-layer.tiles-dim { filter: var(--map-dim); }
+
 @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); opacity: .55; } to { transform: translate(-50%, -50%) scale(3.2); opacity: 0; } }
 @keyframes blinkdot { 50% { opacity: .3; } }

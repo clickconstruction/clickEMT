@@ -17,6 +17,7 @@
 .top-main { display: flex; flex-direction: column; min-width: 240px; flex: 1; }
 .top h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top .muted { font-size: 12.5px; }
+.top-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .mayday { background: var(--danger); color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-weight: 600; }
 .mayday .btn { background: #fff; color: var(--danger); border-color: #fff; }
 .mayday.ack { background: #7A1C16; }
@@ -57,7 +58,7 @@
 .sw.primary { background: rgba(143,207,167,.6); border-color: #3D8B5F; }
 .d-status.primary { background: var(--tint-green2); color: var(--cleared); }
 .inline-form select.sel { min-height: 36px; }
-.sel { border: 1px solid var(--control-border); border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); max-width: 100%; }
+select.sel { border: 1px solid var(--control-border); border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); color: var(--ink); max-width: 100%; }
 .inline-form textarea { border: 1px solid var(--control-border); border-radius: 6px; padding: 6px 8px; font-size: 13px; font-family: inherit; resize: vertical; }
 .inline-form .chk { flex-direction: row; align-items: center; gap: 6px; font-size: 12.5px; }
 .obj { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: 13px; }

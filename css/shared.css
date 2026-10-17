@@ -2,15 +2,15 @@
    too, and controls big enough for gloves. */
 :root {
   color-scheme: light;
-  --bg: #E9E7E1; --bg-2: var(--bg-2); --panel: #fff; --panel-2: var(--panel-2); --hover: var(--hover); --sel-bg: var(--sel-bg);
-  --line: var(--line); --line-soft: #EFEDE8; --control-bg: #fff; --control-border: var(--control-border); --grey: var(--grey); --dot-off: var(--dot-off);
+  --bg: #E9E7E1; --bg-2: #F7F6F2; --panel: #fff; --panel-2: #FBFAF8; --hover: #F6F5F1; --sel-bg: #EAF0F7;
+  --line: #D8D5CD; --line-soft: #EFEDE8; --control-bg: #fff; --control-border: #C9C5BB; --grey: #8F8B82; --dot-off: #B5B1A6;
   --ink: #1B1B18; --ink-2: #3E3C36; --muted: #5C5A53; --soft: #F1EFEA; --halo: #fff;
-  --toast-bg: #1B1B18; --toast-ink: #fff; --photo-bg: var(--photo-bg);
+  --toast-bg: #1B1B18; --toast-ink: #fff; --photo-bg: #D8E3EA;
   --accent: #1F4E79; --accent-ink: #163A5B; --accent-text: #1F4E79;
   --map-ink: #1B1B18; --map-accent: #1F4E79; --map-dim: none;
   --open: #7A776F; --active: #24588F; --active-fill: #2F6FB3; --cleared: #1F6B42; --cleared-fill: #2E8B57;
-  --hazard: #D9822B; --hazard-ink: #9A5A14; --danger: #B3261E; --safety: var(--safety);
-  --tint-green: var(--tint-green); --tint-green2: var(--tint-green2); --tint-blue: var(--tint-blue); --tint-orange: var(--tint-orange); --tint-yellow: var(--tint-yellow); --tint-red: var(--tint-red);
+  --hazard: #D9822B; --hazard-ink: #9A5A14; --danger: #B3261E; --safety: #F2B134;
+  --tint-green: #DDF0E4; --tint-green2: #E3F2E8; --tint-blue: #E0EAF6; --tint-orange: #FBE9D6; --tint-yellow: #FDF5E3; --tint-red: #F8E1DF;
   --p1: #B3261E; --p2: #B86E00; --p3: #6B6860;
 }
 /* Dark, for the overnight shift: the same palette turned over, status colours lifted so they read
@@ -24,7 +24,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #121412; --bg-2: #171A18; --panel: #1E211F; --panel-2: #242826; --hover: #272B29; --sel-bg: #243140;
-  --line: #363B37; --line-soft: #2B2F2C; --control-bg: #262A28; --control-border: #4A4F4B; --grey: var(--grey); --dot-off: #5E635F;
+  --line: #363B37; --line-soft: #2B2F2C; --control-bg: #262A28; --control-border: #4A4F4B; --grey: #8F8B82; --dot-off: #5E635F;
   --ink: #ECEAE4; --ink-2: #CBC8C0; --muted: #9D9A92; --soft: #2B2F2C; --halo: #121412;
   --toast-bg: #ECEAE4; --toast-ink: #1B1B18; --photo-bg: #243038;
   --accent: #3A7DC4; --accent-ink: #8FB9E6; --accent-text: #8FB9E6;
@@ -37,7 +37,7 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #121412; --bg-2: #171A18; --panel: #1E211F; --panel-2: #242826; --hover: #272B29; --sel-bg: #243140;
-    --line: #363B37; --line-soft: #2B2F2C; --control-bg: #262A28; --control-border: #4A4F4B; --grey: var(--grey); --dot-off: #5E635F;
+    --line: #363B37; --line-soft: #2B2F2C; --control-bg: #262A28; --control-border: #4A4F4B; --grey: #8F8B82; --dot-off: #5E635F;
     --ink: #ECEAE4; --ink-2: #CBC8C0; --muted: #9D9A92; --soft: #2B2F2C; --halo: #121412;
     --toast-bg: #ECEAE4; --toast-ink: #1B1B18; --photo-bg: #243038;
     --accent: #3A7DC4; --accent-ink: #8FB9E6; --accent-text: #8FB9E6;
@@ -51,10 +51,10 @@
 @media print {
   :root, :root[data-theme="dark"] {
     color-scheme: light;
-    --bg: #fff; --bg-2: #fff; --panel: #fff; --panel-2: var(--panel-2); --line: var(--line); --line-soft: #EFEDE8; --control-bg: #fff; --control-border: var(--control-border);
+    --bg: #fff; --bg-2: #fff; --panel: #fff; --panel-2: #FBFAF8; --line: #D8D5CD; --line-soft: #EFEDE8; --control-bg: #fff; --control-border: #C9C5BB;
     --ink: #1B1B18; --ink-2: #3E3C36; --muted: #5C5A53; --soft: #F1EFEA; --accent: #1F4E79; --accent-text: #1F4E79; --map-ink: #1B1B18; --map-accent: #1F4E79; --map-dim: none;
     --active: #24588F; --cleared: #1F6B42; --hazard-ink: #9A5A14; --danger: #B3261E;
-    --tint-green: var(--tint-green); --tint-green2: var(--tint-green2); --tint-blue: var(--tint-blue); --tint-orange: var(--tint-orange); --tint-yellow: var(--tint-yellow); --tint-red: var(--tint-red);
+    --tint-green: #DDF0E4; --tint-green2: #E3F2E8; --tint-blue: #E0EAF6; --tint-orange: #FBE9D6; --tint-yellow: #FDF5E3; --tint-red: #F8E1DF;
   }
 }
 * { box-sizing: border-box; }

@@ -219,7 +219,7 @@ function zoneHtml(data, z, state) {
     <div class="muted" style="font-size:12.5px">${z.structures ? z.cleared + ' of ' + z.structures : 'No structure count yet'}</div>
     ${marking ? `<div class="k">Search marking painted</div><div class="muted" style="font-size:12.5px">Team ${esc(marking.team)} · out at ${esc(marking.out)} · hazards ${esc(marking.haz)} · people found ${esc(marking.victims)}</div>` : ''}
     <div class="d-row">
-      <button class="btn sm" data-action="zoom-zone" data-id="${z.id}">Zoom to zone</button>
+      <button class="btn sm" data-action="zoom-zone" data-id="${z.id}">Zoom to division</button>
       ${z.assigned_to ? `<button class="btn sm" data-action="start-par" data-target="zone:${z.id}">PAR</button>` : ''}
       ${z.status === 'cleared' ? `<button class="btn sm" data-action="reopen-zone" data-id="${z.id}">Reopen</button>`
         : z.status === 'primary' ? `<button class="btn sm green" data-action="finish-pass" data-id="${z.id}" data-pass="secondary">Secondary done, clear</button><button class="btn sm" data-action="reopen-zone" data-id="${z.id}">Reopen</button>`
@@ -434,7 +434,7 @@ function newZoneHtml(data, state) {
       <div class="d-row"><span class="k">Priority</span>
         ${[1, 2, 3].map((p) => `<label class="chip" style="min-height:36px;padding:6px 12px"><input type="radio" name="priority" value="${p}"${p === 2 ? ' checked' : ''}> ${p}</label>`).join('')}
       </div>
-      <div class="row-btns"><button class="btn sm" type="button" data-action="newzone-discard">Discard</button><button class="btn pri sm" type="submit">Save zone</button></div>
+      <div class="row-btns"><button class="btn sm" type="button" data-action="newzone-discard">Discard</button><button class="btn pri sm" type="submit">Save division</button></div>
     </form>`;
 }
 

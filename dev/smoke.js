@@ -966,15 +966,31 @@ async function log(check) {
 // The map underneath and the imagery over it: streets or satellite per device, and custom imagery
 // Operations uploads by its corners for every screen.
 async function layers(check) {
-  const pick = $('#layer-pick');
   const tileHosts = () => [...new Set($$('#map img.leaflet-tile').map((t) => new URL(t.src).hostname))];
-  check('the picker offers Streets and Satellite, Google only with a key, and starts on Streets', $$('option', pick).map((o) => o.value).join(' ') === 'streets satellite' && pick.value === 'streets' && tileHosts().some((h) => /openstreetmap/.test(h)), $$('option', pick).map((o) => o.value).join(' ') + ' ' + tileHosts());
-  pick.value = 'satellite'; pick.dispatchEvent(new Event('change', { bubbles: true }));
+  const radios = () => $$('#layers-pop [data-action="layer-pick"]');
+  $('#btn-layers').click();
+  await until(() => !$('#layers-pop').hidden && radios().length === 2);
+  check('Layers opens a panel: the map underneath on one side (Streets, Satellite; Google only with a key, Streets on), the overlays on the other', radios().map((r) => r.dataset.layer).join(' ') === 'streets satellite' && radios()[0].checked && has('#layers-pop', 'map underneath', 'overlays', 'aerial 06:40', 'upload aerial photography', 'google maps streets and satellite appear here') && tileHosts().some((h) => /openstreetmap/.test(h)), text('#layers-pop').slice(0, 300));
+  radios()[1].click();
   await until(() => tileHosts().includes('server.arcgisonline.com') && !tileHosts().some((h) => /openstreetmap/.test(h)), 6000);
-  check('Satellite swaps the tiles underneath and is remembered on this device', tileHosts().includes('server.arcgisonline.com') && localStorage.getItem('ic.map.layer') === 'satellite', tileHosts());
-  pick.value = 'streets'; pick.dispatchEvent(new Event('change', { bubbles: true }));
+  check('Satellite swaps the tiles underneath and is remembered on this device', tileHosts().includes('server.arcgisonline.com') && localStorage.getItem('ic.map.layer') === 'satellite' && radios()[1].checked, tileHosts());
+  radios()[0].click();
   await until(() => tileHosts().some((h) => /openstreetmap/.test(h)) && !tileHosts().includes('server.arcgisonline.com'), 6000);
   check('and back to Streets', localStorage.getItem('ic.map.layer') === 'streets', tileHosts());
+  const box = () => $('#layers-pop [data-action="overlay-toggle"]');
+  check('the seeded imagery is listed with its box ticked', !!box() && box().checked);
+  box().click();
+  await until(() => $$('#map img.imagery').length === 0);
+  check('unticking it hides it on this screen', $$('#map img.imagery').length === 0 && (localStorage.getItem('ic.map.hidden') || '').includes(M().ids.overlays[0]));
+  box().click();
+  await until(() => $$('#map img.imagery').length === 1);
+  $('#layers-pop [data-action="layers-upload"]').click();
+  await until(() => $('#layers-pop form[data-form="overlay-add"]'));
+  const pf = $('#layers-pop form[data-form="overlay-add"]');
+  check('Upload aerial photography opens the form right there, corners from the map\'s view', !!pf && Number(pf.north.value) > Number(pf.south.value), pf && pf.north.value);
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#layers-pop').hidden);
+  check('Escape closes the panel', $('#layers-pop').hidden && !$('#btn-layers').classList.contains('on'));
 
   const ovl = M().ids.overlays[0];
   check('the seeded imagery is on the map and listed under Map imagery', base.overlays().length === 1 && await until(() => $$('#map img.imagery').length === 1, 6000) && has('#panel', 'map imagery', 'aerial 06:40, civil air patrol'), text('#panel'));

@@ -1,7 +1,7 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
-import { hiddenOverlays, boundsText } from '../shared/layers.js';
+import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } from '../shared/layers.js';
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { compass, hhmm, ago, pct, unitLabel, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS } from '../shared/rules.js';
@@ -135,26 +135,29 @@ function homeHtml(data) {
     </form>`;
 }
 
-// Custom imagery over the map: fresh aerial or satellite pictures by their corner coordinates.
-export function imageryHtml(data) {
+// The Layers panel under the tools bar: the map underneath on one side, the imagery over it on the other.
+export function layersPopHtml(data, state) {
+  const cur = storedLayer() || 'streets';
   const hidden = hiddenOverlays();
-  const active = data.overlays(), gone = data.overlays(true).filter((o) => o.archived_at);
-  const row = (o) => `
-    <div class="ovl-row" data-overlay="${o.id}">
-      <div class="ovl-top"><span class="ur-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) + ' · ' : ''}added ${hhmm(o.created_at)}</span></div>
-      <div class="muted mono" style="font-size:11.5px">${esc(boundsText(o.bounds))}</div>
-      <div class="ovl-ctl">
-        <label class="ovl-op">Opacity <input type="range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity"></label>
-        ${hidden.has(o.id) ? `<button class="btn sm" data-action="overlay-show" data-id="${o.id}" title="Hidden on this screen only">Show</button>` : `<button class="btn sm" data-action="overlay-hide" data-id="${o.id}" title="Hides it on this screen only">Hide</button>`}
-        <button class="btn sm" data-action="overlay-remove" data-id="${o.id}" title="Takes it off the map for everyone; it is kept">Remove</button>
-      </div>
-    </div>`;
+  const active = data.overlays();
   return `
-    <div class="k" style="margin-top:6px">Map imagery</div>
-    <div class="muted" style="font-size:12.5px">A picture laid over the map for every screen: fresh aerial or satellite imagery, a drone mosaic, a scanned plan. Give its corner coordinates; the map's view fills them in.</div>
-    ${active.length ? active.map(row).join('') : ''}
-    ${gone.length ? `<div class="muted" style="font-size:12px">${gone.length} removed: ${gone.map((o) => `${esc(o.name || 'imagery')} <button class="plink" data-action="overlay-restore" data-id="${o.id}">put back</button>`).join(', ')}</div>` : ''}
-    <form class="inline-form" data-form="overlay-add">
+    <div class="lp-col">
+      <div class="k">Map underneath</div>
+      ${availableLayers().map((l) => `<label class="lp-row"><input type="radio" name="base-layer" value="${l.id}" data-action="layer-pick" data-layer="${l.id}"${cur === l.id ? ' checked' : ''}><span class="lp-name">${esc(l.name)}</span><span class="muted">${esc(l.source || '')}</span></label>`).join('')}
+      ${googleKey() ? '' : '<div class="muted lp-note">Google Maps streets and satellite appear here once a Map Tiles API key is set in config.js.</div>'}
+    </div>
+    <div class="lp-col">
+      <div class="k">Overlays</div>
+      ${active.length ? active.map((o) => `<div class="lp-ovl"><label class="lp-row"><input type="checkbox" data-action="overlay-toggle" data-id="${o.id}"${hidden.has(o.id) ? '' : ' checked'}><span class="lp-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) : 'added ' + hhmm(o.created_at)}</span></label><input type="range" class="lp-range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity of ${esc(o.name || 'the imagery')}"></div>`).join('') : '<div class="muted lp-note">No imagery over the map yet.</div>'}
+      ${state.layersUpload ? overlayFormHtml() : '<button class="btn sm" data-action="layers-upload">Upload aerial photography</button>'}
+      <div class="muted lp-note">Hiding is for this screen; opacity and the upload are for everyone. Remove or put back under Map imagery on the home panel.</div>
+    </div>`;
+}
+
+// Custom imagery over the map: fresh aerial or satellite pictures by their corner coordinates.
+// The upload form for a picture over the map: the corners come from the map's view (main.js fills them).
+export function overlayFormHtml() {
+  return `    <form class="inline-form" data-form="overlay-add">
       <label>Picture (PNG or JPEG, up to 50 MB) <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required></label>
       <div class="row-2">
         <label>Name <input name="name" placeholder="Aerial 06:40, Civil Air Patrol" maxlength="120"></label>
@@ -174,6 +177,27 @@ export function imageryHtml(data) {
       </div>
       <div class="row-btns"><button class="btn pri sm" type="submit">Put it on the map</button></div>
     </form>`;
+}
+
+export function imageryHtml(data) {
+  const hidden = hiddenOverlays();
+  const active = data.overlays(), gone = data.overlays(true).filter((o) => o.archived_at);
+  const row = (o) => `
+    <div class="ovl-row" data-overlay="${o.id}">
+      <div class="ovl-top"><span class="ur-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) + ' · ' : ''}added ${hhmm(o.created_at)}</span></div>
+      <div class="muted mono" style="font-size:11.5px">${esc(boundsText(o.bounds))}</div>
+      <div class="ovl-ctl">
+        <label class="ovl-op">Opacity <input type="range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity"></label>
+        ${hidden.has(o.id) ? `<button class="btn sm" data-action="overlay-show" data-id="${o.id}" title="Hidden on this screen only">Show</button>` : `<button class="btn sm" data-action="overlay-hide" data-id="${o.id}" title="Hides it on this screen only">Hide</button>`}
+        <button class="btn sm" data-action="overlay-remove" data-id="${o.id}" title="Takes it off the map for everyone; it is kept">Remove</button>
+      </div>
+    </div>`;
+  return `
+    <div class="k" style="margin-top:6px">Map imagery</div>
+    <div class="muted" style="font-size:12.5px">A picture laid over the map for every screen: fresh aerial or satellite imagery, a drone mosaic, a scanned plan. Give its corner coordinates; the map's view fills them in.</div>
+    ${active.length ? active.map(row).join('') : ''}
+    ${gone.length ? `<div class="muted" style="font-size:12px">${gone.length} removed: ${gone.map((o) => `${esc(o.name || 'imagery')} <button class="plink" data-action="overlay-restore" data-id="${o.id}">put back</button>`).join(', ')}</div>` : ''}
+    ${overlayFormHtml()}`;
 }
 
 // The field app's address, for the join link the QR carries.

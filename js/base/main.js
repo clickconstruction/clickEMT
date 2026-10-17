@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
+import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, peopleBoardHtml, peopleChipsHtml, esc } from './ui.js';
 import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk } from '../shared/layers.js';
@@ -19,7 +19,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, people: { q: '', quals: new Set(), add: false, addUnit: null } };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, people: { q: '', quals: new Set(), add: false, addUnit: null } };
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
@@ -213,6 +213,7 @@ function drawAll() {
   $('#inc-code').textContent = 'Join code ' + inc.code;
   drawLog();
   drawLegend();
+  drawLayers();
   if (!$('#briefing').hidden) drawBriefing();
   if (!$('#people').hidden) drawPeople();
   drawLive();
@@ -457,22 +458,29 @@ drawTheme();
 if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!storedTheme()) { drawTheme(); queueDraw(); } });
 
 // ---- the map underneath and the imagery over it
-function fillLayerPick() {
-  const pick = $('#layer-pick');
-  pick.innerHTML = availableLayers().map((l) => `<option value="${l.id}">${esc(l.name)}${l.source ? ' · ' + esc(l.source) : ''}</option>`).join('');
-  pick.value = storedLayer() || 'streets';
-  if (!pick.value) pick.value = 'streets';
+// The Layers panel: open under its button, closed by a click elsewhere or Escape
+function drawLayers() {
+  const pop = $('#layers-pop');
+  $('#btn-layers').setAttribute('aria-expanded', String(state.layersOpen));
+  $('#btn-layers').classList.toggle('on', state.layersOpen);
+  pop.hidden = !state.layersOpen;
+  if (!state.layersOpen || !data.incident) return;
+  const focused = document.activeElement && pop.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) && document.activeElement.type !== 'radio' && document.activeElement.type !== 'checkbox';
+  if (focused) return;
+  const html = layersPopHtml(data, state);
+  if (pop.__html !== html) { pop.__html = html; pop.innerHTML = html; }
+  fillOverlayBounds(false);
 }
-fillLayerPick();
-$('#layer-pick').addEventListener('change', async (e) => { if (!map) return; const id = await map.setBaseLayer(e.target.value); if (id) e.target.value = id; });
+function setLayersOpen(open) { state.layersOpen = !!open; if (!open) state.layersUpload = false; drawLayers(); }
 // the upload form's corners: the map's view, unless Operations has typed its own
 function fillOverlayBounds(force) {
-  const f = $('#panel form[data-form="overlay-add"]');
-  if (!f || !map) return;
-  if (!force && f.south.value !== '') return;
-  let b;
-  try { b = map.viewBounds(); } catch (e) { return; }   // a map with no size yet (the pane still laying out) has no bounds
-  for (const k of ['south', 'west', 'north', 'east']) f[k].value = b[k].toFixed(5);
+  if (!map) return;
+  for (const f of document.querySelectorAll('form[data-form="overlay-add"]')) {
+    if (!force && f.south.value !== '') continue;
+    let b;
+    try { b = map.viewBounds(); } catch (e) { return; }   // a map with no size yet (the pane still laying out) has no bounds
+    for (const k of ['south', 'west', 'north', 'east']) f[k].value = b[k].toFixed(5);
+  }
 }
 document.addEventListener('input', (e) => {
   const r = e.target.closest('[data-range="overlay-opacity"]');
@@ -517,6 +525,7 @@ async function loadIdPhoto() {
 
 // ---- actions
 document.addEventListener('click', async (e) => {
+  if (state.layersOpen && !e.target.closest('#layers-pop') && !e.target.closest('#btn-layers')) setLayersOpen(false);
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const act = btn.dataset.action, id = btn.dataset.id;
@@ -625,6 +634,10 @@ document.addEventListener('click', async (e) => {
       case 'zone-modal-close': closeZoneModal(); break;
       case 'legend-status': setHighlight(state.highlight === btn.dataset.status ? null : btn.dataset.status); break;
       case 'legend-clear': setHighlight(null); break;
+      case 'layers': setLayersOpen(!state.layersOpen); break;
+      case 'layer-pick': { const want = btn.dataset.layer; const got = await map.setBaseLayer(want); if (got !== want) drawLayers(); break; }
+      case 'overlay-toggle': setOverlayHidden(id, !btn.checked); queueDraw(); break;
+      case 'layers-upload': state.layersUpload = true; drawLayers(); { const f = $('#layers-pop form[data-form="overlay-add"]'); if (f) f.file.focus(); } break;
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
       case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; break;
@@ -692,6 +705,7 @@ document.addEventListener('change', async (e) => {
 
 // While outlining, Backspace or Delete takes the last corner off (not while typing in a field).
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.layersOpen) { setLayersOpen(false); return; }
   if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;
   if (!map || (map.mode !== 'boundary' && map.mode !== 'zone')) return;
@@ -765,6 +779,7 @@ document.addEventListener('submit', async (e) => {
       await data.addOverlay(file, { name: form.name.value.trim(), bounds, opacity: Number(form.opacity.value), takenAt: form.taken.value ? new Date(form.taken.value).toISOString() : null });
       toast('Imagery on the map for everyone');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      state.layersUpload = false;
       queueDraw();
     } else if (form.dataset.form === 'person-add') {
       const name = form.name.value.trim();

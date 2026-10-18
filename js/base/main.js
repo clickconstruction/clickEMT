@@ -903,6 +903,7 @@ document.addEventListener('click', async (e) => {
       case 'pan-to': map.panTo(Number(btn.dataset.lat), Number(btn.dataset.lng)); break;
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
+      case 'mark-found': await data.markFound(btn.dataset.message, btn.dataset.user, { personId: btn.dataset.person || null, name: btn.dataset.name || null }); toast((btn.dataset.name || 'The missing person') + ' marked found'); break;
       case 'ack-message': await data.ackMessage(id, btn.dataset.reply || 'Copy'); break;
       case 'set-status': {
         if (btn.dataset.status === 'out_of_service') { state.oosFor = id; queueDraw(); break; }

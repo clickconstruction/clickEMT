@@ -509,22 +509,28 @@ export function unitsInWater(units, rotation, now = Date.now()) { return units.f
 // head count is the named people plus the unnamed (ic_members.unnamed_count) and is unknown only when neither was given
 export const HEAD_COUNT_UNKNOWN = 'head count unknown';
 export function headCountKnown(member) { return !!member && member.crew_count != null; }
-export function missingNames(ack) { return Array.isArray(ack && ack.missing) ? ack.missing.map((x) => (x && x.name) || 'someone') : []; }
-// the people reported missing on the latest PAR: one entry per name, with the unit that reported them
+export function missingEntries(ack) { return Array.isArray(ack && ack.missing) ? ack.missing.filter(Boolean) : []; }
+export function missingNames(ack) { return missingEntries(ack).map((x) => x.name || 'someone'); }
+// found (v38): an entry marked found by the unit or Operations is no longer missing
+export function stillMissing(ack) { return missingEntries(ack).filter((x) => !x.found_at); }
+export function foundNames(ack) { return missingEntries(ack).filter((x) => x.found_at).map((x) => x.name || 'the missing person'); }
+// the people reported missing on the latest PAR and not yet found: one entry per name, with the unit that reported them
 export function missingOnPar(par, acks, memberOf) {
   if (!par) return [];
   const out = [];
   for (const a of acks) {
     if (a.reply !== 'Missing someone') continue;
-    const names = Array.isArray(a.missing) ? a.missing : [];
-    if (!names.length) out.push({ id: null, name: null, unit: memberOf(a.user_id), ack: a });
+    const all = missingEntries(a), names = stillMissing(a);
+    if (!all.length) out.push({ id: null, name: null, unit: memberOf(a.user_id), ack: a });
     for (const x of names) out.push({ id: x.id || null, name: x.name || 'someone', unit: memberOf(a.user_id), ack: a });
   }
   return out;
 }
 export function parAnswerText(ack) {
   if (!ack) return '';
-  const names = missingNames(ack);
-  if (names.length) return 'Missing: ' + names.join(', ') + (ack.count != null ? ' · ' + ack.count + ' accounted for' : '');
+  const open = stillMissing(ack).map((x) => x.name || 'someone'), found = foundNames(ack);
+  if (open.length || found.length) return (open.length ? 'Missing: ' + open.join(', ') : '') + (found.length ? (open.length ? ' · ' : '') + found.join(', ') + ' found' : '') + (ack.count != null ? ' · ' + ack.count + ' accounted for' : '');
   return ack.reply + (ack.count != null ? ' (' + ack.count + ')' : '');
 }
+// a PAR closed by a newer one (v38) is not open: the bar, the panel and the phone show the newest
+export function parOpen(m) { return !!m && m.kind === 'par' && !m.superseded_by; }

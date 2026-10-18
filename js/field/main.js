@@ -81,7 +81,8 @@ const outbox = new Outbox({
   pass: (p) => data.finishPass(p.zoneId, p.pass, p.opts),
   person: (p, _b, at) => data.addPerson(p.id, { ...p, checkedInAt: at }),
   evacuee: (p, _b, at) => (p.update ? data.updateEvacuee(p.id, p.patch) : data.addEvacuee(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
-  personPatch: (p) => data.updatePerson(p.id, p.patch)
+  personPatch: (p) => data.updatePerson(p.id, p.patch),
+  found: (p) => data.markFound(p.messageId, p.userId, { personId: p.personId, name: p.name })
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -336,8 +337,9 @@ function messageRow(m, big) {
   let state_ = '';
   if (mine) state_ = to.length ? (waiting.length ? 'Waiting on ' + waiting.map((u) => esc(unitLabel(data.member(u)))).join(', ') : 'Acknowledged by ' + data.acksFor(m.id).map((a) => esc(unitLabel(data.member(a.user_id))) + (a.reply && a.reply !== 'Copy' ? ' (' + esc(a.reply) + ')' : '')).join(', ')) : '';
   else if (acked) state_ = 'You answered ' + esc(acked.reply || 'Acknowledged') + ' at ' + hhmm(acked.acked_at);
+  if (m.superseded_by) { const by = data.message(m.superseded_by); state_ = (state_ ? state_ + ' · ' : '') + 'Closed by the PAR started ' + (by ? hhmm(by.created_at) : 'later'); }   // v38: one head count at a time
   let btns = '';
-  if (!mine && !acked) {
+  if (!mine && !acked && !m.superseded_by) {
     if (m.kind === 'safety') btns = `<div class="mrow-btns"><button class="btn" data-action="ack" data-id="${m.id}" data-reply="Acknowledged">Acknowledge</button></div>`;
     else if (m.kind === 'par') btns = parCardHtml(m);
     else btns = `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`;
@@ -457,6 +459,28 @@ function parCardHtml(m) {
       <div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}" disabled>All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}" disabled>Missing someone</button></div>`;
   }
   return `<div class="par-count"><span>People with you</span><button class="btn" data-action="par-less" data-id="${m.id}" aria-label="Fewer">−</button><span class="num">${total}</span><button class="btn" data-action="par-more" data-id="${m.id}" aria-label="More">+</button></div><div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All accounted for</button><button class="btn" data-action="par-missing" data-id="${m.id}">Missing someone</button></div>`;
+}
+// Found (v38): the people this unit reported missing on the latest PAR, each with a button; drawn on the
+// alert screen while the alert is open and on the home screen after the stand-down, until marked found.
+function missingCardHtml() {
+  const mine = data.myMissing();
+  if (!mine.length) return '';
+  return `<div class="card" id="missing-card" style="border-color:var(--danger)"><div class="k" style="color:var(--danger)">Reported missing at ${hhmm(mine[0].ack.acked_at)}</div>
+    ${mine.map((x) => `<div class="mrow-btns" style="align-items:center;justify-content:space-between"><span style="font-weight:600">${esc(x.name || 'Someone on the unit')}</span><button class="btn green" data-action="found" data-message="${x.ack.message_id}" data-user="${x.ack.user_id}" data-person="${x.id || ''}" data-name="${esc(x.name || '')}">Found</button></div>`).join('')}
+    <div class="muted small">Operations sees them as missing until you or the base press Found.</div></div>`;
+}
+async function markFound(ds) {
+  const ack = data.ack(ds.message, ds.user);
+  if (!ack) return;
+  const entries = Array.isArray(ack.missing) ? ack.missing.map((x) => Object.assign({}, x)) : [];
+  const stamp = { found_at: new Date().toISOString(), found_by: data.user.id };
+  if (!entries.length) entries.push(Object.assign({ id: null, name: null }, stamp));
+  else for (const x of entries) if (!x.found_at && ((!ds.person && !ds.name) || (ds.person && x.id === ds.person) || (ds.name && x.name === ds.name))) Object.assign(x, stamp);
+  data.local('ic_message_acks', Object.assign({}, ack, { missing: entries }));
+  await outbox.add('found', { messageId: ds.message, userId: ds.user, personId: ds.person || null, name: ds.name || null });
+  state.lastSentAt = Date.now();
+  toast((ds.name || 'The missing person') + ' marked found');
+  queueDraw();
 }
 async function answerPar(id, allAccounted, missingIds = []) {
   const m = data.message(id);
@@ -770,6 +794,8 @@ function drawAll() {
       : `<div class="k">Waiting for Operations</div><div class="muted">Your location keeps sending every few seconds.</div>`);
     $('#helpsent-card').style.borderColor = al.acknowledged_at ? 'var(--cleared-fill)' : '';
   } else if (state.screen === 'helpsent') screen('home');
+  setHtml($('#helpsent-missing'), al ? missingCardHtml() : '');
+  setHtml($('#missing'), al ? '' : missingCardHtml());
 
   const p = sensors.pos;
   $('#foot-left').textContent = state.outbox ? `${state.outbox} waiting to send${state.outboxError ? ' (retrying)' : ''}` : (state.lastSentAt ? 'Last sent ' + hhmm(state.lastSentAt) : 'Nothing sent yet');
@@ -1517,6 +1543,7 @@ document.addEventListener('click', async (e) => {
       case 'compose-loc': toggleComposeLocation(); break;
       case 'send-compose': await sendCompose(); break;
       case 'ack': await ackMessage(btn.dataset.id, btn.dataset.reply || 'Copy'); break;
+      case 'found': await markFound(btn.dataset); break;
     }
   } catch (err) { console.error(err); toast(err.message || String(err), true); }
 });

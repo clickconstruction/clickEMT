@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
 const BUCKET = 'ic-photos';
@@ -235,7 +235,7 @@ export class Data {
   // people in the field: the head counts of units that are assigned or available
   peopleInField() { return this.activeUnits().filter((u) => u.status !== 'out_of_service').reduce((n, u) => n + (u.crew_count || 0), 0); }
   // the PAR still waiting on someone, newest first
-  openPars() { return this.messages().filter((m) => m.kind === 'par' && this.waitingOn(m).length > 0); }
+  openPars() { return this.messages().filter((m) => parOpen(m) && this.waitingOn(m).length > 0); }
   lastPar() { return this.messages().find((m) => m.kind === 'par') || null; }
   zones() { return [...this.store.zones.values()].sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code)); }
   zone(id) { return this.store.zones.get(id) || null; }
@@ -529,14 +529,14 @@ export class Data {
   // recipients who have not answered yet
   waitingOn(message) { return (message.to_users || []).filter((u) => !this.ack(message.id, u)); }
   myInbox() { return this.user ? this.messages().filter((m) => (m.to_users || []).includes(this.user.id)) : []; }
-  myUnanswered() { return this.myInbox().filter((m) => !this.ack(m.id, this.user.id)); }
+  myUnanswered() { return this.myInbox().filter((m) => !this.ack(m.id, this.user.id) && !m.superseded_by); }   // a PAR closed by a newer one needs no answer (v38)
   // messages that carry a spot and still matter: waiting on someone, or sent in the last two hours
   placedMessages() {
     const since = Date.now() - 2 * 3600000;
     return this.messages().filter((m) => m.lat != null && m.lng != null && (this.waitingOn(m).length > 0 || new Date(m.created_at).getTime() > since));
   }
   // safety messages and PARs still waiting on someone: the base keeps them up until everyone has answered
-  openSafety() { return this.messages().filter((m) => m.kind !== 'message' && this.waitingOn(m).length > 0); }
+  openSafety() { return this.messages().filter((m) => m.kind !== 'message' && !m.superseded_by && this.waitingOn(m).length > 0); }
   // who a message goes to: 'all' (every unit), 'ops' (Operations), 'zone:<id>' (the unit assigned there), 'user:<id>'
   recipientsFor(target) {
     const me = this.user ? this.user.id : null;
@@ -717,4 +717,13 @@ export class Data {
   // who the latest PAR says is missing: one entry per name (or one nameless entry), with the unit that reported them
   missingNow() { const par = this.lastPar(); return par ? missingOnPar(par, this.acksFor(par.id), (u) => this.member(u)) : []; }
   missingPerson(personId) { return this.missingNow().find((m) => m.id === personId) || null; }
+  // the people this unit reported missing and has not yet marked found (v38)
+  myMissing() { return this.user ? this.missingNow().filter((x) => x.unit && x.unit.user_id === this.user.id) : []; }
+  // Found: the unit that reported them or Operations says so; the database stamps the entry and writes the notable line
+  async markFound(messageId, userId, { personId, name } = {}) {
+    const { data, error } = await this.sb.rpc('ic_mark_found', { p_message: messageId, p_user: userId, p_person: personId || null, p_name: name || null });
+    if (error) throw error;
+    this.local('ic_message_acks', data);
+    return data;
+  }
 }

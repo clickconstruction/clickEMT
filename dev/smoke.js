@@ -232,8 +232,8 @@ async function emergency(check) {
 async function messages(check) {
   const u = USERS();
   const composer = () => $('#panel form[data-form="message"]');
-  check('the home panel shows the seeded messages, both still waiting on Unit 3', $$('#panel .mrow').length === 2 && $$('#panel .mrow .ack.wait').every((e) => /waiting on unit 3/i.test(e.textContent)), text('#panel'));
-  check('Unit 3 has two unanswered messages in its inbox', field.myUnanswered().length === 2 && field.myInbox().length === 2);
+  check('the home panel shows the seeded messages, both still waiting on Unit 3, and the two answered PARs, the first closed by the second (v38)', $$('#panel .mrow.message').length === 2 && $$('#panel .mrow .ack.wait').every((e) => /waiting on unit 3/i.test(e.textContent)) && $$('#panel .mrow.par').length === 2 && $$('#panel .mrow.par .ack').some((e) => /closed by the par started/i.test(e.textContent)), text('#panel'));
+  check('Unit 3 has two unanswered messages in its inbox (the seeded PARs are answered or closed)', field.myUnanswered().length === 2 && field.myInbox().filter((m) => m.kind === 'message').length === 2, field.myUnanswered().map((m) => m.kind).join(','));
   check('the composer offers everyone, the three assigned zones and the three units', (() => { const o = $$('option', composer()).map((x) => x.value); return o[0] === 'all' && o.filter((v) => v.startsWith('zone:')).length === 3 && o.filter((v) => v.startsWith('user:')).length === 3; })(), $$('option', composer()).map((x) => x.textContent).join(' | '));
 
   composer().to.value = 'user:' + u.unit3;
@@ -337,8 +337,9 @@ async function accountability(check) {
 
   $('#panel [data-action="close-panel"]').click();
   await until(() => $('#panel [data-action="start-par"][data-target="all"]'));
+  const parBefore = base.lastPar();   // the seed carries two answered PARs (v38), so wait for a new one, not any
   $('#panel [data-action="start-par"][data-target="all"]').click();
-  await until(() => base.lastPar());
+  await until(() => base.lastPar() && base.lastPar() !== parBefore);
   const par = base.lastPar();
   check('Start PAR sends a PAR to the three units, and the bar shows it waiting on all of them', par.kind === 'par' && par.to_users.length === 3 && await until(() => !$('#safety').hidden && has('#safety', 'par', '0 of 3 answered')), text('#safety'));
   check('the log has the PAR', !!eventText(base, 'PAR, Operations to everyone: PAR: is everyone accounted for?'));
@@ -2258,6 +2259,23 @@ async function parbyname(check) {
       check('and so does the unit panel', !!$(`#panel .pp-row.missing[data-person="${dom.id}"]`), text('#panel').slice(0, 300));
       $('#panel [data-action="ack-alert"]') && $('#panel [data-action="ack-alert"]').click();
       $('#panel [data-action="close-panel"]').click();
+      // Found (v38): the phone's alert screen lists who it reported missing with a Found button; pressing it clears the bar and the row and writes a notable line
+      await until(() => P.shown('#s-helpsent') && P.$('#helpsent-missing [data-action="found"]'), 15000);
+      check('the phone\'s alert screen names who it reported missing, with Found', /reported missing at/.test(P.text('#helpsent-missing')) && /dominguez/.test(P.text('#helpsent-missing')) && !!P.$('#helpsent-missing [data-action="found"]'), P.text('#helpsent-missing'));
+      P.$('#helpsent-missing [data-action="found"]').click();
+      check('Found from the phone clears the MISSING line and the red row, and the log gets a notable line', await until(() => !has('#safety', 'missing ·'), 70000) && await until(() => eventText(base, 'Dominguez found, reported by Unit 3'), 8000) && base.events().find((e) => e.text === 'Dominguez found, reported by Unit 3').notable === true && !base.missingPerson(dom.id) && base.ack(par2.id, U.unit3).missing[0].found_at, logTexts().slice(0, 2).join(' | '));
+      check('the PAR panel says they were found', await until(() => has('#panel', 'dominguez found · 1 accounted for')), text('#panel').slice(0, 400));
+      // one head count at a time (v38): a third PAR closes the second on the bar and on the phone, and says who had still to answer
+      P.$('#s-helpsent [data-action="stand-down"]').click();   // the alert screen outranks a head count; Unit 3 stands down first, as Rosa would
+      await until(() => !P.shown('#s-helpsent'), 15000);
+      await base.startPar('all');
+      const par3 = base.lastPar();
+      check('a new PAR closes the one before it: one PAR on the bar, the old one superseded, the log says who had still to answer', await until(() => base.message(par2.id).superseded_by === par3.id) && $$('#safety .bar-item').filter((e) => /^PAR ·/.test(e.textContent.trim())).length === 1 && await until(() => base.events().some((e) => /^Earlier PAR closed by the new one, still waiting on /.test(e.text))), logTexts().slice(0, 3).join(' | '));
+      check('the Messages list says the old PAR was closed by the new one', await until(() => $$('.mrow.par .ack').some((e) => /closed by the par started/i.test(e.textContent))), $$('.mrow.par .ack').map((e) => e.textContent).join(' | ').slice(0, 300));
+      await until(() => P.shown('#s-safety') && P.$$('#s-safety .mrow.par').length === 1, 15000);
+      check('the phone shows one head count card, the newest', P.$$('#s-safety .mrow.par').length === 1 && P.$$('#s-safety button').some((b) => b.textContent.trim() === 'All 2 accounted for'), P.text('#s-safety').slice(0, 300));
+      P.$$('#s-safety button').find((b) => b.textContent.trim() === 'All 2 accounted for').click();
+      await until(() => base.ack(par3.id, U.unit3), 70000);
       // Edit a person on the phone
       await P.act('menu');
       await until(() => P.$(`#menu-people [data-action="person-edit"][data-id="${base.people().find((p) => p.name === 'Hale').id}"]`));

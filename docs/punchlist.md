@@ -14,7 +14,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 
 | # | What | Size | After | Serves |
 |---|---|---|---|---|
-| 1 | v38 One head count at a time, and a missing person who is found | small to medium | now | Marcus, Priya, Dana, Ana, Rosa, Moreno, every phone |
+| 1 | v38 One head count at a time, and a missing person who is found (shipped 17 October) | small to medium | now | Marcus, Priya, Dana, Ana, Rosa, Moreno, every phone |
 | 2 | v39 The newcomer's door | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
 | 3 | v40 A period that has ended says so, and times and dates in one form | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
 | 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
@@ -71,6 +71,11 @@ Marcus's PAR job and Rosa's missing job.
 `js/base/ui.js` (`safetyHtml`, `barItem`, the PAR panel), `js/field/main.js` (`parCardHtml`, `answerPar`, the
 takeover), `js/shared/rules.js` (`missingNames`, `missingOnPar`), `js/shared/data.js` (`missingNow`,
 `missingPerson`).
+
+**Shipped** 17 October 2026 as `One head count at a time, and a missing person who is found (v38)`, migration
+`0023_par.sql`, rule test `supabase/tests/par.sql` (10 of 10), the `parbyname` smoke suite extended (24 checks), full run
+557 of 557. As planned, with one difference: Found is a security-definer function (`ic_mark_found`) that stamps the
+answer's missing entries, not a column of its own, so no update policy on acks was needed.
 
 ## 2. v39 The newcomer's door
 

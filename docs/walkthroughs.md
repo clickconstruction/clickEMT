@@ -708,3 +708,24 @@ Ranked by how many personas it serves and how badly it bites, each with the smal
 **For Grace:** whether a unit may close a division it has not finished (Ana's Zone clear: the sheet can say what it sends either way); whether a hazard's urgency should also page the base like an emergency does, or only sit on the bar; whether the sitrep's email address is kept on the incident; a "revisit at" time on the house record (the resident).
 
 **Seen by the walker, not a persona:** once, right after a phone already on the incident opened a join link for it and then signed out, the log got "Hale (swift water, EMT) updated on Unit 3, Lt." by that unit's account; it did not recur when the same steps were walked again without the link.
+
+---
+
+## Re-walk after v38
+
+One head count at a time, and a missing person who is found: Marcus's PAR job and Rosa's missing job, walked on 2026-10-17 after migration 0023 in the same mock, the base at 1280 × 800 as Operations and the phone at 375 × 812 as the seeded Unit 2. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Two PARs ten minutes apart | Marcus | The first Start PAR: "PAR · 0 of 3 answered · waiting on 3 units · started 22:46". The second: the same one line, not two; the 214 "Earlier PAR closed by the new one, still waiting on Unit 1, Unit 2, Unit 3" under the new "PAR, Operations to everyone"; the Messages list's old row "Closed by the PAR started 22:46 · Unit 1, Unit 2, Unit 3 never answered". The seeded morning PAR reads the same way under the one that followed it. | Clear |
+| The phone when a second PAR arrives | Rosa | One card: "Head count (PAR) · 22:46 · Operations to everyone · CHECKED IN WITH YOU Nguyen, Patel · All 2 accounted for · Someone's missing". Not three. | Clear |
+| Patel is missing, then found | Rosa | Someone's missing → ticked Patel → "Send: 1 missing" → the alert screen: "Alert sent 22:47 · WAITING FOR OPERATIONS · … · REPORTED MISSING AT 22:47 · Patel · Found · Operations sees them as missing until you or the base press Found." Pressed Found: toast "Patel marked found", the card gone; Stand down → home with nothing left to clear. | Clear |
+| The base while it happened | Marcus | "MISSING · Patel (Unit 2) · 22:47 · 1 accounted for · Found" on the bar; after her Found the line was gone, the PAR panel read "Unit 2 · Patel found · 1 accounted for · 22:47", the 214 "Patel found, reported by Unit 2" starred as notable, then "Unit 2 stood down, all OK". | Clear |
+
+Item 1 of "What to do first" is clear: the bar holds one head count, the phone one card, and a found person leaves the bar and the board.
+
+**Still bites, small:**
+
+- **Found is per person.** A crew whose whole boat was out of contact presses Found once per name; "all found" would be one tap.
+- **A superseded PAR keeps its "never answered" words for ever** in the Messages list; that is the record, but on a long incident the list of closed PARs grows under the open one. The list shows eight messages; older ones are in the 214.
+- **A safety message still stacks with a PAR** on the phone's takeover (two cards, each one tap), by design: a safety message is not superseded by a head count.

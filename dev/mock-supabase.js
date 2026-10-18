@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 22;
+  const SEED_VERSION = 23;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -32,7 +32,7 @@
   const Z = { 'A-1': ID('e', 1), 'A-2': ID('e', 2), 'A-3': ID('e', 3), 'B-1': ID('e', 4), 'B-2': ID('e', 5), 'B-3': ID('e', 6) };
   const P = [ID('f', 1), ID('f', 2), ID('f', 3)];
   const H1 = ID('b', 1);
-  const MSG = [ID('d', 1), ID('d', 2)];
+  const MSG = [ID('d', 1), ID('d', 2), ID('d', 3), ID('d', 4)];
   const PER = ID('1', 1);
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
   const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9), ID('3', 10), ID('3', 11), ID('3', 12), ID('3', 13), ID('3', 14)];
@@ -210,11 +210,18 @@
       ],
       ic_messages: [
         { id: MSG[0], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'message', text: 'Shelter is open at the high school gym, send anyone who needs it there', created_at: ago(60) },
-        { id: MSG[1], incident_id: INC, from_user: U.ops, to_users: [U.unit3], to_label: 'Unit 3', to_zone: Z['A-2'], kind: 'message', text: 'Watch the power line at the park entrance, the utility crew is 20 minutes out', created_at: ago(15) }
+        { id: MSG[1], incident_id: INC, from_user: U.ops, to_users: [U.unit3], to_label: 'Unit 3', to_zone: Z['A-2'], kind: 'message', text: 'Watch the power line at the park entrance, the utility crew is 20 minutes out', created_at: ago(15) },
+        { id: MSG[2], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'par', text: 'PAR: is everyone accounted for?', created_at: ago(120), superseded_by: MSG[3], superseded_at: ago(100) },
+        { id: MSG[3], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'par', text: 'PAR: is everyone accounted for?', created_at: ago(100) }
       ],
       ic_message_acks: [
         { message_id: MSG[0], incident_id: INC, user_id: U.unit1, reply: 'Copy', count: null, acked_at: ago(59) },
-        { message_id: MSG[0], incident_id: INC, user_id: U.unit2, reply: 'Copy', count: null, acked_at: ago(58) }
+        { message_id: MSG[0], incident_id: INC, user_id: U.unit2, reply: 'Copy', count: null, acked_at: ago(58) },
+        { message_id: MSG[2], incident_id: INC, user_id: U.unit1, reply: 'All accounted for', count: 2, acked_at: ago(119) },
+        { message_id: MSG[2], incident_id: INC, user_id: U.unit3, reply: 'All accounted for', count: 2, acked_at: ago(118) },
+        { message_id: MSG[3], incident_id: INC, user_id: U.unit1, reply: 'All accounted for', count: 2, acked_at: ago(99) },
+        { message_id: MSG[3], incident_id: INC, user_id: U.unit2, reply: 'All accounted for', count: 2, acked_at: ago(98) },
+        { message_id: MSG[3], incident_id: INC, user_id: U.unit3, reply: 'All accounted for', count: 2, acked_at: ago(97) }
       ],
       ic_events: []
     };
@@ -253,6 +260,14 @@
     ev(39, U.ops, 'ops', 'A-3 released from Unit 2', 'ic_zones', Z['A-3']);
     ev(38, U.ops, 'ops', 'B-1 assigned to Unit 2', 'ic_zones', Z['B-1']);
     ev(48, U.ops, 'ops', 'Photo from Unit 1 cleared for public information', 'ic_photos', P[0]);
+    ev(120, U.ops, 'par', 'PAR, Operations to everyone: PAR: is everyone accounted for?', 'ic_messages', MSG[2]);
+    ev(119, U.unit1, 'par', 'Unit 1: All accounted for (2)', 'ic_messages', MSG[2]);
+    ev(118, U.unit3, 'par', 'Unit 3: All accounted for (2)', 'ic_messages', MSG[2]);
+    ev(100, U.ops, 'par', 'PAR, Operations to everyone: PAR: is everyone accounted for?', 'ic_messages', MSG[3]);
+    ev(100, U.ops, 'par', 'Earlier PAR closed by the new one, still waiting on Unit 2', 'ic_messages', MSG[2]);
+    ev(99, U.unit1, 'par', 'Unit 1: All accounted for (2)', 'ic_messages', MSG[3]);
+    ev(98, U.unit2, 'par', 'Unit 2: All accounted for (2)', 'ic_messages', MSG[3]);
+    ev(97, U.unit3, 'par', 'Unit 3: All accounted for (2)', 'ic_messages', MSG[3]);
     ev(60, U.ops, 'msg', 'Operations to everyone: Shelter is open at the high school gym, send anyone who needs it there', 'ic_messages', MSG[0]);
     ev(59, U.unit1, 'msg', 'Unit 1 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
     ev(58, U.unit2, 'msg', 'Unit 2 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
@@ -299,7 +314,7 @@
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, note: '', created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
-    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, created_at: now() }),
+    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
     ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now() })
   };
 
@@ -586,6 +601,11 @@
       const lead = r.kind === 'safety' ? 'SAFETY MESSAGE, ' : r.kind === 'par' ? 'PAR, ' : '';
       const urg = r.urgency ? ' (' + R.urgencyLabel(r.urgency).toLowerCase() + ')' : '';
       log(changes, r.incident_id, r.from_user, kind, `${lead}${label(r.incident_id, r.from_user)} to ${r.to_label || 'everyone'}${urg}: ${r.text}${r.lat != null && r.lng != null ? ' · location attached' : ''}`, 'ic_messages', r.id);
+      if (r.kind === 'par') for (const o of tables.ic_messages.filter((m) => m.incident_id === r.incident_id && m.kind === 'par' && m.id !== r.id && !m.superseded_by && m.created_at <= r.created_at)) {   // ic_par_supersede (v38)
+        const waiting = (o.to_users || []).filter((u) => !tables.ic_message_acks.some((x) => x.message_id === o.id && x.user_id === u)).map((u) => label(r.incident_id, u));
+        updateRow('ic_messages', o, { superseded_by: r.id, superseded_at: now() }, uid, changes, true);
+        log(changes, r.incident_id, r.from_user, 'par', 'Earlier PAR closed by the new one' + (waiting.length ? ', still waiting on ' + waiting.join(', ') : ', everyone had answered'), 'ic_messages', o.id);
+      }
     }
     if (table === 'ic_message_acks') {
       const m = tables.ic_messages.find((x) => x.id === r.message_id) || { kind: 'message', from_user: null };
@@ -1208,6 +1228,19 @@
         updateRow('ic_profiles', pr, { verified_at: a.p_ok ? now() : null, verified_by: a.p_ok ? uid : null }, uid, changes, true);
         log(changes, a.p_incident, uid, 'ops', label(a.p_incident, a.p_user) + ' (' + pr.full_name + ') ' + (a.p_ok ? 'identity verified by Operations' : 'identity verification withdrawn'));
         out = copy(pr);
+      } else if (name === 'ic_mark_found') {   // v38: the reporting unit or Operations says a missing person is found
+        const ack = tables.ic_message_acks.find((x) => x.message_id === a.p_message && x.user_id === a.p_user);
+        if (!ack) throw dbError('No such head count answer');
+        if (ack.reply !== 'Missing someone') throw dbError('That answer reported nobody missing');
+        if (!(a.p_user === uid || isOps(ack.incident_id, uid))) throw dbError('Only the unit that reported them or Operations marks someone found');
+        let entries = Array.isArray(ack.missing) ? ack.missing.map((x) => ({ ...x })) : []; let hit = false; const names = [];
+        const stamp = { found_at: now(), found_by: uid };
+        if (!entries.length) { entries = [{ id: null, name: null, ...stamp }]; hit = true; names.push('The missing person'); }
+        else for (const x of entries) if (!x.found_at && ((!a.p_person && !a.p_name) || (a.p_person && x.id === a.p_person) || (a.p_name && x.name === a.p_name))) { Object.assign(x, stamp); hit = true; names.push(x.name || 'the missing person'); }
+        if (!hit) throw dbError('Nobody by that name is reported missing on that answer');
+        updateRow('ic_message_acks', ack, { missing: entries }, uid, changes, true);
+        log(changes, ack.incident_id, uid, 'par', names.join(', ') + ' found, reported by ' + label(ack.incident_id, uid), 'ic_messages', a.p_message).notable = true;
+        out = copy(ack);
       } else throw dbError(`Could not find the function public.${name} in the schema cache`, 'PGRST202');
     } catch (e) {
       if (!e.db) throw e;

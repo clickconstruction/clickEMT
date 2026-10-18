@@ -1461,7 +1461,10 @@ export function messageRowHtml(data, m) {
   const waiting = data.waitingOn(m);
   const acks = data.acksFor(m.id);
   const mine = me && to.includes(me) && !data.ack(m.id, me);
-  const state = !to.length ? '' : waiting.length === 0
+  const closedBy = m.superseded_by ? data.message(m.superseded_by) : null;
+  const state = !to.length ? '' : m.superseded_by
+    ? `<span class="ack">Closed by the PAR started ${closedBy ? hhmm(closedBy.created_at) : 'later'}${waiting.length ? ' · ' + waiting.map((u) => esc(unitLabel(data.member(u)))).join(', ') + ' never answered' : ''}</span>`
+    : waiting.length === 0
     ? `<span class="ack ok">All ${to.length} acknowledged</span>`
     : `<span class="ack wait">Waiting on ${waiting.map((u) => esc(unitLabel(data.member(u)))).join(', ')}</span>`;
   const replies = acks.filter((a) => a.reply && a.reply !== 'Copy').map((a) => `${esc(unitLabel(data.member(a.user_id)))}: ${esc(a.reply)}${a.count != null ? ' (' + a.count + ')' : ''}`).join(' · ');
@@ -1489,7 +1492,8 @@ export function safetyHtml(data) {
     else if (m.kind === 'par') parts.push(barItem(`PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${waiting} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'} (${since(m.created_at)})`, '', '', `PAR · ${data.acksFor(m.id).length} of ${(m.to_users || []).length} answered · waiting on ${names.join(', ')} · started ${hhmm(m.created_at)} to ${m.to_label || 'everyone'}`));
   }
   const par = data.lastPar();
-  for (const x of data.missingNow().slice().reverse()) parts.unshift(barItem(x.name ? `MISSING · ${x.name} (${unitLabel(x.unit)}) · ${hhmm(x.ack.acked_at)}${x.ack.count != null ? ' · ' + x.ack.count + ' accounted for' : ''}` : `MISSING · ${unitLabel(x.unit)} reports someone missing${x.ack.count != null ? ', ' + x.ack.count + ' accounted for' : ''} · ${hhmm(x.ack.acked_at)}`, 'missing'));   // by name since v29
+  for (const x of data.missingNow().slice().reverse()) parts.unshift(barItem(x.name ? `MISSING · ${x.name} (${unitLabel(x.unit)}) · ${hhmm(x.ack.acked_at)}${x.ack.count != null ? ' · ' + x.ack.count + ' accounted for' : ''}` : `MISSING · ${unitLabel(x.unit)} reports someone missing${x.ack.count != null ? ', ' + x.ack.count + ' accounted for' : ''} · ${hhmm(x.ack.acked_at)}`, 'missing',
+    `<button class="btn sm" data-action="mark-found" data-message="${x.ack.message_id}" data-user="${x.ack.user_id}" data-person="${x.id || ''}" data-name="${esc(x.name || '')}" title="${esc((x.name || 'The missing person') + ' is found: clears this line, logged as notable')}">Found</button>`));   // by name since v29, Found since v38
   return parts.join('');
 }
 

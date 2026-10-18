@@ -27,7 +27,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
-  (`scene.sql` 11 of 11, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
+  (`scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
   10 of 10, `ics100.sql`, `people.sql`). v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the

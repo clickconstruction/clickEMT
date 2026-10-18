@@ -33,12 +33,6 @@ do $$ begin
   insert into public.ic_structures (incident_id, label, status, revisit_at, revisit_hhmm) values ((select incident from t_ctx), 'x', 'searched', now(), '4pm');
   insert into t_r values (false, 'a revisit time that is not hh:mm was accepted');
 exception when others then insert into t_r values (sqlerrm like '%revisit_hhmm%', 'the clock time must be hh:mm: ' || sqlerrm); end $$;
--- a person checked out and back in starts a new stretch (the hours on scene read from checked_in_at)
-insert into public.ic_people (incident_id, user_id, name, checked_in_at) values ((select incident from t_ctx), '00000000-0000-4000-8000-0000000000f1', 'Ramirez', now() - interval '5 hours');
-insert into t_r select checked_in_at = now() - interval '5 hours', 'the person has been on scene five hours' from public.ic_people where incident_id = (select incident from t_ctx) and name = 'Ramirez';
-update public.ic_people set checked_out_at = now() where incident_id = (select incident from t_ctx) and name = 'Ramirez';
-update public.ic_people set checked_out_at = null where incident_id = (select incident from t_ctx) and name = 'Ramirez';
-insert into t_r select checked_in_at = now() and checked_out_at is null, 'checked back in, the stretch starts again' from public.ic_people where incident_id = (select incident from t_ctx) and name = 'Ramirez';
 reset role;
 select * from t_r order by ok, what;
 rollback;

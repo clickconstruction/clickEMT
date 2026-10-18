@@ -2,7 +2,7 @@
 
 For whoever picks up clickEMT next. This says where things stand, how to get it running, how a change is shipped,
 and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026, brought
-up to date on 18 October 2026 at v60.
+up to date on 18 October 2026 at v61.
 
 ## What it is
 
@@ -23,7 +23,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v60**, "A cleaner base" (after v59, the header's right end). The service worker reads `v60`.
+- `main` is at **v61**, "The units section, cleaner" (after v60, a cleaner base). The service worker reads `v61`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0034` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
@@ -46,12 +46,12 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   that 0032 and 0033 had lost; v58 is Show me around, a label over each part of the base on a device's first open; v59 moved the header's
   pills to the end of the buttons row and made the clock swap between local and UTC; v60 took eight marks from Todd's
   walk of the base (shorter labels, the codes behind the pill, the connection's card, the head count, the drawing
-  buttons, the gear, Layers flipped, a division's hover card). v49 was the front door's redesign. Each release has its section
-  in [punchlist.md](punchlist.md) (1 to 14, 16 to 19) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
-- **Open, not yet ranked: the rest of Todd's walk.** Todd walked the base at v59 on 18 October and marked fifteen
-  things; v60 took eight. The rest are mocked up and waiting in punchlist section 15 ("From Todd's walk at v59"): the
-  units section, the People board, Replay's time picker, the pages as modals, imagery placed by its corners, a transport
-  on the map. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
+  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section. v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14, 16 to 20) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+- **Open, not yet ranked: the rest of Todd's walk.** Todd walked the base at v59 on 18 October and kept marking
+  things; v60 took eight and v61 the units section. The rest are in punchlist section 15 ("From Todd's walk at v59"),
+  most with a mock-up: the People board (its bar and tabs too), Replay's time picker, the pages as modals, imagery placed
+  by its corners, a transport on the map, the 211 as a table, confirmations as the app's own dialogs. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
   "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on
   the hardware Grace chooses.
 - **Not yet seen working for real:** the first real invitation email. The Edge Function `invite` is deployed and

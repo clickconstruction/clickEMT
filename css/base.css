@@ -677,3 +677,20 @@ button.pill { border: 0; cursor: pointer; font: inherit; font-size: 12px; line-h
 .zh-big { font-size: 20px; font-weight: 700; line-height: 1; } .zh-big small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 2px; } .zh-big.low { color: var(--hazard-ink); }
 .zh-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line-soft); }
 @media print { .menu, .pop, .zone-hover, .ppl { display: none; } }
+
+/* v61: the units section. One line per unit with where it is at the right, the facts under it; groups as headings;
+   the grouping as a segmented control; the PAR as one line and a row of answers. */
+.rs-head { margin-bottom: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: none; color: var(--ink); padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; min-height: 24px; }
+.seg button.on { background: var(--accent); color: #fff; }
+.rs-g { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ur-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ur-where { margin-left: auto; flex: none; font-weight: 600; font-size: 12.5px; background: var(--sel-bg); color: var(--accent-text); border-radius: 6px; padding: 1px 8px; white-space: nowrap; }
+.ur-where.avail { background: var(--tint-green); color: var(--cleared); font-weight: 500; }
+.ur-where.oos { background: var(--tint-orange); color: var(--hazard-ink); }
+.ur-where.out { background: var(--soft); color: var(--muted); font-weight: 500; }
+.ur .who { font-size: 12px; }
+.par-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.par-chip { font-size: 12px; padding: 2px 8px; border-radius: 6px; border-left: 3px solid var(--line); background: var(--soft); color: var(--ink-2); }
+.par-chip.ok { border-left-color: var(--cleared-fill); } .par-chip.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-chip.wait { border-left-color: var(--hazard); }

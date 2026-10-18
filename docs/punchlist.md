@@ -4,16 +4,16 @@ The work on clickEMT, release by release. Everything here has shipped: the walk 
 to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
-that swaps to UTC (section 18), and v60, a cleaner base from Todd's walk (section 19). **Open and not yet ranked**
-(18 October 2026, v60): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
-Written 17 October 2026, after v37 (`c89a929`), brought up to date at v60. Each numbered release below is written to be picked
+that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), and v61, the units section
+(section 20). **Open and not yet ranked** (18 October 2026, v61): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v61. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v61**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v62**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -33,11 +33,12 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 12 | v54 A transport board (shipped 18 October) | medium | v53 | Marcus, the desk, the crews, a driver |
 | 13 | v55 People and tags, phase 1: QR bands (shipped 18 October) | medium to large | v54 | everyone: Ana, Rosa, the desk, Marcus, Priya |
 | 14 | v56 Invite by email, the app's first server code (shipped 18 October) | medium | v55 | Ana, the administrator, Marcus |
-| 15 | Known candidates, and the rest of Todd's walk at v59 (open, not ranked) | small to large | v60 | see the section |
+| 15 | Known candidates, and the rest of Todd's walk at v59 (open, not ranked) | small to large | v61 | see the section |
 | 16 | v57 The check-in head count put back on the real database (shipped 18 October) | small | v56 | every unit with more people than names, Marcus's PAR |
 | 17 | v58 Show me around: a label over each part of the base on a device's first open (shipped 18 October) | small to medium | v57 | Marcus's relief, the IC, the clerk, anyone new at the base |
 | 18 | v59 The header's right end, and a clock that swaps to UTC (shipped 18 October) | small | v58 | Marcus, the IC, the clerk, mutual aid on Zulu time |
 | 19 | v60 A cleaner base: shorter labels, the codes behind the pill, the connection's card, the head count, the drawing buttons, the gear, Layers flipped, a division's hover card (shipped 18 October) | medium | v59 | Marcus, his relief, the IC, anyone new at the base |
+| 20 | v61 The units section, cleaner: one line per unit with where it is at the right, the PAR as one line (shipped 18 October) | small | v60 | Marcus, Dana, the clerk |
 
 ---
 
@@ -460,9 +461,28 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
 
 **From Todd's walk at v59, mocked up and waiting:**
 
-- **The units section, cleaner** (panel 2 of `/try/mockups/#cleaner`): one line per unit with the division at the right,
-  the facts under it, groups as headings, the count in the heading, the PAR as one line, each request with its one button.
-  Touches the home panel every suite reads; its own release.
+- **The 211 as a table** (Todd, 18 October, of the printed Check-in list: "I like the idea of this but I don't like
+  the execution"): the 211 is a form and forms are tables; today it is the same run of "·"-separated lines every paper
+  uses. A table per unit (Name · Rank · Qualifications · Checked in · On scene · Band, last seen · Out) under a one-line
+  unit header, the totals as a small table; the text and email versions keep the lines. The papers already take a
+  `figure` per section. Not drawn yet.
+- **Confirmations as the app's own dialogs** (Todd, 18 October, of "Make Unit 1 Operations? …" in the browser's own
+  Cancel / OK box: "this should be a modal. in fact across the app, all notifications like this should be modals"):
+  twelve `confirm()` calls on the base and one on the phone become an `askConfirm()` dialog like v44's `askName()`,
+  with the question, what it does, and the two buttons in the app's words; the suites stop stubbing `window.confirm`
+  and press the dialog. Small.
+- **The People board's bar and tabs** (Todd, 18 October): Close wraps to a second row at the left while Print 211 is cut
+  off at the right; the qualification chips and the search sit above both tabs though they filter only People, and a lit
+  chip stays lit on Members. The tabs first, the search and chips inside the People tab, Close last at the right. Sent
+  to the People board's mock-up page.
+- **The Members tab reads as four command posts** (Todd, 18 October: "these other potential operators feel like forward
+  operating bases"): every unit's row carries a Make Operations button as loud as Open and Remove. Present the roles as
+  two groups, Operations (who opened the incident, who else holds it) and Units, with Make Operations a quieter action
+  in the row's menu or on the unit's own panel. And the question it asks must say what changes, from the code: they get
+  the base, drawing and assigning, every identity, the Operations code, roles and the clearing; their row leaves the
+  units and reads "Operations" everywhere (`ic_unit_label`), their phone stops showing a unit's briefing, and the 214
+  says "Unit 1 (Ana Ramirez) is now Operations". What happens to a division assigned to them is to check when it is
+  built. Goes with the confirmations item above.
 - **The People board, offered better** (`/try/mockups/people.html`, its own session): the six controls on every person's
   row crowd out the facts; two or three directions drawn.
 - **Replay: a time you name, and a speed in words** (`/try/mockups/replay.html`): Pick a time bounded by the first
@@ -623,6 +643,26 @@ outside or Escape; Boundary first is a nudge, not a rule; a phone is quiet after
 `headCountHtml` / `liveHtml` in ui.js, the wiring in main.js, discover.js shortened; the `seeded`, `join`, `invite`,
 `members`, `layers` and `around` suites moved to the codes' card and gained the new checks; full run 731 of 731 across
 38 suites; check and test pass; every rule test 20 of 20 files. No migration; the mock needed nothing.
+
+## 20. v61 The units section, cleaner
+
+**Why.** Panel 2 of Todd's walk (section 19): the Resources section's rows packed the unit's name, its kind, the crew's
+names, the count, the lead's name coloured by verification and a tick on one line, then "Assigned to A-1 since 13:23 ·
+2 min ago, E 095°" under it; the "6 people in the field on 3 units" sentence wrapped beside two chips and a button; the
+group headings were chips that looked like buttons; the PAR panel repeated "All accounted for (2) · 14:24" on a row
+per unit. A glance did not say where each unit was.
+
+**Built.** One line per unit: the name and its kind, and at the right where it is, the division's code for an
+assigned unit (blue; hover for "Assigned to A-1 since 13:23"), else Available, Out of service with its reason, or
+Checked out with the time; under it the facts, joined by dots: the names, the count (or "head count unknown" in
+orange), the lead with ✓ or "no ID", since when, the last position's age and heading, the water clock. The section's
+heading carries the counts, "Units · 6 people in the field on 3 units", a Kind | Status switch and the People board;
+groups are headings, "Engines · 1", "Assigned · 3". The PAR is "Head count (PAR)" with one line, "14:23 to everyone ·
+all 6 accounted for by 14:26" (or "N still to answer", or "everyone answered" when an answer has no count), and a row
+of answer chips carrying each unit's words and scans. The requests' heading reads "Requests (213RR) · 2 open".
+
+*Decided:* the app's shared "Unit 1, engine" stays (the forms say it so); "people in the field" stays in the heading
+rather than the mock-up's "6 people", since the panel also counts people sheltered; the request cards keep their forms.
 
 ## Done before this list
 

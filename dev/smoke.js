@@ -80,7 +80,8 @@ async function seeded(check) {
   check('the base is signed in as Operations and on Cedar Fork Flooding', base.user.id === USERS().ops && base.me().role === 'ops' && has('#inc-name', 'cedar fork flooding'));
   check('six zones in the list, by priority then code', $$('#zones .zr .zr-id').map((e) => e.textContent).join(' ') === 'A-1 A-2 A-3 B-1 B-2 B-3' && $$('#zones .zr .pb').map((e) => e.textContent).join('') === '112223', $$('#zones .zr .zr-id').map((e) => e.textContent).join(' '));
   check('the map draws the boundary, six zones, three units, three photo pins and a hazard', $$('#map path').length >= 7 && $$('#map .umark').length === 3 && $$('#map .ppin').length === 3 && $$('#map .hmark').length === 1, `${$$('#map path').length} paths, ${$$('#map .umark').length} units, ${$$('#map .ppin').length} pins, ${$$('#map .hmark').length} hazards`);
-  check('the home panel lists the three units with their assignments', has('#panel', 'unit 1', 'assigned to a-1', 'unit 2', 'assigned to b-1', 'unit 3', 'assigned to a-2'), text('#panel'));
+  check('the home panel lists the three units, each with its division at the right of its row (v61)', has('#panel', 'unit 1', 'unit 2', 'unit 3') && $$('#panel .ur .ur-where').map((e) => e.textContent).join(' ') === 'A-1 B-1 A-2' && /assigned to a-1 since/i.test($('#panel .ur .ur-where').title) && has('#panel .rs-head', 'units · 6 people in the field on 3 units') && $$('#panel .seg.board-mode button').map((b) => b.textContent).join('/') === 'Kind/Status', text('#panel').slice(0, 300));
+  check('the PAR is one line and a row of answers: all six accounted for by the last answer (v61)', has('#panel', 'head count (par)', 'all 6 accounted for by') && $$('#panel .par-chip.ok').length === 3 && has('#panel .par-chips', 'unit 1 · all accounted for (2)'), text('#panel .par-chips'));
   check('the log has the morning in it, newest first', logTexts().length >= 12 && /shelter open/i.test(logTexts()[0]) && /incident opened/i.test(logTexts()[logTexts().length - 1]), logTexts()[0]);
   check('live updates say live', has('#live-text', 'live') && base.realtime === 'SUBSCRIBED', text('#live-text'));
   // the header's right end (v59): the three pills at the end of the buttons row, the code alone, the clock local then UTC
@@ -425,7 +426,7 @@ async function people(check) {
   const u = USERS(), PP = M().ids.people;
   const rows = () => $$('#people-page .pp-row');
   const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
-  check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1, engine ramirez, okafor · 2', 'unit 2, boat crew nguyen, patel · 2', 'unit 3, swift-water team hale, dominguez · 2', '6 people in the field'), text('#panel'));
+  check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1, engine', 'ramirez, okafor · 2', 'unit 2, boat crew', 'nguyen, patel · 2', 'unit 3, swift-water team', 'hale, dominguez · 2', '6 people in the field'), text('#panel'));
   check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .log-row').filter((r) => /checked in with/.test(r.textContent) && r.querySelector('.llink[data-action="people"]')).length === 6, logTexts().find((t) => /Ramirez/.test(t)));   // the band lines link to the board too (v55)
   $('.top [data-action="people"]').click();
   await until(() => !$('#people').hidden && rows().length === 6);
@@ -1308,7 +1309,7 @@ async function sections(check) {
   await until(() => $('#briefing').hidden);
   // 2 · requests
   $('#panel [data-action="close-panel"]').click();
-  await until(() => has('#panel', 'resource requests (ics 213rr)'));
+  await until(() => has('#panel', 'requests (213rr)'));
   check('the home panel lists the open requests, the urgent first, with the seeded ask from Unit 1', $$('#panel .req').length >= 2 && has('#panel', '2 open', '4 portable lights', 'fuel truck, diesel', 'ordered, on the way'), text('#panel').slice(0, 400));
   const rid = uuid();
   await field.addRequest({ id: rid, kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', note: 'Two houses with people on the roof', zoneId: ZONE('A-2'), lat: 30.2674, lng: -97.7384 });
@@ -1539,7 +1540,7 @@ async function ics100(check) {
   await until(() => $('#briefing').hidden);
 
   // 7 · a unit's kind: the board, the panel, the request
-  check('the resources board groups the units by kind with counts, Unit 4 among the boat crews', has('#panel', 'engines 1', 'boat crews 2', 'swift-water teams 1', 'unit 4, boat crew') && $$('#panel .badge.kind').length >= 3, text('#panel').slice(0, 500));
+  check('the resources board groups the units by kind with counts, Unit 4 among the boat crews', has('#panel', 'engines · 1', 'boat crews · 2', 'swift-water teams · 1', 'unit 4, boat crew') && $$('#panel .grp .rs-g').length >= 3, text('#panel').slice(0, 500));
   $('#panel [data-action="board-mode"][data-mode="status"]').click();
   await until(() => $('#panel .grp .badge.st-assigned'));
   check('or by status, the T-card rack', has('#panel .grp', 'assigned') && has('#panel', 'available'), text('#panel').slice(0, 300));

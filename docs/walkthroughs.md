@@ -1326,3 +1326,21 @@ A cleaner base: Marcus's relief on the first open, Marcus answering the radio, D
 - **The units section** is as it was (panel 2 of the cleaner mock-up waits for its own release).
 - **"In it now" counts phones**, not bands: a crew whose phones are in a dry bag reads as nobody in the division until a scan.
 - **The hover card needs a mouse**; a touch screen gets the row's click instead.
+
+---
+
+## Re-walk after v61
+
+The units section: Marcus answering the radio, Dana reading the room, walked on 2026-10-18 in the mock at 1280 × 800 (the pane hidden on this computer; the words read through the `seeded` suite and the page's own text).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Where is Unit 1 | Marcus | The home panel opens with "UNITS · 6 PEOPLE IN THE FIELD ON 3 UNITS · Kind | Status · People board", then "ENGINES · 1" and the row "Unit 1, engine ………… A-1 / Ramirez, Okafor · 2 · Ana Ramirez ✓ · since 14:15 · live, E 095°". The division is at the right of every row, where the eye goes. | Clear |
+| Who is not where they should be | Dana | A unit out of service reads "Out of service: Fuel" in orange at the right; an available one "Available" in green; a checked-out one "Checked out 02:10" muted, under "CHECKED OUT · 1". | Clear |
+| The head count | Marcus | "HEAD COUNT (PAR) · Start PAR / 15:15 to everyone · all 6 accounted for by 15:18 / Unit 1 · All accounted for (2) · 15:16 · Unit 2 · … · Unit 3 · …" as three chips on one row; a missing report turns its chip red; a unit still to answer is "Unit 2 · waiting". | Clear |
+| The asks | Marcus | "REQUESTS (213RR) · 2 open", the cards as before. | Clear |
+
+**Still bites, small:**
+
+- **The request cards** keep their full form under each; the mock-up's one button per request is still to decide.
+- **The lead's name** in the facts line is the only coloured text left on the row; whether it should be a tick alone is the walk's.

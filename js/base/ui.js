@@ -63,13 +63,32 @@ function personLines(data, m) { return data.unitPeople(m.user_id).map((p) => '  
 function unitRowHtml(data, m, now) {
   const pos = data.position(m.user_id);
   const sos = data.alerts().some((a) => a.user_id === m.user_id);
-  const where = m.status === 'checked_out' ? '' : (pos ? ' · ' + ago(pos.at, now) + (pos.heading != null ? ', ' + compass(pos.heading) : '') : ' · no position yet');
   const dot = sos ? 'sos' : (m.status === 'checked_out' || !pos || now - new Date(pos.at).getTime() > 180000 ? 'off' : '');
+  const p = data.profileOf(m.user_id);
+  const out = m.status === 'checked_out';
+  const facts = [
+    esc(unitNames(data, m)),
+    out ? '' : m.crew_count != null ? String(m.crew_count) : `<span class="hc-unknown" title="No names and no count given at check-in: ask the unit, or name them on the People board">${HEAD_COUNT_UNKNOWN}</span>`,
+    p ? `<span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : identityGiven(p) ? 'Identity not verified yet' : 'No licence given: check who this is in person'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : identityGiven(p) ? '' : ' · no ID'}</span>` : '',
+    m.status_at ? 'since ' + hhmm(m.status_at) : '',
+    out ? '' : pos ? ago(pos.at, now) + (pos.heading != null ? ', ' + compass(pos.heading) : '') : 'no position yet',
+    waterSpan(data, m, now).replace(/^ · /, ''),
+  ].filter(Boolean);
   return `<button class="ur" data-action="select-unit" data-id="${m.user_id}">
       <span class="udot2 ${dot}"></span>
-      <span class="ur-main"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''} <span style="font-weight:400;color:var(--muted)">${esc(unitNames(data, m))}${m.crew_count != null && m.status !== 'checked_out' ? ' · ' + m.crew_count : m.status !== 'checked_out' ? ` · <span class="hc-unknown" title="No names and no count given at check-in: ask the unit, or name them on the People board">${HEAD_COUNT_UNKNOWN}</span>` : ''}</span>${(() => { const p = data.profileOf(m.user_id); return p ? ` <span class="who${p.verified_at ? ' ok' : ''}" title="${p.verified_at ? 'Identity verified' : identityGiven(p) ? 'Identity not verified yet' : 'No licence given: check who this is in person'}">${esc(p.full_name)}${p.verified_at ? ' ✓' : identityGiven(p) ? '' : ' · no ID'}</span>` : ''; })()}</span>
-      <span class="ur-sub">${statusDetail(data, m)}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}${where}${waterSpan(data, m, now)}</span></span>
+      <span class="ur-main">
+        <span class="ur-top"><span class="ur-name">${esc(unitLabel(m))}${kindText(m.kind) ? `<span class="ur-kind">, ${esc(kindText(m.kind))}</span>` : ''}</span>${wherePill(data, m)}</span>
+        <span class="ur-sub">${facts.join(' · ')}</span>
+      </span>
     </button>`;
+}
+// where a unit is, at the right of its row (v61): the division for an assigned unit, else its status
+function wherePill(data, m) {
+  const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active') || data.zones().find((z) => z.assigned_to === m.user_id);
+  if (m.status === 'assigned') return `<span class="ur-where" title="Assigned to ${zone ? esc(zone.code) : 'a division'}${m.status_at ? ' since ' + hhmm(m.status_at) : ''}">${zone ? esc(zone.code) : 'Assigned'}</span>`;
+  if (m.status === 'available') return `<span class="ur-where avail" title="Available${zone ? ', last in ' + esc(zone.code) : ''}">Available</span>`;
+  if (m.status === 'out_of_service') return `<span class="ur-where oos">Out of service${m.status_note ? ': ' + esc(m.status_note) : ''}</span>`;
+  return `<span class="ur-where out">Checked out${m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}</span>`;
 }
 // " · in the water 38 min", orange past the rotation, "probably left running" past three (v28)
 function waterSpan(data, m, now) {
@@ -84,14 +103,14 @@ export function resourcesHtml(data, state) {
   if (!units.length) return '<p class="muted">No units have joined yet.</p>';
   const now = Date.now();
   const mode = (state && state.board) || 'kind';
-  const head = `<div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</span>
-    <span class="chips board-mode"><button class="chip${mode === 'kind' ? ' on' : ''}" data-action="board-mode" data-mode="kind" aria-pressed="${mode === 'kind'}">By kind</button><button class="chip${mode === 'status' ? ' on' : ''}" data-action="board-mode" data-mode="status" aria-pressed="${mode === 'status'}">By status</button></span>
+  const head = `<div class="d-row rs-head" data-home><span class="k" style="width:auto;flex:1">Units · ${data.peopleInField()} people in the field on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}</span>
+    <span class="seg board-mode" role="group" aria-label="Group the units by"><button class="${mode === 'kind' ? 'on' : ''}" data-action="board-mode" data-mode="kind" aria-pressed="${mode === 'kind'}">Kind</button><button class="${mode === 'status' ? 'on' : ''}" data-action="board-mode" data-mode="status" aria-pressed="${mode === 'status'}">Status</button></span>
     <button class="btn sm" data-action="people" title="Everyone on scene by name, with qualifications, status and hours">People board</button></div>`;
   if (mode === 'status') {
     return head + ['assigned', 'available', 'out_of_service', 'checked_out'].map((s) => {
       const rows = units.filter((u) => u.status === s);
       if (!rows.length) return '';
-      return `<div class="grp"><span class="badge st-${s}">${STATUS_LABEL[s]}</span><span class="muted">${rows.length}</span></div>` + rows.map((m) => unitRowHtml(data, m, now)).join('');
+      return `<div class="grp"><span class="rs-g">${STATUS_LABEL[s]} · ${rows.length}</span></div>` + rows.map((m) => unitRowHtml(data, m, now)).join('');
     }).join('');
   }
   const on = units.filter((u) => u.status !== 'checked_out'), out = units.filter((u) => u.status === 'checked_out');
@@ -99,29 +118,28 @@ export function resourcesHtml(data, state) {
   const groups = UNIT_KINDS.map(([k, , plural]) => ({ key: k, label: plural, rows: on.filter((u) => u.kind === k), asks: asked.filter((x) => x.kinds.includes(k)) })).filter((g) => g.rows.length || g.asks.length);
   const unknown = on.filter((u) => !unitKind(u.kind));
   if (unknown.length) groups.push({ key: '', label: 'Kind not set', rows: unknown, asks: [] });
-  return head + groups.map((g) => `<div class="grp"><span class="badge kind">${esc(g.label)}</span> <span class="muted">${g.rows.length}${g.asks.length ? ` · ${g.asks.length} asked${g.asks.some((x) => x.r.status === 'ordered') ? ', ' + (g.asks.filter((x) => x.r.status === 'ordered').length === g.asks.length ? 'ordered' : 'some ordered') : ''}` : ''}</span></div>` +
+  return head + groups.map((g) => `<div class="grp"><span class="rs-g">${esc(g.label)} · ${g.rows.length}${g.asks.length ? ` · ${g.asks.length} asked${g.asks.some((x) => x.r.status === 'ordered') ? ', ' + (g.asks.filter((x) => x.r.status === 'ordered').length === g.asks.length ? 'ordered' : 'some ordered') : ''}` : ''}</span></div>` +
       (g.rows.length ? g.rows.map((m) => unitRowHtml(data, m, now)).join('') : `<div class="muted" style="font-size:12.5px;padding:0 0 6px">none on scene · ${g.asks.map((x) => requestLine(x.r) + ' ' + (REQUEST_STATUS[x.r.status] || x.r.status).toLowerCase()).join(' · ')}</div>`)).join('') +
-    (out.length ? `<div class="grp"><span class="badge st-checked_out">Checked out</span><span class="muted">${out.length}</span></div>` + out.map((m) => unitRowHtml(data, m, now)).join('') : '');
+    (out.length ? `<div class="grp"><span class="rs-g">Checked out · ${out.length}</span></div>` + out.map((m) => unitRowHtml(data, m, now)).join('') : '');
 }
 
 // The PAR: who has answered the latest one, and with what.
 export function parHtml(data) {
   const par = data.lastPar();
-  const head = `<div class="d-row"><span class="k" style="width:auto;flex:1">Accountability (PAR)</span><button class="btn sm" data-action="start-par" data-target="all">Start PAR</button></div>`;
-  if (!par) return head + '<div class="muted" style="font-size:12.5px">A PAR asks every unit for a head count. Each unit answers with one tap.</div>';
+  const head = `<div class="d-row" style="margin-top:14px"><span class="k" style="width:auto;flex:1">Head count (PAR)</span><button class="btn sm" data-action="start-par" data-target="all">Start PAR</button></div>`;
+  if (!par) return head + '<div class="muted" style="font-size:12.5px">Asks every unit for a head count; each answers with one tap.</div>';
   const waiting = data.waitingOn(par);
-  const rows = (par.to_users || []).map((u) => {
-    const a = data.ack(par.id, u);
-    const cls = a ? (a.reply === 'Missing someone' ? 'bad' : 'ok') : 'wait';
-    return `<div class="par-row ${cls}"><span>${esc(unitLabel(data.member(u)))}</span><span>${a ? esc(parAnswerText(a)) + (a.scanned != null ? ' · ' + a.scanned + ' scanned' : '') + ' · ' + hhmm(a.acked_at) : 'waiting, sent ' + since(par.created_at)}</span></div>`;
-  }).join('');
-  return head + `<div class="muted" style="font-size:12.5px">Started ${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${waiting.length ? waiting.length + ' still to answer' : 'everyone answered'}</div>${rows}`;
+  const acks = (par.to_users || []).map((u) => ({ u, a: data.ack(par.id, u) }));
+  const allCounted = acks.length > 0 && acks.every((x) => x.a && x.a.count != null && x.a.reply !== 'Missing someone');
+  const last = acks.reduce((t, x) => (x.a && x.a.acked_at > t ? x.a.acked_at : t), '');
+  const line = waiting.length ? `${waiting.length} still to answer` : allCounted ? `all ${acks.reduce((n, x) => n + x.a.count, 0)} accounted for by ${hhmm(last)}` : 'everyone answered';
+  const chips = acks.map(({ u, a }) => `<span class="par-chip ${a ? (a.reply === 'Missing someone' ? 'bad' : 'ok') : 'wait'}">${esc(unitLabel(data.member(u)))}${a ? ' · ' + esc(parAnswerText(a)) + (a.scanned != null ? ' · ' + a.scanned + ' scanned' : '') + ' · ' + hhmm(a.acked_at) : ' · waiting'}</span>`).join('');
+  return head + `<div class="muted" style="font-size:12.5px;margin:2px 0 6px">${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${line}</div><div class="par-chips">${chips}</div>`;
 }
 
 function homeHtml(data, state) {
   const inc = data.incident;
   return `
-    <div class="k" data-home>Resources</div>
     ${resourcesHtml(data, state)}
     ${parHtml(data)}
     ${requestsHtml(data)}
@@ -1019,7 +1037,7 @@ export function requestsHtml(data) {
   const done = data.requests().filter((r) => r.status === 'filled' || r.status === 'declined').slice(0, 4);
   const now = open.filter((r) => r.urgency === 'now' || r.urgency === 'blocking').length;
   return `
-    <div class="d-row" style="margin-top:6px"><span class="k" style="width:auto;flex:1">Resource requests (ICS 213RR)</span>${now ? `<span class="badge urg-now">${now} to act on now</span>` : ''}<span class="muted">${open.length} open</span></div>
+    <div class="d-row" style="margin-top:14px"><span class="k" style="width:auto;flex:1">Requests (213RR) · ${open.length} open</span>${now ? `<span class="badge urg-now">${now} to act on now</span>` : ''}</div>
     ${open.length ? open.map((r) => requestCardHtml(data, r)).join('') : '<div class="muted" style="font-size:12.5px">Nothing open. The field asks from its inbox; Operations asks below.</div>'}
     ${done.length ? `<details class="muted" style="font-size:12.5px"><summary>${done.length} filled or declined lately</summary>${done.map((r) => requestCardHtml(data, r)).join('')}</details>` : ''}
     <form class="inline-form" data-form="request-add">

@@ -881,6 +881,12 @@ async function publicInfo(check) {
   await field.addPhoto(pid, await tinyJpeg(), { lat: 30.2674, lng: -97.7384, heading: 90, note: 'People here', zoneId: ZONE('A-2') });
   await until(() => base.photo(pid));
   check('a new photo is not public', base.photo(pid).public_ok === false);
+  // v52: the PIO's own page from the header
+  $('[data-action="public"]').click();
+  await until(() => !$('#public').hidden && has('#public-page', 'public information'));
+  check('Public on the header opens the PIO\'s page: who is PIO, the counts, every cleared photo with its check and caption, the public set (v52)', has('#public-page', 'public information officer: lena marsh', '1 photo cleared for the public, 0 checked', 'cleared photos · 1', 'unit 3 · a-2 · not checked · no public caption yet', 'the public set', '0 of 1 ready to download') && !!$('#public [data-action="download-public"]'), text('#public-page').slice(0, 400));
+  $('#public-page [data-action="select-photo"]').click();
+  check('a row opens the photo\'s panel and puts the page away', await until(() => $('#public').hidden && has('#panel .title', 'photo')) && !!$('#panel [data-action="photo-check"]'), text('#panel .title'));
   $('[data-action="sitrep"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
   check('the situation report counts the cleared photos', has('#briefing-page', 'public information', '1 photo cleared for public release'), text('#briefing-page').slice(-300));

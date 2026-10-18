@@ -10,7 +10,7 @@
 
 ### 1. Which photos are cleared
 
-- **Base** · The home panel's **Public information** section: "N photos cleared for the public, M checked", then one line per cleared photo with its time, unit, division, whether it is checked and its public caption.
+- **Base** · Press **Public** on the header: your own page with who is PIO, "N photos cleared for the public, M checked", then one line per cleared photo with its time, unit, division, whether it is checked and its public caption; a line opens the photo. (The same section is at the foot of Operations' home panel.)
 
 ### 2. Make sure none shows a victim or an address
 
@@ -19,7 +19,7 @@
 
 ### 3. Get them as files with time, place and a caption
 
-- **Base** · Press **Download the public set**. Only checked photos leave, each named by its time and place with the caption written into the file, and a captions.txt with the time, the place to the street and the caption. Never coordinates, never the unit's note. Cleared photos not yet checked are listed as missing.
+- **Base** · Press **Download the public set**, on the Public page or the home panel. Only checked photos leave, each named by its time and place with the caption written into the file, and a captions.txt with the time, the place to the street and the caption. Never coordinates, never the unit's note. Cleared photos not yet checked are listed as missing.
 
 ### 4. Am I named as PIO
 

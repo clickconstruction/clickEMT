@@ -340,6 +340,8 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .people-q { width: 220px; min-height: 30px; }
 .people .log-filters .chip { min-height: 28px; }
 .people-page { max-width: 1100px; }
+.public-page .pub-row { padding: 2px 0; }
+.public-page .plink { display: block; width: 100%; text-align: left; white-space: normal; }   /* the Public page's rows (v52) */
 .pp-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .pp-count { flex: 1; font-size: 13.5px; color: var(--ink-2); }
 .pp-form { margin-bottom: 14px; }

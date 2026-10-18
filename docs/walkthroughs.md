@@ -1154,3 +1154,21 @@ Item 2 of the walk at v48's list is built.
 **Still bites, small:**
 
 - **A crew that types names but leaves the number at 1** is counted by its names, as before; the number only matters when the names are fewer than the people.
+
+---
+
+## Re-walk after v52
+
+A Public page: the Public Information Officer's jobs, walked on 2026-10-18 in the same mock on the base at 1280 × 900 (the pane visible; the words read from the screen).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Which photos are cleared | The PIO | A **Public** button on the header beside People ("Public information: the photos cleared for the public with their captions and checks, the public set to download, who is PIO"). It opens her own page: "Public Information Officer: Lena Marsh · 1 photo cleared for the public, 0 checked (no face, no plate, no house number). Only checked photos leave in the public set. Clearing is Operations' call; the public caption and the check are yours, on each photo. A caption names the division, never the coordinates or the unit's note." then "CLEARED PHOTOS · 1 · 10:44 · Unit 3 · A-2 · not checked · no public caption yet" and "THE PUBLIC SET 0 of 1 ready to download; 1 cleared but not yet checked, listed as missing in captions.txt." The bar: Download the public set · Close. No scroll down Operations' panel. | Clear |
+| Check one | The PIO | A row opens the photo's panel ("Photo · Unit 3 · 10:44 · Public · Cleared for public information · not checked yet, so not in the public set · Public caption … · Checked: no face, no plate, no house number") and puts the page away. | Clear |
+| Get the files | The PIO | Download the public set on the page's bar, the same zip as the home panel's. | Clear |
+
+Item 3 of the walk at v48's list is built; the home panel's section stays for Operations.
+
+**Still bites, small:**
+
+- **The page is a list, not a gallery**: the pictures themselves are a press away on each photo's panel; a PIO choosing between six photos opens six panels.

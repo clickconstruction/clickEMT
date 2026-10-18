@@ -280,6 +280,25 @@ export function agenciesHtml(data) {
 }
 
 // The Public Information Officer's set: photos Operations has cleared. Nothing is public by default.
+// The Public page (v52): the PIO's own screen from the header, with what the home panel's section says and every
+// cleared photo, so the PIO is not sent 4,000 px down Operations' panel. Clearing stays Operations' call; the check and
+// the caption are on each photo's panel, a press away from a row.
+export function publicPageHtml(data) {
+  const p = data.currentPeriod(), pub = data.publicPhotos(), set = data.publicSet();
+  const rows = pub.slice().sort((a, b) => (a.taken_at < b.taken_at ? 1 : -1));
+  return `
+    <section><h2>Public information</h2>
+      <p>${p && p.pio ? 'Public Information Officer: ' + esc(p.pio) : 'No Public Information Officer seated; the seat is on the Period sheet.'}</p>
+      <p>${pub.length ? `${pub.length} photo${pub.length === 1 ? '' : 's'} cleared for the public, ${set.length} checked (no face, no plate, no house number). Only checked photos leave in the public set.` : 'No photo is cleared for the public. Operations clears a photo from its panel; nothing is public by default.'}</p>
+      <p class="muted">Clearing is Operations' call; the public caption and the check are yours, on each photo. A caption names the division, never the coordinates or the unit's note.</p>
+    </section>
+    <section><h2>Cleared photos · ${pub.length}</h2>
+      ${rows.length ? rows.map((x) => `<div class="pub-row"><button class="plink" data-action="select-photo" data-id="${x.id}">${hhmm(x.taken_at)} · ${esc(unitLabel(data.member(x.user_id)))}${x.zone_id && data.zone(x.zone_id) ? ' · ' + esc(data.zone(x.zone_id).code) : ''} · <strong>${x.public_checked_at ? 'checked ' + hhmm(x.public_checked_at) : 'not checked'}</strong> · ${x.public_caption ? esc(x.public_caption) : 'no public caption yet'}</button></div>`).join('') : '<p class="muted">None yet.</p>'}
+    </section>
+    <section><h2>The public set</h2>
+      <p>${set.length} of ${pub.length} ready to download${pub.length - set.length > 0 ? '; ' + (pub.length - set.length) + ' cleared but not yet checked, listed as missing in captions.txt' : ''}.</p>
+    </section>`;
+}
 export function publicHtml(data) {
   const pub = data.publicPhotos(), set = data.publicSet();
   return `

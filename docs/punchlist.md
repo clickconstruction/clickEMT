@@ -361,6 +361,7 @@ as one small release, v49, by the routine in [handoff.md](handoff.md). Not start
    same as at v37. *Build.* A Public button on the header beside People, opening an overlay (like `#people`) with the
    cleared photos, their captions and checks, Download the public set and who is PIO; the home panel's section stays
    for Operations. *Done when* the `publicInfo` suite opens it from the header and the walk's PIO job reads it there.
+   *Shipped 18 October 2026 as `A Public page for the PIO (v52)`; the `publicInfo` suite covers it.*
 4. **Small words.** The bar's hazard item repeats the kind when the note restates it ("Person or car in the water, Car in
    the water at the bridge"): the note alone when it starts with the kind's words (`barItem` in `safetyHtml`); the
    check-in page's row for an incident a unit has checked out of reads "you were Brush 12 · checked out 02:10"

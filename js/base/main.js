@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, esc } from './ui.js';
+import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, esc } from './ui.js';
 import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
@@ -292,6 +292,7 @@ function drawAll() {
   drawFind();
   if (!$('#briefing').hidden) drawBriefing();
   if (!$('#people').hidden) drawPeople();
+  if (!$('#public').hidden) drawPublic();
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
   map.render(data, state);
@@ -529,6 +530,14 @@ $('#transfer-dialog').addEventListener('click', (e) => { if (e.target === e.curr
 
 // ---- the People board: everyone on scene by unit, in a page of its own. The find box and the chips
 // live in state.people; the page is redrawn on every change unless a field in it has focus.
+function openPublic() { $('#public').hidden = false; drawPublic(); }   // the PIO's page (v52)
+function closePublic() { $('#public').hidden = true; }
+function drawPublic() {
+  if (!data.incident || $('#public').hidden) return;
+  $('#public-sub').textContent = data.incident.name + ' · ' + hhmm(new Date());
+  const page = $('#public-page'), html = publicPageHtml(data);
+  if (page.__html !== html) { page.__html = html; page.innerHTML = html; }
+}
 function openPeople() { $('#people').hidden = false; drawPeople(); }
 function closePeople() { $('#people').hidden = true; state.people.add = false; }
 function drawPeople() {
@@ -829,7 +838,7 @@ document.addEventListener('click', async (e) => {
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
       case 'print-join': openOverlay('join'); break;
       case 'select-zone': selectFromLog({ type: 'zone', id }); break;
-      case 'select-photo': selectFromLog({ type: 'photo', id }); break;
+      case 'select-photo': if (btn.closest('#public')) closePublic(); selectFromLog({ type: 'photo', id }); break;
       case 'photo-public': await data.setPhotoPublic(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Cleared for public information · write its public caption and check it' : 'Withdrawn from public information'); break;
       case 'photo-check': await data.setPhotoChecked(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Checked: in the public set' : 'Check withdrawn: out of the public set'); break;
       case 'unit-water': { const m = data.member(id); await data.setInWater(id, btn.dataset.on === '1' ? new Date().toISOString() : null); toast(unitLabelOf(m) + (btn.dataset.on === '1' ? ' in the water' : ' out of the water')); break; }
@@ -855,6 +864,8 @@ document.addEventListener('click', async (e) => {
       case 'print-214': openOverlay('214'); break;
       case 'people': if (LOG_ONLY) { selectFromLog({ type: 'people' }); break; } state.people.addUnit = btn.dataset.unit || state.people.addUnit; if (btn.dataset.tab) state.people.tab = btn.dataset.tab; openPeople(); break;
       case 'close-people': closePeople(); break;
+      case 'public': if (!LOG_ONLY) openPublic(); break;
+      case 'close-public': closePublic(); break;
       case 'print-211': openOverlay('211'); break;
       case 'hours': openOverlay('hours'); break;
       case 'hours-csv': {

@@ -200,6 +200,7 @@
     <button class="btn sm" data-action="briefing">Briefing</button>
     <button class="btn sm" data-action="org" title="The organization chart, ICS 207: the seats, the branches and divisions, the units, with the span of control">Org chart</button>
     <button class="btn sm" data-action="people" title="Everyone on scene by name and unit: qualifications, status, hours on scene, and the check-in list (ICS 211)">People</button>
+    <button class="btn sm" data-action="public" title="Public information: the photos cleared for the public with their captions and checks, the public set to download, who is PIO">Public</button>
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
     <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
@@ -301,6 +302,17 @@
     <button class="btn sm" data-action="close-people">Close</button>
   </div>
   <div class="briefing-page people-page" id="people-page"></div>
+</div>
+
+<div id="public" class="briefing public" hidden>
+  <div class="briefing-bar">
+    <strong>Public information</strong>
+    <span class="muted" id="public-sub"></span>
+    <span style="flex:1"></span>
+    <button class="btn sm" data-action="download-public" title="One zip: every checked photo named by its time and place, its public caption written into the file, and captions.txt with the time, the place and the caption. No coordinates, no unit's note. Cleared photos not yet checked are listed as missing.">Download the public set</button>
+    <button class="btn sm" data-action="close-public">Close</button>
+  </div>
+  <div class="briefing-page public-page" id="public-page"></div>
 </div>
 
 <div id="briefing" class="briefing" hidden>

@@ -1455,7 +1455,11 @@ async function demo(check) {
   check('/try/ draws a card for each of the twelve personas and frames both views in demo mode', cards === 12 && pd().querySelector('#base').dataset.src === '/?demo' && pd().querySelector('#phone').dataset.src === '/field/?demo', `${cards} cards`);
   pd().querySelector('.card[data-role="10-shelter-desk"]').click();
   check('a role card loads both frames on the stand-in and shows that role\'s tour', await until(() => pd().querySelector('#base').getAttribute('src') === '/?demo' && pd().querySelector('#phone').getAttribute('src') === '/field/?demo' && /Shelter desk volunteer/.test((pd().querySelector('.who-head') || {}).textContent || '') && pd().querySelectorAll('.step').length >= 6, 8000), `${pd().querySelectorAll('.step').length} steps`);
-  check('the base\'s signed-out screen is the front door: the join code first, then Try it and Sign in', !!$('#auth.landing #door-form') && has('#auth .door h1', 'part of an incident right now') && $$('#auth .land-card').length === 6 && $$('#auth .land-shots img').length === 7 && !!$('#auth #auth-form #auth-email'), text('#auth .door h1'));
+  check('the base\'s signed-out screen is the front door: the join code first, then Try it and Sign in', !!$('#auth.landing #door-form') && has('#auth .door h1', 'part of an incident right now') && $$('#auth .land-card').length === 6 && $$('#auth #show .show-pic').length === 8 && $('#auth #show .show-pic.cur').dataset.i === '0' && !!$('#auth #auth-form #auth-email'), text('#auth .door h1'));
+  $('#auth #show [data-show="next"]').click();
+  check('the slideshow moves one screen at a time, with its caption and its title lit', $('#auth #show .show-pic.cur').dataset.i === '1' && $('#auth #show .show-cap.cur').dataset.i === '1' && $('#auth #show .show-jump button.on').dataset.show === '1' && $('#show-n').textContent === '2 of 8', $('#show-n').textContent);
+  $('#auth #show [data-show="5"]').click();
+  check('a title jumps straight to that screen', $('#auth #show .show-pic.cur').dataset.i === '5' && /204/.test($('#auth #show .show-cap.cur').textContent), $('#show-n').textContent);
   $('#door-code').value = 'CEDAR0'; $('#door-form').requestSubmit();
   check('the code box refuses a code outside the join code\'s alphabet, and stays on the page', /never has 0, O, 1 or I/.test($('#door-msg').textContent) && location.pathname === '/', $('#door-msg').textContent);
   $('#door-code').value = ''; $('#door-msg').textContent = '';

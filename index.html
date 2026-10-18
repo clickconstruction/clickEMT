@@ -65,14 +65,40 @@
         <li><b>Nothing is deleted, nothing is public by default.</b> The code is open on GitHub.</li>
       </ul>
       <h3>See it</h3>
-      <div class="land-shots">
-        <figure class="shot wide"><img src="images/front/base-map.jpg" width="1600" height="1000" alt="The base: the map with six divisions, three units, photo pins and a hazard; the divisions listed by priority; the join code as a QR; the activity log underneath"><figcaption><b>The base.</b> Divisions by priority, the units and their photos on the map, the join code for the phones, and the 214 writing itself underneath.</figcaption></figure>
-        <figure class="shot phone"><img src="images/front/phone-home.jpg" width="750" height="1624" alt="The phone's home screen: the unit's zone card, a new assignment to accept, a message from Operations with Copy, Will do and Cannot, and the Take photo and Address clear buttons"><figcaption><b>The phone.</b> Your zone, the assignment, the message to answer, and the big buttons.</figcaption></figure>
-        <figure class="shot phone"><img src="images/front/phone-par.jpg" width="750" height="1624" alt="A head count taking over the phone: the names checked in with you, one green button for all accounted for and a red one for someone's missing" loading="lazy"><figcaption><b>The head count.</b> The names checked in with you, and one tap for all of them.</figcaption></figure>
-        <figure class="shot phone"><img src="images/front/phone-desk.jpg" width="750" height="1624" alt="The shelter desk's People here screen: the count against the beds, a family arriving from a crew with They're here, Sign in a person, and who is here now" loading="lazy"><figcaption><b>The shelter desk.</b> Who is here, who is coming from the crews, and "is my mother here?"</figcaption></figure>
-        <figure class="shot"><img src="images/front/base-org.jpg" width="1600" height="1000" alt="The organization chart, ICS 207, drawn from the seats: the Incident Commander on top, the command staff, the four sections and a card per division" loading="lazy"><figcaption><b>The 207.</b> Drawn from the seats, the divisions and the units, with the span of control on every box.</figcaption></figure>
-        <figure class="shot wide"><img src="images/front/base-204.jpg" width="1600" height="1000" alt="A division's assignment, ICS 204, in the Incident Action Plan: the resources, the work assignment, the medical lines and a printed map of the division" loading="lazy"><figcaption><b>The 204 for the truck.</b> The assignment, the channel, the names, the medical lines and a map of the division.</figcaption></figure>
-        <figure class="shot phone"><img src="images/front/phone-house.jpg" width="750" height="1624" alt="The house record on the phone: the address, occupants, people needing help, water depth and damage, each a row of chips" loading="lazy"><figcaption><b>Address clear.</b> One house record: occupants, who needs help, water, damage, hazards, and the marking painted.</figcaption></figure>
+      <div class="land-show" id="show" tabindex="0" aria-roledescription="carousel" aria-label="Screens of the app">
+        <div class="show-stage" id="show-stage">
+        <a class="show-pic base cur" data-i="0" href="images/front/base-map.jpg" target="_blank" rel="noopener"><img src="images/front/base-map.jpg" width="1600" height="1000" alt="The base: the map with six divisions, three units, photo pins and a hazard; the divisions listed by priority; the join code as a QR; the activity log underneath"></a>
+        <a class="show-pic phone" data-i="1" href="images/front/phone-home.jpg" target="_blank" rel="noopener"><img src="images/front/phone-home.jpg" width="750" height="1624" alt="The phone's home screen: the unit's zone card, a new assignment to accept, a message from Operations with Copy, Will do and Cannot, and the Take photo and Address clear buttons" loading="lazy"></a>
+        <a class="show-pic phone" data-i="2" href="images/front/phone-par.jpg" target="_blank" rel="noopener"><img src="images/front/phone-par.jpg" width="750" height="1624" alt="A head count taking over the phone: the names checked in with you, one green button for all accounted for and a red one for someone's missing" loading="lazy"></a>
+        <a class="show-pic phone" data-i="3" href="images/front/phone-desk.jpg" target="_blank" rel="noopener"><img src="images/front/phone-desk.jpg" width="750" height="1624" alt="The shelter desk's People here screen: the count against the beds, a family arriving from a crew with They're here, Sign in a person, and who is here now" loading="lazy"></a>
+        <a class="show-pic base" data-i="4" href="images/front/base-org.jpg" target="_blank" rel="noopener"><img src="images/front/base-org.jpg" width="1600" height="1000" alt="The organization chart, ICS 207, drawn from the seats: the Incident Commander on top, the command staff, the four sections and a card per division" loading="lazy"></a>
+        <a class="show-pic base" data-i="5" href="images/front/base-204.jpg" target="_blank" rel="noopener"><img src="images/front/base-204.jpg" width="1600" height="1000" alt="A division's assignment, ICS 204, in the Incident Action Plan: the resources, the work assignment, the medical lines and a printed map of the division" loading="lazy"></a>
+        <a class="show-pic phone" data-i="6" href="images/front/phone-house.jpg" target="_blank" rel="noopener"><img src="images/front/phone-house.jpg" width="750" height="1624" alt="The house record on the phone: the address, occupants, people needing help, water depth and damage, each a row of chips" loading="lazy"></a>
+        <a class="show-pic phone" data-i="7" href="images/front/phone-briefing.jpg" target="_blank" rel="noopener"><img src="images/front/phone-briefing.jpg" width="750" height="1624" alt="The phone's briefing: situation, your job, who you work with, work area, radio and supplies, assembled from the incident" loading="lazy"></a>
+          <button type="button" class="show-arrow prev" data-show="prev" aria-label="Previous screen">‹</button>
+          <button type="button" class="show-arrow next" data-show="next" aria-label="Next screen">›</button>
+        </div>
+        <div class="show-caps" aria-live="polite">
+      <p class="show-cap cur" data-i="0"><b>The base.</b> Divisions by priority, the units and their photos on the map, the join code for the phones, and the 214 writing itself underneath.</p>
+      <p class="show-cap" data-i="1"><b>The phone.</b> Your zone, the assignment to accept, the message from Operations to answer, and the big buttons: Take photo, Address clear.</p>
+      <p class="show-cap" data-i="2"><b>The head count.</b> A PAR takes over the phone with the names checked in with you. One tap answers for all of them; Someone's missing lists them to tick.</p>
+      <p class="show-cap" data-i="3"><b>The shelter desk.</b> People here: the count against the beds, a family arriving from a crew with They're here, Sign in a person, and &quot;is my mother here?&quot; across every shelter and hospital.</p>
+      <p class="show-cap" data-i="4"><b>The 207.</b> The organization chart, drawn from the seats, the divisions and the units, with the span of control on every box. Past seven a box turns orange.</p>
+      <p class="show-cap" data-i="5"><b>The 204 for the truck.</b> A division's assignment in the Incident Action Plan: the resources, the work assignment, the channel, the medical lines and a printed map of the division.</p>
+      <p class="show-cap" data-i="6"><b>Address clear.</b> One house record: the address, the occupants, who needs help and where they went, the water, the damage, the hazards, and the marking painted.</p>
+      <p class="show-cap" data-i="7"><b>Your briefing.</b> Assembled from the incident as it is: the situation, your job, who you work with, the work area, the radio, supplies, the shift, safety. It changes when Operations changes something.</p>
+        </div>
+        <div class="show-jump" role="tablist" aria-label="Jump to a screen">
+      <button type="button" data-show="0" role="tab" aria-selected="true" class="on">The base</button>
+      <button type="button" data-show="1" role="tab" aria-selected="false">The phone</button>
+      <button type="button" data-show="2" role="tab" aria-selected="false">The head count</button>
+      <button type="button" data-show="3" role="tab" aria-selected="false">The shelter desk</button>
+      <button type="button" data-show="4" role="tab" aria-selected="false">The 207</button>
+      <button type="button" data-show="5" role="tab" aria-selected="false">The 204 for the truck</button>
+      <button type="button" data-show="6" role="tab" aria-selected="false">Address clear</button>
+      <button type="button" data-show="7" role="tab" aria-selected="false">Your briefing</button>
+          <span class="show-n" id="show-n">1 of 8</span>
+        </div>
       </div>
       <h3>Try it as…</h3>
       <div class="land-cards">

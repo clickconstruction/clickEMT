@@ -281,6 +281,13 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .replay input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 .replay .replay-time { font-size: 14px; font-weight: 600; min-width: 48px; }
 .replay .hint { font-size: 12.5px; color: var(--muted); flex-basis: 100%; order: 10; }   /* the log line takes its own row under the controls */
+/* Pick a time… (v63): a date and a time on their own row inside the bar, between the controls and the log line */
+.replay .replay-pick { flex-basis: 100%; order: 5; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.replay .replay-pick[hidden] { display: none; }
+.replay .replay-pick b { font-size: 13px; }
+.replay .replay-pick input { border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); color: var(--ink); font-family: inherit; }
+.replay .replay-pick .why { font-size: 12.5px; color: var(--muted); flex: 1; min-width: 200px; }
+.replay .replay-pick .why.bad { color: var(--hazard-ink); font-weight: 600; }
 .badge.pub { background: var(--tint-green); color: var(--cleared); font-size: 11px; vertical-align: middle; }
 /* the right-click card for a division */
 .zdialog { border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; background: var(--panel); color: var(--ink); width: min(600px, 94vw); box-shadow: 0 12px 40px rgba(0,0,0,.35); }

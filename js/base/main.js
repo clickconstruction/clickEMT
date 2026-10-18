@@ -2,8 +2,8 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, placeCardHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml } from './ui.js';
-import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners } from '../shared/rules.js';
+import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml, placeCardHtml } from './ui.js';
+import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, replayWindow as replayWindowRule, replayWindowLabel, replayPickCheck, dayIso, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -672,35 +672,55 @@ document.addEventListener('input', (e) => {
 });
 
 // ---- replay: the day played back from the position history (ic_tracks), on a slider under the map.
-// The samples are fetched once per range; the slider and Play only move the moment shown.
+// The samples are fetched once per range; the slider and Play only move the moment shown. Every range
+// starts at the incident's first position (v63; replayWindow in rules.js), read once per open of the
+// bar, so the slider never covers a moment with nothing to show; Pick a time… is bounded the same way.
 const REPLAY_TICK_MS = 100;
 const REPLAY_MAX_SAMPLES = 2000;   // per unit, so a whole day comes back in one read
 let replayTimer = null;
 
-function replayRange(kind) {
+function replayWindow(kind) {   // the range's two ends in ms, cut to the first position; null when there is nothing in it
   const inc = data.incident, p = data.currentPeriod();
-  const now = Date.now(), opened = new Date(inc.created_at).getTime();
-  if (kind === 'hour') return [now - 3600000, now];
-  if (kind === 'all') return [opened, now];
-  return [p ? new Date(p.starts_at).getTime() : opened, p && p.closed_at ? new Date(p.closed_at).getTime() : now];
+  return replayWindowRule(kind, { now: Date.now(), opened: new Date(inc.created_at).getTime(), periodStart: p ? new Date(p.starts_at).getTime() : null, periodEnd: p && p.closed_at ? new Date(p.closed_at).getTime() : null, first: state.replay ? state.replay.first : null });
 }
-async function openReplay(kind) {
+// the range menu's words: where each range's positions begin; Pick a time… only once there is a position
+function drawReplayRanges() {
+  const r = state.replay;
+  if (!r) return;
+  const now = Date.now();
+  for (const o of $('#replay-range').options) {
+    if (o.value === 'pick') o.disabled = r.first == null;
+    else o.textContent = replayWindowLabel(o.value, replayWindow(o.value), now);
+  }
+}
+async function openReplay(kind, jumpTo = null) {
   stopReplayPlay();
-  const [from, to] = replayRange(kind || $('#replay-range').value);
-  const every = Math.max(10, Math.ceil((to - from) / 1000 / REPLAY_MAX_SAMPLES));
-  const r = { from, to, t: from, by: new Map(), playing: false, every, loading: true };
+  kind = kind || $('#replay-range').value;
+  if (kind === 'pick') kind = state.replay ? state.replay.kind : 'period';
+  const r = { kind, from: 0, to: 0, t: 0, by: new Map(), playing: false, every: 60, loading: true, empty: false, first: state.replay ? state.replay.first : undefined };
   state.replay = r;
   $('#replay').hidden = false;
   $('#btn-replay').classList.add('on');
+  closeReplayPick(false);
   $('#replay-log').textContent = 'Loading the positions…';
   try {
-    const samples = await data.replay(new Date(from).toISOString(), new Date(to).toISOString(), every);
+    if (r.first === undefined) {   // the incident's first position, read once while the bar is open
+      const at = await data.replayFirst();
+      if (state.replay !== r) return;
+      r.first = at ? new Date(at).getTime() : null;
+    }
+    drawReplayRanges();
+    const win = replayWindow(kind);
+    if (!win) { r.loading = false; r.empty = true; map.setReplay(new Map()); drawReplay(); return; }
+    [r.from, r.to] = win;
+    r.every = Math.max(10, Math.ceil((r.to - r.from) / 1000 / REPLAY_MAX_SAMPLES));
+    const samples = await data.replay(new Date(r.from).toISOString(), new Date(r.to).toISOString(), r.every);
     if (state.replay !== r) return;   // closed or reopened on another range meanwhile
     r.by = replayIndex(samples);
     r.loading = false;
-    // start where the first report of the range was made, so there is something to see at once
+    // start where the first report of the range was made, so there is something to see at once; a picked moment lands there
     const first = Math.min(...[...r.by.values()].map((l) => new Date(l[0].at).getTime()));
-    r.t = Number.isFinite(first) ? Math.min(to, Math.max(from, first)) : from;
+    r.t = jumpTo != null ? Math.min(r.to, Math.max(r.from, jumpTo)) : Number.isFinite(first) ? Math.min(r.to, Math.max(r.from, first)) : r.from;
     map.setReplay(r.by);
     drawReplay();
   } catch (err) { toast(err.message || String(err), true); closeReplay(); }
@@ -708,6 +728,17 @@ async function openReplay(kind) {
 function drawReplay() {
   const r = state.replay;
   if (!r) return;
+  $('#replay-slider').disabled = r.empty;
+  $('#replay-play').disabled = r.empty;
+  if ($('#replay-pick').hidden) $('#replay-range').value = r.kind;
+  if (r.empty) {   // no phone has reported yet: nothing to slide through
+    $('#replay-slider').value = '0';
+    $('#replay-time').textContent = '--:--';
+    $('#replay-play').textContent = 'Play';
+    $('#replay-log').textContent = 'Nothing to replay yet: the first phone to check in starts the record.';
+    map.renderReplay(data, state);
+    return;
+  }
   const span = Math.max(1, r.to - r.from);
   $('#replay-slider').value = String(Math.round((r.t - r.from) / span * 1000));
   $('#replay-time').textContent = hhmm(new Date(r.t));
@@ -719,7 +750,7 @@ function drawReplay() {
 }
 function playReplay() {
   const r = state.replay;
-  if (!r || r.loading) return;
+  if (!r || r.loading || r.empty) return;
   if (r.t >= r.to) r.t = r.from;
   r.playing = true;
   let last = Date.now();
@@ -741,18 +772,69 @@ function closeReplay() {
   stopReplayPlay();
   state.replay = null;
   if (map) map.setReplay(null);
+  closeReplayPick(false);
   $('#replay').hidden = true;
   $('#btn-replay').classList.remove('on');
   queueDraw();
 }
+// Pick a time… (v63): a date and a time on their own row in the bar, bounded by the first position and now
+// (replayPickCheck in rules.js says the bounds, or the reason a moment is refused, while Go is off)
+function openReplayPick() {
+  const r = state.replay;
+  if (!r || r.first == null) { closeReplayPick(); return; }
+  stopReplayPlay();
+  const at = r.t || r.first;
+  $('#replay-date').min = dayIso(r.first);
+  $('#replay-date').max = dayIso(Date.now());
+  $('#replay-date').value = dayIso(at);
+  $('#replay-clock').value = hhmm(new Date(at));
+  $('#replay-pick').hidden = false;
+  checkReplayPick();
+  $('#replay-clock').focus();
+}
+function closeReplayPick(restore = true) {
+  $('#replay-pick').hidden = true;
+  if (restore && state.replay) $('#replay-range').value = state.replay.kind;
+}
+function replayPicked() {   // the sheet's moment in ms, read as local time, or null
+  const d = $('#replay-date').value, c = $('#replay-clock').value;
+  if (!d || !c) return null;
+  const t = new Date(d + 'T' + c).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+function checkReplayPick() {
+  const r = state.replay;
+  if (!r) return false;
+  const { ok, words } = replayPickCheck(replayPicked(), r.first, Date.now());
+  $('#replay-why').textContent = words;
+  $('#replay-why').classList.toggle('bad', !ok);
+  $('#replay-go').disabled = !ok;
+  return ok;
+}
+function goReplayPick() {
+  const r = state.replay;
+  if (!r || !checkReplayPick()) return;
+  const t = Math.max(replayPicked(), r.first);   // the first position's own minute lands on it
+  closeReplayPick();
+  if (t >= r.from && t <= r.to) { r.t = t; drawReplay(); }
+  else openReplay('all', t);   // outside this range: the whole incident holds every moment the check allows
+}
 $('#replay-slider').addEventListener('input', (e) => {
   const r = state.replay;
-  if (!r) return;
+  if (!r || r.empty) return;
   stopReplayPlay();
   r.t = r.from + (r.to - r.from) * Number(e.target.value) / 1000;
   drawReplay();
 });
-$('#replay-range').addEventListener('change', (e) => { if (state.replay) openReplay(e.target.value); });
+$('#replay-range').addEventListener('change', (e) => {
+  if (!state.replay) return;
+  if (e.target.value === 'pick') { openReplayPick(); return; }
+  closeReplayPick(false);
+  openReplay(e.target.value);
+});
+$('#replay-pick').addEventListener('submit', (e) => { e.preventDefault(); goReplayPick(); });
+$('#replay-date').addEventListener('input', checkReplayPick);
+$('#replay-clock').addEventListener('input', checkReplayPick);
 
 // the theme button names the other mode; the system's choice redraws the map's inked lines
 function drawTheme() { $('#btn-theme').textContent = currentTheme() === 'dark' ? 'Light' : 'Dark'; }
@@ -1028,6 +1110,7 @@ document.addEventListener('click', async (e) => {
       case 'replay': if (state.replay) closeReplay(); else await openReplay(); break;
       case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
       case 'replay-close': closeReplay(); break;
+      case 'replay-pick-cancel': closeReplayPick(); break;
       case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
       case 'gear': setGearOpen(!state.gearOpen); break;   // v60
       case 'codes': state.codesOpen = !state.codesOpen; state.liveOpen = false; drawCodes(); drawLivePop(); break;   // v60

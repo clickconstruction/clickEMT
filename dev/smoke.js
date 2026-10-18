@@ -8,7 +8,7 @@
 // reports are sent through a second Data instance signed in as Unit 3, the same module the field
 // app uses, and after each one the test reads what the base's Data sees and what the page draws.
 import { Data } from '../js/shared/data.js';
-import { markingFor, ringToLatLngs, nextPass, nearestFacility, cornersBox } from '../js/shared/rules.js';
+import { markingFor, ringToLatLngs, nextPass, nearestFacility, dayIso, cornersBox } from '../js/shared/rules.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s, root = document) => root.querySelector(s);
@@ -963,13 +963,36 @@ async function replay(check) {
   await until(() => !$('#replay').hidden && $('#btn-replay').classList.contains('on') && $$('#map .umark.ghost').length === 3, 6000);
   check('Replay opens the bar on this period and draws the three units where they were an hour ago, the live markers gone', !$('#replay').hidden && $$('#map .umark.ghost').length === 3 && $$('#map .umark:not(.ghost)').length === 0 && has('#replay-log', '3 units on the map'), text('#replay-log'));
   const slider = $('#replay-slider');
-  check('it starts at the first report of the range, before any photo of the hour was taken', $$('#map .ppin').length === 0 && $('#replay-time').textContent !== '--:--' && Number(slider.value) > 0 && Number(slider.value) < 1000, slider.value + ' ' + $('#replay-time').textContent);
+  const fromOf = (i) => (($('#replay-range').options[i].textContent.match(/from (?:yesterday )?(\d\d:\d\d)/) || [])[1] || '');
+  check('the range starts at the first position (v63), so the slider\'s left end is the start, before any photo of the hour, and the menu says where each range begins', $$('#map .ppin').length === 0 && $('#replay-time').textContent === fromOf(1) && Number(slider.value) === 0 && fromOf(2) === fromOf(1) && $('#replay-range').options[0].textContent === 'Last hour' && $('#replay-range').options[3].textContent === 'Pick a time…' && !$('#replay-range').options[3].disabled, slider.value + ' ' + $('#replay-time').textContent + ' · ' + $('#replay-range').options[1].textContent);
+  check('the speed menu says what a second of play shows', $('#replay-speed').selectedOptions[0].textContent === 'Normal · a minute a second' && $('#replay-speed').selectedOptions[0].title === '60×', $('#replay-speed').selectedOptions[0].textContent);
   slider.value = '1000'; slider.dispatchEvent(new Event('input', { bubbles: true }));
   await until(() => $$('#map .ppin').length === 3);
   check('at the end of the range the three photos are back and the latest log line shows', $$('#map .umark.ghost').length === 3 && has('#replay-log', '3 units on the map', logTexts()[0].slice(0, 30)), text('#replay-log'));
   slider.value = '0'; slider.dispatchEvent(new Event('input', { bubbles: true }));
-  await until(() => $$('#map .umark.ghost').length === 0);
-  check('at the start of the period nobody had reported yet', $$('#map .umark.ghost').length === 0 && $$('#map .ppin').length === 0 && has('#replay-log', '0 units on the map'), text('#replay-log'));
+  await until(() => $$('#map .ppin').length === 0);
+  check('back at the start the photos are gone and the first phone to report is there: the range never reaches a moment with nobody', $$('#map .umark.ghost').length >= 1 && $$('#map .ppin').length === 0 && !has('#replay-log', '0 units on the map') && $('#replay-time').textContent === fromOf(1), text('#replay-log'));
+  // Pick a time… (v63): bounded by the first position and now, the reason said while Go is off
+  const firstMs = new Date(await base.replayFirst()).getTime();
+  const clock = (ms) => new Date(ms).toTimeString().slice(0, 5);
+  const typeMoment = (ms) => { $('#replay-date').value = dayIso(ms); $('#replay-clock').value = clock(ms); $('#replay-clock').dispatchEvent(new Event('input', { bubbles: true })); };
+  $('#replay-range').value = 'pick'; $('#replay-range').dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => !$('#replay-pick').hidden);
+  check('Pick a time… opens the sheet in the bar on the slider\'s moment, with the bounds in one sentence and Go on', !$('#replay-pick').hidden && $('#replay-clock').value === clock(firstMs) && has('#replay-why', 'positions run from ' + clock(firstMs), 'to now') && !$('#replay-go').disabled && $('#replay-date').min === dayIso(firstMs), text('#replay-why'));
+  typeMoment(firstMs - 20 * 60000);
+  check('a moment before the first position is refused with the reason', has('#replay-why', 'is before the first position, ' + clock(firstMs)) && $('#replay-why').classList.contains('bad') && $('#replay-go').disabled, text('#replay-why'));
+  typeMoment(Date.now() + 20 * 60000);
+  check('a moment after now is refused, whatever the period\'s plan says', has('#replay-why', 'has not happened yet') && $('#replay-go').disabled, text('#replay-why'));
+  const want = firstMs + 30 * 60000;
+  typeMoment(want);
+  check('a moment inside the bounds is accepted', !$('#replay-go').disabled && has('#replay-why', 'positions run from'), text('#replay-why'));
+  $('#replay-go').click();
+  await until(() => $('#replay-pick').hidden && $('#replay-time').textContent === clock(want));
+  check('Go lands the slider on the moment and the menu names the range again', $('#replay-pick').hidden && $('#replay-time').textContent === clock(want) && $('#replay-range').value === 'period' && $$('#map .umark.ghost').length === 3, $('#replay-time').textContent + ' ' + $('#replay-range').value);
+  $('#replay-range').value = 'pick'; $('#replay-range').dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => !$('#replay-pick').hidden);
+  $('[data-action="replay-pick-cancel"]').click();
+  check('Cancel puts the sheet away and the menu back on the range', $('#replay-pick').hidden && $('#replay-range').value === 'period' && $('#replay-time').textContent === clock(want));
   $('#replay-play').click();
   await wait(1500);
   const moved = Number(slider.value);

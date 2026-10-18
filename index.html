@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Incident Map · Base</title>
-<meta name="description" content="One picture of the incident, from the boat to the command post. Part of an incident right now? Enter your join code. Running the base? Sign in. Otherwise try it as any role, live in your browser.">
+<meta name="description" content="One picture of the incident, from the boat to the command post. Have a join code? Enter it and you are in. Running the base? Sign in. Otherwise see how it works and try it as any role, live in your browser.">
 <meta name="theme-color" content="#1F4E79">
 <script>
   // the device's light/dark choice, before first paint (js/shared/theme.js keeps it)
@@ -39,19 +39,24 @@
     <span class="sp"></span>
     <a class="btn sm" href="try/">Try it</a>
     <a class="btn sm" href="#sign-in">Sign in</a>
-    <a class="btn sm land-how" href="https://github.com/clickconstruction/clickEMT" rel="noopener">How it is built</a>
   </div>
 
   <section class="door">
     <div class="land-wrap">
-      <h1>Part of an incident right now?</h1>
-      <p class="lead">Enter the six-letter join code from your join card, from Operations' screen or from another unit's phone. It opens the field app on this phone with the code filled in; you check in with your name and your unit.</p>
-      <form class="door-code" id="door-form" action="field/" method="get" novalidate>
-        <input id="door-code" name="join" class="mono" placeholder="CEDAR7" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Join code">
-        <button type="submit" class="btn pri">Join on this phone</button>
-        <span class="msg" id="door-msg" role="status"></span>
-      </form>
-      <p class="no-code"><b>No code?</b> It is on the join card at the check-in table and on the screen at the base. Ask whoever sent you, or the person running the base. Only the incident's Operations can add you.</p>
+      <div>
+        <h1>Have a join code?</h1>
+        <p class="lead">It is on your join card, on the screen at the base, or on another unit's phone. Type it here and the field app opens on this phone, ready to check you in.</p>
+        <form class="door-code" id="door-form" action="field/" method="get" novalidate>
+          <input id="door-code" name="join" placeholder="CEDAR7" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Join code">
+          <button type="submit" class="btn pri">Join on this phone</button>
+          <span class="msg" id="door-msg" role="status"></span>
+        </form>
+        <p class="no-code"><b>No code?</b> Ask whoever sent you, or the person running the base. Only the incident's Operations can add you.</p>
+      </div>
+      <div class="routes">
+        <a class="route" href="#sign-in"><b>Running the base?</b><span>Sign in to open an incident, print the join card and run the map.</span></a>
+        <a class="route" href="#how"><b>New here?</b><span>See how it works in three steps, then try it as any role with no account.</span></a>
+      </div>
     </div>
   </section>
 
@@ -59,64 +64,62 @@
     <div class="land-wrap">
       <h2>One picture of the incident, from the boat to the command post.</h2>
       <p class="lead">A map at the base and an app on every phone, sharing one picture: where the units are, what they have cleared, who needs help, and the ICS forms written as it happens.</p>
-      <ul class="land-three">
-        <li><b>Field first.</b> One tap in the rain with gloves on, and a dead spot never loses a report.</li>
-        <li><b>The paperwork writes itself.</b> The 214, the 211, every 204, the 209 and the IAP come from what the crews send.</li>
-        <li><b>Nothing is deleted, nothing is public by default.</b> The code is open on GitHub.</li>
-      </ul>
-      <h3>See it</h3>
-      <div class="land-show" id="show" tabindex="0" aria-roledescription="carousel" aria-label="Screens of the app">
-        <div class="show-stage" id="show-stage">
-        <a class="show-pic base cur" data-i="0" href="images/front/base-map.jpg" target="_blank" rel="noopener"><img src="images/front/base-map.jpg" width="1600" height="1000" alt="The base: the map with six divisions, three units, photo pins and a hazard; the divisions listed by priority; the join code as a QR; the activity log underneath"></a>
-        <a class="show-pic phone" data-i="1" href="images/front/phone-home.jpg" target="_blank" rel="noopener"><img src="images/front/phone-home.jpg" width="750" height="1624" alt="The phone's home screen: the unit's zone card, a new assignment to accept, a message from Operations with Copy, Will do and Cannot, and the Take photo and Address clear buttons" loading="lazy"></a>
-        <a class="show-pic phone" data-i="2" href="images/front/phone-par.jpg" target="_blank" rel="noopener"><img src="images/front/phone-par.jpg" width="750" height="1624" alt="A head count taking over the phone: the names checked in with you, one green button for all accounted for and a red one for someone's missing" loading="lazy"></a>
-        <a class="show-pic phone" data-i="3" href="images/front/phone-desk.jpg" target="_blank" rel="noopener"><img src="images/front/phone-desk.jpg" width="750" height="1624" alt="The shelter desk's People here screen: the count against the beds, a family arriving from a crew with They're here, Sign in a person, and who is here now" loading="lazy"></a>
-        <a class="show-pic base" data-i="4" href="images/front/base-org.jpg" target="_blank" rel="noopener"><img src="images/front/base-org.jpg" width="1600" height="1000" alt="The organization chart, ICS 207, drawn from the seats: the Incident Commander on top, the command staff, the four sections and a card per division" loading="lazy"></a>
-        <a class="show-pic base" data-i="5" href="images/front/base-204.jpg" target="_blank" rel="noopener"><img src="images/front/base-204.jpg" width="1600" height="1000" alt="A division's assignment, ICS 204, in the Incident Action Plan: the resources, the work assignment, the medical lines and a printed map of the division" loading="lazy"></a>
-        <a class="show-pic phone" data-i="6" href="images/front/phone-house.jpg" target="_blank" rel="noopener"><img src="images/front/phone-house.jpg" width="750" height="1624" alt="The house record on the phone: the address, occupants, people needing help, water depth and damage, each a row of chips" loading="lazy"></a>
-        <a class="show-pic phone" data-i="7" href="images/front/phone-briefing.jpg" target="_blank" rel="noopener"><img src="images/front/phone-briefing.jpg" width="750" height="1624" alt="The phone's briefing: situation, your job, who you work with, work area, radio and supplies, assembled from the incident" loading="lazy"></a>
-          <button type="button" class="show-arrow prev" data-show="prev" aria-label="Previous screen">‹</button>
-          <button type="button" class="show-arrow next" data-show="next" aria-label="Next screen">›</button>
-        </div>
-        <div class="show-caps" aria-live="polite">
-      <p class="show-cap cur" data-i="0"><b>The base.</b> Divisions by priority, the units and their photos on the map, the join code for the phones, and the 214 writing itself underneath.</p>
-      <p class="show-cap" data-i="1"><b>The phone.</b> Your zone, the assignment to accept, the message from Operations to answer, and the big buttons: Take photo, Address clear.</p>
-      <p class="show-cap" data-i="2"><b>The head count.</b> A PAR takes over the phone with the names checked in with you. One tap answers for all of them; Someone's missing lists them to tick.</p>
-      <p class="show-cap" data-i="3"><b>The shelter desk.</b> People here: the count against the beds, a family arriving from a crew with They're here, Sign in a person, and &quot;is my mother here?&quot; across every shelter and hospital.</p>
-      <p class="show-cap" data-i="4"><b>The 207.</b> The organization chart, drawn from the seats, the divisions and the units, with the span of control on every box. Past seven a box turns orange.</p>
-      <p class="show-cap" data-i="5"><b>The 204 for the truck.</b> A division's assignment in the Incident Action Plan: the resources, the work assignment, the channel, the medical lines and a printed map of the division.</p>
-      <p class="show-cap" data-i="6"><b>Address clear.</b> One house record: the address, the occupants, who needs help and where they went, the water, the damage, the hazards, and the marking painted.</p>
-      <p class="show-cap" data-i="7"><b>Your briefing.</b> Assembled from the incident as it is: the situation, your job, who you work with, the work area, the radio, supplies, the shift, safety. It changes when Operations changes something.</p>
-        </div>
-        <div class="show-jump" role="tablist" aria-label="Jump to a screen">
-      <button type="button" data-show="0" role="tab" aria-selected="true" class="on">The base</button>
-      <button type="button" data-show="1" role="tab" aria-selected="false">The phone</button>
-      <button type="button" data-show="2" role="tab" aria-selected="false">The head count</button>
-      <button type="button" data-show="3" role="tab" aria-selected="false">The shelter desk</button>
-      <button type="button" data-show="4" role="tab" aria-selected="false">The 207</button>
-      <button type="button" data-show="5" role="tab" aria-selected="false">The 204 for the truck</button>
-      <button type="button" data-show="6" role="tab" aria-selected="false">Address clear</button>
-      <button type="button" data-show="7" role="tab" aria-selected="false">Your briefing</button>
-          <span class="show-n" id="show-n">1 of 8</span>
-        </div>
-      </div>
-      <h3>Try it as…</h3>
-      <div class="land-cards">
-        <a class="land-card" href="try/#1"><span class="role">Incident Commander</span><span class="hook">Is anyone in trouble, how far has the search got, what is the plan: thirty seconds, then sign the IAP.</span><span class="on">On the base</span></a>
-        <a class="land-card" href="try/#2"><span class="role">Operations Section Chief</span><span class="hook">Draw a division, assign a crew, run a head count by name, answer the radio with the map in front of you.</span><span class="on">On the base</span></a>
-        <a class="land-card" href="try/#3"><span class="role">Unit lead on foot</span><span class="hook">Clear an address in one tap, send a photo that knows which way you faced, answer the PAR without typing.</span><span class="on">On the phone</span></a>
-        <a class="land-card" href="try/#4"><span class="role">Swift-water boat operator</span><span class="hook">A rotation clock for the water, the boat ramp on the map, and intake for the people you pull out.</span><span class="on">On the phone</span></a>
-        <a class="land-card" href="try/#10"><span class="role">Shelter desk volunteer</span><span class="hook">Who is on the next bus, who needs oxygen, and an answer for "is my mother here?"</span><span class="on">On the phone</span></a>
-        <a class="land-card" href="try/#8"><span class="role">Mutual-aid captain</span><span class="hook">Join by scanning a code, get a 204 on paper with a map, and be released cleanly at the end.</span><span class="on">On the phone</span></a>
-      </div>
-      <p class="land-more"><a href="try/">Six more roles</a>: the Safety Officer, the Documentation Unit, the Public Information Officer, a deputy at a closed bridge, the agency administrator, and the resident who refused to leave. Cedar Fork is a made-up town; everything you do there stays in your browser.</p>
+      <figure class="compose">
+        <img class="base-shot" src="images/front/base-map.jpg" width="1600" height="1000" alt="The base: the map with six divisions, three units, photo pins and a hazard, the divisions by priority, the join code, and the activity log">
+        <img class="phone-shot" src="images/front/phone-home.jpg" width="750" height="1624" alt="The phone's home screen: the unit's zone, a new assignment to accept, a message from Operations, and the big Take photo and Address clear buttons" loading="lazy">
+        <figcaption>The base and a crew's phone on the same incident, Cedar Fork Flooding, a made-up town.</figcaption>
+      </figure>
     </div>
   </section>
 
-  <section class="land-ops" id="sign-in">
+  <section class="land-how" id="how">
     <div class="land-wrap">
+      <h3 class="sec">How it works</h3>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><h4>Operations opens the incident and prints the join card.</h4><p>Draw the divisions, set their priorities, place the shelters and hospitals. The card carries a six-letter code and a QR.</p><div class="shot"><img src="images/front/base-204.jpg" alt="A division's 204 printed with a map" loading="lazy"></div></div>
+        <div class="step"><div class="n">2</div><h4>Crews scan the card, check in, and report with one tap.</h4><p>A photo that knows which way it faced, an address cleared, a hazard, a head count answered by name. It all waits on the phone until there is signal.</p><div class="shot phone"><img src="images/front/phone-par.jpg" alt="The head count on the phone: the names checked in with you and one green button" loading="lazy"></div></div>
+        <div class="step"><div class="n">3</div><h4>The base sees everything, and the forms write themselves.</h4><p>The 214 line by line, the 211 with names, every 204 with its map, the 207, the 209 and the IAP, from what the crews sent.</p><div class="shot"><img src="images/front/base-org.jpg" alt="The organization chart drawn from the seats" loading="lazy"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="land-roles">
+    <div class="land-wrap">
+      <h3 class="sec">Built for each person on scene</h3>
+      <div class="land-cards">
+        <a class="land-card" href="try/#1"><b>Incident Commander</b><p>Is anyone in trouble, how far has the search got, what is the plan: thirty seconds, then sign the IAP.</p><span>Try this role ›</span></a>
+        <a class="land-card" href="try/#2"><b>Operations Section Chief</b><p>Draw a division, assign a crew, run a head count by name, answer the radio with the map in front of you.</p><span>Try this role ›</span></a>
+        <a class="land-card" href="try/#3"><b>Unit lead on foot</b><p>Clear an address in one tap, send a photo that knows which way you faced, answer the PAR without typing.</p><span>Try this role ›</span></a>
+        <a class="land-card" href="try/#4"><b>Swift-water boat operator</b><p>A rotation clock for the water, the boat ramp on the map, and intake for the people you pull out.</p><span>Try this role ›</span></a>
+        <a class="land-card" href="try/#10"><b>Shelter desk volunteer</b><p>Who is on the next bus, who needs oxygen, and an answer for "is my mother here?"</p><span>Try this role ›</span></a>
+        <a class="land-card" href="try/#8"><b>Mutual-aid captain</b><p>Join by scanning a code, get a 204 on paper with a map, and be released cleanly at the end.</p><span>Try this role ›</span></a>
+      </div>
+      <p class="more">Six more at <a href="try/">Try it</a>: the Safety Officer, the Documentation Unit, the Public Information Officer, a deputy at a closed bridge, the agency administrator, and the resident who refused to leave.</p>
+    </div>
+  </section>
+
+  <section class="land-promises">
+    <div class="land-wrap">
+      <h3 class="sec">What an agency can hold us to</h3>
+      <div class="grid5">
+        <div><b>Nothing is deleted.</b><p>Hazards are resolved, alerts stood down, people archived. The database refuses deletes and writes the 214 itself.</p></div>
+        <div><b>Nothing is public by default.</b><p>A photo reaches the PIO only when Operations clears it and the PIO checks it. Names never leave the incident.</p></div>
+        <div><b>Works without signal.</b><p>Every report waits on the phone and goes when there is signal. A dead spot never loses one.</p></div>
+        <div><b>Personal records clear by rule.</b><p>Licences, dates of birth and addresses clear thirty days after the close, on a date Operations can see.</p></div>
+        <div><b>Open source.</b><p>The code is on GitHub under the AGPL. Read it, run it, change it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="land-pilot" id="sign-in">
+    <div class="land-wrap">
+      <div>
+        <h2>Pilot it with your agency.</h2>
+        <p>A pilot runs on your own incidents or a season: a briefing for the command staff and the crews, support during an incident, and an evaluation at the end. The first incident is a field afternoon with real phones, so nothing is new on the day it matters.</p>
+        <a class="btn pri" href="https://github.com/clickconstruction/clickEMT/issues" rel="noopener">Get in touch on GitHub</a>
+        <p class="after"><a href="try/">Try it as any role first</a>, no account needed.</p>
+      </div>
       <form id="auth-form" class="auth-card">
-        <img src="icons/icon-192.png" alt="" width="64" height="64">
         <h2>Running the base?</h2>
         <p class="muted">Sign in, or create an account with any email and a password. Whoever opens an incident is its Operations and decides who else runs the base, with the Operations code on the home panel; field units join with the six-letter code instead.</p>
         <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
@@ -125,11 +128,6 @@
         <button type="button" id="auth-signup" class="btn link">Create account</button>
         <p id="auth-msg" class="msg" role="status"></p>
       </form>
-      <div class="land-pilot">
-        <h3>Thinking of piloting it?</h3>
-        <p>A pilot runs on your own incidents or a season: a briefing for the command staff and the crews, support during an incident, and an evaluation at the end. Nothing a crew sends is deleted, and personal records clear by rule after the close.</p>
-        <p><a href="try/">Try it as any role first</a>, no account needed.</p>
-      </div>
     </div>
   </section>
 

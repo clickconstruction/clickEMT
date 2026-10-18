@@ -81,36 +81,6 @@ $('#door-form').addEventListener('submit', (e) => {
   location.href = joinUrl(code, new URL('field/', location.href)) + (/[?&](mock|demo)\b/.test(location.search) ? '&demo' : '');
 });
 
-// ---- the front door's slideshow of screens: one at a time with its caption, arrows, a row of titles to
-// jump to, the arrow keys, a swipe, and a slow advance that stops at the first touch (never with reduced motion).
-(function () {
-  const show = $('#show'); if (!show) return;
-  const pics = [...show.querySelectorAll('.show-pic')], caps = [...show.querySelectorAll('.show-cap')], jumps = [...show.querySelectorAll('.show-jump [data-show]')];
-  const n = pics.length; let i = 0, timer = null, swiped = false, x0 = null;
-  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
-  const go = (k, byHand) => {
-    i = ((k % n) + n) % n;
-    pics.forEach((p, j) => { p.classList.toggle('cur', j === i); if (Math.min(Math.abs(j - i), n - Math.abs(j - i)) <= 1) p.querySelector('img').loading = 'eager'; });
-    caps.forEach((c, j) => c.classList.toggle('cur', j === i));
-    jumps.forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
-    $('#show-stage').classList.toggle('phone', pics[i].classList.contains('phone'));
-    $('#show-n').textContent = (i + 1) + ' of ' + n;
-    if (byHand) stop();
-  };
-  show.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-show]');
-    if (b) { const v = b.dataset.show; go(v === 'prev' ? i - 1 : v === 'next' ? i + 1 : Number(v), true); return; }
-    if (swiped && e.target.closest('.show-pic')) e.preventDefault();   // a swipe is not a tap on the picture
-  });
-  show.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') { go(i - 1, true); e.preventDefault(); } else if (e.key === 'ArrowRight') { go(i + 1, true); e.preventDefault(); } });
-  show.addEventListener('pointerdown', (e) => { x0 = e.clientX; swiped = false; });
-  show.addEventListener('pointerup', (e) => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) { swiped = true; go(dx < 0 ? i + 1 : i - 1, true); } });
-  show.addEventListener('pointerenter', stop);
-  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!reduced) timer = setInterval(() => { if (!$('#auth').hidden && document.visibilityState === 'visible') go(i + 1, false); }, 7000);
-  go(0, false);
-})();
-
 $('#auth-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = $('#auth-msg');

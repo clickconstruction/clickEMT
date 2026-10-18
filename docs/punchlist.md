@@ -2,17 +2,18 @@
 
 The work on clickEMT, release by release. Everything here has shipped: the walk at v37's list as v38 to v48 (sections 1
 to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
-people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note. **Nothing ranked is open** (18 October
-2026, v56): the next step is a fresh walk at v56, and section 15 lists the candidates already known for it. Written
-17 October 2026, after v37 (`c89a929`), brought up to date at v56. Each numbered release below is written to be picked
+people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, and v57, the check-in head count put
+back on the real database (section 16). **Nothing ranked is open** (18 October 2026, v57): the next step is a fresh
+walk at v57, and section 15 lists the candidates already known for it. Written 17 October 2026, after v37
+(`c89a929`), brought up to date at v57. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v57**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0034**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v58**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -31,7 +32,8 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 12 | v54 A transport board (shipped 18 October) | medium | v53 | Marcus, the desk, the crews, a driver |
 | 13 | v55 People and tags, phase 1: QR bands (shipped 18 October) | medium to large | v54 | everyone: Ana, Rosa, the desk, Marcus, Priya |
 | 14 | v56 Invite by email, the app's first server code (shipped 18 October) | medium | v55 | Ana, the administrator, Marcus |
-| 15 | Known candidates for the walk at v56 (open, not ranked) | small to medium | v56 | see the section |
+| 15 | Known candidates for the walk at v57 (open, not ranked) | small to medium | v57 | see the section |
+| 16 | v57 The check-in head count put back on the real database (shipped 18 October) | small | v56 | every unit with more people than names, Marcus's PAR |
 
 ---
 
@@ -446,10 +448,10 @@ season's roster to invite in one press. The app's first server code.
    *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
    `invite` (18).*
 
-## 15. Known candidates for the walk at v56 (open, not ranked)
+## 15. Known candidates for the walk at v57 (open, not ranked)
 
 Nothing here is decided. These are the "Still bites" items of the re-walks after v50 to v56 in
-[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v56 starts from them.
+[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v57 starts from them.
 Walk first, then rank, as before.
 
 - **Verify the first real invitation email** (Marcus, Ana). The Edge Function is deployed but no email has been sent
@@ -478,6 +480,36 @@ Walk first, then rank, as before.
 - **Waiting on Grace:** the front door's pilot contact (Get in touch points at the GitHub issues), the pilot agreement's
   open comment, and the plan doc's section 7 questions (handoff.md says where each is).
 - **Tags phase 2, trackers**, waits on the hardware.
+
+## 16. v57 The check-in head count, put back on the real database
+
+**Why.** On picking the work up on another computer (18 October), the SQL rule tests `parbyname.sql` (6 of 10) and
+`people.sql` (27 of 28) failed against the real database while every mock suite passed. Migration 0032 (v55, a band
+on a person's row at check-in) rewrote `ic_join` from a body older than 0021 (v29), and 0033 (v56, invitations) carried
+that body forward, so three things v29 built were gone from the database and kept by the mock: the unnamed (a unit
+that typed "4 with me" and named two was counted as two on the base, in the check-in line, in the 211 and in every
+PAR; a unit alone at 1 with no names had no unnamed on record), `ic.join` staying on through the roster (so the
+roster's own names are not taken off the unnamed), and the clock stamps that keep the crew in the order typed. The
+smoke suite could not see it: it runs against the mock, which was right.
+
+**Built.** Migration `0034_join_count.sql`: 0033's `ic_join` with those three put back and nothing else changed,
+plus the `grant execute` line 0033 left out when it dropped and recreated the function (Supabase's default privileges
+had covered it). Rule test `supabase/tests/joincount.sql` checks the three ways in (the code with a band on a name, an
+invitation, a unit alone at one) and a second check-in with one more name; against the database as it stood it passed
+3 of 10. The `tags` smoke suite's check-in now types three with one named and reads 3, two unnamed, on the base. The
+mock needed nothing.
+
+**Nothing to repair.** No unit checked in on the real database while 0032 and 0033 stood (the 214 has no check-in
+line after v55 shipped), so no count was left short; had one, it would have kept its short count until it checked in
+again, since the count typed is not kept anywhere.
+
+**So it does not happen again.** `ic_join` is redefined by every migration that touches the check-in; the next one
+starts from 0034's body (CLAUDE.md says so), and the rule tests run against the real database before a release is
+called done, as the routine says. `parbyname.sql` and `people.sql` would have caught it at v55.
+
+**Shipped** 18 October 2026 as `The check-in head count put back on the real database (v57)`, migration
+`0034_join_count.sql`, rule test `supabase/tests/joincount.sql` (10 of 10); every rule test 20 of 20 files; the `tags`
+smoke suite extended.
 
 ## Done before this list
 

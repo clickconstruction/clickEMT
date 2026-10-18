@@ -1251,3 +1251,18 @@ Invite by email: Marcus, Ana (as the invited person) and the administrator, walk
 - **Sign-ups were off on the shared project** for a few hours on 18 October (the charity app's change), which refused the front door's "make an account with any email" and the phone's Create account; they are on again, with email confirmation as before.
 - **The real email was not seen from the pane**: the function is deployed and refuses a call with no session; the first real invitation is the test, and if the mail sender refuses, the row says "could not be sent: …" on the Members tab and in the 214.
 - **A unit's invitation opened on a laptop** lands on the base as a unit; the base is made for Operations. The link routes units to the field app; a laptop is the person's choice.
+
+---
+
+## Re-walk after v57
+
+The check-in head count on the real database: Reyes's crew, the newcomer alone and Ana by invitation, walked on 2026-10-18. The screens did not change at v57 and the mock was right all along; what changed is what the real database writes, so the walk is the rule test `supabase/tests/joincount.sql` (the check-ins made as each of them would make them) and the `tags` suite's phone frame on the mock.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| A crew of four, two named, a band on one | Reyes, Marcus | Before 0034 the real database counted the crew as 2 with no unnamed, and the 214 line ended "with 2 people". With 0034: head count 4, two unnamed, "… checked in as … with 4 people", the crew reads "Hale, Dominguez" in the order typed, and the band is on Hale as before. Checking in again with a third name and the box still at 4 leaves 4, one unnamed. | Clear |
+| By invitation, three with me | Ana | Before: 1, no unnamed. With 0034: 3, two unnamed, "Unit 7, engine checked in by invitation as … with 3 people". | Clear |
+| Alone at one | The newcomer | Before: 1 with no unnamed on record. With 0034: 1, one unnamed, "with 1 person", as v51 meant. | Clear |
+| The phone at check-in | Reyes | The `tags` suite types three in the box and one name with Band № 26: the base reads 3, two unnamed, "Unit 9 checked in as Jo Vela, 512 555 0177, identity not given with 3 people". | Clear |
+
+Nothing was left short: no unit checked in on the real database between v55 and v57.

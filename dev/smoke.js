@@ -1861,8 +1861,11 @@ async function tags(check) {
     await P.act('jp-add');
     check('the check-in row has a Band № box beside the name', !!P.$('#join-people [data-jp="band"]') && P.$('#join-people [data-jp="band"]').placeholder === 'Band №' && P.sideways().length === 0, P.sideways().join('; '));
     P.$('#join-people [data-jp="name"]').value = 'Vela'; P.$('#join-people [data-jp="band"]').value = '26';
+    jf.count.value = '3'; jf.count.dispatchEvent(new Event('input', { bubbles: true }));   // three with me, one named (v57)
     jf.requestSubmit();
     check('checked in with band 26 typed: the band is Vela\'s, the scan is the check-in, both lines in the log', await until(() => base.members().some((m) => m.unit_name === 'Unit 9'), 70000) && await until(() => tagN(26).person_id && base.person(tagN(26).person_id) && base.person(tagN(26).person_id).name === 'Vela', 10000) && await until(() => eventText(base, 'Band 026 given to Vela (Unit 9) by Unit 9') && eventText(base, 'Vela seen checking in with Unit 9'), 10000), logTexts().slice(0, 3).join(' | '));
+    const u9 = () => base.members().find((m) => m.unit_name === 'Unit 9');
+    check('a band on a name keeps the head count: three with me and one named is three, two unnamed, and the line says three (v57)', await until(() => u9() && u9().crew_count === 3 && u9().unnamed_count === 2, 10000) && base.events().some((e) => /^Unit 9 checked in as Jo Vela, .* with 3 people$/.test(e.text)), JSON.stringify(u9() && [u9().crew_count, u9().unnamed_count]) + ' | ' + ((base.events().find((e) => e.text.startsWith('Unit 9 checked in')) || {}).text || ''));
     await until(() => P.shown('#s-briefing'), 8000); await P.act('briefed');
 
     // ---- the band link: any reader opens the field app with the band

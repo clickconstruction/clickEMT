@@ -515,7 +515,7 @@
   const transferText = (to, ops, at) => 'Command transferred to ' + to + (at ? ' at ' + at : '') + '.' + (ops ? ' Operations Section Chief is ' + ops + '.' : '') + ' Your assignment, your division and your channel do not change.';
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
   const overlayWhat = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
-  // ic_overlay_before (v62): corners are four [lat, lng] pairs, and bounds is their box
+  // ic_overlay_before (v63): corners are four [lat, lng] pairs, and bounds is their box
   const overlayBefore = (r) => { if (r.corners != null) { if (!R.cornersOk(r.corners)) throw dbError('corners must be four [lat, lng] pairs'); r.bounds = R.cornersBox(r.corners); } };
   const requestLine = (r) => (r.quantity > 1 ? r.quantity + ' ' : '') + r.what;
 

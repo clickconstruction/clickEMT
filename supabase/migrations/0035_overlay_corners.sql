@@ -1,4 +1,4 @@
--- A picture placed by its corners (v62). ic_overlays.corners is the picture's four corners as [[lat, lng] × 4]:
+-- A picture placed by its corners (v63). ic_overlays.corners is the picture's four corners as [[lat, lng] × 4]:
 -- top-left, top-right, bottom-right, bottom-left, so a photo shot from an aircraft lies where it belongs; null is a
 -- picture that fills its bounds, as before. When corners are given, bounds is written as their box here, so every
 -- reader of bounds (the rows on the base, the phone's mini map, the mock) stays right. The words are

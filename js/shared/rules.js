@@ -732,6 +732,8 @@ export function bandFromScan(text) {
   if (n) return { number: Number(n[1]) };
   return null;
 }
+// the number printed on a band, read out of its code (CED-013-K2PQ is band 13), for a screen with no incident open to look it up (the door, v62)
+export function bandCodeNumber(code) { const m = /^[A-Z0-9]{2,4}-(\d{1,5})-[A-Z0-9]{4}$/i.exec(String(code || '').trim()); return m ? Number(m[1]) : null; }
 export function bandFromSearch(search) { const m = /[?&]band=([A-Z0-9-]+)/i.exec(String(search || '')); return m ? m[1].toUpperCase() : ''; }
 // the link in a band's QR: any reader opens the field app with the band (like joinUrl)
 export function bandUrl(code, fieldApp) { const u = new URL(fieldApp); u.search = '?band=' + encodeURIComponent(code); u.hash = ''; return u.href; }
@@ -763,7 +765,7 @@ export const INVITE_STATE = { pending: 'Invited, not yet in', accepted: 'Accepte
 export function inviteState(v, now = Date.now()) { return v.withdrawn_at ? 'withdrawn' : v.accepted_at ? 'accepted' : new Date(v.expires_at).getTime() < now ? 'expired' : !v.sent_at ? 'unsent' : 'pending'; }
 export function inviteFromSearch(search) { const m = /[?&]invite=([A-Za-z0-9-]+)/.exec(String(search || '')); return m ? m[1] : ''; }
 
-// ---- a picture over the map by its corners (v62): ic_overlays.corners is [[lat, lng] × 4], the picture's top-left,
+// ---- a picture over the map by its corners (v63): ic_overlays.corners is [[lat, lng] × 4], the picture's top-left,
 // top-right, bottom-right and bottom-left; a picture with no corners fills its bounds. cornersBox is what
 // ic_overlay_before writes into bounds, so the two never disagree; ic_corners_ok in SQL says the same as cornersOk.
 export function cornersBox(c) {

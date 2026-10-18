@@ -224,7 +224,7 @@ export function layersPopHtml(data, state) {
     </div>`;
 }
 
-// Custom imagery over the map (v62): a picture is added with one button, lands over the map's view and is dragged
+// Custom imagery over the map (v63): a picture is added with one button, lands over the map's view and is dragged
 // into place by its corners (js/base/placing.js); the card over the map asks its name and when it was taken.
 export function overlayPickHtml() {
   return `<label class="btn sm pick-btn" title="PNG or JPEG, up to 50 MB. It lands on the map; drag it into place.">Add a picture<input type="file" data-file="overlay" accept="image/png,image/jpeg,image/webp" hidden></label>`;

@@ -1,4 +1,4 @@
-// The moment a JPEG was taken, from its Exif (v62): DateTimeOriginal, else DateTime, as "YYYY-MM-DDTHH:MM" on the
+// The moment a JPEG was taken, from its Exif (v63): DateTimeOriginal, else DateTime, as "YYYY-MM-DDTHH:MM" on the
 // camera's own clock (Exif carries no zone), or '' when the file has none. No library: the APP1 segment, the TIFF
 // header's byte order, IFD0 and the Exif IFD it points at. Nothing else in the file is read.
 export function exifTaken(buf) {

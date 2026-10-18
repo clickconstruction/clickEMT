@@ -42,7 +42,7 @@ export class BaseMap {
     this.map.createPane('imagery').style.zIndex = 250;
     this.overlayLayers = new Map();   // overlay id → { layer, stamp }
     this.overlayUrls = new Map();     // storage path → signed url
-    this.placingId = null;            // a saved picture being adjusted (v62): drawn by the placing handles, not here
+    this.placingId = null;            // a saved picture being adjusted (v63): drawn by the placing handles, not here
     this.setBaseLayer(storedLayer() || 'streets');
     this.layers = {};
     for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'messages', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
@@ -94,7 +94,7 @@ export class BaseMap {
   }
   setOverlayOpacity(id, opacity) { const cur = this.overlayLayers.get(id); if (cur) cur.layer.setOpacity(Number(opacity)); }
   viewBounds() { const b = this.map.getBounds(); return { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() }; }
-  // where a new picture of w × h pixels lands (v62): over the view, 70 % of it, its own shape, as four corners
+  // where a new picture of w × h pixels lands (v63): over the view, 70 % of it, its own shape, as four corners
   landingCorners(w, h) {
     const size = this.map.getSize();
     let pw = size.x * 0.7, ph = pw * h / w;

@@ -1,4 +1,4 @@
-// Checks for js/shared/exif.js (v62): a JPEG's Exif date, from a file built here byte by byte. Run: node dev/test-exif.mjs
+// Checks for js/shared/exif.js (v63): a JPEG's Exif date, from a file built here byte by byte. Run: node dev/test-exif.mjs
 import assert from 'node:assert/strict';
 import { exifTaken } from '../js/shared/exif.js';
 

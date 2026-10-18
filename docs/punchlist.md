@@ -4,16 +4,16 @@ The work on clickEMT, release by release. Everything here has shipped: the walk 
 to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
-that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), and v61, the units section
-(section 20). **Open and not yet ranked** (18 October 2026, v61): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
-Written 17 October 2026, after v37 (`c89a929`), brought up to date at v61. Each numbered release below is written to be picked
+that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), v61, the units section
+(section 20), and v62, confirmations as the app's own dialogs and the band door (section 21). **Open and not yet ranked** (18 October 2026, v62): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v62. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v62**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v63**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -39,6 +39,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 18 | v59 The header's right end, and a clock that swaps to UTC (shipped 18 October) | small | v58 | Marcus, the IC, the clerk, mutual aid on Zulu time |
 | 19 | v60 A cleaner base: shorter labels, the codes behind the pill, the connection's card, the head count, the drawing buttons, the gear, Layers flipped, a division's hover card (shipped 18 October) | medium | v59 | Marcus, his relief, the IC, anyone new at the base |
 | 20 | v61 The units section, cleaner: one line per unit with where it is at the right, the PAR as one line (shipped 18 October) | small | v60 | Marcus, Dana, the clerk |
+| 21 | v62 Confirmations as the app's own dialogs, and the band door (shipped 18 October) | small | v61 | Marcus, Dana, Rosa, the desk, anyone handed a band |
 
 ---
 
@@ -466,28 +467,16 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
   uses. A table per unit (Name · Rank · Qualifications · Checked in · On scene · Band, last seen · Out) under a one-line
   unit header, the totals as a small table; the text and email versions keep the lines. The papers already take a
   `figure` per section. Not drawn yet.
-- **Confirmations as the app's own dialogs** (Todd, 18 October, of "Make Unit 1 Operations? …" in the browser's own
-  Cancel / OK box: "this should be a modal. in fact across the app, all notifications like this should be modals"):
-  twelve `confirm()` calls on the base and one on the phone become an `askConfirm()` dialog like v44's `askName()`,
-  with the question, what it does, and the two buttons in the app's words; the suites stop stubbing `window.confirm`
-  and press the dialog. Small.
 - **The People board's bar and tabs** (Todd, 18 October): Close wraps to a second row at the left while Print 211 is cut
   off at the right; the qualification chips and the search sit above both tabs though they filter only People, and a lit
   chip stays lit on Members. The tabs first, the search and chips inside the People tab, Close last at the right. Sent
   to the People board's mock-up page.
-- **A band scanned by a phone that is signed out** lands on the bare sign-in form (Todd, 18 October: "I don't think
-  that is right"). The band is kept through sign-in already (`ic.field.band`); the screen should say so, as the door
-  says "Code CEDAR7 is ready" for a join link (v39): "Band 025 is waiting. Sign in and the scan goes through." And for
-  anyone not on the team, one line: an Incident Map band identifies a person to the incident's team only and tells
-  you nothing on its own; hand it back to the team. Small; goes with the confirmations item.
 - **The Members tab reads as four command posts** (Todd, 18 October: "these other potential operators feel like forward
   operating bases"): every unit's row carries a Make Operations button as loud as Open and Remove. Present the roles as
   two groups, Operations (who opened the incident, who else holds it) and Units, with Make Operations a quieter action
-  in the row's menu or on the unit's own panel. And the question it asks must say what changes, from the code: they get
-  the base, drawing and assigning, every identity, the Operations code, roles and the clearing; their row leaves the
-  units and reads "Operations" everywhere (`ic_unit_label`), their phone stops showing a unit's briefing, and the 214
-  says "Unit 1 (Ana Ramirez) is now Operations". What happens to a division assigned to them is to check when it is
-  built. Goes with the confirmations item above.
+  in the row's menu or on the unit's own panel. The question it asks says what they get and what changes since v62
+  (section 21); the grouping is still to do, and what happens to a division assigned to them is to check when it is
+  built.
 - **The People board, offered better** (`/try/mockups/people.html`, its own session): the six controls on every person's
   row crowd out the facts; two or three directions drawn.
 - **Replay: a time you name, and a speed in words** (`/try/mockups/replay.html`): Pick a time bounded by the first
@@ -668,6 +657,40 @@ of answer chips carrying each unit's words and scans. The requests' heading read
 
 *Decided:* the app's shared "Unit 1, engine" stays (the forms say it so); "people in the field" stays in the heading
 rather than the mock-up's "6 people", since the panel also counts people sheltered; the request cards keep their forms.
+
+## 21. v62 Confirmations as the app's own dialogs, and the band door
+
+**Why.** Todd, walking the base at v59 on 18 October, met "Make Unit 1 Operations? …" in the browser's own Cancel / OK
+box: "this should be a modal. in fact across the app, all notifications like this should be modals". And of a band's
+QR read by a phone that was signed out, which landed on the bare sign-in form: "when a user scans a band they are
+presented with this screen, I don't think that is right".
+
+**Built.** Every question the app asks before it acts is a dialog of its own, `askConfirm()` beside v44's `askName()`:
+a title that is the question, what it does in a line or two, Cancel and a button that names the act (Replace it,
+Make Operations, Remove, Clear now, Close the incident, Withdraw, Void it, Mark it, Take off, Check out, Report
+missing). Twelve on the base (New code, Make Operations, Remove a member, Clear now, Close the incident, Withdraw an
+invitation, Void band, Withdraw a run, Take a person off the roster, Remove imagery, Mark clear from the base, Check
+out) and one on the phone (Missing someone on a PAR). Make Operations says what they get (the base: the map, drawing
+and assigning, every identity, the Operations code, roles, the clearing) and what changes (their row leaves the units
+and reads Operations everywhere; their phone stops showing a unit's briefing; the 214 says "Unit 1 is now Operations").
+A band's link opened on a signed-out phone says "Band 025 is waiting. Sign in and the scan goes through." where the
+door says "Code CEDAR7 is ready" for a join link, with one line under it for anyone not on the team: an Incident Map
+band identifies a person to the incident's team only; on its own it tells you nothing; hand it back to them. The
+number is read out of the band's code (`bandCodeNumber` in rules.js), since a signed-out phone has no incident to
+look it up in.
+
+*Decided:* Escape and the dialog closing any other way are Cancel; the buttons that cannot be taken back (Remove,
+Clear now, Report missing) are red; the phone's dialog takes plain text, the base's a line or two of HTML through
+`esc`; the browser's `confirm()` is gone from both views and the smoke's `reload()` makes it throw, so none comes
+back unnoticed; the Members tab's grouping of the roles (section 15) is still to do.
+
+**Shipped** 18 October 2026 as `Confirmations as the app's own dialogs, and the band door (v62)`: `askConfirm` in
+js/base/main.js and js/field/main.js, `#confirm-dialog` in both HTML files, `drawAuthBand` and `#auth-band` on the
+phone's sign-in screen, `bandCodeNumber` in rules.js; the suites' `autoConfirm` in place of the `window.confirm`
+stubs, the `seeded`, `members` and `tags` suites reading the dialogs and the door, and the `ics100` suite's board
+check now waits for the home panel (Close redraws it on the next frame; with the pane visible the read came first,
+and the v61 runs had the pane hidden); full run 741 of 741 across 38 suites with the pane visible; check and test
+pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
 
 ## Done before this list
 

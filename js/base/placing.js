@@ -1,4 +1,4 @@
-// Placing a picture on the map by its corners (v62). The picture lands over the view with handles on it: one at
+// Placing a picture on the map by its corners (v63). The picture lands over the view with handles on it: one at
 // each corner, a round Turn handle above its top edge, and the picture itself drags to move. Arrows nudge it a
 // pixel (main.js), Undo steps back one drag. main.js opens this when a file is chosen or Adjust is pressed, reads
 // corners() on Save and calls end(). The handles are markers, so they follow the map's pan and zoom.

@@ -41,6 +41,8 @@ async function reload() {
   if (field) field.close();
   M().reset();
   if (!$('#draw-btns').hidden) $('[data-action="cancel-draw"]').click();
+  try { localStorage.setItem('ic.base.around', '1'); } catch (e) { /* storage blocked */ }   // the first open's labels (v58) stay off the suites; the around suite asks for them itself
+  if ($('#around .around-all')) $('#around .around-all').click();
   const btn = document.createElement('button');
   btn.dataset.action = 'open-incident'; btn.dataset.id = INC(); btn.hidden = true;
   document.body.appendChild(btn); btn.click(); btn.remove();
@@ -61,7 +63,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1997,6 +1999,55 @@ async function invite(check) {
     await wait(100);
   }
 }
+
+// Show me around (v58): the labels over each part of the screen on the device's first open, cleared one by one or all at
+// once, kept off this device after, back from Settings, never tinting an open alarm line, gone when an emergency arrives.
+async function around(check) {
+  const cards = () => $$('#around .around-card');
+  const card = (k) => $(`#around .around-card[data-around-key="${k}"]`);
+  const zone = (k) => $(`#around .around-zone[data-around-key="${k}"]`);
+  const mark = () => { try { return localStorage.getItem('ic.base.around'); } catch (e) { return null; } };
+  const reopen = () => { const b = document.createElement('button'); b.dataset.action = 'open-incident'; b.dataset.id = INC(); b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); };
+  const over = (k, sel) => { const z = zone(k), t = $(sel); if (!z || z.hidden || !t) return false; const a = z.getBoundingClientRect(), b = t.getBoundingClientRect(); return Math.abs(a.left - b.left) < 3 && Math.abs(a.top - b.top) < 3 && Math.abs(a.width - b.width) < 3; };
+  // ---- the first open on a device that has not seen the base
+  try { localStorage.removeItem('ic.base.around'); } catch (e) { /* storage blocked */ }
+  reopen();
+  check('the first open on this device shows ten labels, numbered in order, each a name and a sentence, and the pill counts them', await until(() => cards().length === 10 && !!$('#around .around-pill')) && cards().every((c, i) => c.querySelector('.n').textContent === String(i + 1) && c.querySelector('b').textContent.length > 3 && c.querySelector('p').textContent.length > 20) && has('#around .around-pill', 'showing you around', '10 to read'), cards().length + ' | ' + text('#around .around-pill'));
+  check('each tint sits over its part: the map, the tools, the log, the alarm line', over('map', '#map') && over('tools', '.tools') && over('log', '#logbox') && over('bars', '#bars'));
+  check('the join code and the Operations code have labels of their own; the log\'s is the tenth', !!card('join') && !!card('ops') && card('ops').querySelector('.n').textContent === '9' && card('log').querySelector('.n').textContent === '10');
+  check('every card is on the screen and none sits on another', (() => { const rs = cards().filter((c) => !c.hidden).map((c) => c.getBoundingClientRect()); const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight; if (!rs.every((r) => r.left >= 0 && r.top >= 0 && r.right <= vw + 1 && r.bottom <= vh + 1)) return false; for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i], b = rs[j]; if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) return false; } return true; })(), cards().filter((c) => !c.hidden).map((c) => c.dataset.aroundKey + ':' + Math.round(c.getBoundingClientRect().top)).join(' '));
+  // ---- one click clears one label; the device is not marked until the last goes
+  zone('map').click();
+  check('clicking the map\'s tint clears that label alone: the pill counts nine, the device is not yet marked', zone('map').hidden && card('map').hidden && !card('log').hidden && has('#around .around-pill', '9 to read') && mark() !== '1', text('#around .around-pill') + ' | ' + mark());
+  // ---- Escape clears the rest and marks the device
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Escape clears the rest, marks this device as shown around, and says where they come back from', await until(() => !$('#around')) && mark() === '1' && await until(() => has('#toast', 'show me around is in settings')), text('#toast') + ' | ' + mark());
+  // ---- the next open on this device shows nothing
+  reopen();
+  await until(() => !$('#app').hidden && $('#inc-name').textContent === 'Cedar Fork Flooding');
+  await wait(300);
+  check('the next open on this device shows no labels', !$('#around'));
+  // ---- Settings brings them back; Clear all puts them away
+  $('[data-action="settings"]').click();
+  check('Settings has a This device line with Show me around', await until(() => $('#settings-dialog[open] [data-action="show-around"]')) && has('#settings-dialog', 'this device', 'show me around'), text('#settings-dialog').slice(-300));
+  $('#settings-dialog [data-action="show-around"]').click();
+  check('Show me around closes Settings and puts every label back', await until(() => cards().length === 10 && !$('#settings-dialog').open) && has('#around .around-pill', '10 to read'), cards().length);
+  $('#around .around-all').click();
+  check('Clear all puts them away', await until(() => !$('#around')) && mark() === '1');
+  // ---- the alarm line is never tinted while something is open on it; an emergency puts every label away
+  const par = await base.startPar('user:' + USERS().unit3);   // Unit 3 alone, so its answer closes it
+  await until(() => !$('#safety').hidden);
+  $('[data-action="settings"]').click(); await until(() => $('#settings-dialog[open] [data-action="show-around"]')); $('#settings-dialog [data-action="show-around"]').click();
+  check('with a PAR waiting on the alarm line, its label shows but the line is not tinted', await until(() => cards().length === 10 && card('bars') && !card('bars').hidden) && zone('bars').hidden && !zone('map').hidden, String(zone('bars') && zone('bars').hidden) + ' | ' + String(card('bars') && card('bars').hidden));
+  await field.answerPar(par.id, true, 2);
+  check('the PAR answered and the alarm line quiet again, its tint is back', await until(() => $('#safety').hidden && !zone('bars').hidden, 6000), String(zone('bars') && zone('bars').hidden));
+  const aid = uuid();
+  await field.raiseAlert(aid, { lat: 30.2673, lng: -97.7386, zoneId: ZONE('A-2') });
+  check('an emergency arriving puts every label away at once, and the toast says why', await until(() => !$('#mayday').hidden && !$('#around')) && await until(() => has('#toast', 'an emergency is open')), text('#toast'));
+  await field.standDown(aid);
+  await until(() => $('#mayday').hidden);
+}
+
 
 // ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.
 async function demo(check) {

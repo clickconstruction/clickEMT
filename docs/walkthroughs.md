@@ -1266,3 +1266,23 @@ The check-in head count on the real database: Reyes's crew, the newcomer alone a
 | The phone at check-in | Reyes | The `tags` suite types three in the box and one name with Band № 26: the base reads 3, two unnamed, "Unit 9 checked in as Jo Vela, 512 555 0177, identity not given with 3 people". | Clear |
 
 Nothing was left short: no unit checked in on the real database between v55 and v57.
+
+---
+
+## Re-walk after v58
+
+Show me around: Marcus's relief at the base for the first time, Dana coming to the base from the field, and Marcus on day three, walked on 2026-10-18 in the mock at 1280 × 800 (the pane hidden on this computer, so the words were read through the `around` suite and the page's own text rather than from a screenshot).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The first open | Marcus's relief | The base opens on Cedar Fork Flooding with ten labels over it, each numbered, with a tint and a dashed outline on the part it names: "1 The incident in one line", "2 The sheets, the boards and the forms", "3 The alarm line", "4 Start here", "5 The map is the truth", "6 What the marks mean", "7 Divisions, most urgent first", "8 How phones get in", "9 The other code", "10 The 214 writes itself"; under each a sentence or two and "Click to clear". Top right, a dark pill: "Showing you around · 10 to read · Clear all · Esc". No card sits on another and none runs off the screen. | Clear |
+| Clearing by use | Marcus's relief | A click on the map's tint clears label 5 alone; the pill reads "9 to read"; the next click on the map works the map. Escape clears the rest, the toast reads "That is the base. Show me around is in Settings whenever you want it back." Opening the incident again shows nothing. | Clear |
+| Bringing them back | Dana | Settings has a new foot, "This device: Light or dark is on the header. The labels over each part of the screen, shown on this device's first open, come back from here. · Show me around"; pressed, the dialog closes and the ten labels are back; Clear all puts them away. | Clear |
+| An alarm under the labels | Marcus | With a PAR waiting on Unit 3, Show me around draws label 3's card but no tint over the yellow bar; the PAR answered, the tint is back. A crew pressing Need help now puts every label away at once, the bar is red, the toast reads "An emergency is open: the labels are put away. Show me around is in Settings." | Clear |
+| Day three | Marcus | Nothing: the device was marked on the first clear, and the labels never come back unasked. | Clear |
+
+**Still bites, small:**
+
+- **At 800 px tall the side panel scrolls**, and a label whose part is scrolled out of view waits there; the pill says "· 1 out of view". A new user may not know to scroll the side panel.
+- **The header row** is still thirteen buttons; label 2 explains it in one sentence (punchlist section 15, the grouped row).
+- **The demo has no labels**: its tours do the showing around, by design; a visitor who opens `/try/base/` full-screen sees the base bare.

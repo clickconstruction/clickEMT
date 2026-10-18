@@ -620,3 +620,20 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .pick-invite .big, .land-invite .big { font-size: 17px; font-weight: 700; }
 .pick-invite form, .land-invite form { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 @media (max-width: 760px) { .inv-row { grid-template-columns: 1fr; } .inv-act { justify-content: flex-start; } }
+
+/* Show me around (v58): a label over each part of the screen on the device's first open, placed by js/base/discover.js
+   from the parts' rectangles; the tint and the card are both buttons, the first click clears them, the next works the part. */
+.around { position: fixed; inset: 0; pointer-events: none; z-index: 1400; }
+.around-zone { position: absolute; margin: 0; padding: 0; pointer-events: auto; border: 1.5px dashed var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); cursor: pointer; box-sizing: border-box; }
+.around-zone:hover { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+.around-card { position: absolute; pointer-events: auto; text-align: left; background: color-mix(in srgb, var(--panel) 94%, transparent); color: var(--ink); border: 1px solid var(--accent); border-radius: 10px; padding: 9px 11px 8px; box-shadow: 0 6px 22px rgba(0,0,0,.35); cursor: pointer; font: inherit; line-height: 1.35; box-sizing: border-box; }
+.around-card:hover { border-color: var(--accent-text); }
+.around-card .n { position: absolute; left: 10px; top: 9px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.around-card b { display: block; font-size: 13.5px; margin: 0 0 2px 30px; }
+.around-card p { margin: 0 0 0 30px; font-size: 12.5px; color: var(--ink-2); }
+.around-card small { display: block; margin: 5px 0 0 30px; font-size: 11px; color: var(--muted); }
+.around-zone[hidden], .around-card[hidden] { display: none; }
+.around-pill { position: absolute; right: 12px; top: 10px; pointer-events: auto; display: inline-flex; align-items: center; gap: 10px; background: var(--toast-bg); color: var(--toast-ink); border-radius: 999px; padding: 6px 8px 6px 14px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+.around-pill .around-all { border: 1px solid transparent; background: rgba(127,127,127,.25); color: inherit; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; font: inherit; }
+.around-pill .esc { opacity: .6; font-size: 11.5px; padding-right: 4px; }
+@media print { .around { display: none; } }

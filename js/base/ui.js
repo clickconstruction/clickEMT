@@ -122,7 +122,7 @@ function homeHtml(data, state) {
   const inc = data.incident;
   return `
     <div class="k">Join code for field phones</div>
-    <div class="join-box">
+    <div class="join-box" data-around="join">
       <div class="qr-box">${qrSvg(fieldJoinUrl(inc.code), { label: 'QR code to join ' + inc.name })}</div>
       <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
         <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
@@ -172,7 +172,7 @@ function opsCodeHtml(data) {
   const code = data.opsCode();
   return `
     <div class="k" style="margin-top:6px">Operations code</div>
-    <div class="ops-code">
+    <div class="ops-code" data-around="ops">
       <div class="d-row"><span class="code-big mono" data-ops-code>${code ? esc(code) : '—'}</span>${code ? '<button class="btn sm" data-action="copy-ops-code">Copy</button>' : ''}<button class="btn sm" data-action="new-ops-code" title="Retire this code: the old one no longer joins">New code</button></div>
       <div class="muted" style="font-size:12.5px">${code ? 'Whoever joins with this code is Operations and can run the incident. Give it by radio or phone, never on paper; the join card carries the units\' code only. The Members tab on the People board shows who holds which role.' : 'No Operations code on record yet. Press New code to make one.'}</div>
     </div>`;
@@ -1759,6 +1759,8 @@ export function settingsDialogHtml(data) {
       <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
       <div class="k" style="margin-top:4px">Bands</div>
       <div class="muted" style="font-size:12px">${data.tags(true).length} printed, ${data.tags(true).filter((t) => t.person_id || t.evacuee_id).length} on someone, ${data.tags(true).filter((t) => t.voided_at).length} voided. Print bands from the home panel's join box or the People board; a lost band is voided from its person's row on the People board and a new one given by scanning it. A sheltered person's band is voided with their name when the personal records clear.</div>
-      <div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
+            <div class="k" style="margin-top:4px">This device</div>
+      <div class="d-row"><span class="muted" style="font-size:12px;flex:1;min-width:0">Light or dark is on the header. The labels over each part of the screen, shown on this device's first open, come back from here.</span><button type="button" class="btn sm" data-action="show-around">Show me around</button></div>
+<div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
     </form>`;
 }

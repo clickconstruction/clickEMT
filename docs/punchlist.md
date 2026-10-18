@@ -2,17 +2,17 @@
 
 The work on clickEMT, release by release. Everything here has shipped: the walk at v37's list as v38 to v48 (sections 1
 to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
-people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, and v57, the check-in head count put
-back on the real database (section 16). **Nothing ranked is open** (18 October 2026, v57): the next step is a fresh
-walk at v57, and section 15 lists the candidates already known for it. Written 17 October 2026, after v37
-(`c89a929`), brought up to date at v57. Each numbered release below is written to be picked
+people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
+back on the real database (section 16), and v58, Show me around (section 17). **Nothing ranked is open** (18 October
+2026, v58): the next step is a fresh walk at v58, and section 15 lists the candidates already known for it. Written
+17 October 2026, after v37 (`c89a929`), brought up to date at v58. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v58**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v59**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -32,8 +32,9 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 12 | v54 A transport board (shipped 18 October) | medium | v53 | Marcus, the desk, the crews, a driver |
 | 13 | v55 People and tags, phase 1: QR bands (shipped 18 October) | medium to large | v54 | everyone: Ana, Rosa, the desk, Marcus, Priya |
 | 14 | v56 Invite by email, the app's first server code (shipped 18 October) | medium | v55 | Ana, the administrator, Marcus |
-| 15 | Known candidates for the walk at v57 (open, not ranked) | small to medium | v57 | see the section |
+| 15 | Known candidates for the walk at v58 (open, not ranked) | small to medium | v58 | see the section |
 | 16 | v57 The check-in head count put back on the real database (shipped 18 October) | small | v56 | every unit with more people than names, Marcus's PAR |
+| 17 | v58 Show me around: a label over each part of the base on a device's first open (shipped 18 October) | small to medium | v57 | Marcus's relief, the IC, the clerk, anyone new at the base |
 
 ---
 
@@ -448,10 +449,10 @@ season's roster to invite in one press. The app's first server code.
    *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
    `invite` (18).*
 
-## 15. Known candidates for the walk at v57 (open, not ranked)
+## 15. Known candidates for the walk at v58 (open, not ranked)
 
 Nothing here is decided. These are the "Still bites" items of the re-walks after v50 to v56 in
-[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v57 starts from them.
+[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v58 starts from them.
 Walk first, then rank, as before.
 
 - **Verify the first real invitation email** (Marcus, Ana). The Edge Function is deployed but no email has been sent
@@ -473,6 +474,9 @@ Walk first, then rank, as before.
 - **A checked-out membership still lists under "Incidents you are already in"** (Reyes; v53). One tap reopens it and
   the check-in brings the people back.
 - **A unit's invitation opened on a laptop** lands on the base as a unit (v56). The link sends units to the field app.
+- **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided.
+- **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes.
+- **The labels on the public demo** (v58): /try/ frames the base with its own tours, so the labels stay off it; they could show there on the first open as well, before the tours.
 - **Seen by the walkers, not product:** the mock's seeded period reads "22:48 to 19:00" (its start three hours before
   the clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty seconds to give a new phone a
   fix; the `layers` smoke suite's overlay upload sometimes times out late in a full run (handoff.md, "Where things
@@ -510,6 +514,37 @@ called done, as the routine says. `parbyname.sql` and `people.sql` would have ca
 **Shipped** 18 October 2026 as `The check-in head count put back on the real database (v57)`, migration
 `0034_join_count.sql`, rule test `supabase/tests/joincount.sql` (10 of 10); every rule test 20 of 20 files; the `tags`
 smoke suite extended.
+
+## 17. v58 Show me around
+
+**Why.** On picking the work up, the base at v57 looked like too much going on for a new user: thirteen buttons in
+a row, the alarm line, the drawing tools, the map, the legend, the divisions, two codes and the log, all at once,
+with nothing saying what each is for. The phone has Your briefing once per check-in; the base had nothing for its
+first open. The idea (Todd, 18 October): a discovery mode, a transparent layer over each part of the screen with its
+name and purpose, each going when clicked, until the user has cleared discovery mode. Drawn first as a click-through
+mock-up at `/try/mockups/#discovery` over a screenshot of the base, judged, then built.
+
+**Built.** `js/base/discover.js`: the first time the base opens an incident on a device, ten labels sit over the
+screen, numbered in the order a new Operations uses it (the incident in one line, the sheets and boards and forms,
+the alarm line, Start here, the map, the legend, the divisions, the join code, the Operations code, the 214), each a
+name, one sentence of purpose and the first thing to do there, with the part under it tinted and outlined so the shape
+of the screen reads at a glance, and a pill counting what is left. Click a label and it goes; click through it to use
+the part and it goes too (the first click clears, the next works). Clear all or Escape clears the rest; Settings gained
+a This device line with Show me around, which puts every label back. Per device (`ic.base.around` in localStorage),
+like the theme: nothing goes to the database and the mock needed nothing. The alarm line is never tinted while
+something is open on it, and an emergency arriving puts every label away at once with a toast saying why. The labels
+follow the parts on every draw, resize and scroll; a part scrolled out of the side panel waits there, counted as out of
+view. Not on the pop-out log, and not on the public demo, whose tours show the base around already.
+
+*Decisions kept from the mock-up:* every label at once, not a tour; one sentence of purpose and one of what to do
+first, never a manual; using the part clears its label; the base only, the phone has its briefing. *Left open there and
+decided here:* the switch says "Show me around" (the plan's name was discovery mode); ten labels, not eight; not on the
+demo. *Seen on the way and left for the walk:* the header row grouped, a new incident starting emptier, the labels on
+the demo (section 15).
+
+**Shipped** 18 October 2026 as `Show me around (v58)`: `js/base/discover.js`, the styles at the foot of base.css, the
+Settings dialog's This device line, the `around` smoke suite (13 checks); full run 715 of 715 across 38 suites; every rule
+test 20 of 20 files; the re-walk after v58 in walkthroughs.md. No migration; the mock needed nothing.
 
 ## Done before this list
 

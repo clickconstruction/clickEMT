@@ -8,6 +8,7 @@ import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
+import { startAround, clearAround, layoutAround, aroundOn, aroundSeen } from './discover.js';
 import { photoCaption, photoFileName, imageType, withCaption, zip } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
@@ -15,6 +16,7 @@ const LAST_INCIDENT = 'ic.base.incident';
 // #log is the log alone in its own window (the Pop out button), for a second screen: the same
 // page, the same Data, with the map, the tools and the sidebar left out and the log always open.
 const LOG_ONLY = location.hash === '#log';
+const DEMO = /[?&]demo\b/.test(location.search);   // the public demo: its tours show the base around, not the labels (v58)
 if (LOG_ONLY) document.documentElement.classList.add('log-only');
 const LOG_KEY = LOG_ONLY ? 'ic.base.log.popout' : 'ic.base.log';   // this screen's log: folded or open, which group
 const BOARD_KEY = 'ic.base.board';   // the resources board: by kind or by status, a device setting
@@ -252,7 +254,10 @@ async function openIncident(id) {
     map.invalidate();
   }
   drawAll();
+  if (!LOG_ONLY && !DEMO && !aroundSeen()) showAround();   // the first open of the base on this device: a label over each part of the screen (v58)
 }
+// Show me around (v58): the labels over the screen, from the first open or from Settings; the toast says where they come back from
+function showAround() { startAround({ onDone: (why) => toast(why === 'emergency' ? 'An emergency is open: the labels are put away. Show me around is in Settings.' : 'That is the base. Show me around is in Settings whenever you want it back.') }); }
 
 function select(sel) {
   if (sel && sel.type === 'people') { openPeople(); return; }   // the board is a page of its own, not a panel
@@ -358,6 +363,7 @@ function drawAll() {
   md.hidden = !mh;
   if (md.__html !== mh) { md.__html = mh; md.innerHTML = mh; }
   md.classList.toggle('ack', !!mh && data.alerts().every((a) => a.acknowledged_at));
+  if (mh && aroundOn()) clearAround('emergency');   // v58: an emergency puts the labels away at once
   ringForNew();   // v46: a chime for an emergency or an act-on-now hazard that just arrived
   const sf = $('#safety');
   const sh = safetyHtml(data);
@@ -366,6 +372,7 @@ function drawAll() {
   $('#bars-quiet').hidden = !!(mh || sh);
   $('#bars-quiet').textContent = 'No emergency open · no safety message or PAR waiting on an answer' + (state.armed ? '' : ' · click anywhere once so the base can ring');   // v48
   $('#bars').title = state.armed ? '' : 'Click anywhere once so the base can ring for an emergency or an urgent hazard';
+  layoutAround();   // v58: the labels follow the parts they sit on
 }
 
 // The sidebar: the divisions and the panel, redrawn on every live update, but only where the words
@@ -921,6 +928,7 @@ document.addEventListener('click', async (e) => {
       case 'unit-water': { const m = data.member(id); await data.setInWater(id, btn.dataset.on === '1' ? new Date().toISOString() : null); toast(unitLabelOf(m) + (btn.dataset.on === '1' ? ' in the water' : ' out of the water')); break; }
       case 'settings': { if (!data.incident) break; $('#settings-dialog-body').innerHTML = settingsDialogHtml(data); const dlg = $('#settings-dialog'); if (!dlg.open) dlg.showModal(); break; }
       case 'settings-close': { const dlg = $('#settings-dialog'); if (dlg.open) dlg.close(); break; }
+      case 'show-around': { const dlg = $('#settings-dialog'); if (dlg.open) dlg.close(); showAround(); break; }   // v58
       case 'settings-test': {
         const f = btn.closest('form'), out = f.querySelector('[data-settings-test]');
         out.textContent = 'Testing…';
@@ -1155,6 +1163,7 @@ document.addEventListener('change', async (e) => {
 
 // While outlining, Backspace or Delete takes the last corner off (not while typing in a field).
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && aroundOn()) { clearAround('cleared'); return; }   // v58
   if (e.key === 'Escape' && state.layersOpen) { setLayersOpen(false); return; }
   if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;

@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Mock-ups: invite by email, a transport board, people and tags · Incident Map</title>
+<title>Mock-ups: invite by email, a transport board, people and tags, show me around · Incident Map</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="stylesheet" href="/css/shared.css">
 <script src="/vendor/qrcode-generator-1.4.4.min.js"></script>
-<!-- Click-through mock-ups of three features, drawn before they were built: invitations by email, a transport board,
-     and a tag per person. Drawn in the app's own styles with made-up data, so each screen could be judged first: is
-     this the best we can do for the person who will use it? All three were built as v54 to v56 (docs/punchlist.md,
-     sections 12 to 14); the page is kept as the design record. Nothing here writes anywhere. -->
+<!-- Click-through mock-ups of features, drawn before they were built: invitations by email, a transport board, a tag
+     per person (built as v54 to v56, docs/punchlist.md sections 12 to 14; kept as the design record) and, from 18
+     October at v57, "Show me around", a label over each part of the base on its first open (built as v58). Drawn in
+     the app's own styles with made-up data, so each screen can be judged first: is this the best we can do for the
+     person who will use it? The base's backdrop is base-v57.webp, the mock at 2000 px wide. Nothing here writes
+     anywhere. -->
 <style>
   body { min-height: 100%; }
   .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
@@ -74,6 +76,29 @@
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg, #222); color: var(--toast-ink, #fff); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; }
   .toast[hidden] { display: none; }
   @media (max-width: 480px) { .phone { width: 100%; } .panel, .panel.wide { width: 100%; } main { padding: 12px; } }
+  /* discovery mode: the base at v57 (a screenshot of the mock, dark) with a label over each part of the screen */
+  .stage-wrap { width: 100%; overflow-x: auto; }
+  .stage { position: relative; width: 1200px; aspect-ratio: 2000 / 1560; background: #121412 url(base-v57.webp) center / cover no-repeat; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; user-select: none; }
+  .disc-zone { position: absolute; margin: 0; padding: 0; border: 1.5px dashed var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, rgba(18, 20, 18, .35)); cursor: pointer; transition: opacity .18s; }
+  .disc-zone:hover { background: color-mix(in srgb, var(--accent) 34%, rgba(18, 20, 18, .35)); }
+  .disc-card { position: absolute; width: 272px; text-align: left; background: color-mix(in srgb, var(--panel) 94%, transparent); color: var(--ink); border: 1px solid var(--accent); border-radius: 10px; padding: 9px 11px 8px 11px; box-shadow: 0 6px 22px rgba(0, 0, 0, .45); cursor: pointer; font: inherit; line-height: 1.35; z-index: 2; }
+  .disc-card:hover { border-color: var(--accent-text); }
+  .disc-card b.t { display: block; font-size: 13.5px; margin: 0 0 2px 30px; }
+  .disc-card .n { position: absolute; left: 10px; top: 9px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .disc-card p { margin: 0 0 0 30px; font-size: 12.5px; color: var(--ink-2); }
+  .disc-card small { display: block; margin: 5px 0 0 30px; font-size: 11px; color: var(--muted); }
+  .disc-zone[hidden], .disc-card[hidden] { display: none; }
+  .disc-pill { position: absolute; right: 1%; top: 1.6%; z-index: 3; display: inline-flex; align-items: center; gap: 10px; background: var(--toast-bg); color: var(--toast-ink); border-radius: 999px; padding: 6px 8px 6px 14px; font-size: 13px; box-shadow: 0 4px 16px rgba(0, 0, 0, .4); }
+  .disc-pill button { border: 1px solid transparent; background: rgba(127, 127, 127, .25); color: inherit; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; }
+  .disc-pill[hidden] { display: none; }
+  .disc-again { margin: 10px 0 0; }
+  .hdr-groups { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: flex-end; }
+  .hdr-groups .g { display: flex; flex-direction: column; gap: 4px; }
+  .hdr-groups .g .k { margin: 0; }
+  .hdr-groups .g .row { gap: 6px; }
+  .hdr-groups .g.right { margin-left: auto; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -83,6 +108,7 @@
     <button class="on" data-tab="invite">Invite by email</button>
     <button data-tab="transport">A transport board</button>
     <button data-tab="tags">People and tags</button>
+    <button data-tab="discovery">Show me around</button>
   </div>
   <span class="sp"></span>
   <a class="btn sm" href="/try/">‹ Try it</a>
@@ -317,6 +343,96 @@
   </div>
 </section>
 
+<!-- ============================================================ SHOW ME AROUND (discovery mode) -->
+<section class="feature" id="discovery">
+  <div class="intro"><h1>Show me around</h1>The first time the base opens on a device, a label sits over each part of the screen: what it is called, what it is for, and what to do there first. Click a label and it goes; use the part underneath and it goes too. Clear all, or Escape, puts the rest away, and Settings brings them back. Nothing is written anywhere but this device. The backdrop is the base at v57 as the mock seeds it, at 2000 px wide, dark; press the labels. Built as v58 (docs/punchlist.md, section 17).</div>
+  <div class="screens">
+    <div class="screen" style="flex-basis:100%">
+      <div class="stage-wrap">
+      <div class="stage" id="disc-stage">
+        <div class="disc-pill" id="disc-pill">Showing you around · <span id="disc-left">10 to read</span> <button type="button" id="disc-all">Clear all</button><span style="opacity:.6;font-size:11.5px;padding-right:4px">Esc</span></div>
+
+        <button type="button" class="disc-zone" data-n="1" style="left:1%;top:1%;width:62%;height:5%" aria-label="The incident in one line"></button>
+        <button type="button" class="disc-zone" data-n="2" style="left:1%;top:6.2%;width:78%;height:3.4%" aria-label="The sheets, the boards and the forms"></button>
+        <button type="button" class="disc-zone" data-n="3" style="left:0;top:10.5%;width:73.5%;height:3.8%" aria-label="The alarm line"></button>
+        <button type="button" class="disc-zone" data-n="4" style="left:1%;top:15.2%;width:72%;height:3.5%" aria-label="Start here"></button>
+        <button type="button" class="disc-zone" data-n="5" style="left:0;top:19.2%;width:73.5%;height:51.6%" aria-label="The map is the truth"></button>
+        <button type="button" class="disc-zone" data-n="6" style="left:0;top:71.4%;width:73.5%;height:5.9%" aria-label="What the marks mean"></button>
+        <button type="button" class="disc-zone" data-n="7" style="left:74%;top:15.2%;width:26%;height:33.9%" aria-label="Divisions, most urgent first"></button>
+        <button type="button" class="disc-zone" data-n="8" style="left:74%;top:49.6%;width:26%;height:27.8%" aria-label="How phones get in"></button>
+        <button type="button" class="disc-zone" data-n="9" style="left:74%;top:77.8%;width:26%;height:22.2%" aria-label="The other code"></button>
+        <button type="button" class="disc-zone" data-n="10" style="left:0;top:78%;width:73.5%;height:22%" aria-label="The 214 writes itself"></button>
+
+        <button type="button" class="disc-card" data-n="1" style="left:14.5%;top:0.8%"><span class="n">1</span><b class="t">The incident in one line</b><p>Command, the operational period, the units in, how far the search has got, what is open. Read it first whenever you come back. Find a person looks up a responder, a family or a band.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="2" style="left:49%;top:6.3%"><span class="n">2</span><b class="t">The sheets, the boards and the forms</b><p>Period and Briefing are this period's sheet and the shift briefing. People, Transports and Public are boards. Org chart, Sitrep and IAP are the ICS forms, filled in from the map. Replay plays the day back.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="3" style="left:1%;top:18.3%"><span class="n">3</span><b class="t">The alarm line</b><p>Red when a crew presses Need help now, yellow for a safety message or a head count still waiting on an answer. Quiet is good. Click the page once so the base can ring.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="4" style="left:26%;top:18.8%"><span class="n">4</span><b class="t">Start here</b><p>Draw the incident boundary, then the divisions inside it: click points on the map, Finish closes the shape. Layers swaps the map underneath and shows imagery.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="5" style="left:24%;top:43%"><span class="n">5</span><b class="t">The map is the truth</b><p>Divisions coloured by status, units where their phones say they are, photo pins facing the way the camera did, hazards as triangles, facilities as letters. Click anything to open it; right-click a division for its card.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="6" style="left:50%;top:69.5%"><span class="n">6</span><b class="t">What the marks mean</b><p>The four status entries are buttons: press one to light the divisions in that status and dim the rest.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="7" style="left:75.5%;top:28%"><span class="n">7</span><b class="t">Divisions, most urgent first</b><p>Priority, who is on it, structures searched of how many. Click a row to assign a unit, set its priority or write its assignment; its 204 prints from there.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="8" style="left:75.5%;top:57%"><span class="n">8</span><b class="t">How phones get in</b><p>A unit scans this code or types it in the field app with its unit name. Print a join card for staging. Invited members only turns the code off for strangers; Print bands makes the wristbands.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="9" style="left:75.5%;top:84%"><span class="n">9</span><b class="t">The other code</b><p>Whoever joins with this one is Operations too: a relief chief, a second screen. Give it by radio or phone, never on paper.</p><small>Click to clear</small></button>
+        <button type="button" class="disc-card" data-n="10" style="left:36%;top:83%"><span class="n">10</span><b class="t">The 214 writes itself</b><p>Every report, assignment, message and head count as it happens, with who and when. Filter by where a line came from, star what is notable, Print 214 at the period's end. You only add notes.</p><small>Click to clear</small></button>
+      </div>
+      </div>
+      <button type="button" class="btn sm disc-again" id="disc-again" hidden>Show me around again (as Settings would)</button>
+      <div class="cap" style="max-width:760px"><b>The base on its first open, with the labels.</b> Ten labels in the order a new Operations would use the screen, each a name, a purpose and the first thing to do there. The part under a label is tinted and outlined so the shape of the screen reads at a glance. The alarm line is never covered while something is open on it.</div>
+    </div>
+
+    <div class="screen">
+      <div class="panel">
+        <div class="row between"><h2 class="t">Incident settings</h2><span class="sub">Cedar Fork Flooding</span></div>
+        <p class="note">Operations' settings for this incident. They carry into the next incident this account opens.</p>
+        <label class="f">Google Maps browser key</label><input class="input" placeholder="AIza…">
+        <label class="f">Personal records clear by rule</label><select class="input"><option>30 days after the close</option></select>
+        <label class="f">Default rotation in the water, minutes (0 = off)</label><input class="input" value="45">
+        <label class="f">EOC email address</label><input class="input" placeholder="eoc@county.gov">
+        <div class="k">This device</div>
+        <div class="row between"><span class="sub">Light or dark is on the header. The labels over the screen come back here.</span><button class="btn sm" id="disc-settings">Show me around</button></div>
+      </div>
+      <div class="cap"><b>Where it comes back from.</b> A line at the foot of Settings, since it is a device thing like the theme, not an incident setting. Pressing it puts every label back, cleared or not.</div>
+    </div>
+
+    <div class="screen">
+      <div class="panel wide">
+        <h2 class="t">A finding, not part of this: the header row grouped</h2>
+        <p class="note" style="margin:0 0 10px">Thirteen buttons in one row is most of what "too much going on" is. Discovery mode explains the row; grouping it would also make it shorter to read. The same buttons, in the groups label 2 names, with the device and the account on the right.</p>
+        <div class="hdr-groups">
+          <div class="g"><div class="k">This period</div><div class="row"><button class="btn sm">Period</button><button class="btn sm">Briefing</button></div></div>
+          <div class="g"><div class="k">Boards</div><div class="row"><button class="btn sm">People</button><button class="btn sm">Transports</button><button class="btn sm">Public</button></div></div>
+          <div class="g"><div class="k">Forms</div><div class="row"><button class="btn sm">Org chart</button><button class="btn sm">Sitrep</button><button class="btn sm">IAP</button></div></div>
+          <div class="g"><div class="k">The day</div><div class="row"><button class="btn sm">Replay</button></div></div>
+          <div class="g right"><div class="k">&nbsp;</div><div class="row"><button class="btn sm">Light</button><button class="btn sm">Settings</button><button class="btn sm">Switch incident</button><button class="btn sm">Sign out</button></div></div>
+        </div>
+      </div>
+      <div class="cap"><b>Seen while drawing the labels.</b> Not asked for and not decided; here so the walk at v57 can weigh it beside the labels.</div>
+    </div>
+
+    <div class="screen">
+      <div class="panel wide">
+        <h2 class="t">Decided here, and yours to decide</h2>
+        <div class="k">Decided here (say if any is wrong)</div>
+        <ul class="decisions">
+          <li><b>Every label at once, not a tour.</b> A tour says one thing at a time; the labels show the shape of the whole screen, numbered in the order a new Operations would use it, and you clear the ones you already know first.</li>
+          <li><b>One sentence of purpose and one of what to do first.</b> Never a manual; the guides in docs/guides are the manual.</li>
+          <li><b>Using the part clears its label.</b> Click the label, or click through it to the part: the first click clears, the next one works. Clear all and Escape clear the rest.</li>
+          <li><b>Per device, like the theme.</b> Shown on the first open of the base on this device (<span class="mono">ic.base.shown</span> in localStorage), never again until Settings → Show me around. Nothing goes to the database; the mock needs nothing.</li>
+          <li><b>The alarm line is never covered while something is open on it</b>, and an emergency arriving clears every label at once: the base rings, the bar is red, the labels are gone.</li>
+          <li><b>The base only, for now.</b> The phone already shows Your briefing once per check-in and its home screen is built around one person.</li>
+        </ul>
+        <div class="k">Yours to decide</div>
+        <ul class="decisions">
+          <li><b>The words on the switch.</b> "Show me around" is on the mock-up; "Discovery mode" is the name in the plan. One of them goes on Settings.</li>
+          <li><b>Ten labels or fewer.</b> The legend (6) and the Operations code (9) could fold into the map (5) and the join code (8), leaving eight.</li>
+          <li><b>On the public demo too?</b> /try/ frames the base for visitors with its own tours. The labels could show there on the first open as well, before the tours.</li>
+          <li><b>Should a new incident start even emptier?</b> A fresh incident has no divisions, units or log lines, so its screen is already quieter than this seeded one; the labels could then also say "nothing here yet: draw the boundary".</li>
+          <li><b>The header grouped</b> (the finding above): with the labels, after them, or not at all.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 <div class="toast" id="toast" hidden></div>
 <script>
@@ -327,7 +443,17 @@
   // tabs
   const show = (name) => { for (const s of document.querySelectorAll('section.feature')) s.classList.toggle('on', s.id === name); for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name); try { history.replaceState(null, '', '#' + name); } catch (e) {} };
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
-  const h = location.hash.slice(1); if (['invite', 'transport', 'tags'].includes(h)) show(h);
+  const h = location.hash.slice(1); if (['invite', 'transport', 'tags', 'discovery'].includes(h)) show(h);
+  // discovery: a label over each part of the base; click one to clear it, Clear all or Escape for the rest
+  const zones = () => Array.from(document.querySelectorAll('#disc-stage .disc-zone, #disc-stage .disc-card'));
+  const left = () => new Set(zones().filter((z) => !z.hidden).map((z) => z.dataset.n)).size;
+  const discCount = () => { const n = left(); $('disc-left').textContent = n === 1 ? '1 to read' : n + ' to read'; if (n === 0) { $('disc-pill').hidden = true; $('disc-again').hidden = false; toast('That is the base. Show me around is in Settings whenever you want it back.'); } };
+  const clearOne = (n) => { for (const z of zones()) if (z.dataset.n === n) z.hidden = true; discCount(); };
+  $('disc-stage').addEventListener('click', (e) => { const z = e.target.closest('[data-n]'); if (z) clearOne(z.dataset.n); });
+  $('disc-all').addEventListener('click', () => { for (const z of zones()) z.hidden = true; discCount(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('discovery').classList.contains('on') && left()) { for (const z of zones()) z.hidden = true; discCount(); } });
+  $('disc-settings').addEventListener('click', () => { for (const z of zones()) z.hidden = false; $('disc-pill').hidden = false; $('disc-again').hidden = true; discCount(); $('disc-stage').scrollIntoView({ behavior: 'smooth', block: 'start' }); toast('Every label is back on the base.'); });
+  $('disc-again').addEventListener('click', () => { for (const z of zones()) z.hidden = false; $('disc-pill').hidden = false; $('disc-again').hidden = true; discCount(); toast('Showing you around again, as Settings would.'); });
   // invite
   $('inv-send').addEventListener('click', () => { const em = $('inv-email').value.trim() || 'new.member@agency.gov'; const role = $('inv-role').value; const row = document.createElement('div'); row.className = 'row between'; row.innerHTML = '<span>' + em.replace(/[<>&]/g, '') + ' · <b>' + role + '</b> · invited just now</span><span><button class="btn sm">Resend</button> <button class="btn sm">Withdraw</button></span>'; $('inv-list').prepend(row); $('inv-count').textContent = String(Number($('inv-count').textContent) + 1); $('inv-email').value = ''; toast('Invitation sent to ' + em + ' · logged in the 214'); });
   $('inv-only').addEventListener('click', () => { const on = $('inv-only').classList.toggle('on'); $('inv-only-note').textContent = on ? 'Invited members only: the join code is off for this incident. The door says "this incident is by invitation; ask Operations". Mutual aid arriving unannounced needs an invitation or the switch back on.' : 'The code works: anyone with it joins as a unit. Switch it off to let only invited people in; the door then says "this incident is by invitation; ask Operations".'; });

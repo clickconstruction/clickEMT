@@ -2,7 +2,7 @@
 
 For whoever picks up clickEMT next. This says where things stand, how to get it running, how a change is shipped,
 and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026, brought
-up to date on 18 October 2026 at v57.
+up to date on 18 October 2026 at v58.
 
 ## What it is
 
@@ -23,14 +23,14 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v57**, "The check-in head count put back on the real database" (after v56, invite by email). The
-  service worker reads `v57`.
+- `main` is at **v58**, "Show me around" (after v57, the check-in head count put back). The service worker reads
+  `v58`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0034` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
   (`joincount.sql` 10 of 10, `invites.sql` 32 of 32, `tags.sql` 28 of 28, `transports.sql` 33 of 33, `rewalks.sql` 10 of 10, `scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
-  10 of 10, `ics100.sql` 33 of 33, `people.sql` 28 of 28), all twenty files run on 18 October at v57. At v55 and v56
+  10 of 10, `ics100.sql` 33 of 33, `people.sql` 28 of 28), all twenty files run on 18 October at v57 and again at v58. At v55 and v56
   `parbyname.sql` and `people.sql` failed on the real database (section 16 of the punchlist) without anyone
   noticing: run every rule test before a release is called done. v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
@@ -44,9 +44,9 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 - **What has shipped:** the walk at v37's list as v38 to v48, the walk at v48's four items as v50 to v53, and the three
   pieces of the plan "Invite by email, a transport board, and people and tags" as v54 (the transport board), v55 (QR
   bands, tags phase 1) and v56 (invitations by email); v57 put back on the real database the check-in head count
-  that 0032 and 0033 had lost. v49 was the front door's redesign. Each release has its section
-  in [punchlist.md](punchlist.md) (1 to 14, and 16 for v57) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
-- **Nothing ranked is open.** The next step, by Grace's routine, is a fresh walk at v57: every persona, every job,
+  that 0032 and 0033 had lost; v58 is Show me around, a label over each part of the base on a device's first open. v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14, 16 and 17) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+- **Nothing ranked is open.** The next step, by Grace's routine, is a fresh walk at v58: every persona, every job,
   "is this the best we can do?", then a ranked list. The candidates already known are in punchlist section 15 (the
   "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on
   the hardware Grace chooses.
@@ -198,6 +198,9 @@ without them.
   click-through mock-ups it was judged on are in the repository at `try/mockups/` (published at
   https://clickemt.com/try/mockups/); they are kept as the design record now that all three are built.
 - The pilot agreement (a Claude Doc, 18 October): the draft an agency signs to pilot the app, with one comment open.
+- "Show me around" (18 October, in the repository at `try/mockups/#discovery`): the labels over the base on a device's
+  first open, drawn over a screenshot of the base at v57 and judged before v58 was built; its last panel says what was
+  decided and what was left for the walk.
 
 ## Layout
 

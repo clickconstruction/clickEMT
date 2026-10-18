@@ -694,7 +694,7 @@ button.pill { border: 0; cursor: pointer; font: inherit; font-size: 12px; line-h
 .par-chip { font-size: 12px; padding: 2px 8px; border-radius: 6px; border-left: 3px solid var(--line); background: var(--soft); color: var(--ink-2); }
 .par-chip.ok { border-left-color: var(--cleared-fill); } .par-chip.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-chip.wait { border-left-color: var(--hazard); }
 
-/* a picture placed by its corners (v63): the card over the map and the handles on the picture (js/base/placing.js) */
+/* a picture placed by its corners (v67): the card over the map and the handles on the picture (js/base/placing.js) */
 .map-wrap { flex: 1; min-height: 320px; position: relative; display: flex; flex-direction: column; }
 .map-wrap > .map { flex: 1; min-height: 0; }
 .log-only .map-wrap { display: none !important; }

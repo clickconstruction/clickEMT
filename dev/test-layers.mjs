@@ -1,4 +1,4 @@
-// Checks for the geometry in js/shared/layers.js that lays a picture over its four corners (v63). Run: node dev/test-layers.mjs
+// Checks for the geometry in js/shared/layers.js that lays a picture over its four corners (v67). Run: node dev/test-layers.mjs
 import assert from 'node:assert/strict';
 import { squareToQuad, cornersTransform, quadConvex } from '../js/shared/layers.js';
 

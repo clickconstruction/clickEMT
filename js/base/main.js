@@ -238,7 +238,7 @@ $('#join-form').addEventListener('submit', async (e) => {
 
 // ---- the open incident
 async function openIncident(id) {
-  if (state.placing && map) endPlacing();   // v63: a picture half placed on the last incident is dropped
+  if (state.placing && map) endPlacing();   // v67: a picture half placed on the last incident is dropped
   if (state.replay) closeReplay();
   const inc = await data.open(id);
   setGoogleKey(data.settings().maps_key);   // the Google layers come from the incident's settings (v28)
@@ -780,7 +780,7 @@ document.addEventListener('input', (e) => {
   if (pr && state.placing) { state.placing.ctl.setOpacity(pr.value); $('#place-op-v').textContent = Math.round(pr.value * 100) + '%'; }
 });
 
-// ---- a picture by its corners (v63). Chosen on the Layers panel or the home panel, it lands over the view and is
+// ---- a picture by its corners (v67). Chosen on the Layers panel or the home panel, it lands over the view and is
 // dragged into place (js/base/placing.js); the card over the map asks its name and when it was taken; Save writes
 // the row (the corners and their box); Adjust on a saved picture opens the same handles on it.
 const OVERLAY_MAX = 50 * 1024 * 1024;
@@ -1233,7 +1233,7 @@ function timeToIso(hhmmValue) {
 
 document.addEventListener('change', async (e) => {
   const pick = e.target.closest('input[data-file="overlay"]');
-  if (pick) { const f = pick.files && pick.files[0]; pick.value = ''; await pickOverlayFile(f); return; }   // v63
+  if (pick) { const f = pick.files && pick.files[0]; pick.value = ''; await pickOverlayFile(f); return; }   // v67
   const box = e.target.closest('[data-check="invite-only"]');
   if (box) { try { await data.setInviteOnly(box.checked); toast(box.checked ? 'Invited members only: the join code is off' : 'The join code is on again'); } catch (err) { toast(err.message || String(err), true); box.checked = !box.checked; } queueDraw(); return; }   // v56
   const sel = e.target.closest('[data-select], [data-range]');
@@ -1263,7 +1263,7 @@ document.addEventListener('change', async (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && aroundOn()) { clearAround('cleared'); return; }   // v58
   if (e.key === 'Escape' && (state.gearOpen || state.codesOpen || state.liveOpen)) { setGearOpen(false); state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); return; }   // v60
-  if (state.placing) {   // v63: while a picture is placed, Escape cancels, arrows nudge (Shift: ten pixels), ⌘Z / Ctrl+Z undoes
+  if (state.placing) {   // v67: while a picture is placed, Escape cancels, arrows nudge (Shift: ten pixels), ⌘Z / Ctrl+Z undoes
     const typing = e.target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable);
     if (e.key === 'Escape') { cancelPlacing(); return; }
     if (!typing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { state.placing.ctl.undo(); const b = $('#place-card [data-action="place-undo"]'); if (b) b.disabled = !state.placing.ctl.canUndo(); e.preventDefault(); return; }
@@ -1518,7 +1518,7 @@ function drawTools() {
   const drawing = !!map.mode, noB = !data.incident.boundary, noZ = !data.zones().length;
   $('#btn-boundary').classList.toggle('pri', !drawing && noB);
   $('#btn-zone').classList.toggle('pri', !drawing && !noB && noZ);
-  if (!drawing && !state.placing) setHint(defaultHint());   // v63: the placing hint stays while a picture is placed
+  if (!drawing && !state.placing) setHint(defaultHint());   // v67: the placing hint stays while a picture is placed
 }
 // A division's hover card (v60): rest on a row for half a second and it opens beside the side panel, over the map;
 // it goes on leaving the list, scrolling it or clicking.

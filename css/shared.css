@@ -131,7 +131,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* the streets tiles dim in dark mode; satellite imagery and custom imagery stay as they are */
 .leaflet-layer.tiles-dim { filter: var(--map-dim); }
-/* a picture laid over its four corners (v63, cornersImage in js/shared/layers.js): one image under a matrix3d, on both maps */
+/* a picture laid over its four corners (v67, cornersImage in js/shared/layers.js): one image under a matrix3d, on both maps */
 .leaflet-pane > img.imagery-corners { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none !important; max-height: none !important; pointer-events: none; will-change: transform; }
 .leaflet-pane > img.imagery-corners.placing { pointer-events: auto; cursor: move; outline: 2px solid var(--map-accent); touch-action: none; }
 

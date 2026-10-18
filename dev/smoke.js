@@ -1108,14 +1108,14 @@ async function layers(check) {
   check('unticking it hides it on this screen', $$('#map img.imagery').length === 0 && (localStorage.getItem('ic.map.hidden') || '').includes(M().ids.overlays[0]));
   box().click();
   await until(() => $$('#map img.imagery').length === 1);
-  check('Add a picture is one button, with no edges to type (v63)', !!$('#layers-pop label.pick-btn input[data-file="overlay"]') && !$('#layers-pop form[data-form="overlay-add"]'));
+  check('Add a picture is one button, with no edges to type (v67)', !!$('#layers-pop label.pick-btn input[data-file="overlay"]') && !$('#layers-pop form[data-form="overlay-add"]'));
   document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await until(() => $('#layers-pop').hidden);
   check('Escape closes the panel', $('#layers-pop').hidden && !$('#btn-layers').classList.contains('on'));
 
   const ovl = M().ids.overlays[0];
   const pic = () => $('#map img.imagery:not(.placing)');
-  check('the seeded picture lies by its corners on the map (one image under a matrix3d) and is listed under Map imagery (v63)', base.overlays().length === 1 && Array.isArray(base.overlay(ovl).corners) && await until(() => pic() && /matrix3d/.test(pic().style.transform), 6000) && pic().classList.contains('imagery-corners') && has('#panel', 'map imagery', 'aerial 06:40, civil air patrol', 'add a picture') && !$('#panel form[data-form="overlay-add"]'), text('#panel').slice(0, 200));
+  check('the seeded picture lies by its corners on the map (one image under a matrix3d) and is listed under Map imagery (v67)', base.overlays().length === 1 && Array.isArray(base.overlay(ovl).corners) && await until(() => pic() && /matrix3d/.test(pic().style.transform), 6000) && pic().classList.contains('imagery-corners') && has('#panel', 'map imagery', 'aerial 06:40, civil air patrol', 'add a picture') && !$('#panel form[data-form="overlay-add"]'), text('#panel').slice(0, 200));
   // a new picture: chosen on the home panel, it lands over the view with handles; dragged, undone, saved
   const input = $('#panel input[data-file="overlay"]');
   const dt = new DataTransfer(); dt.items.add(new File([await tinyPng()], 'drone-pass.png', { type: 'image/png' })); input.files = dt.files;

@@ -765,7 +765,7 @@ export const INVITE_STATE = { pending: 'Invited, not yet in', accepted: 'Accepte
 export function inviteState(v, now = Date.now()) { return v.withdrawn_at ? 'withdrawn' : v.accepted_at ? 'accepted' : new Date(v.expires_at).getTime() < now ? 'expired' : !v.sent_at ? 'unsent' : 'pending'; }
 export function inviteFromSearch(search) { const m = /[?&]invite=([A-Za-z0-9-]+)/.exec(String(search || '')); return m ? m[1] : ''; }
 
-// ---- a picture over the map by its corners (v63): ic_overlays.corners is [[lat, lng] × 4], the picture's top-left,
+// ---- a picture over the map by its corners (v67): ic_overlays.corners is [[lat, lng] × 4], the picture's top-left,
 // top-right, bottom-right and bottom-left; a picture with no corners fills its bounds. cornersBox is what
 // ic_overlay_before writes into bounds, so the two never disagree; ic_corners_ok in SQL says the same as cornersOk.
 export function cornersBox(c) {

@@ -2,7 +2,7 @@
 // page's global L. Streets (OpenStreetMap) and Satellite (Esri World Imagery) need nothing;
 // Google Maps streets and satellite appear when the incident's settings carry a Google Maps key for the
 // Map Tiles API (setGoogleKey; config.js's window.GOOGLE_MAPS_KEY is the fallback). The choice is a device setting.
-// A picture with corners (v63) is drawn by cornersImage, a layer of our own: Leaflet's image overlay knows only
+// A picture with corners (v67) is drawn by cornersImage, a layer of our own: Leaflet's image overlay knows only
 // a rectangle, so the picture is laid over its four points by a CSS matrix3d, redrawn on zoom and animated with it.
 import { cornersOk, overlayCorners } from './rules.js';
 export const LAYER_KEY = 'ic.map.layer';
@@ -85,7 +85,7 @@ export function makeOverlay(o, url, pane) {
   return L.imageOverlay(url, overlayBounds(o), { opacity, interactive: false, pane: pane || 'imagery', className: 'imagery' });
 }
 
-// ---- a picture over four points (v63)
+// ---- a picture over four points (v67)
 // The unit square onto four points, as a 3 × 3 projective matrix (Heckbert's formulas), row by row: a point (u, v)
 // lands at ((a u + b v + c) / (g u + h v + i), (d u + e v + f) / (g u + h v + i)).
 export function squareToQuad(p) {

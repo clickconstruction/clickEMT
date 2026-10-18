@@ -320,7 +320,7 @@ t('the header clock reads UTC from the same moment, and the zone has a short nam
   assert.equal(typeof zoneShort(new Date()), 'string');
 });
 
-t('a picture by its corners (v63): the box, what is a valid set of corners, and where an overlay lies', () => {
+t('a picture by its corners (v67): the box, what is a valid set of corners, and where an overlay lies', () => {
   const c = [[30.2735, -97.7445], [30.2718, -97.7275], [30.2635, -97.7283], [30.2652, -97.7452]];
   assert.deepEqual(cornersBox(c), { south: 30.2635, north: 30.2735, west: -97.7452, east: -97.7275 });
   assert.equal(cornersOk(c), true);

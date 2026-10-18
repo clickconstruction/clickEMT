@@ -40,6 +40,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 19 | v60 A cleaner base: shorter labels, the codes behind the pill, the connection's card, the head count, the drawing buttons, the gear, Layers flipped, a division's hover card (shipped 18 October) | medium | v59 | Marcus, his relief, the IC, anyone new at the base |
 | 20 | v61 The units section, cleaner: one line per unit with where it is at the right, the PAR as one line (shipped 18 October) | small | v60 | Marcus, Dana, the clerk |
 | 21 | v62 Confirmations as the app's own dialogs, and the band door (shipped 18 October) | small | v61 | Marcus, Dana, Rosa, the desk, anyone handed a band |
+| 26 | v67 A picture by its corners: aerial photography dragged into place by its four corners (ready on branch `imagery`, PR #1) | medium | v66 | Marcus, Dana, Civil Air Patrol and drone pictures, every phone's mini map |
 
 ---
 
@@ -691,6 +692,39 @@ stubs, the `seeded`, `members` and `tags` suites reading the dialogs and the doo
 check now waits for the home panel (Close redraws it on the next frame; with the pane visible the read came first,
 and the v61 runs had the pane hidden); full run 741 of 741 across 38 suites with the pane visible; check and test
 pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
+
+## 26. v67 A picture by its corners
+
+**Why.** Todd, walking the base at v59 on 18 October: "The upload aerial photography tool feels clunky. A user should
+be able to set corners to stretch and narrow the aerial photography to make it all fit." The form asked nine things,
+four of them edges in degrees, before the picture was seen at all, and a photo from an aircraft never fits a
+rectangle. The mock-up is `try/mockups/imagery.html`: two kinds of handle with what each costs, the four corners
+recommended and built.
+
+**Built.** Add a picture is one button, on the Layers panel and the home panel's Map imagery section. The picture
+lands over the map's view at half strength in its own shape, with four corner handles, a round Turn handle above its
+top edge and the picture itself to move; arrows nudge (Shift ten), Undo and ⌘Z step back, Escape cancels. The card
+over the map asks Name and Taken at, filled from the file's name and its Exif date (js/shared/exif.js, else the
+file's modified time), with the opacity live. Save writes `ic_overlays.corners` (`[[lat, lng] × 4]`: top-left,
+top-right, bottom-right, bottom-left) with `bounds` as their box; migration 0035 adds the column, `ic_corners_ok` and
+an `ic_overlay_before` that writes the box itself, so every reader of bounds stays right. Both views draw a picture
+with corners through `cornersImage` in js/shared/layers.js, one image under a matrix3d, redrawn on zoom and animated
+with it, so the phone's mini map changed by one line; a picture with no corners fills its bounds as before. Adjust on
+a saved row reopens the handles and logs "updated".
+
+*Decided:* placing is the base's alone, the phone shows; the picture sits under the drawn layers (the `placing` pane
+at 260); the slider's value is what is saved, and it starts at 50 so the roads show through; a corner dragged across
+the picture is refused, so the quadrilateral stays convex; Cancel takes a new picture off and leaves an adjusted one
+as it was. Still open from the mock-up: a JPEG's GPS point as the landing spot, dimming the other pictures while
+placing, placing on a tablet in the field, a Turn slider on the card, the picture on the printed 204.
+
+**Ready** on branch `imagery` (PR #1), to land as v67 after v66: `js/base/placing.js`, `js/shared/exif.js`,
+`cornersImage` / `cornersTransform` / `quadConvex` in layers.js, `cornersBox` / `cornersOk` / `boxCorners` /
+`overlayCorners` in rules.js, `overlayPickHtml` / `placeCardHtml` in ui.js, `landingCorners` and `placingId` in
+map.js, `#place-card` in index.html; the mock mirrors the trigger and seeds a turned picture (`SEED_VERSION` 34); the
+`layers` suite covers the flow (25 checks); `dev/test-layers.mjs` and `dev/test-exif.mjs` are new. Migration 0035 is
+applied to the real database and all 21 rule tests pass there (`corners.sql` 10 of 10); full run 749 of 749 with
+main's v62 merged in.
 
 ## Done before this list
 

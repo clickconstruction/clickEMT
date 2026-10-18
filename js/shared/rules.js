@@ -361,6 +361,22 @@ export function onSceneText(p, now = Date.now()) {
   if (m < 60) return m + ' min';
   return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
 }
+// ---- on scene too long (v47): the period's threshold of hours on scene (ic_periods.scene_hours; 12 unless Safety sets
+// it, 0 for off, carried into the next period like the rotation). A person on scene past it reads orange on the People
+// board and the unit panel, and the briefing, the sitrep and the 208 name them. The minutes count from the person's
+// check-in, as onSceneText does; a person whose unit has checked out is off scene whatever their own row says.
+export const SCENE_HOURS_DEFAULT = 12;
+export function sceneMinutes(p, now = Date.now()) { return Math.max(0, Math.round((now - new Date(p.checked_in_at).getTime()) / 60000)); }
+export function sceneOver(p, hours, now = Date.now()) { const h = Math.max(0, Number(hours) || 0); return h > 0 && personOn(p) && sceneMinutes(p, now) >= h * 60; }
+export function sceneText(hours) { const h = Math.max(0, Number(hours) || 0); return h > 0 ? 'Safety is told past ' + h + ' hours on scene' : 'no hours-on-scene threshold set'; }
+// everyone past the threshold, longest first: people on scene whose unit is still on the incident
+export function peopleOverScene(people, members, hours, now = Date.now()) {
+  const unitOf = new Map((members || []).map((m) => [m.user_id, m]));
+  return (people || []).filter((p) => { const m = unitOf.get(p.user_id); return sceneOver(p, hours, now) && !!m && m.status !== 'checked_out' && !m.removed_at; })
+    .map((p) => ({ person: p, unit: unitOf.get(p.user_id), min: sceneMinutes(p, now) })).sort((a, b) => b.min - a.min);
+}
+// "Okafor (Unit 1): 13 h 12 min on scene, past 12 h"
+export function sceneLine(x, hours) { return `${x.person.name} (${unitLabel(x.unit)}): ${durationText(x.min)} on scene, past ${Math.max(0, Number(hours) || 0)} h`; }
 // The names on a unit: its people checked in (the database keeps crew in step), else the crew as typed.
 export function crewNames(unit, people) {
   const on = (people || []).filter((p) => p.user_id === unit.user_id && personOn(p));

@@ -473,6 +473,9 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .hc-unknown { color: var(--hazard-ink); font-weight: 600; }
 .pp-row.missing { background: var(--tint-red); }
 .pp-row.missing .pp-state { color: var(--danger); font-weight: 600; }
+/* on scene too long (v47): a person past the period's hours on scene, on the board and the unit panel */
+.pp-row.over { background: var(--tint-orange); }
+.pp-row.over .pp-state, .pp-over { color: var(--hazard-ink); font-weight: 600; }
 
 /* ---- the front door: the base's signed-out screen (index.html #auth). The join code first, then what the app
    is, Try it as a role, and the sign-in for Operations. .auth is shared with the phone, so only .landing is styled here. */

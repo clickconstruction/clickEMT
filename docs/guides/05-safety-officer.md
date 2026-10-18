@@ -24,6 +24,7 @@
 ### 4. Who has been on scene too long
 
 - **Base** · **People** shows each person with "On scene 3 h 17 min, since 03:53"; **Hours** totals them by person and unit.
+- **Base** · Press **Period** and set **Hours on scene before Safety is told** beside the rotation (12 unless you change it, 0 turns it off; it carries into the next period). Past it a person's row reads "On scene 13 h 12 min, since 03:53 · past 12 h" in orange on the People board and on the unit's panel, the board's count line says "2 past 12 h on scene", and the shift-change briefing's Needs attention, the situation report's **On scene too long** and the 208 name them, longest first.
 - **Base** · A boat crew's time in the water is on its row and panel, orange past the rotation and "probably left running" past three rotations. The briefing, the sitrep and the 208 list who is in the water.
 
 ### 5. Write the period's safety message and set the rotation
@@ -33,4 +34,4 @@
 ## Rough edges
 
 - There is no list of open hazards of its own; the log, the map and the division panels are where they are.
-- Nothing warns at a threshold of hours on scene; the times are there to read.
+- The hours-on-scene warning does not push to the phone; the crew sees it only when they open Your briefing from the menu (the Shift card says "Your crew has been on scene 13 h, past the period's 12 hours"), so Safety or Operations still tells them.

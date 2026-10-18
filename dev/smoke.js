@@ -218,11 +218,11 @@ async function fieldReports(check) {
   await until(() => !base.hazards().some((h) => h.id === hid2));
   // v46: a revisit time on a house record
   const rid = uuid(), rat = new Date(Date.now() + 2 * 3600000), rhh = String(rat.getHours()).padStart(2, '0') + ':' + String(rat.getMinutes()).padStart(2, '0');
-  await field.addStructure(rid, { zone_id: b2, label: '113 Bee Creek Rd', status: 'not_searched', notes: 'on oxygen', revisit_at: rat.toISOString() });
+  await field.addStructure(rid, { zone_id: b2, label: '113 Bee Creek Rd', status: 'not_searched', notes: 'on oxygen', revisit_at: rat.toISOString(), revisit_hhmm: rhh });   // the clock time as the phone types it (v47)
   await until(() => base.structure(rid));
   $(`#zones .zr[data-id="${b2}"]`).click();
   await until(() => has('#panel .title', 'b-2'));
-  check('a revisit time shows on the division\'s structure list and is logged', await until(() => has('#panel', '113 bee creek rd · not searched', 'revisit ' + rhh)) && !!eventText(base, 'B-2: 113 Bee Creek Rd · revisit requested (on oxygen)'), text('#panel').slice(0, 600));
+  check('a revisit time shows on the division\'s structure list and is logged', await until(() => has('#panel', '113 bee creek rd · not searched', 'revisit ' + rhh)) && !!eventText(base, 'B-2: 113 Bee Creek Rd · revisit at ' + rhh + ' (on oxygen)'), text('#panel').slice(0, 600));
   $$('#panel button').find((x) => /print the 204/i.test(x.innerText)).click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', '204'));
   check('the 204 carries a Revisits section for the next crew', has('#briefing-page', 'revisits', '113 bee creek rd at ' + rhh + ' · on oxygen'), text('#briefing-page').slice(0, 1200));
@@ -574,6 +574,7 @@ async function periods(check) {
   $('#transfer-dialog [data-action="transfer-go"]').click();
   await until(() => base.currentPeriod() && base.currentPeriod().number === 2);
   const p2 = base.currentPeriod();
+  check('period 2 carries the hours on scene from period 1 (v47)', p2.scene_hours === 12 && base.period(per).scene_hours === 12, p2.scene_hours);
   check('period 2 starts with the new IC, period 1 is closed, and the log says what came over', p2.ic_name === 'Jordan Pike' && p2.notes.startsWith('Night') && !!base.period(per).closed_at && !!eventText(base, 'Operational period 2 started, Incident Commander Jordan Pike, 2 objectives carried over'), logTexts()[0]);
   const carried = base.objectives(p2.id);
   check('the two open objectives came over, renumbered 1 and 2, the done ones stayed behind', carried.length === 2 && carried[0].number === 1 && carried[0].text.startsWith('Primary search') && carried[1].number === 2 && carried[1].text.startsWith('Secondary search') && base.objectives(per).length === 4, carried.map((o) => o.number + ' ' + o.text).join(' | '));
@@ -1223,6 +1224,39 @@ async function sections(check) {
   pf.requestSubmit();
   await until(() => base.currentPeriod().finance_chief === 'Rae Lindqvist');
   check('saving a seat logs it', !!eventText(base, 'Operational period 1 updated, Finance Rae Lindqvist'), logTexts()[0]);
+  // v47: the hours on scene beside the rotation; past it the board, the unit panel, the briefing and the sitrep say who
+  const pf2 = $('#panel form[data-form="period-edit"]');
+  check('the period form has the hours on scene beside the rotation, 12 by default (v47)', !!pf2.scene && pf2.scene.value === '12' && pf2.rotation.value === '45', pf2.scene && pf2.scene.value);
+  pf2.scene.value = '2';
+  pf2.requestSubmit();
+  await until(() => base.currentPeriod().scene_hours === 2);
+  check('saving 2 hours is one line of its own', !!eventText(base, 'Operational period 1: on scene too long past 2 hours'), logTexts()[0]);
+  $('[data-action="people"]').click();
+  await until(() => !$('#people').hidden);
+  check('the People board turns everyone past 2 h orange, says so on each row and counts them', await until(() => $$('#people-page .pp-row.over').length === 6) && has('#people-page', '6 past 2 h on scene') && /on scene 2 h( \d+ min)?, since \d\d:\d\d · past 2 h/.test(text('#people-page')), text('#people-page').slice(0, 300));
+  $('[data-action="close-people"]').click();
+  await until(() => $('#people').hidden);
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'shift-change'));
+  check('the briefing\'s Needs attention names who is past it, longest first', /needs attention.*ramirez \(unit 1\): 2 h( \d+ min)? on scene, past 2 h.*okafor \(unit 1\)/.test(text('#briefing-page')), text('#briefing-page').slice(0, 200));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="sitrep"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+  check('the situation report has an On scene too long section', has('#briefing-page', 'on scene too long', 'okafor (unit 1): 2 h'), text('#briefing-page').slice(-600));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => has('#panel', 'join code'));
+  $(`#panel [data-action="select-unit"][data-id="${u.unit1}"]`).click();
+  await until(() => has('#panel .title', 'unit 1'));
+  check('the unit panel\'s people are orange too', await until(() => $$('#panel .pp-row.over').length === 2) && has('#panel', 'past 2 h'), text('#panel').slice(0, 300));
+  // the crew's own briefing says under Shift that it is past the period's hours (the phone's one line of it)
+  const { fieldBriefing: fb } = await import('../js/shared/briefings.js');
+  const shift = fb(base, { me: base.member(u.unit1), at: [30.2681, -97.7318] }).find((x) => x.key === 'shift');
+  check('the crew\'s own briefing says under Shift that it is past the period\'s hours', !!shift && shift.warn === true && /Your crew has been on scene 2 h( \d+ min)?, past the period's 2 hours: Safety sees it; say when you need relief\./.test(shift.text), shift && shift.text);
+  $('[data-action="period"]').click();
+  await until(() => $('#panel form[data-form="period-edit"]'));
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
   check('the 203 lists all five seats and Safety', has('#briefing-page', 'planning section chief: theresa okafor', 'logistics section chief: sam whitaker', 'finance / administration section chief: rae lindqvist', 'safety officer: priya natarajan'), text('#briefing-page').slice(0, 600));

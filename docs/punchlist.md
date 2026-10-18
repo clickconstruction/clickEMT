@@ -21,7 +21,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division (shipped 17 October) | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
 | 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card (shipped 17 October) | small | v42 | the IC, the clerk, Reyes, the administrator |
 | 7 | v44 Small words and buttons (shipped 18 October) | small | any time | one or two personas each |
-| 8 | Later: since you last looked (shipped 18 October, v45); on scene too long | medium | v44 | the IC, Marcus's relief, Priya |
+| 8 | Later: since you last looked (shipped 18 October, v45); on scene too long (shipped 18 October, v47) | medium | v44 | the IC, Marcus's relief, Priya |
 | 9 | Decisions only Grace can make (answered 18 October; built as v46 The decisions) | small to medium | v45 | Ana, Reyes, Priya, the clerk, the resident |
 
 ---
@@ -288,6 +288,12 @@ by the suites they touch.
   Seen; the mark kept per device in the log's prefs; the `log` smoke suite covers it.*
 - **On scene too long** (Priya): `ic_periods.hours_limit` beside the rotation on the Period sheet; past it a person's
   row is orange on the People board and the unit panel, and the briefing's Needs attention names them. Small.
+  *Shipped 18 October 2026 as `On scene too long (v47)`, migration `0029_scene_hours.sql` (the column is `scene_hours`,
+  default 12, 0 off, carried by `ic_start_period`), rule test `supabase/tests/scene.sql`; the board and the unit panel
+  rows, the briefing's Needs attention, the sitrep's own section and the 208 name who is past it; the `sections`,
+  `periods` and `fieldReports` suites cover it; the phone's Your briefing says so under Shift, and a person
+  checked out and back in starts a new stretch (`ic_person_rejoin`). It also carries v46's revisit clock time into the 214 line
+  (`revisit_hhmm`, typed by the phone, as Grace asked after the v46 report). Nothing is left on this list.*
 
 ## 9. Decisions only Grace can make
 

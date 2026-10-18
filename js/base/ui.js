@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
+import { sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -434,14 +434,15 @@ export function personRowHtml(data, p, { compact, now } = {}) {
   const unitOut = unit && unit.status === 'checked_out';
   const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
   const miss = data.missingPerson(p.id), pos = miss && unit ? data.position(unit.user_id) : null;
+  const over = !miss && !p.archived_at && !p.checked_out_at && !unitOut && sceneOver(p, data.sceneHours(), now);   // past the period's hours on scene (v47)
   const state = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at) + (pos ? ' · ' + unitLabel(unit) + ' last at ' + latLngText(pos.lat, pos.lng) + ', ' + ago(pos.at, now) : ' · no position from ' + unitLabel(unit))
     : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
-    : (unitOut ? 'Unit checked out · ' : 'On scene ') + onSceneText(p, now) + ', since ' + hhmm(p.checked_in_at);
+    : (unitOut ? 'Unit checked out · ' : 'On scene ') + onSceneText(p, now) + ', since ' + hhmm(p.checked_in_at) + (over ? ' · past ' + data.sceneHours() + ' h' : '');
   const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
   const units = compact ? [] : data.members().filter((m) => m.status !== 'checked_out' || m.user_id === p.user_id).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   return `
-    <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}${miss ? ' missing' : ''}" data-person="${p.id}">
+    <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}${miss ? ' missing' : ''}${over ? ' over' : ''}" data-person="${p.id}">
       <span class="pp-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? `<span class="muted"> ${esc(p.role)}</span>` : ''}${p.agency && (!unit || p.agency !== unit.agency) ? `<span class="pp-agency muted">${esc(p.agency)}</span>` : ''}${p.notes ? `<span class="pp-agency muted">${esc(p.notes)}</span>` : ''}</span>
       ${qualBadges(p)}
       <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}</span>
@@ -522,9 +523,10 @@ export function peopleBoardHtml(data, state) {
   const shown = peopleMatch(all, { q: ps.q, quals: ps.quals, unitLabelOf: unitOf });
   const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   const want = [...(ps.quals || [])];
+  const overScene = peopleOverScene(on, data.members(), data.sceneHours());   // v47
   const narrowed = want.length || (ps.q || '').trim();
   const count = narrowed ? `${shown.length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
-    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}`;
+    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}${overScene.length ? ' · <span class="pp-over">' + overScene.length + ' past ' + data.sceneHours() + ' h on scene</span>' : ''}`;
   const now = Date.now();
   const editing = ops && ps.edit ? data.person(ps.edit) : null;   // Edit on a row opens the same form, filled in (v29)
   const addForm = ops && (ps.add || editing) ? `
@@ -979,6 +981,7 @@ function periodFormHtml(data, p, next, state) {
   d.planning = p ? p.planning_chief || '' : ''; d.logistics = p ? p.logistics_chief || '' : ''; d.finance = p ? p.finance_chief || '' : '';
   d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : ''; d.deputy = p ? p.deputy || '' : ''; d.bring = p ? p.bring || '' : '';
   d.rotation = p && p.rotation_minutes != null ? p.rotation_minutes : data.rotationMinutes();
+  d.scene = p && p.scene_hours != null ? p.scene_hours : data.sceneHours();   // v47
   const reps = next ? [] : agencyReps(data, p);
   return `
     <form class="inline-form" data-form="${next ? 'period-start' : 'period-edit'}"${p && !next ? ` data-id="${p.id}"` : ''}>
@@ -1004,8 +1007,9 @@ function periodFormHtml(data, p, next, state) {
       </div>
       <div class="row-2">
         <label>Rotation in the water, minutes (0 = off) <input name="rotation" type="number" min="0" max="600" step="5" value="${esc(String(d.rotation))}"></label>
-        <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">Safety's line: past it a crew's phone nudges them out; the base shows the time in orange. Printed on the 204 and the 208.</span>
+        <label>Hours on scene before Safety is told (0 = off) <input name="scene" type="number" min="0" max="72" step="1" value="${esc(String(d.scene))}"></label>
       </div>
+      <div class="muted" style="font-size:12px;margin-top:-6px">Safety's two lines. Past the rotation a crew's phone nudges them out and the base shows the time in orange. Past the hours a person's time on scene is orange on the People board and the unit panel, and the briefing and the situation report name them. Both carry into the next period and print on the 204 and the 208.</div>
       <div class="row-2">
         <label>Public Information Officer <input name="pio" value="${esc(d.pio)}" placeholder="Who the cleared photos go to"></label>
         <label>Liaison Officer <input name="liaison" value="${esc(d.liaison)}" placeholder="The other agencies' contact"></label>
@@ -1149,7 +1153,8 @@ export function briefingSections(data) {
   S.push({ title: 'Communications (ICS 205)', lines: channels.length ? channels.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
     .concat(waiting.map((m) => `${m.kind === 'par' ? 'PAR' : 'Safety message'} from ${hhmm(m.created_at)} still waiting on ${data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ')}`))
-    .concat(orgTree(data).warnings.map((w) => `${w}: past the span of control ICS-100 recommends (one to ${SPAN_MAX} at most). See the organization chart.`));
+    .concat(orgTree(data).warnings.map((w) => `${w}: past the span of control ICS-100 recommends (one to ${SPAN_MAX} at most). See the organization chart.`))
+    .concat(sceneLines(data));   // who is on scene too long (v47)
   S.push({ title: 'Needs attention', lines: attention.length ? attention : ['Nothing outstanding'] });
   const log = data.eventsIn(p).slice(0, 40);
   S.push({ title: p ? 'Log of this period, newest first' : 'Log, newest first', lines: log.length ? log.map((e) => `${hhmm(e.at)}  ${e.text}`) : ['Nothing yet'] });
@@ -1173,7 +1178,7 @@ export function form204Sections(data, z) {
   ], figure: divisionMapHtml(data, z) });
   S.push({ title: 'Resources assigned', lines: unit ? [`${unitWithKind(unit)}${unit.crew ? ' (' + unit.crew + ')' : ''}${unit.crew_count != null ? ' · ' + unit.crew_count + ' people' : ''}${unit.agency ? ' · ' + unit.agency : ''} · ${STATUS_LABEL[unit.status] || unit.status}`].concat(personLines(data, unit)) : ['None yet'] });
   S.push({ title: 'Work assignment', lines: [z.work_assignment || 'Not written yet'] });
-  S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []).concat(p && p.rotation_minutes > 0 ? ['Time in the water: ' + rotationText(p.rotation_minutes)] : []) });
+  S.push({ title: 'Special instructions', lines: [z.instructions || 'None'].concat(p && p.notes ? ['Period safety message: ' + p.notes] : []).concat(p && p.rotation_minutes > 0 ? ['Time in the water: ' + rotationText(p.rotation_minutes)] : []).concat(p && p.scene_hours > 0 ? ['Hours on scene: ' + sceneText(p.scene_hours)] : []) });
   S.push({ title: 'Known hazards', lines: hazards.length ? hazards.map((h) => `${h.kind}${h.note ? ' (' + h.note + ')' : ''} · reported ${hhmm(h.created_at)} by ${unitLabel(data.member(h.user_id))}`) : ['None reported'] });
   const plan = data.channels();
   S.push({ title: 'Communications', lines: ['Division channel: ' + (z.channel || 'not set')].concat(plan.length ? plan.map((c) => `${c.use}: ${c.channel}`) : ['No incident plan set']) });
@@ -1187,6 +1192,11 @@ export function form204Sections(data, z) {
   return S;
 }
 
+// Who is on scene past the period's hours (v47), as warning lines, longest first
+export function sceneLines(data) {
+  const h = data.sceneHours();
+  return peopleOverScene(data.people(), data.members(), h).map((x) => '! ' + sceneLine(x, h));
+}
 // Who is in the water now, as report lines (v28): the unit, how long, orange words past the rotation
 export function waterLines(data) {
   const rot = data.rotationMinutes();
@@ -1229,6 +1239,7 @@ export function sitrepSections(data) {
   const pub = data.publicPhotos().length, checked = data.publicSet().length;
   S.push({ title: 'Public information', lines: [(pub ? `${pub} photo${pub === 1 ? '' : 's'} cleared for public release, ${checked} checked (no face, no plate, no house number)` : 'No photos cleared for public release') + (p && p.pio ? `, to ${p.pio} (PIO)` : ' · no Public Information Officer seated') + '. Nothing is public by default; only checked photos leave in the public set.'] });
   if (waterLines(data).length) S.push({ title: 'In the water', lines: waterLines(data) });
+  if (sceneLines(data).length) S.push({ title: 'On scene too long', lines: sceneLines(data) });   // v47
   return S;
 }
 // "Command transferred at 14:20 from Dana Ruiz to Marcus Bell", when it happened in this period
@@ -1292,7 +1303,7 @@ export function iapSections(data) {
   S.push({ title: 'Communications, ICS 205', lines: ch.length ? ch.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const med = data.facilities().filter((f) => f.kind === 'hospital');
   S.push({ title: 'Medical, ICS 206', lines: (med.length ? med.map((f) => `${f.name || 'Hospital'}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`) : ['No hospital set']).concat(['Emergency traffic: ' + ((ch.find((c) => /emergency/i.test(c.use)) || {}).channel || 'not set') + '. A unit in trouble presses Need help now; Operations acknowledges.']) });
-  S.push({ title: 'Safety message, ICS 208', lines: [(p && p.notes) || 'Not written yet'].concat(p && p.rotation_minutes > 0 ? ['Time in the water: ' + rotationText(p.rotation_minutes)] : []).concat(waterLines(data)) });
+  S.push({ title: 'Safety message, ICS 208', lines: [(p && p.notes) || 'Not written yet'].concat(p && p.rotation_minutes > 0 ? ['Time in the water: ' + rotationText(p.rotation_minutes)] : []).concat(waterLines(data)).concat(p && p.scene_hours > 0 ? ['Hours on scene: ' + sceneText(p.scene_hours)] : []).concat(sceneLines(data)) });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['None set'] });
   return S;
 }

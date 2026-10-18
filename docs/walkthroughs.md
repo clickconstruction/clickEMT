@@ -641,7 +641,7 @@ Base to send and watch, the phone to read.
 | A safety message | Message the field: everyone, the "Safety" tick, the words, Send → "SAFETY · Walk test: … · waiting on 3 units · sent 22:02 by Operations" on the bar; every phone's takeover headed "Safety message and head count". | Clear | As it is. |
 | Who has not acknowledged | The bar "waiting on Unit 3", the Messages list "Waiting on Unit 2, Unit 3 · Unit 1: Acknowledged". | Clear | As it is. |
 | Hazards as they come in | Log lines ("Hazard in A-2: other (Car in the water at the low crossing, one person inside), reported by SO 14"), a triangle, the division's "hazard" word, the zone card's list, the briefing's "HAZARDS STILL OPEN". No list of its own on the base, no urgency on any of them. | SLOWED | A "Hazards open" section on the home panel (kind, division, when, who, Resolved) and the urgent ones on the bar. |
-| On scene too long | People board "On scene 3 h 8 min, since 19:09"; the water clock orange past the rotation; Hours totals; nothing warns at a threshold. | PUZZLED | A threshold on the Period sheet beside the rotation ("flag people past 12 h on scene"), orange on the board and a line in the briefing. |
+| On scene too long | People board "On scene 3 h 8 min, since 19:09"; the water clock orange past the rotation; Hours totals; nothing warns at a threshold. | PUZZLED | A threshold on the Period sheet beside the rotation ("flag people past 12 h on scene"), orange on the board and a line in the briefing. *Built in v47 (see Re-walk after v47).* |
 | The period's safety message and rotation | On the Period sheet; printed on every 204 and the 208; read in every briefing. | Clear | As it is. |
 
 ### 6. The Documentation Unit
@@ -703,7 +703,7 @@ Ranked by how many personas it serves and how badly it bites, each with the smal
 10. **Paper that leaves the base.** The IC and the clerk: "Prepared by (Planning Section Chief) · Approved by (Incident Commander) · date and time" lines on the IAP, "Prepared by" on each report; Send the sitrep by email (the mail app with the text in the body); Reyes and the administrator: the join card's "Safety:" and "Bring:" told apart, "Getting there:" with the address.
 11. **Small words and buttons**, one release: the Hours table's underscores; the licence scan's "Type the code instead"; "Nobody hurt, no equipment damaged" ticked by default; Reopen on the picker's closed row; a sheet instead of prompt() for Make a unit; the unit panel's order (where it is first); the phone naming the deputy; Nearby saying "no boat ramp on the map yet"; Find a person's street ask; the desk's quick chips; the 207 warning's "add a deputy" as a link to the Period sheet; the water row folded on a dry assignment; a Volunteer unit kind.
 12. **What changed while I was away** (the IC, Marcus's relief): a "since you last looked" line at the top of the log with the counts by kind and Show them. Medium; after the above.
-13. **On scene too long** (Priya): a threshold of hours beside the rotation on the Period sheet; orange on the board and a line in the briefing. Small; with 11 or after.
+13. **On scene too long** (Priya): a threshold of hours beside the rotation on the Period sheet; orange on the board and a line in the briefing. Small; with 11 or after. *Built, v47.*
 
 **For Grace:** whether a unit may close a division it has not finished (Ana's Zone clear: the sheet can say what it sends either way); whether a hazard's urgency should also page the base like an emergency does, or only sit on the bar; whether the sitrep's email address is kept on the incident; a "revisit at" time on the house record (the resident).
 
@@ -897,3 +897,28 @@ Section 9 of the punchlist (Grace's decisions) is built in full. On scene too lo
 - **The chime is silent until the first click**: a base opened and left untouched rings nothing for the first emergency; the bars still turn red or yellow at once.
 - **A revisit is a clock time, not a date**: the phone takes the next such moment, so a time already past today means tomorrow; the 204 says "at 02:51" and the next crew reads it against the day it is on.
 - **My part is done is a message, not a mark**: the division does not say which part is done; the message's words ("1 of 18 marked") and the structure list are what Operations has.
+
+---
+
+## Re-walk after v47
+
+On scene too long: Priya's job 4, walked on 2026-10-18 after migration 0029 in the same mock, the base at 1280 × 900 as Operations and the phone at 375 × 780 in a frame beside it as Unit 3 (the pane was visible this time; the words were read from the screen and one screenshot of the board taken). The seeded people had been on scene a little under three hours, so the threshold was set to 2 to see it bite.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The Period sheet | Priya | Beside "Rotation in the water, minutes (0 = off) · 45" a new box, "Hours on scene before Safety is told (0 = off) · 12", and under both: "Safety's two lines. Past the rotation a crew's phone nudges them out and the base shows the time in orange. Past the hours a person's time on scene is orange on the People board and the unit panel, and the briefing and the situation report name them. Both carry into the next period and print on the 204 and the 208." Set to 2 and saved: the log "Operational period 1: on scene too long past 2 hours". | Clear |
+| The People board | Priya | The count line "6 on scene on 3 units · 6 past 2 h on scene"; every row's state in orange on an orange tint: "On scene 2 h 53 min, since 22:23 · past 2 h". | Clear |
+| The unit panel | Priya, Marcus | Unit 1's people: "Ramirez Lt. · On scene 2 h 53 min, since 22:23 · past 2 h · with Okafor", orange, the same words as the board. | Clear |
+| The briefing | Marcus's relief | "NEEDS ATTENTION Ramirez (Unit 1): 2 h 56 min on scene, past 2 h · Okafor (Unit 1): 2 h 55 min on scene, past 2 h · Nguyen (Unit 2) …", six orange lines, longest first. | Clear |
+| The situation report, the 208, the 204 | The clerk, Priya | The sitrep's own section "ON SCENE TOO LONG" with the same six lines; the IAP's 208 "Time in the water: crews out of the water every 45 minutes · Hours on scene: Safety is told past 2 hours on scene" and the six lines; A-1's 204 under Special instructions "Hours on scene: Safety is told past 2 hours on scene". | Clear |
+| The next period | Priya | Start period 2: the form carried "2", period 2 holds 2. | Clear |
+| The crew's phone | Unit 3 | Nothing pages the crew. Its briefing's Shift card: "This period ends 13:15; the next crew is briefed at staging. Your crew has been on scene 2 h 51 min, past the period's 2 hours: Safety sees it; say when you need relief. Check out from the menu when you leave …", drawn as a warning; under the threshold it says only "Safety is told past 12 hours on scene." | Clear |
+| The revisit's clock time (v46 follow-up) | The resident's next crew | Address clear in A-2 as Unit 3: "118 Pecan Ln", refused to leave, notes "on oxygen", Revisit at 03:20, Searched, save. The toast "118 Pecan Ln searched · 1 of 18"; the base's log "A-2: 118 Pecan Ln · revisit at 03:20 (on oxygen)" (the time as the phone typed it, since the server has no time zone) and the division's list "118 Pecan Ln · Searched · refused to leave · 01:20 · revisit 03:20". | Clear |
+
+Item 8 (Later) is built in full, so nothing on the punchlist is left; the Safety Officer's guide marks job 4 built. The next work comes from a new walk.
+
+**Still bites, small:**
+
+- **A person checked out and back in counts from their first check-in**, on the board and in the briefing as in the Hours: a crew back for a second day reads as on scene since the first until Operations removes and re-adds them. Resetting the check-in time on "Back in" was tried and left out, because the Hours and the 211 would lose the earlier stretch; a second stamp for the current stretch is the honest fix, for a later release.
+- **The phone says it once, in the briefing**: no nudge like the water clock's, by design (Safety's threshold is Safety's to act on), so a crew that never reopens its briefing learns of it from Safety or Operations.
+- **A low threshold turns the whole board orange at once**, and the 208 lists everyone past it; with 12 hours that is the end of a long shift and a short list.

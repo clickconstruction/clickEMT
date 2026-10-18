@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
 const BUCKET = 'ic-photos';
@@ -460,8 +460,8 @@ export class Data {
     const from = period.starts_at, to = period.closed_at || null;
     return this.events().filter((e) => e.at >= from && (!to || e.at <= to));
   }
-  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison, rotation, deputy, bring }) {
-    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '', p_rotation: rotation == null || rotation === '' ? null : Number(rotation), p_deputy: deputy || '', p_bring: bring || '' });
+  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison, rotation, deputy, bring, scene }) {
+    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '', p_rotation: rotation == null || rotation === '' ? null : Number(rotation), p_deputy: deputy || '', p_bring: bring || '', p_scene: scene == null || scene === '' ? null : Number(scene) });
     if (error) throw error;
     this.local('ic_periods', data);
     return data;
@@ -730,6 +730,8 @@ export class Data {
   // the incident's settings (v28): the Google Maps key, the retention days, the default rotation; Operations writes
   settings() { const inc = this.store.incident; return (inc && inc.settings && typeof inc.settings === 'object') ? inc.settings : {}; }
   async saveSettings(patch) { return this.updateIncident({ settings: Object.assign({}, this.settings(), patch) }); }
+  // the hours on scene past which Safety is told (v47): the current period's, 12 when it has none
+  sceneHours() { const p = this.currentPeriod(); return p && p.scene_hours != null ? Number(p.scene_hours) : SCENE_HOURS_DEFAULT; }
   rotationMinutes() { const p = this.currentPeriod(); if (p && p.rotation_minutes != null) return Number(p.rotation_minutes); const s = this.settings(); return s.rotation_minutes != null && s.rotation_minutes !== '' ? Number(s.rotation_minutes) : 45; }
   // the PAR: a message of kind 'par'; each unit answers with a head count, or that someone is missing
   async startPar(target, text) {

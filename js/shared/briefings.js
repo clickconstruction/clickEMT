@@ -4,7 +4,7 @@
 // representatives the Liaison Officer keeps. No DOM and no network: every function takes the data
 // module's read API (or anything with the same read methods, as the Node test does) and returns
 // plain lines, so the base, the phone and the tests all say the same things.
-import { whenText, dateText, periodState, durationText, hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText, WATER_KINDS, rotationText } from './rules.js';
+import { whenText, dateText, periodState, durationText, hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText, WATER_KINDS, rotationText, sceneMinutes, SCENE_HOURS_DEFAULT } from './rules.js';
 
 // ICS-100: one supervisor to three to seven people, five being best. Past seven the count turns orange.
 export const SPAN_MAX = 7;
@@ -212,7 +212,12 @@ export function fieldBriefing(data, { me, at, now = Date.now() } = {}) {
   ].filter(Boolean).join(' ') });
   const pod = data.facilities().find((f) => f.kind === 'pod');
   S.push({ key: 'supplies', title: 'Supplies, fuel, more hands', text: `Ask from the inbox: Ask for something. Logistics works it and you see each step.${pod ? ' ' + (pod.name || 'Point of distribution') + (pod.notes ? ': ' + sentence(pod.notes) : '.') : ''}`, action: 'ask' });
-  S.push({ key: 'shift', title: 'Shift', text: `${p && p.ends_at ? (periodState(p, now).state === 'overdue' ? 'This period was to end ' + hhmm(p.ends_at) + ', ' + durationText(periodState(p, now).overMin) + ' ago; stay on until Operations starts the next period' + (staging ? ', when the next crew is briefed at staging' : '') + '.' : 'This period ends ' + hhmm(p.ends_at) + (staging ? '; the next crew is briefed at staging' : '') + '.') : 'No end of period set yet.'} Check out from the menu when you leave: the list asks what you leave behind.` });
+  // the period's hours on scene (v47): the crew's longest stretch, from the people on record, against the threshold
+  const sceneH = p && p.scene_hours != null ? Number(p.scene_hours) : SCENE_HOURS_DEFAULT;
+  const onCrew = me && data.unitPeople ? data.unitPeople(me.user_id).filter(personOn) : [];
+  const longest = onCrew.length ? Math.max(...onCrew.map((x) => sceneMinutes(x, now))) : null;
+  const sceneOverNow = sceneH > 0 && longest != null && longest >= sceneH * 60;
+  S.push({ key: 'shift', title: 'Shift', warn: sceneOverNow, text: `${p && p.ends_at ? (periodState(p, now).state === 'overdue' ? 'This period was to end ' + hhmm(p.ends_at) + ', ' + durationText(periodState(p, now).overMin) + ' ago; stay on until Operations starts the next period' + (staging ? ', when the next crew is briefed at staging' : '') + '.' : 'This period ends ' + hhmm(p.ends_at) + (staging ? '; the next crew is briefed at staging' : '') + '.') : 'No end of period set yet.'}${sceneH > 0 ? (sceneOverNow ? ` Your crew has been on scene ${durationText(longest)}, past the period's ${sceneH} hours: Safety sees it; say when you need relief.` : ` Safety is told past ${sceneH} hours on scene.`) : ''} Check out from the menu when you leave: the list asks what you leave behind.` });
   S.push({ key: 'safety', title: 'Safety and PPE', warn: true, lead: p && p.notes ? sentence(p.notes) : 'No safety message written for this period.', text: (hazards.length ? `Hazard${hazards.length === 1 ? '' : 's'} open: ` + hazards.slice(0, 3).map((h) => h.kind.toLowerCase() + (h.note ? ', ' + h.note : '')).join('; ') + '. ' : '') + (p && p.rotation_minutes > 0 ? 'Time in the water: ' + rotationText(p.rotation_minutes) + '; the phone nudges you past it. ' : '') + 'If someone is hurt: see the next card.', action: 'hurt' });
   return S;
 }

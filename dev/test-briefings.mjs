@@ -140,6 +140,18 @@ t('an ambulance on scene is named with its distance', () => {
   assert.ok(/Medic 7 \(ambulance\) at staging, 0\.8 mi\.$/.test(L[2].text), L[2].text);
 });
 
+t('the shift card carries the period\'s hours on scene, and warns the crew past it (v47)', () => {
+  const d = stub();
+  const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] }).find((s) => s.key === 'shift');
+  assert.ok(/ Safety is told past 12 hours on scene\. Check out from the menu/.test(S.text), S.text);
+  assert.equal(S.warn, false);
+  const over = fieldBriefing(stub({ period: { scene_hours: 2 } }), { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] }).find((s) => s.key === 'shift');
+  assert.ok(/Your crew has been on scene 2 h 45 min, past the period's 2 hours: Safety sees it; say when you need relief\./.test(over.text), over.text);
+  assert.equal(over.warn, true);
+  const off = fieldBriefing(stub({ period: { scene_hours: 0 } }), { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] }).find((s) => s.key === 'shift');
+  assert.ok(!/Safety/.test(off.text), off.text);
+});
+
 t('your briefing has the eight ICS-100 items, every line from the data', () => {
   const d = stub();
   const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] });

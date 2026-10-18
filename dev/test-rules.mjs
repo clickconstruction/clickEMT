@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
+import { SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -223,4 +223,27 @@ t('times and dates read in one form, and the period knows when its planned end h
   assert.equal(periodLabel(p, new Date(2026, 9, 17, 22, 0).getTime()), 'OP 1 · 18:47 to 19:00 · overdue 3 h');
   assert.equal(periodLine(p, new Date(2026, 9, 17, 22, 5).getTime()), 'Operational period 1, 18:47 to 19:00 · the planned end passed 3 h 5 min ago; the next period has not been started');
   assert.equal(periodLine(null), 'No operational period set');
+});
+
+t('on scene too long (v47): the threshold, who is past it, and the words', () => {
+  const now = new Date(2026, 9, 17, 22, 0).getTime();
+  const at = (h) => new Date(now - h * 3600000).toISOString();
+  const members = [{ user_id: 'u1', unit_name: 'Unit 1', status: 'assigned' }, { user_id: 'u2', unit_name: 'Unit 2', status: 'checked_out' }];
+  const people = [
+    { id: 'a', user_id: 'u1', name: 'Okafor', checked_in_at: at(13.2), checked_out_at: null, archived_at: null },
+    { id: 'b', user_id: 'u1', name: 'Ramirez', checked_in_at: at(3), checked_out_at: null, archived_at: null },
+    { id: 'c', user_id: 'u1', name: 'Gone', checked_in_at: at(20), checked_out_at: at(1), archived_at: null },
+    { id: 'd', user_id: 'u2', name: 'Patel', checked_in_at: at(15), checked_out_at: null, archived_at: null }
+  ];
+  assert.equal(SCENE_HOURS_DEFAULT, 12);
+  assert.equal(sceneOver(people[0], 12, now), true);
+  assert.equal(sceneOver(people[1], 12, now), false);
+  assert.equal(sceneOver(people[0], 0, now), false, '0 turns it off');
+  assert.equal(sceneOver(people[2], 12, now), false, 'checked out is not on scene');
+  const over = peopleOverScene(people, members, 12, now);
+  assert.deepEqual(over.map((x) => x.person.name), ['Okafor'], 'a unit that checked out is not counted');
+  assert.equal(sceneLine(over[0], 12), 'Okafor (Unit 1): 13 h 12 min on scene, past 12 h');
+  assert.deepEqual(peopleOverScene(people, members, 2, now).map((x) => x.person.name), ['Okafor', 'Ramirez'], 'longest first');
+  assert.equal(sceneText(12), 'Safety is told past 12 hours on scene');
+  assert.equal(sceneText(0), 'no hours-on-scene threshold set');
 });

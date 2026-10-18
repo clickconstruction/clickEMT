@@ -1363,7 +1363,8 @@ async function saveStructure() {
     occupants: st.occ, people_needing_help: st.help, water_cm: st.water, damage: st.damage, hazards: codes.join(' '),
     marking: markingFor(unitLabel(me).replace(/^Unit /, 'U'), now, codes, st.help), notes: $('#structure-notes').value.trim(),
     searched_by: data.user.id, searched_at: now.toISOString(),
-    revisit_at: revisitIso($('#structure-revisit').value)   // v46: when the next crew should go back
+    revisit_at: revisitIso($('#structure-revisit').value),   // v46: when the next crew should go back
+    revisit_hhmm: revisitIso($('#structure-revisit').value) ? $('#structure-revisit').value.trim().slice(0, 5) : ''   // v47: the clock time as typed, for the 214 line (the server has no time zone)
   };
   const id = st.id || uuid();
   const existing = st.id ? data.structure(st.id) : null;

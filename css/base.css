@@ -100,7 +100,19 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .obj.done .obj-tick { background: var(--tint-green); border-color: var(--cleared); }
 .obj.done .obj-text { color: var(--muted); text-decoration: line-through; }
 .obj-text { flex: 1; min-width: 0; }
-.briefing { position: fixed; inset: 0; background: var(--bg); z-index: 1500; overflow: auto; }
+/* The pages as windows (v64): #people, #public, #transports and #briefing are a dim over the body, under the header and
+   the alarm line (--page-top is the line's bottom, set by placePages() in js/base/main.js), each with its page in a
+   window as wide as the page needs. Expand (html.page-full) folds the header away and fills the rest under the alarm
+   line; under 900 px it is always so. The choice is per device, ic.base.pages. */
+.briefing { position: fixed; left: 0; right: 0; bottom: 0; top: var(--page-top, 0px); background: rgba(0,0,0,.38); z-index: 1500; }
+.briefing-win { position: absolute; top: 20px; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(var(--win-w, 870px), calc(100% - 48px)); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,.4); overflow: auto; }
+.people .briefing-win, .public .briefing-win, .transports .briefing-win { --win-w: 1150px; }
+.briefing-bar > strong { white-space: nowrap; }   /* one row in a window: the title whole, the sub-line cut short */
+.briefing-bar > .muted { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.page-full .app > .top { display: none; }
+html.page-full .briefing { background: none; }
+html.page-full .briefing-win { top: 0; bottom: 0; left: 0; transform: none; width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+html.page-open .menu, html.page-open .pop, html.page-open .find-pop { z-index: 1600; }   /* the header stays live over the dim */
 .briefing-bar { position: sticky; top: 0; display: flex; gap: 10px; align-items: center; padding: 10px 24px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .briefing-page { max-width: 820px; margin: 0 auto; padding: 24px; background: var(--panel); min-height: 100%; }
 .briefing-page section { margin-bottom: 18px; }
@@ -115,6 +127,7 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
   .no-print { display: none !important; }
   body > *:not(#briefing) { display: none !important; }
   #briefing { position: static; background: var(--control-bg); }
+  #briefing .briefing-win { position: static; width: auto; transform: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }   /* v64: the paper alone, as before */
   .briefing-bar { display: none !important; }
   .briefing-page { max-width: none; padding: 0; }
   .briefing-page section.has-map { break-inside: avoid; page-break-inside: avoid; }
@@ -337,6 +350,7 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
   .map { height: 60vh; }
   .side { width: auto; flex: none; }
   .zlist { max-height: none; }
+  .pages-size, #btn-pages { display: none; }   /* v64: a page is full screen on a narrow screen, whatever the setting */
 }
 
 /* The log alone in its own window (#log, the Pop out button): the header stays for the incident,

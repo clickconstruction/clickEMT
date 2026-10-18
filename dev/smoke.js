@@ -55,6 +55,7 @@ async function reload() {
   if (!$('#draw-btns').hidden) $('[data-action="cancel-draw"]').click();
   try { localStorage.setItem('ic.base.around', '1'); } catch (e) { /* storage blocked */ }   // the first open's labels (v58) stay off the suites; the around suite asks for them itself
   if ($('#around .around-all')) $('#around .around-all').click();
+  for (const s of ['#briefing', '#transports', '#public', '#people']) if ($(s) && !$(s).hidden) $(s + ' [data-action^="close-"]').click();   // a page left open would take the next suite's Escape (v64)
   const btn = document.createElement('button');
   btn.dataset.action = 'open-incident'; btn.dataset.id = INC(); btn.hidden = true;
   document.body.appendChild(btn); btn.click(); btn.remove();
@@ -75,7 +76,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -108,7 +109,7 @@ async function seeded(check) {
   $('[data-action="clock"]').click();
   check('and back to local', !/UTC$/.test(clk()) && nowLocal().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'local', clk());
   // ---- v60: the gear in place of four buttons, the head count, the codes' and the connection's cards, the drawing buttons, a division's hover card
-  check('the header row ends with a gear; Light, Settings, Switch incident and Sign out are in its menu, not on the row', !!$('.top-btns [data-action="gear"]') && !$('.top-btns > [data-action="settings"]') && !$('.top-btns > [data-action="sign-out"]') && $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' ') === 'settings theme show-around switch-incident sign-out' && $('#gear-menu').hidden, $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' '));
+  check('the header row ends with a gear; Light, Settings, Pages (v64), Switch incident and Sign out are in its menu, not on the row', !!$('.top-btns [data-action="gear"]') && !$('.top-btns > [data-action="settings"]') && !$('.top-btns > [data-action="sign-out"]') && $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' ') === 'settings theme show-around pages-size switch-incident sign-out' && $('#gear-menu').hidden, $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' '));
   $('[data-action="gear"]').click();
   check('the gear opens its menu; Escape closes it', !$('#gear-menu').hidden && (() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return $('#gear-menu').hidden; })());
   check('a head count sits beside Find a person: six people on three units, and it opens the People board', !$('#head-count').hidden && has('#head-count', '6', 'on 3 units') && /6 people in the field on 3 units/.test($('#head-count').title) && $('#head-count').dataset.action === 'people', text('#head-count'));
@@ -2179,6 +2180,58 @@ async function around(check) {
   await until(() => $('#mayday').hidden);
 }
 
+
+// ---- the pages as windows (v64): a window over the dimmed body under the alarm line, Expand to full screen kept per
+// device, Escape and the dim click close, a half-filled form holds them off, the print rules unchanged.
+async function pages(check) {
+  const root = document.documentElement;
+  const win = (sel) => $(sel + ' .briefing-win');
+  const stored = () => { try { return localStorage.getItem('ic.base.pages'); } catch (e) { return null; } };
+  const vw = document.documentElement.clientWidth;
+  if (stored() === 'full') { $('[data-action="gear"]').click(); await until(() => !$('#gear-menu').hidden); $('#btn-pages').click(); }   // start as windows
+  $('[data-action="briefing"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'briefing'));
+  const b = win('#briefing').getBoundingClientRect(), bars = $('#bars').getBoundingClientRect();
+  check('the Briefing opens as a window under the header and the alarm line, 870 px wide, centred, the base dimmed around it', root.classList.contains('page-open') && !root.classList.contains('page-full') && Math.abs(b.width - 870) < 2 && Math.abs((vw - b.right) - b.left) < 3 && b.top >= bars.bottom + 18 && getComputedStyle($('#app > .top')).display !== 'none' && getComputedStyle($('#briefing')).backgroundColor.startsWith('rgba(0, 0, 0'), `${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.width)}×${Math.round(b.height)} bars ${Math.round(bars.bottom)}`);
+  check('its bar ends with Expand then Close, the title on one line', $$('#briefing .briefing-bar .btn').slice(-2).map((x) => x.textContent.trim()).join('/') === 'Expand/Close' && $('#briefing-title').getBoundingClientRect().height < 30, $$('#briefing .briefing-bar .btn').map((x) => x.textContent.trim()).join('/'));
+  $('#briefing [data-action="pages-size"]').click();
+  const f = win('#briefing').getBoundingClientRect(), bars2 = $('#bars').getBoundingClientRect();
+  check('Expand makes it full screen: the header folds away, the alarm line stays as the top strip, the page fills the rest, and the choice is kept for this device', root.classList.contains('page-full') && getComputedStyle($('#app > .top')).display === 'none' && Math.round(bars2.top) === 0 && Math.abs(f.top - bars2.bottom) < 2 && Math.abs(f.width - vw) < 2 && stored() === 'full' && $('#briefing [data-action="pages-size"]').textContent.trim() === 'Shrink' && has('#btn-pages', 'pages as windows'), `${Math.round(f.left)},${Math.round(f.top)} ${Math.round(f.width)} bars ${Math.round(bars2.top)}-${Math.round(bars2.bottom)} | ${stored()}`);
+  const aid = uuid();
+  await field.raiseAlert(aid, { lat: 30.2673, lng: -97.7386, zoneId: ZONE('A-2') });
+  await until(() => !$('#mayday').hidden);
+  const m = $('#mayday .bar-item').getBoundingClientRect(), hit = document.elementFromPoint(m.left + 20, m.top + m.height / 2);
+  check('an emergency arriving while a page is full screen shows on the alarm line above the page, in front of it', m.height > 30 && m.bottom <= win('#briefing').getBoundingClientRect().top + 1 && !!(hit && hit.closest('#mayday')), `${Math.round(m.top)}-${Math.round(m.bottom)} hit ${hit && hit.className}`);
+  await field.standDown(aid);
+  await until(() => $('#mayday').hidden);
+  $('#briefing [data-action="pages-size"]').click();
+  check('Shrink brings the window back and remembers that', !root.classList.contains('page-full') && getComputedStyle($('#app > .top')).display !== 'none' && stored() === 'window' && has('#btn-pages', 'pages full screen'), stored());
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Escape closes the page', $('#briefing').hidden && !root.classList.contains('page-open'));
+  const pb = document.createElement('button'); pb.dataset.action = 'people'; pb.dataset.tab = 'people'; pb.hidden = true; document.body.appendChild(pb); pb.click(); pb.remove();   // the People tab, whatever tab an earlier suite left
+  const onBoard = await until(() => !$('#people').hidden && $$('#people-page .pp-row').length === 6);
+  const p = win('#people').getBoundingClientRect(), page = $('#people-page').getBoundingClientRect();
+  check('the People board opens on its People tab with the six rows', !!onBoard, $$('#people-page .pp-row').length + ' rows');
+  check('the People board opens as a 1150 px window with the board inside it as wide as before, 1100 px', Math.abs(p.width - 1150) < 2 && Math.abs(page.width - 1100) < 2, `${Math.round(p.width)} / ${Math.round(page.width)}`);
+  $('#people-page [data-action="people-add-toggle"]').click();
+  await until(() => $('#people-page form[data-form="person-add"]'));
+  $('#people-page form[data-form="person-add"] input[name="name"]').value = 'Half typed';
+  $('#people').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('with a name half typed in the add form, a click on the dim leaves the board open and says why', !$('#people').hidden && await until(() => has('#toast', 'save or cancel the form first')), text('#toast'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('and so does Escape', !$('#people').hidden);
+  document.activeElement.blur();   // a press on Cancel takes the focus off the name box; a script's click does not
+  $('#people-page form[data-form="person-add"] [data-action="people-add-toggle"]').click();
+  await until(() => !$('#people-page form[data-form="person-add"]'));
+  $('#people').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  check('the form cancelled, a click on the dim closes the board', $('#people').hidden);
+  const css = [...document.styleSheets].flatMap((s) => { try { return [...s.cssRules]; } catch (e) { return []; } }).filter((r) => r.media && /print/.test(r.media.mediaText)).flatMap((r) => [...r.cssRules]).map((r) => r.cssText).join('\n');
+  check('print CSS prints #briefing alone, static, the window\'s edges and the dim off', /body > \*?:not\(#briefing\)[^{]*\{[^}]*display: none/.test(css) && /#briefing \.briefing-win[^{]*\{[^}]*position: static/.test(css), css.slice(0, 200));
+  $('[data-action="gear"]').click(); await until(() => !$('#gear-menu').hidden);
+  $('#btn-pages').click();
+  check('the gear menu\'s Pages item swaps the setting and closes the menu', stored() === 'full' && $('#gear-menu').hidden && has('#btn-pages', 'pages as windows'), stored());
+  $('[data-action="gear"]').click(); await until(() => !$('#gear-menu').hidden); $('#btn-pages').click();   // back to windows for the suites after this one
+}
 
 // ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.
 async function demo(check) {

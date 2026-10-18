@@ -1380,3 +1380,24 @@ Replay: a time you name, and a speed in words: Marcus looking for the morning, t
 
 - **Past periods are not in the menu**: on day two the clerk picks a time inside yesterday's period instead of choosing "Period 1" (punchlist section 15).
 - **Clicking the time to type a moment** would be one step shorter than the menu's option; the mock-up drew it, it is not built.
+
+## Re-walk after v64
+
+The pages as windows: Marcus opening the Briefing between radio calls, the IC reading the IAP full screen when Unit 2
+presses Need help now, the clerk printing the 214, Priya on the People board with a name half typed, walked on
+2026-10-18 in the mock at 1280 × 800 (the pane hidden, so the places and widths read through the `pages` suite and
+headless renders of the page, light and dark).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Briefing | Marcus | A sheet 870 px wide over the dimmed map, 20 px under the quiet alarm line, the header still live; the map's edges and the divisions list showing around it; Copy as text · Send by email · Print · Expand · Close on one row, the period's line cut short. Escape puts it away. | Clear |
+| IAP, full screen | the IC | Expand: the header folds away, the alarm line stays as the top strip, the IAP fills the rest. Unit 2's Need help now turns that strip red in front of the page, with Acknowledge and Show unit; the base rings. The next page opens full screen too, until Shrink. | Clear |
+| Print 214 | the clerk | From the log, the 214 opens in the same window; Print gives the paper alone as before, no dim, no edges. | Clear |
+| People board | Priya | 1150 px wide with the board's rows as wide as before; a name half typed in Add a person, a click outside says "Save or cancel the form first" and leaves the board; Cancel, then the click closes it. | Clear |
+| The gear menu | Marcus's relief | "Pages full screen" beside Light and Show me around; pressing it is the same as Expand on any page, and the label swaps. | Clear |
+
+**Still bites, small:**
+
+- **Two dims when a paper opens from a board** (Print 211 from the People board): the 211's window sits over the board's, both dimmed, darker behind the paper. Closing the 211 shows the board again, which is right; the double dim is the only tell.
+- **The header folded away hides the clock** while a page is full screen; the papers carry their own times, the boards none. A clock in the page's bar is the fix if it is missed.
+- **A Pop out for the papers** (punchlist section 23): the second screen at the command post still gets only the log.

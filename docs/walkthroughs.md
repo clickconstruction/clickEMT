@@ -1119,3 +1119,20 @@ Ranked by how many personas it serves and how badly it bites, each with the smal
 4. **Small words.** The bar's hazard item repeats the kind when the note restates it ("Person or car in the water, Car in the water …"): the note alone when it starts with the kind's words (Moreno, Priya). The check-in page's row for an incident a unit has checked out of says "you were Brush 12 · checked out 02:10" (Reyes). One release with whatever else comes up.
 
 **Seen by the walker, not a persona:** the seed's period reads "22:48 to 19:00" (its start three hours before the clock, its planned end a fixed 19:00), so the header never says overdue in a late-night walk; the mock's pretend GPS takes about twenty seconds to give a new phone its first fix, so "Attach my location" says "No GPS fix yet" for a unit that has just checked in; a hazard sent by a unit that then checks out stays on the bar until acknowledged, which is right.
+
+---
+
+## Re-walk after v50
+
+The unit panel: Marcus's "answer the radio", walked on 2026-10-18 in the same mock on the base at 1280 × 900 as Operations (the pane visible; the words read from the screen).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Where is Unit 1 | Marcus | The panel: "Unit 1, engine · Ramirez, Okafor · Assigned to A-1 since 08:06", then at once "AGENCY Cedar Fork Fire Department · HEAD COUNT 2 · ASSIGNED A-1 · Riverside Drive, east · STANDING IN A-1 · POSITION 30.26810, -97.73180 · HEADING E 095° · LAST REPORT 33 s ago · ±6 m · PHOTOS 1 · JOINED 18 Oct 2026 07:56 · Show on map". The answer is the first thing under the status line. | Clear |
+| The identity | Marcus | One line under the facts: "IDENTITY · Verified 08:01 · Ana Ramirez · 512 555 0111 · licence TX ···3746 · Details"; for Unit 3, "Not verified · Jordan Lee Hale · 512 555 0133 · licence TX ···5678 · Details · Mark verified". Details opens what was there before (name, phone, licence with its expiry and how it was read, born, address, the photo, Withdraw verification) with Fold; a name-and-phone check-in stays open with the in-person words, as the shelter desk's did. The date of birth and the home address are no longer in front of Operations on every open. | Clear |
+
+Item 1 of the walk at v48's list is built.
+
+**Still bites, small:**
+
+- **Details is a press per unit**: the fold does not remember across units (opening Unit 3 after Unit 1 shows Unit 3 folded), which is the point for privacy, and a small cost for a verifier working down the list.

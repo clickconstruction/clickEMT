@@ -350,6 +350,7 @@ as one small release, v49, by the routine in [handoff.md](handoff.md). Not start
    the details, the photo and Withdraw verification a press away (`identityHtml` in js/base/ui.js, a `state` flag per
    unit or a `<details>`); the 211 and the rule that only Operations sees it are unchanged. *Done when* the `walkfix` or
    `identity` suite reads the position before the identity and the folded line's words; re-walk Marcus's "answer the radio".
+   *Shipped 18 October 2026 as `The unit panel: where it is first, identity folded (v50)`; the `identity` suite covers it.*
 2. **The check-in count starts at one** (the newcomer, Moreno, Reyes, any unit alone). *Why.* "How many with you,
    including you?" has no default; a volunteer who skips it is "head count unknown" in orange on the base and her
    briefing says "add your people from the menu". *Build.* `#join-count` starts at 1 on a fresh form (`clearJoinForm`),

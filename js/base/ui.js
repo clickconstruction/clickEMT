@@ -889,12 +889,20 @@ export function hoursCsvText(data, state) {
 }
 
 // Who is behind an account: the profile given at check-in, and Operations' verdict on it.
-export function identityHtml(data, m) {
+export function identityHtml(data, m, { open } = {}) {
   const p = data.profileOf(m.user_id);
   if (!p) return `<div class="ident"><div class="k">Identity</div><div class="muted" style="font-size:12.5px">Nothing given yet${m.role === 'unit' ? ' · a unit cannot check in without one' : ''}</div></div>`;
   const expired = p.licence_expires && licenceExpired(p.licence_expires);
   const source = { scan: 'read from the barcode', photo: 'front photographed', typed: 'typed' }[p.id_source] || 'on file';
   const given = identityGiven(p);
+  // a licence on file folds to one line (v50): the name, the phone and the licence tail; the expiry, the date of birth, the
+  // address and the photo are a press away. A name-and-phone check-in stays open: nothing there needs hiding, and the words
+  // for the in-person check and Mark verified are what Operations needs.
+  if (given && !open) {
+    return `<div class="ident folded">
+    <div class="d-row"><span class="k" style="width:auto">Identity</span>${p.verified_at ? `<span class="badge cleared">Verified ${hhmm(p.verified_at)}</span>` : '<span class="badge haz">Not verified</span>'}<span class="ident-line"><strong>${esc(p.full_name) || '—'}</strong> · ${esc(p.phone) || '—'} · ${p.licence_number ? 'licence ' + esc(p.licence_state) + ' ' + esc(licenceTail(p.licence_number)) : 'licence photographed'}${expired ? ' · <strong style="color:var(--danger)">expired</strong>' : ''}</span><button class="btn sm" data-action="ident-toggle" data-id="${m.user_id}" title="The expiry, the date of birth, the address and the photo of the licence">Details</button>${p.verified_at ? '' : `<button class="btn sm green" data-action="verify-profile" data-id="${m.user_id}" title="You have looked at the licence and it is this person">Mark verified</button>`}</div>
+  </div>`;
+  }
   return `<div class="ident${given ? '' : ' noid'}">
     <div class="d-row"><span class="k" style="width:auto;flex:1">Identity</span>${given ? '' : `<span class="badge haz">${NO_ID_TEXT[0].toUpperCase() + NO_ID_TEXT.slice(1)}</span>`}${p.verified_at ? `<span class="badge cleared">Verified ${hhmm(p.verified_at)}</span>` : '<span class="badge haz">Not verified</span>'}</div>
     ${given ? '' : `<div style="font-size:12.5px">${p.verified_at ? 'Checked in with a name and a phone, no licence; verified in person.' : 'Checked in with a name and a phone, no licence. Check who this is in person (an agency card, someone who knows them, a call to the number), then Mark verified.'}</div>`}
@@ -906,7 +914,7 @@ export function identityHtml(data, m) {
       ${p.address ? `<span class="k">Address</span><span>${esc(p.address)}</span>` : ''}
     </div>
     ${p.photo_path ? `<div class="photo-box id-box" data-id-photo="${esc(p.photo_path)}"><img alt="The front of ${esc(p.full_name)}'s licence" hidden><div class="muted" style="padding:28px 12px;text-align:center" data-photo-wait>Loading the licence…</div></div>` : given ? '<div class="muted" style="font-size:12.5px">No photo of the licence</div>' : ''}
-    <div class="d-row">${p.verified_at ? `<button class="btn sm" data-action="unverify-profile" data-id="${m.user_id}">Withdraw verification</button>` : `<button class="btn sm green" data-action="verify-profile" data-id="${m.user_id}" title="${given ? 'You have looked at the licence and it is this person' : 'You have checked in person who this is'}">Mark verified</button>`}</div>
+    <div class="d-row">${p.verified_at ? `<button class="btn sm" data-action="unverify-profile" data-id="${m.user_id}">Withdraw verification</button>` : `<button class="btn sm green" data-action="verify-profile" data-id="${m.user_id}" title="${given ? 'You have looked at the licence and it is this person' : 'You have checked in person who this is'}">Mark verified</button>`}${given ? `<button class="btn sm" data-action="ident-toggle" data-id="${m.user_id}">Fold</button>` : ''}</div>
   </div>`;
 }
 
@@ -923,18 +931,6 @@ function unitHtml(data, m, state) {
     ${m.removed_at ? `<div class="d-row"><span class="badge haz">Removed from the incident ${hhmm(m.removed_at)} by Operations</span>${data.me() && data.me().role === 'ops' ? `<button class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : ''}<button class="btn sm" data-action="people" data-tab="members">Members</button></div>` : ''}
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
-    ${m.kind === 'shelter_desk' ? deskPlaceHtml(data, m) : ''}
-    ${identityHtml(data, m)}
-    ${demobHtml(m)}
-    ${unitRequestsHtml(data, m)}
-    ${m.role === 'unit' && !m.removed_at && m.status !== 'checked_out' ? (() => { const ws = m.in_water_since ? waterState(m.in_water_since, data.rotationMinutes()) : null; return `<div class="d-row"><span class="k">In the water</span>${ws ? `<span class="badge ${ws.overdue ? 'haz' : 'st-assigned'}">${esc(ws.text)} · since ${hhmm(m.in_water_since)}</span>` : '<span class="muted" style="font-size:12.5px">not in the water</span>'}<button class="btn sm" data-action="unit-water" data-id="${m.user_id}" data-on="${ws ? '0' : '1'}">${ws ? 'Out of the water' : 'In the water'}</button><span class="muted" style="font-size:12px">rotation ${data.rotationMinutes() || 'off'}${data.rotationMinutes() ? ' min' : ''}</span></div>`; })() : ''}
-    ${m.removed_at ? '' : `<div class="d-row"><span class="k">Set status</span>
-      <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
-      <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>
-      ${m.status === 'checked_out' ? `<button class="btn sm" data-action="set-status" data-id="${m.user_id}" data-status="available">Check back in</button>` : `<button class="btn sm" data-action="check-out" data-id="${m.user_id}">Check out</button>`}
-      <button class="btn sm" data-action="start-par" data-target="user:${m.user_id}">PAR</button>
-    </div>`}
-    ${oos ? `<form class="inline-form" data-form="oos" data-id="${m.user_id}"><div class="chips">${OOS_REASONS.map((r, i) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="radio" name="reason" value="${esc(r)}"${i === 0 ? ' checked' : ''}> ${esc(r)}</label>`).join('')}</div><div class="row-btns"><button class="btn sm" type="button" data-action="oos-cancel">Cancel</button><button class="btn pri sm" type="submit">Out of service</button></div></form>` : ''}
     <div class="kv">
       <span class="k">Agency</span><span>${esc(m.agency) || 'not set'}</span>
       <span class="k">Head count</span><span>${m.crew_count != null ? m.crew_count + (m.unnamed_count ? ' (' + m.unnamed_count + ' not named)' : '') : `<span class="hc-unknown">${HEAD_COUNT_UNKNOWN}</span> · name them for the PAR`}</span>
@@ -946,11 +942,23 @@ function unitHtml(data, m, state) {
       <span class="k">Photos</span><span>${photos.length}</span>
       <span class="k">Joined</span><span>${esc(whenText(m.joined_at))}</span>
     </div>
-    ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
     <div class="d-row">
       ${pos ? `<button class="btn sm" data-action="pan-to" data-lat="${pos.lat}" data-lng="${pos.lng}">Show on map</button>` : ''}
       ${alert && !alert.acknowledged_at ? `<button class="btn sm danger" data-action="ack-alert" data-id="${alert.id}">Acknowledge</button>` : ''}
     </div>
+    ${m.kind === 'shelter_desk' ? deskPlaceHtml(data, m) : ''}
+    ${identityHtml(data, m, { open: !!state && state.identOpen === m.user_id })}
+    ${demobHtml(m)}
+    ${unitRequestsHtml(data, m)}
+    ${m.role === 'unit' && !m.removed_at && m.status !== 'checked_out' ? (() => { const ws = m.in_water_since ? waterState(m.in_water_since, data.rotationMinutes()) : null; return `<div class="d-row"><span class="k">In the water</span>${ws ? `<span class="badge ${ws.overdue ? 'haz' : 'st-assigned'}">${esc(ws.text)} · since ${hhmm(m.in_water_since)}</span>` : '<span class="muted" style="font-size:12.5px">not in the water</span>'}<button class="btn sm" data-action="unit-water" data-id="${m.user_id}" data-on="${ws ? '0' : '1'}">${ws ? 'Out of the water' : 'In the water'}</button><span class="muted" style="font-size:12px">rotation ${data.rotationMinutes() || 'off'}${data.rotationMinutes() ? ' min' : ''}</span></div>`; })() : ''}
+    ${m.removed_at ? '' : `<div class="d-row"><span class="k">Set status</span>
+      <button class="btn sm${m.status === 'available' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="available">Available</button>
+      <button class="btn sm${m.status === 'out_of_service' ? ' on' : ''}" data-action="set-status" data-id="${m.user_id}" data-status="out_of_service">Out of service</button>
+      ${m.status === 'checked_out' ? `<button class="btn sm" data-action="set-status" data-id="${m.user_id}" data-status="available">Check back in</button>` : `<button class="btn sm" data-action="check-out" data-id="${m.user_id}">Check out</button>`}
+      <button class="btn sm" data-action="start-par" data-target="user:${m.user_id}">PAR</button>
+    </div>`}
+    ${oos ? `<form class="inline-form" data-form="oos" data-id="${m.user_id}"><div class="chips">${OOS_REASONS.map((r, i) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="radio" name="reason" value="${esc(r)}"${i === 0 ? ' checked' : ''}> ${esc(r)}</label>`).join('')}</div><div class="row-btns"><button class="btn sm" type="button" data-action="oos-cancel">Cancel</button><button class="btn pri sm" type="submit">Out of service</button></div></form>` : ''}
+    ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
     <div class="muted" style="font-size:12.5px">To send this unit somewhere, open a zone and press its name under Assigned to.</div>
     ${unitPeopleHtml(data, m)}
     <div class="k">Message ${esc(unitLabel(m))}</div>

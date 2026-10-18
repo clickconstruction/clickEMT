@@ -22,7 +22,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -934,6 +934,7 @@ document.addEventListener('click', async (e) => {
       case 'pan-to': map.panTo(Number(btn.dataset.lat), Number(btn.dataset.lng)); break;
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
+      case 'ident-toggle': state.identOpen = state.identOpen === id ? null : id; queueDraw(); break;   // the unit panel's identity details (v50)
       case 'org-period': $('[data-action="close-briefing"]').click(); $('[data-action="period"]').click(); break;   // the 207 warning's link (v44)
       case 'mark-all-found': await data.markFound(btn.dataset.message, btn.dataset.user, {}); toast('Everyone marked found'); queueDraw(); break;   // one line in the log (v48)
       case 'mark-found': await data.markFound(btn.dataset.message, btn.dataset.user, { personId: btn.dataset.person || null, name: btn.dataset.name || null }); toast((btn.dataset.name || 'The missing person') + ' marked found'); break;

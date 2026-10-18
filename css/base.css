@@ -476,6 +476,8 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 /* on scene too long (v47): a person past the period's hours on scene, on the board and the unit panel */
 .pp-row.over { background: var(--tint-orange); }
 .pp-row.over .pp-state, .pp-over { color: var(--hazard-ink); font-weight: 600; }
+/* the unit panel's identity folded to one line (v50) */
+.ident.folded .ident-line { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- the front door: the base's signed-out screen (index.html #auth). The join door first, then one picture, how
    it works, the roles, the promises, the pilot and the sign-in. .auth is the phone's too, so everything is under .landing. */

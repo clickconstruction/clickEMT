@@ -1065,7 +1065,7 @@ async function layers(check) {
   const dt = new DataTransfer(); dt.items.add(new File([await tinyPng()], 'drone.png', { type: 'image/png' })); f.file.files = dt.files;
   f.name.value = 'Drone pass 14:10'; f.opacity.value = '0.6';
   f.requestSubmit();
-  await until(() => base.overlays().length === 2, 6000);
+  await until(() => base.overlays().length === 2, 15000);   // the picture's decode and upload take longer late in a full run
   const o = base.overlays()[1];
   check('saving uploads the picture and keeps its corners and opacity, logs it, and both maps show it', o.name === 'Drone pass 14:10' && o.storage_path.endsWith('.png') && o.bounds.north === corners.north && o.bounds.west === corners.west && Number(o.opacity) === 0.6 && !!eventText(base, 'Imagery: Drone pass 14:10 added to the map') && await until(() => $$('#map img.imagery').length === 2, 6000) && await until(() => field.overlays().length === 2), logTexts()[0]);
   const r = $(`#panel [data-range="overlay-opacity"][data-id="${o.id}"]`);
@@ -1724,6 +1724,7 @@ async function newcomer(check) {
       P.$$('#s-identify button').find((b) => b.textContent.trim() === 'Save').click();
       await until(() => P.$('#s-identify').hidden, 5000);
       const f = P.$('#join-form');
+      check('the head count box starts at 1, you, on a fresh form (v51)', f.count.value === '1' && !P.shown('#join-people'), f.count.value);
       f.count.value = '2'; f.count.dispatchEvent(new Event('input', { bubbles: true }));
       const unfold2 = P.shown('#join-people');
       f.count.value = '1'; f.count.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1731,9 +1732,10 @@ async function newcomer(check) {
       await P.act('jp-add');
       check('a count of two unfolds the rows, one folds them, Add a person unfolds them', unfold2 && fold1 && P.shown('#join-people'), [unfold2, fold1, P.shown('#join-people')].join());
       check('a Volunteer kind is offered', !!P.$('#join [data-kind="volunteer"]'), P.$$('#join [data-kind]').map((e) => e.dataset.kind).join());
-      f.unit.value = 'Volunteer 4'; f.agency.value = 'Cedar Fork volunteers'; f.count.value = '1'; P.$('#join [data-kind="volunteer"]').click();
+      f.unit.value = 'Volunteer 4'; f.agency.value = 'Cedar Fork volunteers'; P.$('#join [data-kind="volunteer"]').click();   // the count box left as it stands (v51)
       f.requestSubmit();
       await until(() => base.members().some((m) => m.unit_name === 'Volunteer 4'), 70000);
+      check('checked in with the box untouched, the base counts her as one, not head count unknown, and her briefing says you alone (v51)', base.members().find((m) => m.unit_name === 'Volunteer 4').crew_count === 1 && await until(() => !/head count unknown/.test(($(`#panel [data-action="select-unit"][data-id="${base.members().find((m) => m.unit_name === 'Volunteer 4').user_id}"]`) || {}).innerText || 'head count unknown'), 15000) && await until(() => /on volunteer 4: you alone/.test(P.text('#briefing-list')), 15000), String(base.members().find((m) => m.unit_name === 'Volunteer 4').crew_count) + ' | ' + P.text('#briefing-list').slice(0, 200));
       await until(() => P.shown('#s-home') && /no assignment yet/.test(P.text('#assignment')), 15000);
       check('a unit with no division sees No assignment yet, not another unit\'s card: Address clear and Zone clear are put away and Message Operations is offered (v42)', /no assignment yet/.test(P.text('#assignment')) && /stay where operations put you/.test(P.text('#assignment')) && P.$('.actions [data-action="addr-clear"]').hidden && P.$('.actions [data-action="zone-clear"]').hidden && !P.$('#act-compose').hidden && !P.$('.actions [data-action="hazard"]').hidden, P.text('#assignment'));
       // the base assigns a division: "Assigned, not accepted" until the phone's Accept, which the 214 records (v42)
@@ -1933,7 +1935,7 @@ async function walkfix(check) {
     jf.code.value = 'CEDAR7'; jf.unit.value = 'Gym shelter desk'; jf.agency.value = 'Red Cross';
     jf.requestSubmit();
     const deskIn = await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym shelter desk', 6000);
-    check('the volunteer checks in without a licence (the shelter desk was LOST here)', !!deskIn && await until(() => eventText(base, 'Gym shelter desk checked in as Pat Doe, 512 555 0199, identity not given')), logTexts()[0]);
+    check('the volunteer checks in without a licence (the shelter desk was LOST here)', !!deskIn && await until(() => eventText(base, 'Gym shelter desk checked in as Pat Doe, 512 555 0199, identity not given with 1 person')), logTexts()[0]);
     check('and her briefing opens at its top too', await until(() => P.shown('#s-briefing')) && brief.scrollTop === 0);
     const desk = base.units().find((u) => u.unit_name === 'Gym shelter desk');
     check('the resources row marks her "no ID"', await until(() => has(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`, 'pat doe · no id')), text(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`));
@@ -2031,7 +2033,7 @@ async function evacuees(check) {
     const jf = P.$('#join-form');
     jf.code.value = 'CEDAR7'; jf.unit.value = 'Gym desk'; jf.agency.value = 'Red Cross';
     jf.requestSubmit();
-    check('she checks in as a shelter desk, said in the check-in line', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym desk', 6000) && await until(() => eventText(base, 'Gym desk, shelter desk checked in as Pat Doe, 512 555 0199, identity not given')), logTexts()[0]);
+    check('she checks in as a shelter desk, said in the check-in line', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym desk', 6000) && await until(() => eventText(base, 'Gym desk, shelter desk checked in as Pat Doe, 512 555 0199, identity not given with 1 person')), logTexts()[0]);
     check('her briefing gives her job as People here at the gym, not waiting at staging', await until(() => P.shown('#s-briefing') && /people here at high school gym/.test(P.text('#briefing-list'))) && /they're here/.test(P.text('#briefing-list')) && !/wait at staging/.test(P.text('#briefing-list')), P.text('#briefing-list').slice(0, 400));
     await P.act('briefed');
     check('her home is People here: the gym\'s count against its beds, no division card and no search buttons', await until(() => P.shown('#desk') && /high school gym · 9 of 60/.test(P.text('#desk-head'))) && !P.shown('.actions') && !P.shown('#assignment') && !P.shown('#mini') && P.shown('.help'), P.text('#desk-head'));

@@ -4,7 +4,7 @@
 
 **Where you work.** The phone.
 
-**In the mock.** Press **Menu**, **Sign out**, **Create account** with a new email. Check in with `CEDAR7`, your callsign, kind Other, and **How many with you, including you** set to 1.
+**In the mock.** Press **Menu**, **Sign out**, **Create account** with a new email. Check in with `CEDAR7`, your callsign, kind Other, and **How many with you, including you** left at 1, as it starts.
 
 ## Your jobs
 

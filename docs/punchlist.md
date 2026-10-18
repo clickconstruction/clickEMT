@@ -356,6 +356,7 @@ as one small release, v49, by the routine in [handoff.md](handoff.md). Not start
    briefing says "add your people from the menu". *Build.* `#join-count` starts at 1 on a fresh form (`clearJoinForm`),
    a typed number stands, names raise it as now; `ic_join` already works the unnamed out of the count. *Done when* the
    `newcomer` suite checks in with the box untouched and the base reads "1" with "you alone" in the briefing.
+   *Shipped 18 October 2026 as `The check-in head count starts at one (v51)`; the `newcomer` suite covers it.*
 3. **A Public page for the PIO** (the PIO). *Why.* Public information is about 4,000 px down Operations' home panel, the
    same as at v37. *Build.* A Public button on the header beside People, opening an overlay (like `#people`) with the
    cleared photos, their captions and checks, Download the public set and who is PIO; the home panel's section stays

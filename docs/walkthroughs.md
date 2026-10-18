@@ -1136,3 +1136,21 @@ Item 1 of the walk at v48's list is built.
 **Still bites, small:**
 
 - **Details is a press per unit**: the fold does not remember across units (opening Unit 3 after Unit 1 shows Unit 3 folded), which is the point for privacy, and a small cost for a verifier working down the list.
+
+---
+
+## Re-walk after v51
+
+The check-in head count: the newcomer's and Moreno's check-in, walked on 2026-10-18 in the same mock, the phone at 375 × 812 in a frame beside the base (the pane visible; the words read from the screen).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The box | The newcomer, Moreno | On a fresh check-in form "How many with you, including you?" reads 1, with "Starts at 1: you. Names are optional; typing names raises it." under it; the people rows stay folded. | Clear |
+| Checked in without touching it | A deputy alone (Post 7) | The base's row "Post 7 · 1 · Sam Lee · no ID · Available since 10:50", the log "Post 7, other checked in as Sam Lee, 512 555 0170, identity not given with 1 person", the briefing "WHO YOU WORK WITH On Post 7: you alone." No "head count unknown" in orange, no "add your people". | Clear |
+| A crew | Reyes | Typing names still raises the number and it never goes below them (the `newcomer` suite's fold and unfold hold). | Clear |
+
+Item 2 of the walk at v48's list is built.
+
+**Still bites, small:**
+
+- **A crew that types names but leaves the number at 1** is counted by its names, as before; the number only matters when the names are fewer than the people.

@@ -64,9 +64,9 @@ export class Data {
   // ---- incidents
   async myIncidents() {
     if (!this.user) return [];
-    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, agency, joined_at, removed_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
+    const { data, error } = await this.sb.from('ic_members').select('role, unit_name, crew, agency, joined_at, removed_at, status, checked_out_at, incident:ic_incidents(*)').eq('user_id', this.user.id).order('joined_at', { ascending: false });
     if (error) throw error;
-    return (data || []).filter((r) => r.incident && !r.removed_at).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew, agency: r.agency || '', joined_at: r.joined_at }));
+    return (data || []).filter((r) => r.incident && !r.removed_at).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew, agency: r.agency || '', joined_at: r.joined_at, member_status: r.status, checked_out_at: r.checked_out_at }));   // the member's status since v53 (the row's status is the incident's): the check-in page says who checked out
   }
   async createIncident({ name, period, base, lat, lng, zoom }) {
     const { data, error } = await this.sb.rpc('ic_create_incident', { p_name: name, p_period: period || null, p_base_name: base || null, p_lat: lat ?? null, p_lng: lng ?? null, p_zoom: zoom || 14 });

@@ -1172,3 +1172,20 @@ Item 3 of the walk at v48's list is built; the home panel's section stays for Op
 **Still bites, small:**
 
 - **The page is a list, not a gallery**: the pictures themselves are a press away on each photo's panel; a PIO choosing between six photos opens six panels.
+
+---
+
+## Re-walk after v53
+
+Small words: Moreno's car in the water on the base's bar, and Reyes's check-in page after his check-out, walked on 2026-10-18 in the same mock (the pane visible; the words read from the screen and through the `rewalks` suite's phone frame).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The bar's hazard item | Priya, Moreno | A hazard of kind "Person or car in the water" with the note "Car in the water at the bridge, one person inside" reads "HAZARD · Car in the water at the bridge, one person inside · A-1 · 11:04 · Unit 1 · Acknowledge · Show on map", the kind said once; a note that does not restate the kind still reads "Person or car in the water, one inside". | Clear |
+| The check-in page after a check-out | Reyes | After the phone's own Check out, "Incidents you are already in" lists the incident as "you were Unit 3 · checked out 11:03", not "you are Unit 3". | Clear |
+
+Item 4 of the walk at v48's list is built; the four items from the walk are done.
+
+**Still bites, small:**
+
+- **The row still sits under "Incidents you are already in"** for a unit that has checked out; one tap reopens the incident and the check-in brings its people back, as before.

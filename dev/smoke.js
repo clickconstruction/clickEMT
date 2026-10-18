@@ -1624,6 +1624,15 @@ async function rewalks(check) {
     check('the phone\'s missing card offers They\'re all found beside Found per name', await until(() => P.$('#missing [data-all="1"]') || P.$('#helpsent-missing [data-all="1"]'), 30000) && /they're all found/.test(P.text('#missing') + P.text('#helpsent-missing')), P.text('#missing') + P.text('#helpsent-missing'));
     (P.$('#missing [data-all="1"]') || P.$('#helpsent-missing [data-all="1"]')).click();
     check('one tap on the phone clears both, and the log names them', await until(() => base.missingNow().length === 0, 70000) && await until(() => eventText(base, 'Hale, Dominguez found, reported by Unit 3'), 10000), logTexts()[0]);
+    // v53: a hazard whose note restates its kind reads once on the bar; the check-in page says who checked out
+    const h5 = uuid();
+    await field.addHazard(h5, { kind: 'Person or car in the water', note: 'Car in the water at the bridge, one person inside', urgency: 'now', lat: 30.2674, lng: -97.7384, zoneId: ZONE('A-2') });
+    check('the bar\'s hazard item gives the note alone when it restates the kind', await until(() => has('#safety', 'hazard · car in the water at the bridge, one person inside · a-2')) && !has('#safety', 'hazard · person or car in the water, car in the water'), text('#safety'));
+    await base.ackHazard(h5);
+    await P.act('menu'); await until(() => P.shown('#s-menu'), 5000);
+    await P.act('check-out'); await until(() => P.shown('#s-checkout'), 5000);
+    await P.act('checkout-confirm');
+    check('after its own check-out the phone\'s check-in page says you were Unit 3 · checked out', await until(() => P.shown('#join') && /you were unit 3 · checked out \d\d:\d\d/.test(P.text('#join-list')), 70000), P.text('#join-list').slice(0, 200));
   } finally {
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);

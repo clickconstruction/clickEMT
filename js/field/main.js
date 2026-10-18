@@ -191,7 +191,7 @@ async function showJoin() {
     if (last && f.agency.value === (f.agency.dataset.prefill || '')) { f.agency.value = last.agency; f.agency.dataset.prefill = last.agency; }
     list.innerHTML = rows.map((r) => `
       <button class="pick-row" data-action="open-incident" data-id="${r.id}">
-        <span style="flex:1;min-width:0"><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
+        <span style="flex:1;min-width:0"><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')} · ${r.member_status === 'checked_out' ? 'you were ' + (r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')) + ' · checked out' + (r.checked_out_at ? ' ' + hhmm(r.checked_out_at) : '') : 'you are ' + (r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit'))}</span></span>
         <span class="pill mono">${esc(r.code)}</span>
       </button>`).join('');
     mine.hidden = !rows.length;

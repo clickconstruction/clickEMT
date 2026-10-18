@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
+import { hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -246,6 +246,14 @@ t('on scene too long (v47): the threshold, who is past it, and the words', () =>
   assert.deepEqual(peopleOverScene(people, members, 2, now).map((x) => x.person.name), ['Okafor', 'Ramirez'], 'longest first');
   assert.equal(sceneText(12), 'Safety is told past 12 hours on scene');
   assert.equal(sceneText(0), 'no hours-on-scene threshold set');
+});
+
+t('a hazard\'s words on one line (v53): the note alone when it restates the kind', () => {
+  assert.equal(hazardWords({ kind: 'Person or car in the water', note: 'Car in the water at the bridge, one person inside' }), 'Car in the water at the bridge, one person inside');
+  assert.equal(hazardWords({ kind: 'Person or car in the water', note: 'one inside' }), 'Person or car in the water, one inside');
+  assert.equal(hazardWords({ kind: 'Tree down, road blocked', note: 'Across Pecan Ln' }), 'Tree down, road blocked, Across Pecan Ln');
+  assert.equal(hazardWords({ kind: 'Tree down, road blocked', note: 'Tree down, road blocked at the fairgrounds gate' }), 'Tree down, road blocked at the fairgrounds gate');
+  assert.equal(hazardWords({ kind: 'Gas smell', note: '' }), 'Gas smell');
 });
 
 t('small items from the re-walks (v48): hazards by urgency, the current stretch, the revisit\'s words', () => {

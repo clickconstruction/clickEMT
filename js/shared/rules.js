@@ -87,6 +87,15 @@ export const NOTE_CHIPS = ['Water over road', 'Waterline on structure', 'Blocked
 export const HAZARD_KINDS = ['Downed power line', 'Gas smell', 'Structure unsafe', 'Road under water', 'Person or car in the water', 'Tree down, road blocked', 'Loose animal', 'Other'];
 // an act-on-now hazard waits on the base's bar until Operations acknowledges it (v41)
 export function hazardUrgent(h) { return !!h && h.urgency === 'now' && !h.acked_at && !h.resolved_at; }
+// the hazard's words on one line (v53): the kind and the note, or the note alone when it restates the kind
+// ("Person or car in the water" + "Car in the water at the bridge" reads "Car in the water at the bridge")
+export function hazardWords(h) {
+  const kind = String(h.kind || ''), note = String(h.note || '').trim();
+  if (!note) return kind;
+  const k = kind.toLowerCase(), n = note.toLowerCase();
+  const tail = k.split(/[\s,]+/).filter(Boolean).slice(-2).join(' ');
+  return n.includes(k) || (tail && n.includes(tail)) ? note : kind + ', ' + note;
+}
 // Hazards left in a zone when it is marked clear, with the code painted on the search marking.
 export const CLEAR_HAZARDS = [['Power', 'ELEC'], ['Gas', 'GAS'], ['Structural', 'STRUC'], ['Water', 'H2O']];
 // Half-angle of the wedge drawn in front of a photo pin, degrees.

@@ -30,6 +30,10 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   (`rewalks.sql` 10 of 10, `scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
   10 of 10, `ics100.sql`, `people.sql`). v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
+- **One known flake in the full smoke run** (18 October, v50 to v53): the `layers` suite's overlay upload sometimes does not
+  arrive within its wait late in a full run ("Cannot read properties of undefined (reading 'name')" at the saved overlay);
+  it passes alone, with the `log` suite before it, and with either half of the run before it, so it is an effect of the whole
+  sequence, not of the code. Rerun it alone before it counts, as the routine says; the cause is still to find.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
 - **Open work:** the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do") ranked what still

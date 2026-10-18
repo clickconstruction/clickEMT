@@ -366,6 +366,7 @@ as one small release, v49, by the routine in [handoff.md](handoff.md). Not start
    the water at the bridge"): the note alone when it starts with the kind's words (`barItem` in `safetyHtml`); the
    check-in page's row for an incident a unit has checked out of reads "you were Brush 12 · checked out 02:10"
    (`showJoin` in js/field/main.js).
+   *Shipped 18 October 2026 as `Small words: the hazard once, who checked out (v53)`; the `rewalks` suite covers both.*
 
 **Seen by the walker, not for the list:** the seed's period reads "22:48 to 19:00" (its start three hours before the
 clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty seconds to give a new phone its first fix.

@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine } from '../shared/rules.js';
+import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -113,7 +113,7 @@ export function parHtml(data) {
   const rows = (par.to_users || []).map((u) => {
     const a = data.ack(par.id, u);
     const cls = a ? (a.reply === 'Missing someone' ? 'bad' : 'ok') : 'wait';
-    return `<div class="par-row ${cls}"><span>${esc(unitLabel(data.member(u)))}</span><span>${a ? esc(parAnswerText(a)) + ' · ' + hhmm(a.acked_at) : 'waiting, sent ' + since(par.created_at)}</span></div>`;
+    return `<div class="par-row ${cls}"><span>${esc(unitLabel(data.member(u)))}</span><span>${a ? esc(parAnswerText(a)) + (a.scanned != null ? ' · ' + a.scanned + ' scanned' : '') + ' · ' + hhmm(a.acked_at) : 'waiting, sent ' + since(par.created_at)}</span></div>`;
   }).join('');
   return head + `<div class="muted" style="font-size:12.5px">Started ${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${waiting.length ? waiting.length + ' still to answer' : 'everyone answered'}</div>${rows}`;
 }
@@ -127,7 +127,7 @@ function homeHtml(data, state) {
       <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
         <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
         <div class="muted" style="font-size:12.5px">A unit scans this with its phone, or opens the field app and types the code with its unit name.</div>
-        <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button></div>
+        <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button><button class="btn sm" data-action="print-bands" title="A sheet of 24 wristbands with a QR code each: a number and nothing else. A unit gives one to each person by scanning it; the desk gives one to each family.">Print bands</button></div>
       </div>
     </div>
     ${opsCodeHtml(data)}
@@ -266,6 +266,20 @@ export function joinCardHtml(data) {
     <div class="join-card-code mono">${esc(inc.code)}</div>
     <div class="join-card-url mono">${esc(url)}</div>
   </div>` + sectionsHtml(joinCardSections(data));
+}
+// A sheet of bands (v55): a QR per band with the field app's link and the band's code, its number and the incident's
+// name, no name of anyone. Printed from the base; a band is given by scanning it.
+export function bandsSheetHtml(data, ids) {
+  const tags = (ids && ids.length ? ids.map((id) => data.tag(id)).filter(Boolean) : data.tags().filter((t) => !t.person_id && !t.evacuee_id)).sort((a, b) => a.number - b.number);
+  const field = new URL('field/', document.baseURI);
+  const live = data.tags(true);
+  return `<section><h2>Bands to print · ${tags.length}</h2>
+    <p>Wristbands or cards, one per person. A band is an id and nothing else: a lost one tells nobody anything. A unit gives one to each of its people by scanning it (or types its number at check-in); the desk gives one to each family it signs in. ${live.length} printed on this incident, ${live.filter((t) => t.person_id || t.evacuee_id).length} on someone, ${live.filter((t) => t.voided_at).length} voided.</p></section>
+    <div class="band-sheet">${tags.map((t) => `<div class="band"><div class="band-qr">${qrSvg(bandUrl(t.code, field), { margin: 1, label: bandLabel(t) })}</div><div class="band-n">${esc(bandLabel(t))}</div><div class="band-inc">${esc(data.incident.name)}</div><div class="band-code mono">${esc(t.code)}</div></div>`).join('')}</div>`;
+}
+export function bandsSheetText(data, ids) {
+  const tags = (ids && ids.length ? ids.map((id) => data.tag(id)).filter(Boolean) : data.tags()).sort((a, b) => a.number - b.number);
+  return 'BANDS · ' + data.incident.name + '\n' + tags.map((t) => '  ' + bandLabel(t) + '  ' + t.code).join('\n');
 }
 export function joinCardText(data) { return sectionsText(joinCardSections(data)) + '\n\n' + fieldJoinUrl(data.incident.code); }
 
@@ -448,7 +462,7 @@ function qualBadges(p) { return (p.qualifications || []).length ? `<span class="
 
 // One person: who, what they are qualified for, where they stand, and what Operations can do about it.
 // Compact rows (the unit panel) leave out the unit and buddy pickers.
-export function personRowHtml(data, p, { compact, now } = {}) {
+export function personRowHtml(data, p, { compact, now = Date.now() } = {}) {
   const ops = !!data.me() && data.me().role === 'ops';
   const unit = data.member(p.user_id);
   const unitOut = unit && unit.status === 'checked_out';
@@ -459,14 +473,16 @@ export function personRowHtml(data, p, { compact, now } = {}) {
     : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
     : (unitOut ? 'Unit checked out · ' : 'On scene ') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + data.sceneHours() + ' h' : '');   // the current stretch since v48
+  const tag = tagOf(data.tags(true), { personId: p.id }), seen = tag ? lastSeen(data.seen(), [tag.id]) : null, stale = seenStale(seen, now);   // the band and its last scan (v55)
+  const seenHtml = tag ? `<span class="pp-seen${stale ? ' stale' : ''}">${esc(bandLabel(tag))} · ${esc(lastSeenText(seen, seenOpts(data)))}${stale ? ' (' + esc(durationText(Math.round((now - new Date(seen.at).getTime()) / 60000))) + ' ago)' : ''}</span>` : '<span class="pp-seen muted">no band</span>';
   const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
   const units = compact ? [] : data.members().filter((m) => m.status !== 'checked_out' || m.user_id === p.user_id).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   return `
     <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}${miss ? ' missing' : ''}${over ? ' over' : ''}" data-person="${p.id}">
       <span class="pp-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? `<span class="muted"> ${esc(p.role)}</span>` : ''}${p.agency && (!unit || p.agency !== unit.agency) ? `<span class="pp-agency muted">${esc(p.agency)}</span>` : ''}${p.notes ? `<span class="pp-agency muted">${esc(p.notes)}</span>` : ''}</span>
       ${qualBadges(p)}
-      <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}</span>
-      <span class="pp-act">${ops && !p.archived_at ? `
+      <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}${seenHtml}</span>
+      <span class="pp-act">${ops && !p.archived_at && tag ? `<button class="btn sm" data-action="band-void" data-id="${tag.id}" title="A lost band: voided, never reused; give a new one by scanning it">Void band</button>` : ''}${ops && !p.archived_at ? `
         ${compact ? '' : `<select class="sel" data-select="person-unit" data-id="${p.id}" aria-label="Unit" title="Move to another unit">${units.map((u) => `<option value="${u.user_id}"${u.user_id === p.user_id ? ' selected' : ''}>${esc(unitLabel(u))}</option>`).join('')}</select>
         <select class="sel" data-select="person-buddy" data-id="${p.id}" aria-label="Buddy" title="Who this person pairs with"><option value="">No buddy</option>${mates.map((x) => `<option value="${x.id}"${p.buddy_id === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`}
         ${p.checked_out_at ? `<button class="btn sm" data-action="person-in" data-id="${p.id}">Back in</button>` : `<button class="btn sm" data-action="person-out" data-id="${p.id}">Check out</button>`}
@@ -608,7 +624,8 @@ export function form211Sections(data) {
     S.push({ title: `${unitWithKind(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
       lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${identityGiven(p) ? (p.verified_at ? ', verified' : ', not verified') : ', ' + NO_ID_TEXT + (p.verified_at ? ', verified in person' : ', not verified')}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
-        return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${px.notes ? ' · ' + px.notes : ''}`;
+        const tg = tagOf(data.tags(true), { personId: px.id }), sn = tg ? lastSeen(data.seen(), [tg.id]) : null;   // v55
+        return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${tg ? ' · band ' + bandNumber(tg.number) + (sn ? ', ' + lastSeenText(sn, seenOpts(data)) : '') : ''}${px.notes ? ' · ' + px.notes : ''}`;
       }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]) });
   }
   const on = data.peopleOn();
@@ -689,6 +706,14 @@ function facilityHtml(data, f, state) {
 // hospital's card, findable by name from the header; counts only on anything that leaves the incident.
 const evFrom = (data, e) => evacueeFrom(e, { structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) });
 const facilityOf = (data) => (id) => data.facility(id);
+// the band on a record and its last scan (v55): " · band 207, seen at High school gym 18:12"
+const seenOpts = (data) => ({ zoneOf: (id) => data.zone(id), facilityOf: (id) => data.facility(id), transportOf: (id) => data.transport(id) });
+function evBand(data, e) {
+  const tag = tagOf(data.tags(true), { evacueeId: e.id });
+  if (!tag) return '';
+  const sn = lastSeen(data.seen(), [tag.id]);
+  return `<span class="muted"> · band ${bandNumber(tag.number)}${sn ? ', ' + esc(lastSeenText(sn, seenOpts(data))) : ''}</span>`;
+}
 // how the record came to be: "brought out by Unit 3 at 14:05", "signed in by Gym desk 14:22"
 function evOrigin(data, e) {
   if (e.structure_id || (e.logged_by && data.member(e.logged_by) && data.member(e.logged_by).role === 'unit' && data.member(e.logged_by).kind !== 'shelter_desk')) return `brought out by ${unitLabel(data.member(e.logged_by))} at ${hhmm(e.created_at)}`;
@@ -703,7 +728,7 @@ function whereSelectHtml(data, e, attrs) {
 function evRowHtml(data, e, f) {
   const away = !(e.facility_id === f.id && (e.status === 'here' || e.status === 'moved'));
   return `<div class="ev-r${away ? ' away' : ''}" data-ev="${e.id}">
-    <span class="ev-who"><strong>${esc(evacueeWho(e))}</strong>${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span>
+    <span class="ev-who"><strong>${esc(evacueeWho(e))}</strong>${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}${evBand(data, e)}</span>
     <span class="muted">${evFrom(data, e) ? 'from ' + esc(evFrom(data, e)) : ''}</span>
     <span class="${away ? 'ev-moved' : ''}">${away ? esc(evacueeWhere(e, facilityOf(data))) : esc(needsText(e.needs)) || '<span class="muted">—</span>'}</span>
     <span class="muted">${esc(evOrigin(data, e))}</span>
@@ -747,7 +772,7 @@ export function shelteredHtml(data, state) {
 export function findPersonHtml(data, q) {
   const hits = evacueeMatch(data.evacuees(true), q, { facilityOf: facilityOf(data), structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) }).slice(0, 12);
   const crew = (q || '').trim() ? peopleMatch(data.people(), { q, unitLabelOf: (uid) => unitLabel(data.member(uid)) }).slice(0, 6) : [];
-  const rows = hits.map((e) => { const place = e.facility_id || e.prev_facility_id; return `<div class="find-row"><span class="find-who"><strong>${esc(evacueeWho(e))}</strong>${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}</span><span class="find-where">${esc(evacueeWhere(e, facilityOf(data)))}</span><span class="muted find-from">${esc([evFrom(data, e) ? 'from ' + evFrom(data, e) : '', evOrigin(data, e)].filter(Boolean).join(' · '))}</span>${place ? `<button class="btn sm" data-action="select-facility" data-id="${place}">Open</button>` : ''}</div>`; }).join('');
+  const rows = hits.map((e) => { const place = e.facility_id || e.prev_facility_id; return `<div class="find-row"><span class="find-who"><strong>${esc(evacueeWho(e))}</strong>${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${evBand(data, e)}</span><span class="find-where">${esc(evacueeWhere(e, facilityOf(data)))}</span><span class="muted find-from">${esc([evFrom(data, e) ? 'from ' + evFrom(data, e) : '', evOrigin(data, e)].filter(Boolean).join(' · '))}</span>${place ? `<button class="btn sm" data-action="select-facility" data-id="${place}">Open</button>` : ''}</div>`; }).join('');
   const crewRows = crew.map((p) => { const u = data.member(p.user_id); return `<div class="find-row"><span class="find-who"><strong>${esc(p.name)}</strong>${p.role ? ' · ' + esc(p.role) : ''}</span><span class="find-where">responder on ${esc(unitLabel(u))}${p.checked_out_at ? ', checked out ' + hhmm(p.checked_out_at) : ', on scene since ' + hhmm(p.checked_in_at)}</span><span class="muted find-from"></span><button class="btn sm" data-action="select-unit" data-id="${p.user_id}">Open</button></div>`; }).join('');
   if (!rows && !crewRows) return `<div class="find-none muted">Nobody on record matches "${esc(q.trim())}". Records come from the shelter desks, the crews' house records and Operations; a desk's "Not listed?" asks you to look.</div>`;
   return rows + (crewRows ? `<div class="k find-k">Responders</div>${crewRows}` : '');
@@ -1482,7 +1507,7 @@ export function sitrepFormHtml(data) {
 // lines Operations marked notable), searched, with the hours marked and every line linked to the
 // thing it is about.
 export const LOG_GROUPS = [['all', 'All'], ['new', 'Since you looked'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];   // 'new' is the lines since state.log.sinceAt (v45)
-const GROUP_OF = { shelter: 'field', transport: 'field', request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
+const GROUP_OF = { shelter: 'field', transport: 'field', seen: 'field', request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
 export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
 const inGroup = (e, g, sinceAt) => !g || g === 'all' || (g === 'notable' ? !!e.notable : g === 'new' ? !!sinceAt && e.at > sinceAt : logGroupOf(e.kind) === g);
 export function logFilter(events, { group, q, sinceAt } = {}) {
@@ -1510,6 +1535,7 @@ function logLink(e) {
     case 'ic_people': return `<button class="llink" data-action="people">Open people</button>`;
     case 'ic_evacuees': return `<button class="llink" data-action="select-evacuee" data-id="${id}">Where now</button>`;
     case 'ic_transports': return `<button class="llink" data-action="transports" data-id="${id}">Open the board</button>`;
+    case 'ic_tags': case 'ic_seen': return `<button class="llink" data-action="people">Open people</button>`;
     default: return '';
   }
 }
@@ -1698,6 +1724,8 @@ export function settingsDialogHtml(data) {
       <label>EOC email address <input name="eoc_email" type="email" value="${esc(st.eoc_email || '')}" autocomplete="off" placeholder="eoc@county.gov" maxlength="120"></label>
       <div class="muted" style="font-size:12px">Send by email on the situation report and the other papers goes to it in one tap; leave it empty to pick the address in the mail app.</div>
       <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
+      <div class="k" style="margin-top:4px">Bands</div>
+      <div class="muted" style="font-size:12px">${data.tags(true).length} printed, ${data.tags(true).filter((t) => t.person_id || t.evacuee_id).length} on someone, ${data.tags(true).filter((t) => t.voided_at).length} voided. Print bands from the home panel's join box or the People board; a lost band is voided from its person's row on the People board and a new one given by scanning it. A sheltered person's band is voided with their name when the personal records clear.</div>
       <div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
     </form>`;
 }

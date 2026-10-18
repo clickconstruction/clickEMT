@@ -18,6 +18,7 @@ import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
 import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
 import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports } from '../shared/rules.js';   // the transport board (v54)
+import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
 const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
@@ -29,8 +30,8 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null };
-function blankPerson() { return { name: '', role: '', quals: new Set() }; }
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map() };
+function blankPerson() { return { name: '', role: '', quals: new Set(), band: '' }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
 const QUICK_DESK = ['Nearly full', 'Need cots and blankets', 'Need a nurse', 'Bus has arrived'];   // a shelter desk's (v44)
@@ -65,7 +66,7 @@ function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
   const was = state.screen;
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt', 'person']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt', 'person', 'band']) $('#s-' + s).hidden = name !== s;
   // A sheet opens at its top. The browser gives a sheet shown again the scroll it had when it was
   // hidden, so the briefing came back at its end, where Briefed was pressed last time.
   if (name !== was && name !== 'home') toTop($('#s-' + name));
@@ -83,7 +84,7 @@ const outbox = new Outbox({
   alert: (p, _b, at) => data.raiseAlert(p.id, { ...p, createdAt: at }),
   standdown: (p) => data.standDown(p.id),
   message: (p, _b, at) => data.sendMessage(p.id, { ...p, createdAt: at }),
-  ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at, p.missing),
+  ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at, p.missing, p.scanned),
   count: (p) => data.updateMember(p.userId, { unnamed_count: p.n }),
   status: (p) => data.setStatus(p.userId, p.status, p.note),
   water: (p) => data.setInWater(p.userId, p.since),
@@ -94,7 +95,9 @@ const outbox = new Outbox({
   personPatch: (p) => data.updatePerson(p.id, p.patch),
   found: (p) => data.markFound(p.messageId, p.userId, { personId: p.personId, name: p.name }),
   accept: (p) => data.updateMember(p.userId, { accepted_zone_id: p.zoneId }),
-  transport: (p) => data.updateTransport(p.id, p.patch)   // a run's next step, from the desk or the driver (v54)
+  transport: (p) => data.updateTransport(p.id, p.patch),   // a run's next step, from the desk or the driver (v54)
+  seen: (p, _b, at) => data.addSeen(p.id, { ...p.fields, at }),   // a scan (v55)
+  band: (p) => data.giveBand(p.id, p.fields)                      // a band given by scanning it (v55)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -142,6 +145,16 @@ async function boot() {
   try { sessionStorage.setItem(JOIN_KEY, code); } catch (e) { /* storage blocked */ }
   try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* fine */ }
 })();
+// ---- a band link (v55): ?band=<code> in the address, read by any QR reader, opens the band once the incident is open
+const BAND_KEY = 'ic.field.band';
+(function takeBandLink() {
+  const code = bandFromSearch(location.search);
+  if (!code) return;
+  try { sessionStorage.setItem(BAND_KEY, code); } catch (e) { /* storage blocked */ }
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* fine */ }
+})();
+function pendingBand() { try { return sessionStorage.getItem(BAND_KEY) || ''; } catch (e) { return ''; } }
+function clearPendingBand() { try { sessionStorage.removeItem(BAND_KEY); } catch (e) { /* fine */ } }
 function pendingJoin() { try { return sessionStorage.getItem(JOIN_KEY) || ''; } catch (e) { return ''; } }
 function clearPendingJoin() { try { sessionStorage.removeItem(JOIN_KEY); } catch (e) { /* fine */ } }
 
@@ -267,7 +280,7 @@ function drawJoinPeople() {
   toggleJoinPeople();
   $('#join-people').innerHTML = state.joinPeople.map((p, i) => `
     <div class="pp-edit">
-      <div class="pp-edit-top"><input class="input" placeholder="Name" data-jp="name" data-i="${i}" value="${esc(p.name)}" autocapitalize="words" autocomplete="off" maxlength="80"><input class="input" placeholder="Rank or role" data-jp="role" data-i="${i}" value="${esc(p.role)}" autocomplete="off" maxlength="60">${state.joinPeople.length > 1 ? `<button type="button" class="btn pp-x" data-action="jp-remove" data-i="${i}" aria-label="Remove this person" title="Remove this person">×</button>` : ''}</div>
+      <div class="pp-edit-top"><input class="input" placeholder="Name" data-jp="name" data-i="${i}" value="${esc(p.name)}" autocapitalize="words" autocomplete="off" maxlength="80"><input class="input" placeholder="Rank or role" data-jp="role" data-i="${i}" value="${esc(p.role)}" autocomplete="off" maxlength="60"><input class="input" placeholder="Band №" data-jp="band" data-i="${i}" value="${esc(p.band || '')}" inputmode="numeric" autocomplete="off" maxlength="16" aria-label="Band number" title="The number on the band from the base's sheet; the scan is the check-in (v55)">${state.joinPeople.length > 1 ? `<button type="button" class="btn pp-x" data-action="jp-remove" data-i="${i}" aria-label="Remove this person" title="Remove this person">×</button>` : ''}</div>
       <div class="chips">${qualChips(p.quals, 'jp-qual', ` data-i="${i}"`)}</div>
     </div>`).join('');
 }
@@ -276,7 +289,7 @@ function syncJoinPeople() {
 }
 function joinPeopleList() {
   syncJoinPeople();
-  return state.joinPeople.filter((p) => p.name.trim()).map((p) => ({ name: p.name.trim(), role: p.role.trim(), qualifications: [...p.quals] }));
+  return state.joinPeople.filter((p) => p.name.trim()).map((p) => Object.assign({ name: p.name.trim(), role: p.role.trim(), qualifications: [...p.quals] }, (p.band || '').trim() ? { band: p.band.trim() } : {}));
 }
 
 $('#join-form').addEventListener('submit', async (e) => {
@@ -318,6 +331,8 @@ async function openIncident(id) {
   let briefedFor = null;
   try { briefedFor = localStorage.getItem(BRIEFED + id); } catch (e) { /* storage blocked */ }
   if (me && me.role === 'unit' && (state.briefOnce || briefedFor !== me.joined_at)) { state.briefOnce = false; openBriefing(); }
+  const pb = pendingBand();   // a band's link opens it now (v55)
+  if (pb) { clearPendingBand(); setTimeout(() => { const err = bandRead(pb); if (err) toast(err, true); }, 300); }
 }
 
 // ---- your briefing: ICS-100's briefing items for this unit, assembled from the data (js/shared/briefings.js),
@@ -470,8 +485,10 @@ function parCardHtml(m) {
   if (ppl.length) {
     const picked = state.parPicked.get(m.id) || new Set();
     if (!state.parMissingOpen.has(m.id)) {
-      return `<div class="par-names"><span class="k">Checked in with you</span> ${ppl.map((p) => esc(p.name)).join(', ')}${me && me.unnamed_count ? ` and ${me.unnamed_count} not named` : ''}</div>
-        <div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All ${total} accounted for</button><button class="btn" data-action="par-missing-open" data-id="${m.id}">Someone's missing</button></div>`;
+      const scanned = state.parScanned.get(m.id) || new Map(), banded = ppl.filter((p) => tagOf(data.tags(true), { personId: p.id }));   // the PAR by scan (v55)
+      return `<div class="par-names"><span class="k">Checked in with you</span> ${ppl.map((p) => esc(p.name) + (scanned.has(p.id) ? ` <span class="par-scanned">scanned ${hhmm(scanned.get(p.id))}</span>` : '')).join(', ')}${me && me.unnamed_count ? ` and ${me.unnamed_count} not named` : ''}</div>
+        ${banded.length ? `<div class="mrow-btns"><button class="btn" data-action="par-scan" data-id="${m.id}">Scan them in · ${scanned.size} of ${banded.length}</button></div><div class="muted small">Scan each band in front of you, or press All accounted for as before. A person scanned is accounted for by the scan; one not scanned is for you to say.</div>` : ''}
+        <div class="mrow-btns"><button class="btn green" data-action="par-ok" data-id="${m.id}">All ${total} accounted for${scanned.size ? ', ' + scanned.size + ' by scan' : ''}</button><button class="btn" data-action="par-missing-open" data-id="${m.id}">Someone's missing</button></div>`;
     }
     return `<div class="par-names"><span class="k">Who is missing? Tick them</span></div>
       <div class="chips par-pick">${ppl.map((p) => `<label class="chip${picked.has(p.id) ? ' on' : ''}"><input type="checkbox" data-par-miss="${m.id}" value="${p.id}"${picked.has(p.id) ? ' checked' : ''}> ${esc(p.name)}</label>`).join('')}${me && me.unnamed_count ? `<label class="chip${picked.has('unnamed') ? ' on' : ''}"><input type="checkbox" data-par-miss="${m.id}" value="unnamed"${picked.has('unnamed') ? ' checked' : ''}> one of the ${me.unnamed_count} not named</label>` : ''}</div>
@@ -517,12 +534,13 @@ async function answerPar(id, allAccounted, missingIds = []) {
   const nMissing = allAccounted ? 0 : Math.max(1, missing.length + (missingIds.includes('unnamed') ? 1 : 0));
   const count = allAccounted ? total : (ppl.length ? Math.max(0, total - nMissing) : total);
   const reply = allAccounted ? 'All accounted for' : 'Missing someone';
-  data.local('ic_message_acks', { message_id: id, incident_id: data.incident.id, user_id: data.user.id, reply, count, missing: allAccounted ? [] : missing, acked_at: new Date().toISOString() });
-  await outbox.add('ack', { messageId: id, reply, count, missing: allAccounted ? [] : missing });
+  const sc = state.parScanned.get(id), scanned = sc && sc.size ? sc.size : null;   // how many were scanned in (v55)
+  data.local('ic_message_acks', { message_id: id, incident_id: data.incident.id, user_id: data.user.id, reply, count, missing: allAccounted ? [] : missing, acked_at: new Date().toISOString(), scanned });
+  await outbox.add('ack', { messageId: id, reply, count, missing: allAccounted ? [] : missing, scanned });
   state.lastSentAt = Date.now();
   state.parMissingOpen.delete(id); state.parPicked.delete(id);
   if (!allAccounted && !myAlert()) await sendAlert(missing.length ? 'Missing: ' + missing.map((x) => x.name).join(', ') : 'Missing someone');
-  else { if (state.screen === 'safety') drawSafety(); toast(allAccounted ? 'All ' + count + ' accounted for, sent' : 'Head count sent: ' + count); }
+  else { if (state.screen === 'safety') drawSafety(); toast(allAccounted ? 'All ' + count + ' accounted for' + (scanned ? ', ' + scanned + ' by scan' : '') + ', sent' : 'Head count sent: ' + count); }
   queueDraw();
 }
 async function setMyKind(kind) {
@@ -667,7 +685,8 @@ function drawPeople() {
   const html = (rows.length ? `<div class="muted small">${on.length} on the unit${rows.length > on.length ? ', ' + (rows.length - on.length) + ' checked out' : ''}. Operations counts them from here.</div>` : '<div class="muted small">No names on record yet. Add each person below, with what they are qualified for.</div>')
     + rows.map((p) => {
       const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
-      const sub = [qualsText(p.qualifications), p.checked_out_at ? 'checked out ' + hhmm(p.checked_out_at) : 'since ' + hhmm(p.checked_in_at) + ' · ' + onSceneText(p) + ' on scene', buddy ? 'with ' + buddy.name : ''].filter(Boolean).join(' · ');
+      const tg = tagOf(data.tags(true), { personId: p.id });   // v55
+      const sub = [qualsText(p.qualifications), p.checked_out_at ? 'checked out ' + hhmm(p.checked_out_at) : 'since ' + hhmm(p.checked_in_at) + ' · ' + onSceneText(p) + ' on scene', buddy ? 'with ' + buddy.name : '', tg ? bandLabel(tg) + ', ' + lastSeenText(lastSeen(data.seen(), [tg.id]), seenOpts()) : 'no band'].filter(Boolean).join(' · ');
       return `<div class="pp-row${p.checked_out_at ? ' out' : ''}" data-person="${p.id}">
         <span class="pp-main"><span class="pp-name">${esc(p.name)}${p.role ? ` <span class="role">${esc(p.role)}</span>` : ''}</span><span class="pp-sub">${esc(sub)}</span></span>
         <button class="btn sm" data-action="person-edit" data-id="${p.id}" aria-label="Edit ${esc(p.name)}">Edit</button>
@@ -937,12 +956,16 @@ function drawMiniOverlays() {
 // ---- the code to join: read with the camera at check-in, shown from the menu
 let scanner = null;
 // mode 'join' reads a QR with the join code; mode 'licence' reads the PDF417 on the back of a licence
-async function openScan(mode = 'join') {
+async function openScan(mode = 'join', ctx = null) {
+  state.scanCtx = mode === 'band' ? (ctx || { purpose: 'seen' }) : null;   // what a band scan is for (v55): seen, par, desk
   $('#s-scan').hidden = false;
+  $('#scan-typed').hidden = mode !== 'band';
+  if (mode === 'band') $('#scan-type').value = '';
   $('#scan-msg').textContent = 'Opening the camera…';
-  $('#s-scan h2').textContent = mode === 'licence' ? 'Scan the back of your licence' : 'Scan the code';
+  $('#s-scan h2').textContent = mode === 'licence' ? 'Scan the back of your licence' : mode === 'band' ? (ctx && ctx.purpose === 'par' ? 'Scan them in' : 'Scan a band') : 'Scan the code';
   try {
     scanner = await startScan($('#scan-video'), (text) => {
+      if (mode === 'band') { const err = bandRead(text); if (err) $('#scan-msg').textContent = err; return; }
       if (mode === 'licence') {
         const r = looksLikeLicence(text) ? parseLicence(text) : null;
         if (!r) { $('#scan-msg').textContent = 'That is a barcode, but not a licence. Find the wide one on the back.'; return; }
@@ -958,8 +981,118 @@ async function openScan(mode = 'join') {
       f.unit.focus();
       toast('Code ' + code + ' read');
     }, { format: mode === 'licence' ? 'pdf417' : 'qr_code' });
-    $('#scan-msg').textContent = mode === 'licence' ? 'Hold the back of the licence flat in good light, the wide barcode filling the frame.' : 'Point the camera at the code.';
-  } catch (err) { $('#scan-msg').textContent = err.message || String(err); }
+    $('#scan-msg').textContent = mode === 'licence' ? 'Hold the back of the licence flat in good light, the wide barcode filling the frame.' : mode === 'band' ? 'Point the camera at the band\'s code, or type its number below.' : 'Point the camera at the code.';
+  } catch (err) { $('#scan-msg').textContent = (err.message || String(err)).replace('Type the code instead.', mode === 'band' ? 'Type the band\'s number below.' : 'Type the code instead.'); }
+}
+// ---- a band (v55): what a scan or the typed box gave, as a band of this incident; then what the scan means
+const seenOpts = () => ({ zoneOf: (id) => data.zone(id), facilityOf: (id) => data.facility(id), transportOf: (id) => data.transport(id) });
+function bandWho(tag) {   // "Okafor (Unit 1)", "Garza, family of 3", or ''
+  if (tag.person_id) { const p = data.person(tag.person_id); return p ? p.name + ' (' + unitLabel(data.member(p.user_id)) + ')' : 'someone no longer on record'; }
+  if (tag.evacuee_id) { const e = data.evacuee(tag.evacuee_id); return e ? evacueeWho(e) : 'a record no longer on file'; }
+  return '';
+}
+function bandSeenLine(tag) { const sn = lastSeen(data.seen(), [tag.id]); return sn ? lastSeenText(sn, seenOpts()) + ' by ' + unitLabel(data.member(sn.seen_by)) : 'not seen yet'; }
+// returns '' when the band opened, else the words to show
+function bandRead(text) {
+  const r = bandFromScan(text);
+  if (!r) return 'That is a code, but not a band. Try another, or type the band\'s number.';
+  const tag = r.code ? data.tagByCode(r.code) : data.tagByNumber(r.number);
+  if (!tag) return !data.tags(true).length ? 'No bands on this incident yet: Operations prints them from the base.' : r.code ? 'That band is not from this incident.' : 'No band ' + bandNumber(r.number) + ' on this incident.';
+  if (tag.voided_at) return bandLabel(tag) + ' was voided; give a new one.';
+  closeScan();
+  openBand(tag);
+  return '';
+}
+async function queueSeen(tag, kind, { zoneId, facilityId, transportId, messageId } = {}) {
+  const id = uuid(), p = sensors.pos, at = new Date().toISOString();
+  const row = { id, incident_id: data.incident.id, tag_id: tag.id, kind, at, lat: p ? p.lat : null, lng: p ? p.lng : null, zone_id: zoneId || null, facility_id: facilityId || null, transport_id: transportId || null, message_id: messageId || null, seen_by: data.user.id, created_at: at };
+  data.local('ic_seen', row);
+  await outbox.add('seen', { id, fields: { tagId: tag.id, kind, lat: row.lat, lng: row.lng, zoneId: row.zone_id, facilityId: row.facility_id, transportId: row.transport_id, messageId: row.message_id } });
+  state.lastSentAt = Date.now();
+}
+async function openBand(tag) {
+  const ctx = state.scanCtx || { purpose: 'seen' }, me = data.me();
+  const on = !!(tag.person_id || tag.evacuee_id);
+  if (ctx.purpose === 'par') {   // the head count by scan: one of my people, marked scanned
+    const p = tag.person_id ? data.person(tag.person_id) : null;
+    if (!p || !me || p.user_id !== me.user_id) { toast(on ? bandLabel(tag) + ' is ' + bandWho(tag) + '\'s, not on your unit' : bandLabel(tag) + ' is not on anyone yet', true); screen('safety'); drawSafety(); return; }
+    const m = state.parScanned.get(ctx.messageId) || new Map(); m.set(p.id, new Date().toISOString()); state.parScanned.set(ctx.messageId, m);
+    await queueSeen(tag, 'par', { messageId: ctx.messageId });
+    const banded = parPeople().filter((x) => tagOf(data.tags(true), { personId: x.id })).length;
+    toast(p.name + ' scanned · ' + m.size + ' of ' + banded);
+    screen('safety'); drawSafety(); drawInbox();
+    return;
+  }
+  if (ctx.purpose === 'desk') {   // the desk's sign-in: a band from the box goes on the record; a family's band brings the record up
+    if (!on) { if (state.ev) { state.ev.band = tag; drawEvBand(); toast(bandLabel(tag) + ' scanned; it goes on this record when you save'); } return; }
+    const e = tag.evacuee_id ? data.evacuee(tag.evacuee_id) : null, f = deskShelter();
+    if (e && f && e.status === 'on_the_way' && e.facility_id === f.id) { await queueSeen(tag, 'arrive', { facilityId: f.id }); await theyAreHere(e.id); return; }
+    if (e) { await queueSeen(tag, 'arrive', { facilityId: f ? f.id : null }); openPerson('edit', e.id); toast(evacueeWho(e) + ': ' + evacueeWhere(e, facilityOf)); return; }
+    toast(bandLabel(tag) + ' is ' + bandWho(tag) + '\'s, a responder\'s band', true);
+    return;
+  }
+  state.band = { tagId: tag.id, kind: seenGuess({ desk: isDesk(), zone: myZone() || data.myZones()[0] || null }), personId: null, evacueeId: null, newPerson: false };
+  drawBand();
+  screen('band');
+}
+function drawBand() {
+  const b = state.band; if (!b) return;
+  const tag = data.tag(b.tagId); if (!tag) { screen('home'); return; }
+  const on = !!(tag.person_id || tag.evacuee_id), me = data.me(), desk = isDesk();
+  $('#band-title').textContent = bandLabel(tag) + (on ? ' · ' + bandWho(tag) : ' · not on anyone yet');
+  $('#band-sub').textContent = on ? bandSeenLine(tag) : 'A band is an id: it belongs to whoever you give it to now.';
+  if (!on) {
+    const f = desk ? deskShelter() : null;
+    const list = desk ? data.evacuees().filter((e) => !tagOf(data.tags(true), { evacueeId: e.id }) && f && e.facility_id === f.id) : data.unitPeople(me.user_id).filter((p) => !p.checked_out_at && !tagOf(data.tags(true), { personId: p.id }));
+    $('#band-hint').textContent = desk ? 'Whose band is this? A family here or on its way, or someone new.' : 'Whose band is this? The scan is their check-in.';
+    setHtml($('#band-who'), `<div class="chips">${list.map((x) => `<button type="button" class="chip${(desk ? b.evacueeId === x.id : b.personId === x.id) ? ' on' : ''}" data-action="band-who" data-${desk ? 'evacuee' : 'person'}="${x.id}">${esc(desk ? evacueeWho(x) : x.name)}</button>`).join('')}${desk ? `<button type="button" class="chip${b.newPerson ? ' on' : ''}" data-action="band-who" data-new="1">Someone new</button>` : ''}</div>${!list.length && !desk ? '<p class="muted small">Everyone on your unit has a band. Add a person from the menu first.</p>' : ''}`);
+    setHtml($('#band-what'), '');
+    const who = desk ? (b.newPerson ? 'someone new' : (b.evacueeId && data.evacuee(b.evacueeId) ? evacueeWho(data.evacuee(b.evacueeId)) : '')) : (b.personId && data.person(b.personId) ? data.person(b.personId).name : '');
+    $('#band-save').textContent = who ? (b.newPerson ? 'Sign them in with ' + bandLabel(tag) : 'Give ' + bandLabel(tag) + ' to ' + who) : 'Pick whose band it is';
+    $('#band-save').disabled = !who;
+  } else {
+    setHtml($('#band-who'), '');
+    const draft = bandDraft(b.kind);
+    $('#band-hint').textContent = 'What is this scan? The likely answer is chosen from where you are; change it with a tap.';
+    setHtml($('#band-what'), `<div class="chips">${SEEN_KINDS.filter(([k]) => k !== 'par').map(([k, label]) => { const d = bandDraft(k); return `<button type="button" class="chip${b.kind === k ? ' on' : ''}" data-action="band-what" data-kind="${k}">${esc(k === 'check_in' ? label : seenWords(d, seenOpts()).replace(/^./, (c) => c.toUpperCase()))}</button>`; }).join('')}</div>`);
+    $('#band-save').textContent = 'Save: ' + bandWho(tag).replace(/ \(.*\)$/, '') + ' ' + seenWords(draft, seenOpts()) + ', ' + hhmm(new Date());
+    $('#band-save').disabled = false;
+  }
+}
+// a scan of this kind, where the phone is: the division it stands in (or its own), the desk's shelter, the run loading from here
+function bandDraft(kind) {
+  const zone = myZone() || data.myZones()[0] || null, f = isDesk() ? deskShelter() : null;
+  const run = openRuns(data.transports(), { zoneId: zone && zone.id })[0] || null;
+  return { kind, zone_id: (kind === 'enter' || kind === 'leave') && zone ? zone.id : null, facility_id: kind === 'arrive' && f ? f.id : null, transport_id: kind === 'board' && run ? run.id : null };
+}
+async function saveBand() {
+  const b = state.band; if (!b) return;
+  const tag = data.tag(b.tagId); if (!tag) return;
+  const on = !!(tag.person_id || tag.evacuee_id), f = isDesk() ? deskShelter() : null;
+  if (!on) {
+    if (b.newPerson) { state.band = null; openPerson('new'); if (state.ev) { state.ev.band = tag; drawEvBand(); } return; }
+    if (!b.personId && !b.evacueeId) return;
+    data.local('ic_tags', Object.assign({}, tag, { person_id: b.personId || null, evacuee_id: b.evacueeId || null, kind: b.personId ? 'responder' : 'evacuee', issued_at: new Date().toISOString(), issued_by: data.user.id }));
+    await outbox.add('band', { id: tag.id, fields: b.personId ? { personId: b.personId } : { evacueeId: b.evacueeId } });
+    await queueSeen(tag, b.personId ? 'check_in' : 'arrive', { facilityId: f ? f.id : null });
+    toast(bandLabel(tag) + ' given to ' + (b.personId ? data.person(b.personId).name : evacueeWho(data.evacuee(b.evacueeId))));
+  } else {
+    const d = bandDraft(b.kind);
+    await queueSeen(tag, b.kind, { zoneId: d.zone_id, facilityId: d.facility_id, transportId: d.transport_id });
+    toast('Seen: ' + bandWho(tag) + ' ' + seenWords(d, seenOpts()) + ' · ' + hhmm(new Date()));
+  }
+  state.band = null;
+  screen('home');
+  queueDraw();
+}
+// the desk's sign-in sheet: the band on this record, or the one just scanned for it
+function drawEvBand() {
+  const ev = state.ev, line = $('#ev-band-line'), btn = $('#ev-band-btn');
+  if (!ev || !line) return;
+  const had = ev.id ? tagOf(data.tags(true), { evacueeId: ev.id }) : null;
+  if (had) { line.textContent = bandLabel(had) + ' on this record · ' + bandSeenLine(had); btn.hidden = true; }
+  else if (ev.band) { line.textContent = bandLabel(ev.band) + ' · scanned ' + hhmm(new Date()) + '; it goes on this record when you save.'; btn.hidden = false; }
+  else { line.textContent = 'No band yet. Scan one from the box for a walk-up; a family a crew banded comes up by its band.'; btn.hidden = false; }
 }
 
 // ---- Identify yourself: name, phone and licence, once per account
@@ -1230,7 +1363,7 @@ function openPerson(mode, id) {
   const f = deskShelter();
   const e = id ? data.evacuee(id) : null;
   if (mode === 'new' && !f) { toast('No shelter on the map yet to sign people in at', true); return; }
-  state.ev = { mode, id: e ? e.id : null, needs: new Set(e ? e.needs : []), countTouched: !!e };
+  state.ev = { mode, id: e ? e.id : null, needs: new Set(e ? e.needs : []), countTouched: !!e, band: state.ev && state.ev.band && !e ? state.ev.band : null };   // a band scanned for someone new rides along (v55)
   $('#person-title').textContent = mode === 'new' ? 'Sign in a person' : mode === 'arrived' ? 'Signed in: ' + evacueeWho(e) : evacueeWho(e);
   $('#person-sub').textContent = mode === 'new' ? (f ? placeLabel(f) + ' · ' + hhmm(new Date()) : '') : evacueeWhere(e, facilityOf);
   $('#person-hint').textContent = mode === 'arrived' ? `${unitLabel(data.member(e.logged_by))} sent them${fromOf(e) ? ' from ' + fromOf(e) : ''}. They are signed in; add the name if you have it.` : mode === 'edit' ? 'Change what is wrong, or where they are now. A record is moved, never removed.' : '';
@@ -1245,6 +1378,7 @@ function openPerson(mode, id) {
   $('#ev-save').textContent = mode === 'new' ? 'Sign in here' : mode === 'arrived' ? 'Save the name' : 'Save';
   $('#ev-cancel').textContent = mode === 'arrived' ? 'Not now' : 'Cancel';   // they are signed in already
   drawPersonNeeds();
+  drawEvBand();
   screen('person');
   if (mode !== 'edit') setTimeout(() => $('#ev-who').focus(), 60);
 }
@@ -1271,9 +1405,16 @@ async function savePerson() {
     toast(Object.keys(patch).length ? evacueeWho(Object.assign({}, cur, patch)) + (patch.status && patch.status !== 'here' ? ': ' + evacueeWhere(Object.assign({}, cur, patch, { status_at: now }), facilityOf) : ' saved') : 'Nothing changed');
   } else {
     const id = uuid();
+    ev.lastId = id;
     data.local('ic_evacuees', Object.assign({ id, incident_id: data.incident.id, structure_id: null, prev_facility_id: null, logged_by: data.user.id, status_at: now, created_at: now, updated_at: now, archived_at: null, signed_in_by: where.status === 'here' ? data.user.id : null, signed_in_at: where.status === 'here' ? now : null }, fields));
     await outbox.add('evacuee', { id, fields });
     toast(evacueeWho(fields) + (where.status === 'here' ? ' signed in' : ': ' + evacueeWhere(Object.assign({}, fields, { status_at: now }), facilityOf)));
+  }
+  const rid = cur ? cur.id : ev.lastId;
+  if (ev.band && rid && !tagOf(data.tags(true), { evacueeId: rid })) {   // the band scanned on this sheet goes on the record, and the scan is the arrival (v55)
+    data.local('ic_tags', Object.assign({}, ev.band, { evacuee_id: rid, kind: 'evacuee', issued_at: now, issued_by: data.user.id }));
+    await outbox.add('band', { id: ev.band.id, fields: { evacueeId: rid } });
+    await queueSeen(ev.band, 'arrive', { facilityId: f ? f.id : null });
   }
   state.lastSentAt = Date.now();
   state.ev = null;
@@ -1334,6 +1475,7 @@ async function myRunStep(id, status) {
   queueDraw();
 }
 $('#desk-q').addEventListener('input', (e) => { state.deskQ = e.target.value; drawDeskResults(); });
+$('#scan-type').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const err = bandRead($('#scan-type').value); if (err) { $('#scan-msg').textContent = err; toast(err, true); } } });
 $('#ev-who').addEventListener('input', () => { if (state.ev && !state.ev.countTouched) { const n = countIn($('#ev-who').value); $('#ev-count').value = n || 1; } });
 $('#ev-count').addEventListener('input', () => { if (state.ev) state.ev.countTouched = true; });
 // the help count follows the rows as they are typed: everyone on a row needed help
@@ -1614,6 +1756,14 @@ document.addEventListener('click', async (e) => {
       case 'id-photo': await takeIdPhoto(); break;
       case 'id-save': await saveIdentity(); break;
       case 'scan-cancel': closeScan(); break;
+      case 'scan-band': await openScan('band', { purpose: 'seen' }); break;
+      case 'scan-band-desk': await openScan('band', { purpose: 'desk' }); break;
+      case 'par-scan': await openScan('band', { purpose: 'par', messageId: btn.dataset.id }); break;
+      case 'scan-typed': { const err = bandRead($('#scan-type').value); if (err) { $('#scan-msg').textContent = err; toast(err, true); } break; }
+      case 'band-who': { const b = state.band; if (!b) break; b.personId = btn.dataset.person || null; b.evacueeId = btn.dataset.evacuee || null; b.newPerson = !!btn.dataset.new; drawBand(); break; }
+      case 'band-what': if (state.band) { state.band.kind = btn.dataset.kind; drawBand(); } break;
+      case 'band-save': await saveBand(); break;
+      case 'band-cancel': state.band = null; screen('home'); queueDraw(); break;
       case 'show-code': openShowCode(); break;
       case 'layer': await setMiniLayer(btn.dataset.value); break;
       case 'accept': { const me = data.me(), zid = btn.dataset.id; if (me && zid) { data.local('ic_members', Object.assign({}, me, { accepted_zone_id: zid })); await outbox.add('accept', { userId: me.user_id, zoneId: zid }); } state.justCleared = null; queueDraw(); toast('Assignment accepted'); break; }   // the base learns of it (v42)

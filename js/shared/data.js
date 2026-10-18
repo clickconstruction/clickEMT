@@ -2,15 +2,16 @@
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT } from './rules.js';
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
 const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
+const SEEN_LIMIT = 3000;   // the newest scans (v55); last seen comes from them
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map(), tags: new Map(), seen: new Map() };
 }
 
 function keyOf(table, row) {
@@ -166,6 +167,10 @@ export class Data {
     } catch (e) { /* a client without the tables */ }
     try { const { data: ev, error: evErr } = await q('ic_evacuees'); if (!evErr) put('ic_evacuees', ev); } catch (e) { /* a client without the table (migration 0018) */ }
     try { const { data: tr, error: trErr } = await q('ic_transports'); if (!trErr) put('ic_transports', tr); } catch (e) { /* a client without the table (migration 0031) */ }
+    try {   // the bands and the scans (migration 0032)
+      const [tg, sn] = await Promise.all([q('ic_tags').order('number'), q('ic_seen').order('at', { ascending: false }).limit(SEEN_LIMIT)]);
+      if (!tg.error) put('ic_tags', tg.data); if (!sn.error) put('ic_seen', sn.data);
+    } catch (e) { /* a client without the tables */ }
     try { const { data: oc, error: ocErr } = await q('ic_ops_codes'); if (!ocErr) put('ic_ops_codes', oc); } catch (e) { /* a client without the table (migration 0019); a unit gets no row */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
@@ -339,6 +344,38 @@ export class Data {
   myRuns() { return this.user ? this.transports().filter((t) => t.driver_user_id === this.user.id && t.status !== 'done') : []; }
   // put a record on a run (or take it off with null): the database moves it to the run's destination
   async putOnTransport(evacueeId, transportId) { return this.updateEvacuee(evacueeId, { transport_id: transportId || null }); }
+  // ---- people and tags (v55): bands (ic_tags) and scans (ic_seen). A band is printed by Operations in sheets
+  // (ic_print_bands), given to a person or a record by scanning it, voided never deleted; a scan is never changed.
+  tags(all) { return [...this.store.tags.values()].filter((t) => all || !t.voided_at).sort((a, b) => a.number - b.number); }
+  tag(id) { return this.store.tags.get(id) || null; }
+  tagByCode(code) { const c = String(code || '').toUpperCase(); return this.tags(true).find((t) => t.code === c) || null; }
+  tagByNumber(n) { return this.tags(true).find((t) => t.number === Number(n)) || null; }
+  seen() { return [...this.store.seen.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)); }
+  async printBands(count = 24) {
+    const { data, error } = await this.sb.rpc('ic_print_bands', { p_incident: this.store.incident.id, p_count: count });
+    if (error) throw error;
+    for (const t of data || []) this.local('ic_tags', t);
+    return data || [];
+  }
+  async giveBand(id, { personId, evacueeId }) {
+    const { data, error } = await this.sb.from('ic_tags').update({ person_id: personId || null, evacuee_id: evacueeId || null }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_tags', data);
+    return data;
+  }
+  async voidBand(id) {
+    const { data, error } = await this.sb.from('ic_tags').update({ voided_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_tags', data);
+    return data;
+  }
+  async addSeen(id, { tagId, kind, at, lat, lng, zoneId, facilityId, transportId, messageId }) {
+    const row = { id, incident_id: this.store.incident.id, tag_id: tagId, kind, at: at || new Date().toISOString(), lat: lat ?? null, lng: lng ?? null, zone_id: zoneId || null, facility_id: facilityId || null, transport_id: transportId || null, message_id: messageId || null, seen_by: this.user.id };
+    const { data, error } = await this.sb.from('ic_seen').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_seen', data || row);
+    return data || row;
+  }
   // the facility a unit works at: a shelter desk's shelter (ic_members.facility_id)
   async setUnitFacility(userId, facilityId) { return this.updateMember(userId, { facility_id: facilityId || null }); }
 
@@ -728,10 +765,11 @@ export class Data {
     this.local('ic_messages', data || row);
     return data || row;
   }
-  async ackMessage(messageId, reply, count, ackedAt, missing) {
+  async ackMessage(messageId, reply, count, ackedAt, missing, scanned) {
     const row = { message_id: messageId, incident_id: this.store.incident.id, user_id: this.user.id, reply: reply || '', count: count ?? null };
     if (ackedAt) row.acked_at = ackedAt;
     if (Array.isArray(missing) && missing.length) row.missing = missing.map((x) => ({ id: x.id || null, name: x.name || '' }));
+    if (scanned != null) row.scanned = scanned;   // how many of the unit's people were scanned on this PAR (v55)
     const { data, error } = await this.sb.from('ic_message_acks').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_message_acks', data || { ...row, acked_at: new Date().toISOString() });
@@ -762,7 +800,7 @@ export class Data {
     return this.sendMessage(null, { toUsers: r.toUsers, toLabel: r.toLabel, toZone: r.toZone, kind: 'par', text: text || 'PAR: is everyone accounted for?' });
   }
   // missing is [{id, name}] of the unit's people reported missing (v29); the base's bar and board name them
-  async answerPar(messageId, allAccounted, count, missing) { return this.ackMessage(messageId, allAccounted ? 'All accounted for' : 'Missing someone', count, null, allAccounted ? [] : missing); }
+  async answerPar(messageId, allAccounted, count, missing, scanned) { return this.ackMessage(messageId, allAccounted ? 'All accounted for' : 'Missing someone', count, null, allAccounted ? [] : missing, scanned); }
   // who the latest PAR says is missing: one entry per name (or one nameless entry), with the unit that reported them
   missingNow() { const par = this.lastPar(); return par ? missingOnPar(par, this.acksFor(par.id), (u) => this.member(u)) : []; }
   missingPerson(personId) { return this.missingNow().find((m) => m.id === personId) || null; }

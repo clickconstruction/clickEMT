@@ -254,3 +254,14 @@ body { background: var(--bg-2); }
 .run-next { font-size: 13px; }
 .st-row.has-run { grid-template-areas: "who x" "cond cond" "where where" "run run"; }
 .st-row > [data-stp="run"] { grid-area: run; }
+
+/* ---- people and tags (v55): the typed box under the camera, the band sheet, the band at check-in and on the desk's sheet */
+.scan-typed { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.scan-typed-row { display: flex; gap: 8px; }
+.scan-typed-row .input { flex: 1; min-width: 0; border: 1px solid var(--control-border); border-radius: 10px; padding: 10px 12px; font-size: 18px; min-height: 48px; background: var(--control-bg); color: var(--ink); }
+.band-head { font-size: 17px; font-weight: 700; }
+#band-who .chips, #band-what .chips { margin-top: 6px; }
+.band-seen { font-size: 13.5px; }
+.pp-edit-top .input[data-jp="band"] { flex: 0 0 86px; }
+.ev-band { display: flex; gap: 10px; align-items: center; }
+.ev-band .btn { min-height: 48px; flex: none; }

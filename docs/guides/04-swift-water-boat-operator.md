@@ -27,6 +27,7 @@
 - **Phone** · Press **Address clear**, then **Add who and where they went**. Each row is a person or a family: who, their condition, and where they went (the shelter first, the hospital, With family, Own transport, Not known).
 - **Phone** · Press **Searched, save**. The shelter desk sees them under "Arriving from crews" and signs them in with one tap when they arrive; the 214 says who you sent where.
 
+- **Phone** · Bands (v55): your crew's bands scanned (or their numbers typed at check-in) are their check-in; scanned again boarding the boat, the board reads "seen boarding Boat run 3 17:40" for each of them, so the base knows out of sight from unaccounted for. On a PAR, **Scan them in** counts the bands in front of you.
 - **Phone** · When a bus or a boat run is planned to your pickup, each person's row has **On which run** (v54); saved, the family rides on it and the desk sees them under the run before it arrives. If Operations makes your unit the driver of a boat run, your home screen shows **You are Boat run 3** with Loading, Leaving and Arrived as one tap each.
 
 ### 5. Need help now

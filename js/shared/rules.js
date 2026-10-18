@@ -704,3 +704,46 @@ export function transportsLine(transports, evacuees) {
   const n = (s) => live.filter((t) => t.status === s).length;
   return `Transports: ${under.length} under way with ${inTransit} ${inTransit === 1 ? 'person' : 'people'} in transit, ${n('planned')} planned, ${n('arrived')} arrived, ${n('done')} done`;
 }
+
+// ---- people and tags, phase 1 (v55): a band is an id (ic_tags: a number printed on it, a code in the QR, no name),
+// given to a responder or a sheltered person by scanning it; a scan is a seen record (ic_seen: what it meant, where,
+// when, by whom). Last seen is a record, never "is at". The words are ic_band_label / ic_seen_words in SQL.
+export const SEEN_KINDS = [['check_in', 'Checking in'], ['enter', 'Entering'], ['leave', 'Leaving'], ['board', 'Boarding'], ['arrive', 'At the shelter door'], ['par', 'Head count']];
+export const SEEN_STALE_MIN = 120;   // a last seen older than this is drawn orange
+export function bandNumber(n) { return String(n).padStart(3, '0'); }
+export function bandLabel(tag) { return 'Band ' + bandNumber(tag.number); }
+// what a scan or the typed box gives: the band's link (…?band=CODE), its bare code (CED-013-K2PQ), or its number alone (13, 013, Band 13)
+export function bandFromScan(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  const m = /[?&]band=([A-Z0-9-]+)/i.exec(t);
+  if (m) return { code: m[1].toUpperCase() };
+  if (/^[A-Z0-9]{2,4}-\d{1,5}-[A-Z0-9]{4}$/i.test(t)) return { code: t.toUpperCase() };
+  const n = /^(?:band\s*)?#?(\d{1,5})$/i.exec(t);
+  if (n) return { number: Number(n[1]) };
+  return null;
+}
+export function bandFromSearch(search) { const m = /[?&]band=([A-Z0-9-]+)/i.exec(String(search || '')); return m ? m[1].toUpperCase() : ''; }
+// the link in a band's QR: any reader opens the field app with the band (like joinUrl)
+export function bandUrl(code, fieldApp) { const u = new URL(fieldApp); u.search = '?band=' + encodeURIComponent(code); u.hash = ''; return u.href; }
+// the live band on a person or on a record
+export function tagOf(tags, { personId, evacueeId } = {}) { return tags.find((t) => !t.voided_at && ((personId && t.person_id === personId) || (evacueeId && t.evacuee_id === evacueeId))) || null; }
+// "checking in", "entering A-2", "leaving A-2", "boarding Bus 2", "at High school gym", "on the PAR" (ic_seen_words)
+export function seenWords(s, { zoneOf, facilityOf, transportOf } = {}) {
+  switch (s.kind) {
+    case 'check_in': return 'checking in';
+    case 'enter': case 'leave': { const z = s.zone_id && zoneOf ? zoneOf(s.zone_id) : null; return (s.kind === 'enter' ? 'entering ' : 'leaving ') + (z ? z.code : 'a division'); }
+    case 'board': { const t = s.transport_id && transportOf ? transportOf(s.transport_id) : null; return 'boarding ' + (t ? transportLabel(t) : 'a run'); }
+    case 'arrive': { const f = s.facility_id && facilityOf ? facilityOf(s.facility_id) : null; return 'at ' + (f ? (f.name || facilityKind(f.kind)[1]) : 'the shelter door'); }
+    case 'par': return 'on the PAR';
+    default: return s.kind;
+  }
+}
+// the newest scan of any of these bands (seen is newest first)
+export function lastSeen(seen, tagIds) { const ids = new Set([].concat(tagIds || [])); for (const s of seen) if (ids.has(s.tag_id)) return s; return null; }
+export function seenStale(s, now = Date.now()) { return !!s && (now - new Date(s.at).getTime()) > SEEN_STALE_MIN * 60000; }
+// "seen entering A-2 07:05"
+export function lastSeenText(s, opts = {}) { return s ? 'seen ' + seenWords(s, opts) + ' ' + hhmm(s.at) : 'not seen'; }
+// the likely meaning of a scan from where the phone is: a head count while one is open, a desk → at the shelter door,
+// a crew in a division → entering it, else checking in
+export function seenGuess({ desk, zone, par } = {}) { return par ? 'par' : desk ? 'arrive' : zone ? 'enter' : 'check_in'; }

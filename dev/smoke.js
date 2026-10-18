@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -394,7 +394,7 @@ async function people(check) {
   const rows = () => $$('#people-page .pp-row');
   const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
   check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1, engine ramirez, okafor · 2', 'unit 2, boat crew nguyen, patel · 2', 'unit 3, swift-water team hale, dominguez · 2', '6 people in the field'), text('#panel'));
-  check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .llink[data-action="people"]').length === 6, logTexts().find((t) => /Ramirez/.test(t)));
+  check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .log-row').filter((r) => /checked in with/.test(r.textContent) && r.querySelector('.llink[data-action="people"]')).length === 6, logTexts().find((t) => /Ramirez/.test(t)));   // the band lines link to the board too (v55)
   $('.top [data-action="people"]').click();
   await until(() => !$('#people').hidden && rows().length === 6);
   check('the People board opens with everyone by unit: name, rank, qualifications, status and hours on scene', $$('#people-page .pp-grp').length === 3 && has('#people-page', '6 on scene on 3 units', 'unit 1', 'ramirez', 'lt.', 'swift water', 'emt', 'okafor', 'paramedic', 'boat', 'nguyen', 'capt.', 'boat operator', 'on scene 2 h', 'since'), text('#people-page').slice(0, 400));
@@ -941,7 +941,7 @@ async function log(check) {
   check('lines link to the thing they are about', $$('#log .llink[data-action="select-structure"]').length >= 1 && $$('#log .llink[data-action="select-facility"]').length >= 1 && $$('#log .llink[data-action="select-photo"]').length >= 3, $$('#log .llink').length);
   $('[data-action="log-group"][data-group="field"]').click();
   await until(() => rows() < all);
-  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request|shelter|transport)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
+  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request|shelter|transport|seen)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
   $('[data-action="log-group"][data-group="all"]').click();
   await until(() => rows() === all);
   const q = $('#log-search');
@@ -1773,6 +1773,151 @@ async function transports(check) {
   }
 }
 
+// ---- people and tags, phase 1 (v55): bands printed from the base, given by scanning (or typing the number) on the
+// phone, scans as last seen on the board, the PAR by scan, check-in with a band number, the band link, the desk's
+// sign-in by band, voiding, the 211.
+async function tags(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+  let P = null;
+  const PPL = M().ids.people;
+  const tagN = (n) => base.tags(true).find((t) => t.number === n) || null;
+  const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
+  const openBoard = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden && $$('#people-page .pp-row').length >= 6); };
+  const closeBoard = () => { if (!$('#people').hidden) $('[data-action="close-people"]').click(); };
+  try {
+    check('seeded: 24 bands, four on Unit 1 and Unit 2 with their scans, Unit 3 without', base.tags(true).length === 24 && base.tags(true).filter((t) => t.person_id).length === 4 && base.seen().length === 7 && !base.tags(true).some((t) => t.person_id === PPL[4]), base.tags(true).length + ' bands, ' + base.seen().length + ' scans');
+    await openBoard();
+    check('the board reads each band and its last scan: Ramirez entering A-1, Patel at the gym long ago in orange, Hale with no band', has(`#people-page .pp-row[data-person="${PPL[0]}"] .pp-seen`, 'band 001 · seen entering a-1') && row(PPL[3]).querySelector('.pp-seen').classList.contains('stale') && has(`#people-page .pp-row[data-person="${PPL[3]}"] .pp-seen`, 'band 004 · seen at high school gym') && has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'no band'), text(`#people-page .pp-row[data-person="${PPL[3]}"] .pp-seen`));
+    $('#people .briefing-bar [data-action="print-bands"]').click();
+    await until(() => base.tags(true).length === 48 && !$('#briefing').hidden && has('#briefing-title', 'bands to print'));
+    check('Print bands makes 24 more, numbered on, and shows the sheet: a QR and a number per band, no name on any, logged', base.tags(true).length === 48 && !!tagN(25) && !!tagN(48) && $$('#briefing-page .band').length === 24 && has('#briefing-page .band', 'band 025') && !/ramirez|okafor|nguyen|patel/i.test(text('#briefing-page .band-sheet')) && await until(() => eventText(base, '24 bands printed, 025 to 048')), text('#briefing-page').slice(0, 200));
+    const svg = $('#briefing-page .band .band-qr svg').outerHTML;
+    if (!window.jsQR) await new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = '/vendor/jsQR-1.4.0.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+    const img = new Image();
+    const sized = (svg.includes('xmlns=') ? svg : svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')).replace('<svg ', '<svg width="320" height="320" ');
+    const objUrl = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml' }));
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = objUrl; });
+    const c = document.createElement('canvas'); c.width = 360; c.height = 360;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 360, 360); g.drawImage(img, 20, 20, 320, 320);
+    const read = window.jsQR(g.getImageData(0, 0, 360, 360).data, 360, 360);
+    URL.revokeObjectURL(objUrl);
+    const { bandFromScan } = await import('../js/shared/rules.js');
+    check('the phone\'s decoder reads the band link out of the sheet\'s QR, and the link means the band', !!read && read.data === location.origin + '/field/?band=' + tagN(25).code && bandFromScan(read ? read.data : '').code === tagN(25).code, read && read.data);
+    $('[data-action="close-briefing"]').click(); await until(() => $('#briefing').hidden);
+    closeBoard();
+
+    // ---- Unit 3's phone: give a band by typing its number (the pane has no camera), then a scan in the division
+    P = await phoneFrame();
+    check('the field app opens at 375 px as Unit 3', !!P.ready);
+    await P.act('briefed');
+    await P.act('scan-band');
+    await until(() => P.shown('#s-scan') && P.shown('#scan-typed'), 5000);
+    check('Scan a band opens the camera sheet with the typed box under it; with no camera it says to type the number', P.shown('#scan-typed') && await until(() => /type the band's number below/.test(P.text('#scan-msg')), 5000), P.text('#scan-msg'));
+    P.$('#scan-type').value = '99'; await P.act('scan-typed');
+    check('a number no band has is refused', /no band 099 on this incident/.test(P.text('#scan-msg')), P.text('#scan-msg'));
+    P.$('#scan-type').value = 'XYZ-001-ABCD'; await P.act('scan-typed');
+    check('a code from another incident is refused', /not from this incident/.test(P.text('#scan-msg')), P.text('#scan-msg'));
+    P.$('#scan-type').value = '25'; await P.act('scan-typed');
+    await until(() => P.shown('#s-band'), 5000);
+    check('band 025 opens the band sheet: not on anyone yet, whose band is this, Hale and Dominguez to pick', /band 025 · not on anyone yet/.test(P.text('#band-title')) && P.$$('#band-who .chip').map((c) => c.textContent).join('|') === 'Hale|Dominguez' && P.$('#band-save').disabled, P.text('#band-title') + ' | ' + P.text('#band-who'));
+    check('the band sheet is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$$('#band-who .chip').find((x) => x.textContent === 'Hale').click();
+    check('Hale picked: Save says so', P.$('#band-save').textContent === 'Give Band 025 to Hale' && !P.$('#band-save').disabled, P.$('#band-save').textContent);
+    await P.act('band-save');
+    check('saved: band 025 is Hale\'s, the scan is his check-in, both in the log', await until(() => tagN(25).person_id === PPL[4] && tagN(25).kind === 'responder', 70000) && await until(() => eventText(base, 'Band 025 given to Hale (Unit 3) by Unit 3') && eventText(base, 'Hale seen checking in with Unit 3'), 10000), logTexts().slice(0, 2).join(' | '));
+    await openBoard();
+    check('the board reads it', await until(() => has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'band 025 · seen checking in'), 10000), text(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`));
+    closeBoard();
+    await P.act('scan-band'); await until(() => P.shown('#s-scan'), 5000);
+    P.$('#scan-type').value = '025'; await P.act('scan-typed');
+    await until(() => P.shown('#s-band') && /hale/i.test(P.text('#band-title')), 5000);
+    check('scanned again, the sheet names him with his last scan and preselects Entering A-2, the division Unit 3 is in', /band 025 · hale \(unit 3\)/.test(P.text('#band-title')) && /seen checking in \d\d:\d\d by unit 3/.test(P.text('#band-sub')) && !!P.$('#band-what .chip.on') && P.$('#band-what .chip.on').textContent === 'Entering A-2' && /^Save: Hale entering A-2, \d\d:\d\d$/.test(P.$('#band-save').textContent), P.text('#band-what') + ' | ' + P.$('#band-save').textContent);
+    await P.act('band-save');
+    check('the scan is a line, and the board\'s last seen follows', await until(() => eventText(base, 'Hale (Unit 3) seen entering A-2, by Unit 3'), 70000) && await (async () => { await openBoard(); return until(() => has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'seen entering a-2'), 10000); })(), logTexts()[0]);
+    closeBoard();
+
+    // ---- the PAR by scan
+    const par = await base.startPar('all');
+    await until(() => P.shown('#s-safety') && P.$('#s-safety [data-action="par-scan"]'), 30000);
+    check('the PAR card offers Scan them in · 0 of 1 (Hale has a band, Dominguez not) beside All accounted for', P.$('#s-safety [data-action="par-scan"]').textContent === 'Scan them in · 0 of 1' && /all 2 accounted for/.test(P.text('#s-safety')), P.text('#s-safety').slice(0, 300));
+    P.$('#s-safety [data-action="par-scan"]').click();
+    await until(() => P.shown('#s-scan'), 5000);
+    P.$('#scan-type').value = '25'; await P.act('scan-typed');
+    check('Hale\'s band scanned in: marked scanned on the card, the button counts 1 of 1, and the scan is on record', await until(() => /hale scanned \d\d:\d\d/.test(P.text('#s-safety')), 5000) && P.$('#s-safety [data-action="par-scan"]').textContent === 'Scan them in · 1 of 1' && await until(() => eventText(base, 'Hale (Unit 3) seen on the PAR, by Unit 3'), 70000), P.text('#s-safety').slice(0, 300));
+    P.$('#s-safety [data-action="par-ok"]').click();
+    check('All accounted for carries the scan: the base\'s panel and the 214 count it', await until(() => base.ack(par.id, USERS().unit3) && base.ack(par.id, USERS().unit3).scanned === 1, 70000) && await until(() => eventText(base, 'Unit 3: All accounted for (2, 1 scanned)'), 10000) && await until(() => has('#panel', 'all accounted for (2) · 1 scanned'), 10000), logTexts()[0]);
+
+    // ---- check-in with the band's number on the person's row
+    await P.act('menu'); await P.act('sign-out'); await until(() => P.shown('#auth'));
+    await phoneSignIn(P, 'tags-crew@mock.local', true);
+    await until(() => P.shown('#s-identify'));
+    P.$('#id-name').value = 'Jo Vela'; P.$('#id-phone').value = '512 555 0177';
+    await P.act('id-save');
+    const jf = P.$('#join-form');
+    jf.code.value = 'CEDAR7'; jf.unit.value = 'Unit 9'; jf.agency.value = 'Travis County Rescue';
+    await P.act('jp-add');
+    check('the check-in row has a Band № box beside the name', !!P.$('#join-people [data-jp="band"]') && P.$('#join-people [data-jp="band"]').placeholder === 'Band №' && P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#join-people [data-jp="name"]').value = 'Vela'; P.$('#join-people [data-jp="band"]').value = '26';
+    jf.requestSubmit();
+    check('checked in with band 26 typed: the band is Vela\'s, the scan is the check-in, both lines in the log', await until(() => base.members().some((m) => m.unit_name === 'Unit 9'), 70000) && await until(() => tagN(26).person_id && base.person(tagN(26).person_id) && base.person(tagN(26).person_id).name === 'Vela', 10000) && await until(() => eventText(base, 'Band 026 given to Vela (Unit 9) by Unit 9') && eventText(base, 'Vela seen checking in with Unit 9'), 10000), logTexts().slice(0, 3).join(' | '));
+    await until(() => P.shown('#s-briefing'), 8000); await P.act('briefed');
+
+    // ---- the band link: any reader opens the field app with the band
+    P.frame.remove(); P = null;
+    P = await phoneFrame('&band=' + tagN(26).code);
+    check('a band link opens the band once the incident is open: Vela (Unit 9), with what the scan means', !!P.ready && await until(() => P.shown('#s-band') && /band 026 · vela \(unit 9\)/.test(P.text('#band-title')), 15000), P.text('#band-title'));
+    await P.act('band-cancel');
+
+    // ---- the desk: a walk-up gets a band from the box; her band scanned again brings her record up
+    await P.act('menu'); await P.act('sign-out'); await until(() => P.shown('#auth'));
+    await phoneSignIn(P, 'tags-desk@mock.local', true);
+    await until(() => P.shown('#s-identify'));
+    P.$('#id-name').value = 'Sam Lee'; P.$('#id-phone').value = '512 555 0198';
+    await P.act('id-save');
+    await P.act('jp-kind', { kind: 'shelter_desk' });
+    const jf2 = P.$('#join-form'); jf2.code.value = 'CEDAR7'; jf2.unit.value = 'Gym desk'; jf2.agency.value = 'Red Cross'; jf2.requestSubmit();
+    await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym desk', 8000);
+    await until(() => P.shown('#s-briefing'), 8000); await P.act('briefed');
+    await until(() => P.shown('#desk'), 8000);
+    await P.act('ev-new'); await until(() => P.shown('#s-person'), 5000);
+    check('Sign in a person offers Scan a band', P.shown('#ev-band-btn') && /no band yet/.test(P.text('#ev-band-line')), P.text('#ev-band-line'));
+    await P.act('scan-band-desk'); await until(() => P.shown('#s-scan'), 5000);
+    P.$('#scan-type').value = '27'; await P.act('scan-typed');
+    check('a band from the box scanned: the sheet says it goes on this record when saved', await until(() => /band 027 · scanned \d\d:\d\d/.test(P.text('#ev-band-line')), 5000) && !P.shown('#s-scan') && P.shown('#s-person'), P.text('#ev-band-line'));
+    P.$('#ev-who').value = 'Lopez, Ana';
+    await P.act('ev-save');
+    check('signed in with the band: the record has band 027 and the scan at the gym is a line', await until(() => { const e = base.evacuees().find((x) => x.label === 'Lopez, Ana'); return !!e && tagN(27).evacuee_id === e.id && tagN(27).kind === 'evacuee'; }, 70000) && await until(() => eventText(base, 'Band 027 given to Lopez, Ana by Gym desk') && eventText(base, 'Lopez, Ana seen at High school gym, by Gym desk'), 10000), logTexts().slice(0, 3).join(' | '));
+    await P.act('ev-new'); await until(() => P.shown('#s-person'), 5000);
+    await P.act('scan-band-desk'); await until(() => P.shown('#s-scan'), 5000);
+    P.$('#scan-type').value = '27'; await P.act('scan-typed');
+    check('her band scanned at the desk again brings her record up, with the band on it', await until(() => P.shown('#s-person') && /lopez, ana/i.test(P.text('#person-title')), 5000) && /band 027 on this record/.test(P.text('#ev-band-line')) && P.$('#ev-band-btn').hidden, P.text('#person-title') + ' | ' + P.text('#ev-band-line'));
+    await P.act('home');
+
+    // ---- the base: the gym card says the band, Void band, the 211
+    const bOpen = document.createElement('button'); bOpen.dataset.action = 'select-facility'; bOpen.dataset.id = M().ids.facilities[2]; bOpen.hidden = true; document.body.appendChild(bOpen); bOpen.click(); bOpen.remove();
+    check('the gym card\'s row says her band and its last scan', await until(() => has('#panel', 'lopez, ana', 'band 027, seen at high school gym'), 10000), (text('#panel').match(/lopez[^\n]{0,80}/) || [''])[0]);
+    await openBoard();
+    await until(() => row(PPL[4]) && row(PPL[4]).querySelector('[data-action="band-void"]'));
+    row(PPL[4]).querySelector('[data-action="band-void"]').click();
+    check('Void band: voided, logged with who had it, the row says no band', await until(() => tagN(25).voided_at) && await until(() => eventText(base, 'Band 025 (Hale (Unit 3)) voided by Operations')) && await until(() => has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'no band')), logTexts()[0]);
+    $('#people .briefing-bar [data-action="print-211"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
+    check('the 211 lists each band and its last scan', has('#briefing-page', 'band 001, seen entering a-1') && has('#briefing-page', 'vela', 'band 026, seen checking in'), (text('#briefing-page').match(/vela[^\n]{0,120}/) || [''])[0]);
+    $('[data-action="close-briefing"]').click();
+    closeBoard();
+    check('a voided band is refused on the phone', await (async () => { await P.act('menu'); await P.act('scan-band'); await until(() => P.shown('#s-scan'), 5000); P.$('#scan-type').value = '25'; await P.act('scan-typed'); return /band 025 was voided/.test(P.text('#scan-msg')); })(), P.text('#scan-msg'));
+    await P.act('scan-cancel');
+  } finally {
+    window.confirm = confirmWas;
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
+    if (!$('#people').hidden) $('[data-action="close-people"]').click();
+    await wait(100);
+  }
+}
+
 // ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.
 async function demo(check) {
   await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });
@@ -1819,10 +1964,10 @@ async function demo(check) {
 // ---- the walkthrough fixes (v25): each as the persona who hit it met it. The phone is the field app at
 // 375 px in a frame beside the base; its own mock copies the base's data over the BroadcastChannel and
 // opens signed in as Unit 3. The frame goes before the suite ends, so the next reset is not undone by it.
-async function phoneFrame() {
+async function phoneFrame(extra = '') {   // extra: more of the address, like '&band=CODE' (v55)
   await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });   // an earlier frame's unsent entries would block this one's
   const frame = document.createElement('iframe');
-  frame.src = '/field/?mock';
+  frame.src = '/field/?mock' + extra;
   frame.style.cssText = 'position:fixed;right:0;top:0;width:375px;height:780px;z-index:3000;background:#fff;border:0;box-shadow:0 0 0 1px #999';
   document.body.appendChild(frame);
   const doc = () => frame.contentDocument;

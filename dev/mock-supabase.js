@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 31;
+  const SEED_VERSION = 32;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -44,6 +44,8 @@
   const CMD = [ID('9', 1)];   // who has held command
   const EV = [ID('0', 1), ID('0', 2), ID('0', 3), ID('0', 4), ID('0', 5)];   // people sheltered and moved (ic_evacuees)
   const TR = [1, 2, 3].map((n) => 'ab000000-0000-4000-8000-' + String(n).padStart(12, '0'));   // the runs on the transport board (ic_transports)
+  const TG = Array.from({ length: 24 }, (_, i) => 'ac000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));   // the bands (ic_tags), 001 to 024
+  const SN = Array.from({ length: 8 }, (_, i) => 'ad000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));    // the scans (ic_seen)
   const OPS_CODE = 'MR7KQ2VD';   // the seeded incident's Operations code (ic_ops_codes), read by Operations alone
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
@@ -209,6 +211,18 @@
         { id: TR[1], incident_id: INC, kind: 'ambulance', label: 'Ambulance 1', from_facility_id: null, from_zone_id: Z['A-2'], from_text: '', to_facility_id: FAC[3], capacity: 2, leaves_at: ago(13), expected_at: ago(0), status: 'arrived', status_at: ago(6), left_at: ago(13), arrived_at: ago(6), driver_user_id: null, driver_text: 'Travis County EMS, 512 555 0100', notes: '', created_by: U.ops, created_at: ago(16), updated_at: ago(6), archived_at: null },
         { id: TR[2], incident_id: INC, kind: 'bus', label: 'Bus 3', from_facility_id: null, from_zone_id: Z['A-1'], from_text: '', to_facility_id: FAC[2], capacity: 40, leaves_at: ago(-40), expected_at: ago(-65), status: 'planned', status_at: ago(10), left_at: null, arrived_at: null, driver_user_id: null, driver_text: '', notes: '', created_by: U.ops, created_at: ago(10), updated_at: ago(10), archived_at: null }
       ],
+      // people and tags (v55): a sheet of 24 bands printed at the start; Unit 1 and Unit 2 gave theirs out at check-in
+      // and scanned them into their divisions; Patel was last seen at the shelter door, long ago; Unit 3 has none yet
+      ic_tags: TG.map((id, i) => ({ id, incident_id: INC, number: i + 1, code: 'CED-' + String(i + 1).padStart(3, '0') + '-' + String.fromCharCode(65 + (i % 24)) + 'X' + (2 + (i % 8)) + 'Q', kind: i < 4 ? 'responder' : '', person_id: i < 4 ? PEOPLE[i] : null, evacuee_id: null, issued_at: i < 4 ? ago(170 - i) : null, issued_by: i < 2 ? U.unit1 : i < 4 ? U.unit2 : null, voided_at: null, voided_by: null, created_by: U.ops, created_at: ago(175) })),
+      ic_seen: [
+        { id: SN[0], incident_id: INC, tag_id: TG[0], kind: 'check_in', at: ago(170), lat: 30.2556, lng: -97.74, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: U.unit1, created_at: ago(170) },
+        { id: SN[1], incident_id: INC, tag_id: TG[1], kind: 'check_in', at: ago(169.9), lat: 30.2556, lng: -97.74, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: U.unit1, created_at: ago(169.9) },
+        { id: SN[2], incident_id: INC, tag_id: TG[2], kind: 'check_in', at: ago(168), lat: 30.2556, lng: -97.74, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: U.unit2, created_at: ago(168) },
+        { id: SN[3], incident_id: INC, tag_id: TG[3], kind: 'check_in', at: ago(167.9), lat: 30.2556, lng: -97.74, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: U.unit2, created_at: ago(167.9) },
+        { id: SN[4], incident_id: INC, tag_id: TG[0], kind: 'enter', at: ago(60), lat: 30.2662, lng: -97.7392, zone_id: Z['A-1'], facility_id: null, transport_id: null, message_id: null, seen_by: U.unit1, created_at: ago(60) },
+        { id: SN[5], incident_id: INC, tag_id: TG[1], kind: 'enter', at: ago(60), lat: 30.2662, lng: -97.7392, zone_id: Z['A-1'], facility_id: null, transport_id: null, message_id: null, seen_by: U.unit1, created_at: ago(60) },
+        { id: SN[6], incident_id: INC, tag_id: TG[3], kind: 'arrive', at: ago(140), lat: 30.2566, lng: -97.7426, zone_id: null, facility_id: FAC[2], transport_id: null, message_id: null, seen_by: U.unit2, created_at: ago(140) }   // long ago: the board draws it orange
+      ],
       ic_evacuees: [
         evacuee(4, 'Okonkwo family', 5, ['infant', 'pets'], '', 'Riverside Drive', 'here', FAC[2], U.ops, 75, { signed_in_by: U.ops, signed_in_at: ago(75) }),
         evacuee(3, 'family of 3', 3, [], 'wet, no shoes', 'Mill Street', 'here', FAC[2], U.unit2, 48, { signed_in_by: U.ops, signed_in_at: ago(48), created_at: ago(55) }),
@@ -297,6 +311,13 @@
     ev(13, U.ops, 'transport', 'Ambulance 1 left A-2 Pecan Park for Dell Seton Medical Center with 1 person in 1 record', 'ic_transports', TR[1]);
     ev(6, U.ops, 'transport', 'Ambulance 1 arrived at Dell Seton Medical Center with 1 person in 1 record', 'ic_transports', TR[1]);
     ev(10, U.ops, 'transport', 'Bus 3 planned by Operations: A-1 Riverside Drive to High school gym, 40 seats', 'ic_transports', TR[2]);
+    ev(175, U.ops, 'ops', '24 bands printed, 001 to 024');
+    ev(170, U.unit1, 'seen', 'Band 001 given to Ramirez (Unit 1) by Unit 1', 'ic_tags', TG[0]); ev(170, U.unit1, 'seen', 'Ramirez seen checking in with Unit 1', 'ic_seen', SN[0]);
+    ev(169.9, U.unit1, 'seen', 'Band 002 given to Okafor (Unit 1) by Unit 1', 'ic_tags', TG[1]); ev(169.9, U.unit1, 'seen', 'Okafor seen checking in with Unit 1', 'ic_seen', SN[1]);
+    ev(168, U.unit2, 'seen', 'Band 003 given to Nguyen (Unit 2) by Unit 2', 'ic_tags', TG[2]); ev(168, U.unit2, 'seen', 'Nguyen seen checking in with Unit 2', 'ic_seen', SN[2]);
+    ev(167.9, U.unit2, 'seen', 'Band 004 given to Patel (Unit 2) by Unit 2', 'ic_tags', TG[3]); ev(167.9, U.unit2, 'seen', 'Patel seen checking in with Unit 2', 'ic_seen', SN[3]);
+    ev(60, U.unit1, 'seen', 'Ramirez (Unit 1) seen entering A-1, by Unit 1', 'ic_seen', SN[4]); ev(60, U.unit1, 'seen', 'Okafor (Unit 1) seen entering A-1, by Unit 1', 'ic_seen', SN[5]);
+    ev(140, U.unit2, 'seen', 'Patel (Unit 2) seen at High school gym, by Unit 2', 'ic_seen', SN[6]);
     ev(5, U.ops, 'ops', 'Objective 3 done: Shelter open and staffed at the high school', 'ic_objectives', OBJ[2]);
     ev(5, U.ops, 'note', 'Shelter open at Cedar Fork High School gym, Red Cross on site');
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
@@ -331,7 +352,9 @@
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, note: '', created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
     ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
-    ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now() })
+    ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now(), scanned: null }),
+    ic_tags: () => ({ id: uuid(), kind: '', person_id: null, evacuee_id: null, issued_at: null, issued_by: null, voided_at: null, voided_by: null, created_by: null, created_at: now() }),
+    ic_seen: () => ({ id: uuid(), kind: '', at: now(), lat: null, lng: null, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: null, created_at: now() })
   };
 
   function dbError(message, code) { const e = new Error(message); e.db = { message, code: code || 'P0001', details: null, hint: null }; return e; }
@@ -383,6 +406,8 @@
       case 'ic_evacuees': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (row.logged_by === uid || isOps(row.incident_id, uid) || isDesk(row.incident_id, uid, row.facility_id) || isDesk(row.incident_id, uid, row.prev_facility_id));
       // members add a run; Operations, the one who made it, the driver or the desk at its destination change it (checked on the row as it was)
       case 'ic_transports': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (isOps(row.incident_id, uid) || row.created_by === uid || row.driver_user_id === uid || isDesk(row.incident_id, uid, row.to_facility_id));
+      case 'ic_tags': return op === 'update' && isMember(row.incident_id, uid);   // made by ic_print_bands alone; the trigger says who gives and voids
+      case 'ic_seen': return op === 'insert' && mayWrite(row.incident_id, uid, row.at);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && mayWrite(row.incident_id, uid, row.created_at);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && mayWrite(row.incident_id, uid, row.acked_at);
       default: return false;
@@ -452,6 +477,15 @@
       if (!Array.isArray(r.needs) || r.needs.some((x) => !NEED_KEYS.includes(x))) throw chk('ic_evacuees_needs_check');
       if (!['on_the_way', 'here', 'moved', 'with_family', 'own_transport', 'unknown'].includes(r.status)) throw chk('ic_evacuees_status_check');
     }
+    if (table === 'ic_tags') {
+      if (!['', 'responder', 'evacuee'].includes(r.kind)) throw chk('ic_tags_kind_check');
+      if (!(r.number >= 1 && r.number <= 99999)) throw chk('ic_tags_number_check');
+    }
+    if (table === 'ic_seen') {
+      if (!['check_in', 'enter', 'leave', 'board', 'arrive', 'par'].includes(r.kind)) throw chk('ic_seen_kind_check');
+      if (!r.tag_id) throw nn('tag_id');
+    }
+    if (table === 'ic_message_acks' && r.scanned != null && !(r.scanned >= 0 && r.scanned <= 999)) throw chk('ic_message_acks_scanned_check');
     if (table === 'ic_transports') {
       if (!['bus', 'van', 'ambulance', 'boat', 'high_water', 'other'].includes(r.kind)) throw chk('ic_transports_kind_check');
       if (!['planned', 'loading', 'en_route', 'arrived', 'done'].includes(r.status)) throw chk('ic_transports_status_check');
@@ -606,6 +640,64 @@
     }
     if (line) log(changes, r.incident_id, uid, 'shelter', line, 'ic_evacuees', r.id);
   }
+  // ---- people and tags (v55): ic_tag_before / ic_tag_after / ic_seen_before / ic_seen_after
+  const bandLabel = (n) => 'Band ' + String(n).padStart(3, '0');
+  const tagWho = (t) => { const p = t.person_id && tables.ic_people.find((x) => x.id === t.person_id); if (p) return p.name + ' (' + label(p.incident_id, p.user_id) + ')'; const e = t.evacuee_id && tables.ic_evacuees.find((x) => x.id === t.evacuee_id); return e ? R.evacueeWho(e) : null; };
+  const seenWords = (r) => R.seenWords(r, { zoneOf: (id) => tables.ic_zones.find((z) => z.id === id) || null, facilityOf: (id) => tables.ic_facilities.find((f) => f.id === id) || null, transportOf: (id) => tables.ic_transports.find((t) => t.id === id) || null });
+  function tagBefore(r, old, uid) {
+    if (r.incident_id !== old.incident_id || r.number !== old.number || r.code !== old.code) throw dbError('a band keeps its number and its code');
+    r.created_by = old.created_by; r.created_at = old.created_at;
+    if (!r.voided_at && old.voided_at) throw dbError('a voided band stays voided; give a new one');
+    if (r.voided_at && !old.voided_at) {
+      if (!(isOps(r.incident_id, uid) || old.issued_by === uid || system)) throw dbError('Only Operations or whoever gave the band voids it');
+      r.voided_by = uid || r.voided_by;
+    }
+    if ((r.person_id || null) !== (old.person_id || null) || (r.evacuee_id || null) !== (old.evacuee_id || null)) {
+      if (old.person_id || old.evacuee_id) throw dbError(bandLabel(old.number) + ' is on someone already; void it and give a new one');
+      if (r.voided_at) throw dbError(bandLabel(old.number) + ' was voided');
+      if (r.person_id && r.evacuee_id) throw dbError('a band is on one person');
+      if (r.person_id) {
+        const p = tables.ic_people.find((x) => x.id === r.person_id && x.incident_id === r.incident_id);
+        if (!p) throw dbError('that person is not on this incident');
+        if (!(isOps(r.incident_id, uid) || p.user_id === uid || system)) throw dbError('Only the unit this person is on, or Operations, gives them a band');
+        if (tables.ic_tags.some((t) => t.person_id === r.person_id && !t.voided_at && t.id !== r.id)) throw dbError(p.name + ' has a band already; void it first');
+        r.kind = 'responder';
+      } else {
+        const e = tables.ic_evacuees.find((x) => x.id === r.evacuee_id && x.incident_id === r.incident_id);
+        if (!e) throw dbError('that record is not on this incident');
+        if (!(isOps(r.incident_id, uid) || e.logged_by === uid || isDesk(r.incident_id, uid, e.facility_id) || system)) throw dbError('Only the desk, the crew that made the record, or Operations gives them a band');
+        if (tables.ic_tags.some((t) => t.evacuee_id === r.evacuee_id && !t.voided_at && t.id !== r.id)) throw dbError(R.evacueeWho(e) + ' has a band already; void it first');
+        r.kind = 'evacuee';
+      }
+      r.issued_at = now(); r.issued_by = uid || r.issued_by;
+    }
+  }
+  let system = false;   // ic.system: the clearing by rule voids bands without anyone pressing
+  function tagLog(r, old, uid, changes) {
+    if (quiet) return;
+    let line = null;
+    if (((r.person_id || null) !== (old.person_id || null) || (r.evacuee_id || null) !== (old.evacuee_id || null)) && (r.person_id || r.evacuee_id)) line = `${bandLabel(r.number)} given to ${tagWho(r)} by ${label(r.incident_id, uid)}`;
+    else if (r.voided_at && !old.voided_at) line = `${bandLabel(r.number)}${tagWho(r) ? ' (' + tagWho(r) + ')' : ''} voided by ${label(r.incident_id, uid)}`;
+    if (line) log(changes, r.incident_id, uid, 'seen', line, 'ic_tags', r.id);
+  }
+  function seenBefore(r, uid) {
+    const t = tables.ic_tags.find((x) => x.id === r.tag_id);
+    if (!t || t.incident_id !== r.incident_id) throw dbError('that band is from another incident');
+    if (t.voided_at) throw dbError(bandLabel(t.number) + ' was voided');
+    if (!t.person_id && !t.evacuee_id) throw dbError(bandLabel(t.number) + ' is not on anyone yet');
+    if (r.zone_id && !tables.ic_zones.some((z) => z.id === r.zone_id && z.incident_id === r.incident_id)) throw dbError('that division is not on this incident');
+    if (r.facility_id && !tables.ic_facilities.some((f) => f.id === r.facility_id && f.incident_id === r.incident_id)) throw dbError('that facility is not on this incident');
+    if (r.transport_id && !tables.ic_transports.some((x) => x.id === r.transport_id && x.incident_id === r.incident_id)) throw dbError('that run is not on this incident');
+    if (r.message_id && !tables.ic_messages.some((m) => m.id === r.message_id && m.incident_id === r.incident_id && m.kind === 'par')) throw dbError('that is not a PAR of this incident');
+    r.seen_by = uid || r.seen_by; r.at = r.at || now();
+  }
+  function seenLog(r, uid, changes) {
+    if (quiet) return;
+    const t = tables.ic_tags.find((x) => x.id === r.tag_id);
+    const p = r.kind === 'check_in' && t.person_id ? tables.ic_people.find((x) => x.id === t.person_id) : null;
+    const who = p ? p.name : (tagWho(t) || bandLabel(t.number));
+    log(changes, r.incident_id, uid, 'seen', `${who} seen ${seenWords(r)}${r.kind === 'check_in' ? ' with ' : ', by '}${label(r.incident_id, uid)}`, 'ic_seen', r.id);
+  }
   // ---- the transport board (v54): ic_transport_before / ic_transport_after
   const placeText = (id) => { const f = id && tables.ic_facilities.find((x) => x.id === id); return f ? (f.name || FACILITY_TEXT[f.kind]) : null; };
   const destStatus = (facilityId) => { const f = tables.ic_facilities.find((x) => x.id === facilityId); return f && f.kind === 'shelter' ? 'on_the_way' : 'moved'; };
@@ -656,6 +748,7 @@
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
     if (table === 'ic_evacuees') evacueeLog(r, null, uid, changes);
     if (table === 'ic_transports') transportLog(r, null, uid, changes);
+    if (table === 'ic_seen') seenLog(r, uid, changes);
     if (table === 'ic_people') {
       if (!r.archived_at && !quiet) log(changes, r.incident_id, uid, 'status', `${r.name}${personQuals(r)} checked in with ${label(r.incident_id, r.user_id)}`, 'ic_people', r.id);
       if (!r.archived_at && !joining) { const m = member(r.incident_id, r.user_id); if (m && m.unnamed_count > 0) updateRow('ic_members', m, { unnamed_count: m.unnamed_count - 1 }, uid, changes, true); }   // naming one of the unnamed keeps the count
@@ -695,7 +788,7 @@
       const kind = m.kind === 'safety' ? 'safety' : m.kind === 'par' ? 'par' : 'msg';
       const names = (Array.isArray(r.missing) ? r.missing : []).map((x) => (x && x.name) || 'someone').join(', ');
       const text = m.kind === 'par'
-        ? (names ? `${label(r.incident_id, r.user_id)}: Missing someone: ${names}${r.count != null ? ' (' + r.count + ' accounted for)' : ''}` : `${label(r.incident_id, r.user_id)}: ${r.reply || 'answered'}${r.count != null ? ' (' + r.count + ')' : ''}`)
+        ? (names ? `${label(r.incident_id, r.user_id)}: Missing someone: ${names}${r.count != null ? ' (' + r.count + ' accounted for' + (r.scanned != null ? ', ' + r.scanned + ' scanned' : '') + ')' : ''}` : `${label(r.incident_id, r.user_id)}: ${r.reply || 'answered'}${r.count != null ? ' (' + r.count + (r.scanned != null ? ', ' + r.scanned + ' scanned' : '') + ')' : ''}`)
         : `${label(r.incident_id, r.user_id)} acknowledged ${label(r.incident_id, m.from_user)}${r.reply ? ': ' + r.reply : ''}`;
       log(changes, r.incident_id, r.user_id, kind, text, 'ic_messages', r.message_id);
     }
@@ -718,6 +811,7 @@
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
     if (table === 'ic_evacuees') evacueeLog(r, old, uid, changes);
     if (table === 'ic_transports') transportLog(r, old, uid, changes);
+    if (table === 'ic_tags') tagLog(r, old, uid, changes);
     if (table === 'ic_periods') periodCommand(r, old, uid, changes);
     if (table === 'ic_period_agencies' && !quiet && (r.name !== old.name || r.phone !== old.phone)) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
     if (table === 'ic_people') {   // ic_person_after
@@ -888,6 +982,7 @@
     if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
     if (table === 'ic_evacuees') evacueeBefore(row, null, uid);
     if (table === 'ic_transports') transportBefore(row, null, uid);
+    if (table === 'ic_seen') seenBefore(row, uid);
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -910,6 +1005,8 @@
     if (table === 'ic_members' && next.facility_id && !tables.ic_facilities.some((f) => f.id === next.facility_id && f.incident_id === next.incident_id)) throw dbError('that facility is not on this incident');   // ic_member_facility
     if (table === 'ic_evacuees') evacueeBefore(next, old, uid);
     if (table === 'ic_transports') transportBefore(next, old, uid);
+    if (table === 'ic_tags') tagBefore(next, old, uid);
+    if (table === 'ic_seen') throw dbError('a scan is never changed');
     Object.assign(r, next);
     if (table === 'ic_zones') {
       r.updated_at = now();   // ic_touch
@@ -1124,15 +1221,17 @@
         nLic += 1;
       }
     }
-    quiet = true;
+    let nBands = 0;
+    quiet = true; system = true;
     try {
       for (const e of tables.ic_evacuees.filter((e) => e.incident_id === incId)) {
         const label = e.count > 1 ? 'family of ' + e.count : '';
         if (e.note !== '' || e.label !== label) { updateRow('ic_evacuees', e, { label, note: '' }, uid, changes, true); nNames += 1; }
       }
-    } finally { quiet = false; }
+      for (const t of tables.ic_tags.filter((t) => t.incident_id === incId && t.kind === 'evacuee' && !t.voided_at)) { updateRow('ic_tags', t, { voided_at: now() }, uid, changes, true); nBands += 1; }   // a sheltered person's band goes with their name (v55)
+    } finally { quiet = false; system = false; }
     const old = copy(inc); inc.personal_cleared_at = now(); changes.push(['UPDATE', 'ic_incidents', inc, old]);
-    log(changes, incId, uid, 'ops', `Personal records cleared by rule: ${nLic} licence record${nLic === 1 ? '' : 's'}, ${nNames} sheltered ${nNames === 1 ? "person's name" : "people's names"}`);
+    log(changes, incId, uid, 'ops', `Personal records cleared by rule: ${nLic} licence record${nLic === 1 ? '' : 's'}, ${nNames} sheltered ${nNames === 1 ? "person's name" : "people's names"}${nBands ? ', ' + nBands + (nBands === 1 ? ' band voided' : ' bands voided') : ''}`);
     return copy(inc);
   }
   function rpc(client, name, a) {
@@ -1232,8 +1331,21 @@
             i += 1;
             const quals = Array.isArray(person.qualifications) ? person.qualifications : [];
             const existing = tables.ic_people.filter((p) => p.incident_id === inc.id && p.user_id === uid && !p.archived_at && p.name.toLowerCase() === nm.toLowerCase()).sort((x, y) => (x.checked_in_at < y.checked_in_at ? 1 : -1))[0];
+            let prow = existing;
             if (existing) updateRow('ic_people', existing, { checked_out_at: null, role: trim(person.role) || existing.role, qualifications: quals, notes: person.notes || existing.notes }, uid, changes, true);
-            else { const stamp = new Date(Date.now() + i).toISOString(); insertRow('ic_people', { incident_id: inc.id, user_id: uid, name: nm, role: trim(person.role) || '', qualifications: quals, notes: person.notes || '', checked_in_at: stamp, created_at: stamp }, uid, changes); }   // stamped in the order typed
+            else { const stamp = new Date(Date.now() + i).toISOString(); prow = insertRow('ic_people', { incident_id: inc.id, user_id: uid, name: nm, role: trim(person.role) || '', qualifications: quals, notes: person.notes || '', checked_in_at: stamp, created_at: stamp }, uid, changes); }   // stamped in the order typed
+            const band = String(person.band || '').trim().toUpperCase();   // v55: the band's number or code; given to the person, and the scan is the check-in
+            if (band) {
+              const tg = tables.ic_tags.find((t) => t.incident_id === inc.id && (t.code === band || (/^[0-9]{1,5}$/.test(band) && t.number === Number(band))));
+              if (!tg) throw dbError('No band ' + band + ' on this incident');
+              if (tg.voided_at) throw dbError(bandLabel(tg.number) + ' was voided');
+              if (tg.person_id !== prow.id) {
+                if (tg.person_id || tg.evacuee_id) throw dbError(bandLabel(tg.number) + ' is on ' + tagWho(tg) + ' already');
+                if (tables.ic_tags.some((t) => t.person_id === prow.id && !t.voided_at)) throw dbError(nm + ' has a band already; void it first');
+                updateRow('ic_tags', tg, { person_id: prow.id }, uid, changes);
+              }
+              insertRow('ic_seen', { incident_id: inc.id, tag_id: tg.id, kind: 'check_in' }, uid, changes);
+            }
           }
         }
         joining = false;
@@ -1248,6 +1360,21 @@
         const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + (!pr.photo_path && !pr.licence_number ? ', identity not given' : ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '')) + (pr.verified_at ? ', verified' : '') : '';
         log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + (role === 'ops' ? ' joined as Operations with the Operations code' : ' checked in') + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
+      } else if (name === 'ic_print_bands') {
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations prints bands');
+        const inc = tables.ic_incidents.find((i) => i.id === a.p_incident);
+        const prefix = String(inc.code).slice(0, 3).toUpperCase(), cnt = Math.min(Math.max(Number(a.p_count) || 24, 1), 200);
+        let n = tables.ic_tags.filter((t) => t.incident_id === inc.id).reduce((m, t) => Math.max(m, t.number), 0);
+        const first = n + 1, made = [];
+        for (let i = 0; i < cnt; i++) {
+          n += 1;
+          let code;
+          do { code = prefix + '-' + String(n).padStart(3, '0') + '-' + Array.from({ length: 4 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join(''); } while (tables.ic_tags.some((t) => t.code === code));
+          const row = { ...DEFAULTS.ic_tags(), incident_id: inc.id, number: n, code, created_by: uid };
+          tables.ic_tags.push(row); changes.push(['INSERT', 'ic_tags', row, null]); made.push(copy(row));
+        }
+        log(changes, inc.id, uid, 'ops', cnt + (cnt === 1 ? ' band printed, ' : ' bands printed, ') + String(first).padStart(3, '0') + ' to ' + String(n).padStart(3, '0'));
+        out = made;
       } else if (name === 'ic_new_ops_code') {
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations replaces the Operations code');
         out = setOpsCode(a.p_incident, uid, changes);

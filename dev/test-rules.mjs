@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
+import { hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -275,4 +275,36 @@ t('small items from the re-walks (v48): hazards by urgency, the current stretch,
   assert.equal(revisitHhmm(tomorrow, '06:00', now), 'tomorrow 06:00');
   assert.equal(revisitHhmm(today, '23:00', now), '23:00');
   assert.equal(revisitHhmm(null, '23:00', now), '');
+});
+
+t('bands (v55): what a scan or a typed box gives, the band on a person, last seen and its words', () => {
+  assert.deepEqual(bandFromScan('https://clickemt.com/field/?band=CED-013-K2PQ'), { code: 'CED-013-K2PQ' });
+  assert.deepEqual(bandFromScan('ced-013-k2pq'), { code: 'CED-013-K2PQ' });
+  assert.deepEqual(bandFromScan('13'), { number: 13 });
+  assert.deepEqual(bandFromScan('Band 013'), { number: 13 });
+  assert.equal(bandFromScan('https://clickemt.com/field/?join=CEDAR7'), null, 'a join link is not a band');
+  assert.equal(bandFromScan(''), null);
+  assert.equal(bandFromSearch('?mock&band=CED-026-AX2Q'), 'CED-026-AX2Q');
+  assert.equal(bandLabel({ number: 7 }), 'Band 007');
+  assert.equal(bandUrl('CED-013-K2PQ', 'https://clickemt.com/field/'), 'https://clickemt.com/field/?band=CED-013-K2PQ');
+  const tags = [{ id: 't1', number: 1, person_id: 'p1', voided_at: null }, { id: 't2', number: 2, person_id: 'p1', voided_at: '2026-10-18T10:00:00Z' }, { id: 't3', number: 3, evacuee_id: 'e1', voided_at: null }];
+  assert.equal(tagOf(tags, { personId: 'p1' }).id, 't1', 'the live band, not the voided one');
+  assert.equal(tagOf(tags, { evacueeId: 'e1' }).id, 't3');
+  assert.equal(tagOf(tags, { personId: 'p9' }), null);
+  const now = new Date(2026, 9, 18, 18, 0).getTime();
+  const seen = [{ tag_id: 't1', kind: 'enter', zone_id: 'z1', at: new Date(2026, 9, 18, 17, 5).toISOString() }, { tag_id: 't1', kind: 'check_in', at: new Date(2026, 9, 18, 6, 40).toISOString() }, { tag_id: 't3', kind: 'arrive', facility_id: 'f1', at: new Date(2026, 9, 18, 15, 20).toISOString() }];
+  const opts = { zoneOf: (id) => ({ z1: { code: 'A-2' } }[id]), facilityOf: (id) => ({ f1: { kind: 'shelter', name: 'High school gym' } }[id]), transportOf: (id) => ({ r1: { kind: 'bus', label: 'Bus 2' } }[id]) };
+  assert.equal(lastSeen(seen, ['t1']).kind, 'enter', 'the newest scan of the band');
+  assert.equal(lastSeenText(lastSeen(seen, ['t1']), opts), 'seen entering A-2 17:05');
+  assert.equal(lastSeenText(lastSeen(seen, ['t3']), opts), 'seen at High school gym 15:20');
+  assert.equal(lastSeenText(null), 'not seen');
+  assert.equal(seenStale(lastSeen(seen, ['t1']), now), false);
+  assert.equal(seenStale(lastSeen(seen, ['t3']), now), true, 'two hours and forty minutes ago is long ago');
+  assert.equal(seenWords({ kind: 'board', transport_id: 'r1' }, opts), 'boarding Bus 2');
+  assert.equal(seenWords({ kind: 'leave', zone_id: 'zz' }, opts), 'leaving a division');
+  assert.equal(seenWords({ kind: 'par' }), 'on the PAR');
+  assert.equal(seenGuess({ desk: true }), 'arrive');
+  assert.equal(seenGuess({ zone: { code: 'A-2' } }), 'enter');
+  assert.equal(seenGuess({ par: true, desk: true }), 'par');
+  assert.equal(seenGuess({}), 'check_in');
 });

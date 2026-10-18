@@ -399,6 +399,25 @@ hardware, and the desk and Operations feel it at once.
    *Shipped 18 October 2026 as `A transport board (v54)`; rule test `supabase/tests/transports.sql` (33), smoke suite
    `transports` (34).*
 
+## 13. v55 People and tags, phase 1
+
+The second of the three pieces in the plan "Invite by email, a transport board, and people and tags" (18 October 2026),
+mock-up at `/try/mockups/#tags`: a QR band per person, scanned at check-in, at the division, at a transport and at the
+shelter door; last seen on the board; the PAR by scan.
+
+1. **A band is an id, never a name** (everyone). *Built.* `ic_tags` (a number and a code, printed from the base in sheets
+   of 24 by `ic_print_bands`, given once to a responder or a sheltered person, voided never reused) and `ic_seen` (a scan:
+   what it meant, where, when, by whom; never changed). The base prints bands, reads each person's band and last scan on
+   the People board, the unit panel and the 211, voids a lost one, counts the scans on the PAR panel. The phone scans a
+   band from the menu, the PAR card and the desk's sign-in sheet, types the number when the camera refuses, preselects
+   what the scan means from where it is, takes a band number on the check-in rows, and opens a band's link from any
+   reader. A sheltered person's band is voided with their name by the clearing rule.
+   *Decisions kept from the plan:* a tag is an id; no scan is ever required (names and counts stay); last seen is a
+   record, never "is at"; evacuees' bands clear with their names. *Not in this cut:* NFC (Web NFC is Android only), the
+   base giving a sheltered person a band (the desk and the crews do), trackers (phase 2, when the hardware is chosen).
+   *Shipped 18 October 2026 as `People and tags, phase 1 (v55)`; rule test `supabase/tests/tags.sql` (28), smoke suite
+   `tags` (29).*
+
 ## Done before this list
 
 The previous punchlist (items 1 to 6, from the v24 walkthroughs and the re-walks after v25 and v26) shipped on 17

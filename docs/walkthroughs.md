@@ -1210,3 +1210,25 @@ A transport board: Marcus, Ana, the shelter desk and a driver, walked on 2026-10
 - **A pickup is not yet a point on the map**: From is a facility, a division or a few words. A crew at a corner with no division name types it.
 - **The desk cannot put a walk-in on a run**: On which run is on the crew's house record and the base's arriving rows; the desk's sign-in sheet has no run (it signs people in, it does not send them).
 - **Runs nobody updates under load** is the risk the plan named: a bus that left without Leaving pressed reads "loading since" and goes late on its own clock, which at least says so.
+
+---
+
+## Re-walk after v55
+
+People and tags, phase 1: Marcus, Ana, Rosa, the shelter desk and Priya, walked on 2026-10-18 in the same mock on the base at 1280 × 900 and the phone at 375 × 812 (the pane visible; the words read from the screen and through the `tags` suite's phone frame, whose camera the pane refuses, so every scan was the typed number).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Print bands | Marcus | **Print bands** on the join box and the People board's bar: "24 bands printed, 025 to 048" and the sheet, four to a row, a QR, "Band 025", the incident's name and the code; nobody's name anywhere. The Settings dialog counts them. | Clear |
+| Give a band | Ana | **Menu → Scan a band**: the camera sheet with "Camera permission was refused. Type the band's number below." and the box. "25": "Band 025 · not on anyone yet · Whose band is this? The scan is their check-in." with Hale and Dominguez as chips; "Give Band 025 to Hale"; the log reads "Band 025 given to Hale (Unit 3) by Unit 3" and "Hale seen checking in with Unit 3". At check-in, **Band №** on each person's row does the same without the sheet. | Clear |
+| Where was he seen | Ana, Marcus | "25" again: "Band 025 · Hale (Unit 3) · seen checking in 11:52 by Unit 3", the chips Checking in, **Entering A-2** (chosen), Leaving A-2, Boarding Bus 3, At the shelter door; "Save: Hale entering A-2, 11:53". The board's row: "Band 025 · seen entering A-2 11:53"; Patel's reads "Band 004 · seen at High school gym 09:40 (2 h ago)" in orange. | Clear |
+| The PAR by scan | Ana, Marcus | The PAR card: "Checked in with you: Hale, Dominguez", **Scan them in · 0 of 1**, "All 2 accounted for", Someone's missing. "25": "Hale scanned 11:54", the button "1 of 1", the green button "All 2 accounted for, 1 by scan"; the base's panel "All accounted for (2) · 1 scanned · 11:54", the 214 "Unit 3: All accounted for (2, 1 scanned)". | Clear |
+| A walk-up at the door | The desk | Sign in a person: **Scan a band** · "No band yet. Scan one from the box for a walk-up; a family a crew banded comes up by its band." "27": "Band 027 · scanned 11:56; it goes on this record when you save." Sign in here: "Band 027 given to Lopez, Ana by Gym desk", "Lopez, Ana seen at High school gym, by Gym desk"; her band scanned again brings her record up with "Band 027 on this record". The gym's card says "band 027, seen at High school gym 11:56". | Clear |
+| A lost band | Marcus | **Void band** on Hale's row: "Band 025 (Hale (Unit 3)) voided by Operations", the row "no band"; "25" on the phone: "Band 025 was voided; give a new one." | Clear |
+| A band from elsewhere | Priya | "XYZ-001-ABCD": "That band is not from this incident."; "99": "No band 099 on this incident." A scan of a band is in the 214 and on the board, never a position: "seen at the shelter door 16:20" is the words, as the plan asked. | Clear |
+
+**Still bites, small:**
+
+- **The base cannot give a sheltered person a band**: only the desk and the crew that made the record can (the plan's choice); Operations gives responders theirs from nowhere either, the units do at check-in. A "Band" box on the base's rows is a later item if the desks ask for it.
+- **One scan at a time on the PAR**: Scan them in opens the camera once per band; with a crew of six that is six presses. A sheet that keeps the camera open and ticks names as bands pass it would be the next cut.
+- **Boarding needs a run loading from here**: the Boarding chip names the first run planned or loading from the crew's division, or "a run" when there is none.

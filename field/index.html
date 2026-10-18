@@ -113,7 +113,19 @@
   <h2>Scan the code</h2>
   <p class="muted small" id="scan-msg">Point the camera at the code.</p>
   <video id="scan-video" autoplay muted playsinline aria-label="Camera view"></video>
+  <div class="scan-typed" id="scan-typed" hidden>
+    <label class="k" for="scan-type">Or type the band's number</label>
+    <div class="scan-typed-row"><input id="scan-type" class="input" inputmode="numeric" placeholder="013" autocomplete="off" maxlength="16" enterkeyhint="go"><button type="button" class="btn" data-action="scan-typed">Use it</button></div>
+  </div>
   <div class="sheet-btns"><button class="btn" data-action="scan-cancel">Cancel</button></div>
+</div>
+
+<div id="s-band" class="sheet" hidden>
+  <div class="sheet-head"><h2 id="band-title">Band</h2><span class="muted small" id="band-sub"></span></div>
+  <p class="muted small" id="band-hint"></p>
+  <div id="band-who"></div>
+  <div id="band-what"></div>
+  <div class="sheet-btns"><button class="btn" data-action="band-cancel" id="band-cancel">Cancel</button><button class="btn pri" data-action="band-save" id="band-save" style="flex:2">Save</button></div>
 </div>
 
 <div id="app" class="app" hidden>
@@ -345,6 +357,7 @@
       <label class="k" for="ev-where">Where now<select id="ev-where" class="input"></select></label>
     </div>
     <label class="k" for="ev-note">Note<input id="ev-note" class="input" placeholder="on oxygen, stable" autocomplete="off" maxlength="300"></label>
+    <div class="ev-band"><button type="button" class="btn" data-action="scan-band-desk" id="ev-band-btn">Scan a band</button><span class="muted small" id="ev-band-line">No band yet. Scan one from the box for a walk-up; a family a crew banded comes up by its band.</span></div>
     <p class="muted small">Only "Who" is needed; the rest can be added from the list. Names are seen by this incident's members only, never in anything public.</p>
     <div class="sheet-btns"><button class="btn" data-action="home" id="ev-cancel">Cancel</button><button class="btn pri" data-action="ev-save" id="ev-save" style="flex:2">Sign in here</button></div>
   </div>
@@ -361,7 +374,7 @@
   <div id="s-menu" class="sheet" hidden>
     <h2>This incident</h2>
     <div class="kv" id="menu-facts"></div>
-    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="briefing">Your briefing</button><button class="btn sm" data-action="hurt">If someone is hurt</button><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="id-open">Your identity</button></div>
+    <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="briefing">Your briefing</button><button class="btn sm" data-action="hurt">If someone is hurt</button><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="scan-band">Scan a band</button><button class="btn sm" data-action="id-open">Your identity</button></div>
     <div class="k">What the unit is</div>
     <div class="chips kind-chips" id="menu-kind"></div>
     <div id="menu-shelter-box" hidden>

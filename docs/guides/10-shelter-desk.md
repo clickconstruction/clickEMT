@@ -17,6 +17,7 @@ Your home screen is **People here**: the shelter's count against its beds, the n
 ### 2. Sign in a family
 
 - **Phone** · Press **Sign in a person**: who (the only thing needed), how many, the needs chips, where from, where now (here first), a note. **Sign in here**.
+- **Phone** · **Scan a band** on that sheet (v55): a band from the box goes on the walk-up's record when you save; a band a crew gave a family brings their record up and signs them in. "Is my mother here?" is then her band at any shelter, or her name as before. When the camera will not open, type the band's number under it.
 - **Phone** · When the bus pulls in, press **They're here, all 12** on its card: every family on it is signed in at once and the run is marked arrived for Operations. Or press **Here** on one family's row as they come off, so nobody is signed in twice; add the name if you have it.
 
 ### 3. This man needs oxygen or insulin

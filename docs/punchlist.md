@@ -5,15 +5,15 @@ to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "I
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
 that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), v61, the units section
-(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), and v64, the pages as windows (section 23). **Open and not yet ranked** (18 October 2026, v64): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
-Written 17 October 2026, after v37 (`c89a929`), brought up to date at v64. Each numbered release below is written to be picked
+(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), v64, the pages as windows (section 23), and v65, the People board as cards and a drawer with its bar and its Members tab redrawn (section 24). **Open and not yet ranked** (18 October 2026, v65): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v65. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v65**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v66**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -42,6 +42,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 21 | v62 Confirmations as the app's own dialogs, and the band door (shipped 18 October) | small | v61 | Marcus, Dana, Rosa, the desk, anyone handed a band |
 | 22 | v63 Replay: a time you name, and a speed in words (shipped 18 October) | small | v62 | Marcus, the clerk, Dana |
 | 23 | v64 The pages as windows: Briefing, People and the rest over the dimmed map, Expand to full screen (shipped 18 October) | small to medium | v63 | Marcus, the IC, the clerk, Priya |
+| 24 | v65 The People board: cards and a drawer, the bar, the Members tab (shipped 18 October) | medium | v64 | Priya, Marcus, the Safety Officer, the clerk, the newcomer at the post, the administrator |
 
 ---
 
@@ -472,15 +473,15 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
 - **The People board's bar and tabs** (Todd, 18 October): Close wraps to a second row at the left while Print 211 is cut
   off at the right; the qualification chips and the search sit above both tabs though they filter only People, and a lit
   chip stays lit on Members. The tabs first, the search and chips inside the People tab, Close last at the right. Sent
-  to the People board's mock-up page.
+  to the People board's mock-up page; built as v65 (section 24).
 - **The Members tab reads as four command posts** (Todd, 18 October: "these other potential operators feel like forward
   operating bases"): every unit's row carries a Make Operations button as loud as Open and Remove. Present the roles as
   two groups, Operations (who opened the incident, who else holds it) and Units, with Make Operations a quieter action
   in the row's menu or on the unit's own panel. The question it asks says what they get and what changes since v62
-  (section 21); the grouping is still to do, and what happens to a division assigned to them is to check when it is
-  built.
+  (section 21); the grouping, the row's ··· menu and the Identity column were built as v65 (section 24); what happens to a
+  division assigned to a unit made Operations is still to check.
 - **The People board, offered better** (`/try/mockups/people.html`, its own session): the six controls on every person's
-  row crowd out the facts; two or three directions drawn.
+  row crowd out the facts; three directions drawn, Todd chose C (cards and a drawer), built as v65 (section 24).
 - **Replay: a time you name, and a speed in words** (`/try/mockups/replay.html`): built as v63 (section 22), with the
   run-up before the first position cut off rather than hatched; past periods in the menu and clicking the time to type a
   moment are still to do.
@@ -765,6 +766,56 @@ overlays and the gear menu's item in index.html; the `pages` smoke suite (13 che
 and Shrink with the setting, an emergency in front of a full-screen page, Escape, the board's width, the half-filled
 form, the dim click, the print rules, the gear menu's item); full run 761 of 761 across 39 suites; check and test pass;
 every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
+
+## 24. v65 The People board: cards and a drawer, the bar, the Members tab
+
+**Why.** Todd, walking the base at v59 on 18 October, marked the People board three times: the six controls on every
+person's row (two selects and four buttons) crowded out the facts; the bar wrapped at 1280 with Close lost on a second
+row and Print 211 cut off, and the find box and the qualification chips sat above both tabs though they narrow only
+People; and the Members tab "felt like forward operating bases", every unit's row carrying Make Operations as loud as
+Open, with an identity badge that did not say what to do. Three directions were drawn in `try/mockups/people.html`
+(A facts first with one menu per row, B tick and act, C cards and a drawer) and Todd chose C; the same page drew the
+bar and the tabs and the Members tab, with a Decide tab of what was decided and what was still his.
+
+**Built.** The board's bar is the People | Members tabs first, the incident's name alone (the lit tab names the page,
+the header has the clock), then Hours, Print 211, Print bands, Expand and Close at the right, one row at 1280. The
+find box, the chips and Add a person are the People tab's own heading row under the bar, hidden on Members, drawn once
+so the box keeps focus across live redraws. A unit is a card: its name (a link to its panel), the status badge, the
+division, agency · kind · n on the unit; a person is a line on it: name and rank, the time on scene at the right
+("2 h 57 min", orange with "· past 12 h" when over the period's hours, "· back in" after a stint), the band and its
+last scan ("Band 001 · entering A-1 15:03", orange with "· 8 h ago" when the scan is older than two hours), the
+qualification chips; Add a person at the card's foot opens the form with the unit fixed. Pressing a line opens a
+340 px drawer beside the cards, which fall to two columns: the facts as a key-value list (On scene since when, Last
+seen by whom and the band, With, Qualified, Notes), then every action as a full-width button or select with what is
+kept said beside it (Check out or Back in; Move to…; Pair with…; Edit, the same form in the drawer; Void band 001,
+"Never reused; kept on record."; Remove, "Off the roster; kept on record, Put back undoes it."; Put back on a removed
+person, who stays on the card greyed), and In the log: the person's lines from the 214, found by name, newest first,
+six at most. Escape and Close close it. Red stays MISSING, the orange tint stays on an over line. The Members tab is
+two groups, Operations (the opener first, "opened the incident", nothing to press; another holder "since hh:mm") and
+Units ("Unit 1, engine · Assigned · A-1"), each row who, name · phone · agency, the Identity column ("ID checked ✓
+14:05" green; "ID given, not checked" grey with Check, which opens the unit's panel with the licence and the photo
+unfolded where Mark verified is; "No ID" orange with Check in person, the same press as Mark verified), Open and a ···
+menu kept open across live redraws and closed by a click outside, Escape or pressing an item: Make Operations… or
+Make a unit…, each asking with the app's own dialog in Todd's words ("Make Unit 1 Operations?", what they get, what
+changes, Cancel / Make Operations; "They check in on a phone, hold divisions and send reports; the base is
+Operations' alone."), and Remove · kept on record; Restore on a removed row. Escape works the board's own layers
+first: the menu, then the drawer or the form (a half-typed form holds it off, as the dim click does), then the page.
+
+*Decided:* the drawn choice wherever the Decide tab left it open: the log lines by name in the 214's text (no
+migration), chips under the name, pairing kept on the board, the unit header with status, division, agency and the
+count, the chips' zeros kept, a second Operations row "since hh:mm", Check opens the unit's panel, Add a person at the
+right of the heading row. Chosen differently from the drawing: the confirm on Void band and Remove is kept (the mock
+skipped it), since the brief kept every handler and the dialog already says what is kept; the drawer stacks above the
+cards under 900 px (the full-screen breakpoint); "Check out the unit" on a card's header (B's borrowing) is not built.
+Every `data-action` and handler of v29 to v55 is kept; only where they are drawn changed. Nothing is deleted anywhere.
+
+**Shipped** 18 October 2026 as `The People board: cards and a drawer, the bar, the Members tab (v65)`: the bar, the
+heading row and the `.people-body` wrapper in index.html, `personFacts` / `personLineHtml` / `unitCardHtml` /
+`personFormHtml` / `personDrawerHtml` / `peopleBoardHtml` / `membersHtml` / `identityState` in js/base/ui.js, the
+drawer, the menu, Check and the Make a unit… dialog in js/base/main.js (`state.people.open` / `menu` / `addFixed`),
+the styles under "v65" in base.css; the `people`, `members`, `tags`, `sections`, `rewalks`, `parbyname`, `pages`,
+`walkfix` and `invite` suites drive the cards, the drawer, the menu and the dialogs; full run 772 of 772 across 39 suites (761 at v64 and 11 of the board's); check and test
+pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
 
 ## Done before this list
 

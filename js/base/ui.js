@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, inviteState, INVITE_STATE } from '../shared/rules.js';
+import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -535,14 +535,15 @@ export function peopleChipsHtml(data, state) {
   return QUALIFICATIONS.map(([q, label]) => `<button class="chip${cur.has(q) ? ' on' : ''}" data-action="people-qual" data-q="${q}" aria-pressed="${cur.has(q)}">${esc(label)} <span class="n">${on.filter((p) => (p.qualifications || []).includes(q)).length}</span></button>`).join('');
 }
 
-// The People board: everyone by unit, with the find box and the chips narrowing the list.
-// What the base knows about who is behind a member: for the Members tab and the unit panel.
+// What the base knows about who is behind a member (v65): the Members tab's Identity column. ok: the licence was
+// checked, or the person was when none was given; part: a licence or its photo is on file, not yet checked (Check opens
+// the unit's panel, where Mark verified is); warn: no licence, so Check in person does what Mark verified does there.
 export function identityState(data, m) {
   const p = data.profileOf(m.user_id);
-  if (!p || !profileReady(p)) return { cls: 'haz', text: 'Nothing given' };
-  if (p.verified_at) return { cls: 'cleared', text: 'Verified ' + hhmm(p.verified_at) };
-  if (identityGiven(p)) return { cls: 'st-available', text: 'Licence on file, not verified' };
-  return { cls: 'haz', text: 'Name and phone only' };
+  if (!p || !profileReady(p)) return { cls: 'warn', text: 'Nothing given', action: '' };
+  if (p.verified_at) return { cls: 'ok', text: (identityGiven(p) ? 'ID checked ✓ ' : 'ID checked in person ✓ ') + hhmm(p.verified_at), action: '' };
+  if (identityGiven(p)) return { cls: 'part', text: 'ID given, not checked', action: 'check' };
+  return { cls: 'warn', text: 'No ID', action: 'person' };
 }
 
 // The Members tab: who is on the incident, in which role, with what identity; Operations changes
@@ -578,91 +579,174 @@ function invitesHtml(data, state) {
     <div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">${roster.length ? `${roster.length} address${roster.length === 1 ? '' : 'es'} you invited on earlier incidents, not yet here: ${roster.slice(0, 6).map((r) => esc(r.email)).join(', ')}${roster.length > 6 ? ' and ' + (roster.length - 6) + ' more' : ''}.` : 'Everyone you invited on earlier incidents is here or invited already. The invitations you send double as the season\'s roster.'}</span>${roster.length ? `<button class="btn sm" data-action="invite-roster" title="One email each, as the role and unit they had last time">Invite the roster · ${roster.length}</button>` : ''}</div>`;
 }
 function membersHtml(data, state) {
-  const me = data.me(), ops = !!me && me.role === 'ops', inc = data.incident;
-  const members = data.members().sort((a, b) => (b.role === 'ops') - (a.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
-  const removed = data.removedMembers();
+  const me = data.me(), ops = !!me && me.role === 'ops', inc = data.incident, ps = state.people || {};
+  const live = data.members(), removed = data.removedMembers();
+  const opsRows = live.filter((m) => m.role === 'ops').sort((a, b) => (b.user_id === inc.created_by) - (a.user_id === inc.created_by) || (a.joined_at || '').localeCompare(b.joined_at || ''));
+  const unitRows = live.filter((m) => m.role === 'unit').sort((a, b) => (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  // two groups (v65): who, the facts, the Identity column with its action in place, Open and a ··· menu that asks with the
+  // app's own dialog; the opener's row has nothing to press; the menu is drawn for every row and shown while state says so
   const row = (m) => {
     const p = data.profileOf(m.user_id), id = identityState(data, m), opener = m.user_id === inc.created_by, self = !!me && m.user_id === me.user_id;
-    const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
+    const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active') || data.zones().find((z) => z.assigned_to === m.user_id);
+    const who = m.role === 'unit'
+      ? `${esc(unitWithKind(m))} <span class="badge st-${esc(m.status)}">${STATUS_LABEL[m.status] || m.status}</span>${zone && m.status === 'assigned' ? ` <span class="pp-div">${esc(zone.code)}</span>` : ''}`
+      : `${esc((p && p.full_name) || unitLabel(m))}<span> · ${opener ? 'opened the incident' : 'since ' + hhmm(m.joined_at)}</span>`;
+    const facts = (m.role === 'unit' ? [p && p.full_name, p && p.phone, m.agency] : [p && p.phone, m.agency]).filter(Boolean).map(esc).join(' · ') || 'agency not set';
+    const ident = m.removed_at ? `<span class="idc">Removed ${hhmm(m.removed_at)}</span>`
+      : `<span class="idc ${id.cls}">${esc(id.text)}</span>${ops && id.action === 'check' ? `<button type="button" class="btn sm" data-action="member-check" data-id="${m.user_id}" title="Opens the licence and the photo on the unit's panel, with Mark verified">Check</button>` : ''}${ops && id.action === 'person' ? `<button type="button" class="btn sm" data-action="verify-profile" data-id="${m.user_id}" title="You have checked in person who this is: an agency card, someone who knows them, a call to the number">Check in person</button>` : ''}`;
+    const menu = ops && !opener && !m.removed_at ? `<button type="button" class="btn sm more" data-action="member-menu" data-id="${m.user_id}" aria-expanded="${ps.menu === m.user_id}" aria-haspopup="menu" aria-label="More for ${esc(unitLabel(m))}" title="${m.role === 'unit' ? 'Make Operations, remove' : 'Make a unit, remove'}">···</button>
+          <div class="mb-menu" role="menu"${ps.menu === m.user_id ? '' : ' hidden'}>${m.role === 'unit'
+            ? `<button type="button" class="menu-item" role="menuitem" data-action="member-role" data-id="${m.user_id}" data-role="ops">Make Operations…</button>`
+            : `<button type="button" class="menu-item" role="menuitem" data-action="member-role" data-id="${m.user_id}" data-role="unit">Make a unit…</button>`}${self ? '' : `<hr><button type="button" class="menu-item" role="menuitem" data-action="member-remove" data-id="${m.user_id}">Remove <span class="muted">· kept on record</span></button>`}</div>` : '';
     return `
       <div class="mb-row${m.removed_at ? ' gone' : ''}" data-member="${m.user_id}">
-        <span class="mb-who">${esc(unitWithKind(m))}${p && p.full_name ? `<span> · ${esc(p.full_name)}</span>` : ''}${p && p.phone ? `<span> · ${esc(p.phone)}</span>` : ''}</span>
-        <span class="muted">${esc(m.agency || 'agency not set')}${zone ? ' · in ' + esc(zone.code) : ''}</span>
-        <span><span class="badge ${m.role === 'ops' ? 'cleared' : 'st-assigned'}">${m.role === 'ops' ? 'Operations' : 'Unit'}</span>${opener ? '<span class="muted"> · opened the incident</span>' : ''}</span>
-        <span>${m.removed_at ? `<span class="badge haz">Removed ${hhmm(m.removed_at)}</span>` : `<span class="badge ${id.cls}">${esc(id.text)}</span> <span class="muted">${esc(STATUS_LABEL[m.status] || m.status)}</span>`}</span>
+        <span class="mb-who">${who}</span>
+        <span class="muted mb-facts">${facts}</span>
+        <span class="mb-id">${ident}</span>
         <span class="mb-act">${m.removed_at
-          ? (ops ? `<button class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : '')
-          : `${m.role === 'unit' ? `<button class="btn sm" data-action="select-unit" data-id="${m.user_id}">Open</button>` : ''}
-             ${ops && !opener ? (m.role === 'ops'
-               ? `<button class="btn sm" data-action="member-role" data-id="${m.user_id}" data-role="unit" title="A unit again: it checks in on a phone and holds divisions">Make a unit</button>`
-               : `<button class="btn sm" data-action="member-role" data-id="${m.user_id}" data-role="ops" title="Can run the incident from the base">Make Operations</button>`) : ''}
-             ${ops && !opener && !self ? `<button class="btn sm" data-action="member-remove" data-id="${m.user_id}" title="Takes them off the incident; what they sent stays, and they can be put back">Remove</button>` : ''}`}</span>
+          ? (ops ? `<button type="button" class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : '')
+          : `${m.role === 'unit' ? `<button type="button" class="btn sm" data-action="select-unit" data-id="${m.user_id}" title="The unit's panel: where it is, its people, its identity">Open</button>` : ''}${menu}`}</span>
       </div>`;
   };
   return `
-    <div class="pp-top"><span class="pp-count">${members.length} member${members.length === 1 ? '' : 's'} · ${members.filter((m) => m.role === 'ops').length} Operations${removed.length ? ' · ' + removed.length + ' removed' : ''}</span></div>
-    <p class="muted" style="font-size:12.5px;margin:0 0 8px">The six-letter join code makes a unit; the Operations code on the home panel makes Operations; an invitation by email (below) makes either with no code to type. Removing a member keeps everything they sent and can be undone here.</p>
-    <div class="mb-list">${members.map(row).join('')}</div>
+    <div class="pp-top"><span class="pp-count">${live.length} member${live.length === 1 ? '' : 's'} · ${opsRows.length} Operations${removed.length ? ' · ' + removed.length + ' removed' : ''}</span></div>
+    <p class="muted pp-note">The join code makes a unit, the Operations code makes Operations, an invitation by email makes either. Removing keeps what they sent; Restore puts them back.</p>
+    <div class="k">Operations · ${opsRows.length}</div><div class="mb-list">${opsRows.map(row).join('')}</div>
+    <div class="k">Units · ${unitRows.length}</div><div class="mb-list">${unitRows.map(row).join('') || '<div class="mb-row"><span class="muted">No units yet.</span></div>'}</div>
     ${removed.length ? `<div class="k">Removed · kept, never deleted</div><div class="mb-list">${removed.map(row).join('')}</div>` : ''}
     ${invitesHtml(data, state)}`;
 }
 
-export function peopleBoardHtml(data, state) {
-  const ps = state.people || {};
-  const tabs = `<div class="pp-tabs chips"><button class="chip${ps.tab === 'members' ? '' : ' on'}" data-action="people-tab" data-tab="people" aria-pressed="${ps.tab !== 'members'}">People</button><button class="chip${ps.tab === 'members' ? ' on' : ''}" data-action="people-tab" data-tab="members" aria-pressed="${ps.tab === 'members'}">Members</button></div>`;
-  if (ps.tab === 'members') return tabs + membersHtml(data, state);
-  const all = data.people();
-  const on = data.peopleOn();
+// ---- The People tab (v65; try/mockups/people.html, direction C): a card per unit, a line per person, and a drawer
+// beside the cards for the person pressed, with the facts, every action spelled out and their lines from the 214.
+const seenOptsOf = (data) => ({ zoneOf: (id) => data.zone(id), facilityOf: (id) => data.facility(id), transportOf: (id) => data.transport(id) });
+const escRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// what a line and the drawer say about a person: the time on scene (orange past the period's hours), where they were
+// last seen (orange when the scan is stale), red for MISSING
+function personFacts(data, p, now) {
+  const unit = data.member(p.user_id), unitOut = !!unit && unit.status === 'checked_out';
+  const miss = data.missingPerson(p.id), pos = miss && unit ? data.position(unit.user_id) : null;
+  const hours = data.sceneHours();
+  const over = !miss && !p.archived_at && !p.checked_out_at && !unitOut && sceneOver(p, hours, now);
+  const tag = tagOf(data.tags(true), { personId: p.id }), seen = tag ? lastSeen(data.seen(), [tag.id]) : null, stale = seenStale(seen, now);
+  const agoText = seen ? durationText(Math.round((now - new Date(seen.at).getTime()) / 60000)) + ' ago' : '';
+  const where = seen ? seenWords(seen, seenOptsOf(data)) + ' ' + hhmm(seen.at) + (stale ? ' · ' + agoText : '') : '';
+  const band = tag ? bandLabel(tag) : '';
+  const short = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at)
+    : p.archived_at ? 'removed ' + hhmm(p.archived_at)
+    : p.checked_out_at ? 'out ' + hhmm(p.checked_out_at)
+    : unitOut ? 'unit checked out'
+    : stintText(p, now) + (over ? ' · past ' + hours + ' h' : '') + (p.stint_at ? ' · back in' : '');
+  const long = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at) + (pos ? ' · ' + unitLabel(unit) + ' last at ' + latLngText(pos.lat, pos.lng) + ', ' + ago(pos.at, now) : ' · no position from ' + unitLabel(unit))
+    : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
+    : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
+    : (unitOut ? 'Unit checked out · ' : '') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + hours + ' h' : '');
+  const seenShort = !tag ? 'no band' : !seen ? band + ' · not scanned yet' : band + ' · ' + where;
+  const seenLong = !tag ? 'no band' : !seen ? 'not scanned yet · ' + band.toLowerCase() : where + ', by ' + unitLabel(data.member(seen.seen_by)) + ' · ' + band.toLowerCase();
+  return { unit, unitOut, miss, over, tag, seen, stale, short, long, seenShort, seenLong };
+}
+// one line on a unit's card: who, the time on scene at the right, the band and its last scan, the qualifications
+function personLineHtml(data, p, ps, now) {
+  const f = personFacts(data, p, now), sel = ps.open === p.id;
+  const cls = ['pp-line', f.over ? 'over' : '', p.checked_out_at || f.unitOut ? 'out' : '', p.archived_at ? 'gone' : '', f.miss ? 'missing' : '', sel ? 'sel' : ''].filter(Boolean).join(' ');
+  return `<button type="button" class="${cls}" data-person="${p.id}" data-action="person-open" data-id="${p.id}" aria-pressed="${sel}" title="Everything about ${esc(p.name)}, and what you can do">
+      <span class="pp-l-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? ` <span class="muted">${esc(p.role)}</span>` : ''}</span><span class="pp-l-on${f.over ? ' over' : ''}${f.miss ? ' miss' : ''}">${esc(f.short)}</span>
+      <span class="pp-seen${f.stale ? ' stale' : ''}${f.tag ? '' : ' muted'}">${esc(f.seenShort)}</span><span class="pp-l-q">${(p.qualifications || []).length ? qualBadges(p) : ''}</span>
+    </button>`;
+}
+// a unit's card: the header (unit, status, division, agency · kind · n on the unit), its lines, Add a person at the foot
+function unitCardHtml(data, m, lines, ps, now) {
   const ops = !!data.me() && data.me().role === 'ops';
-  const unitOf = (uid) => unitLabel(data.member(uid));
-  const shown = peopleMatch(all, { q: ps.q, quals: ps.quals, unitLabelOf: unitOf });
-  const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
-  const want = [...(ps.quals || [])];
-  const overScene = peopleOverScene(on, data.members(), data.sceneHours());   // v47
-  const narrowed = want.length || (ps.q || '').trim();
-  const count = narrowed ? `${shown.length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
-    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}${overScene.length ? ' · <span class="pp-over">' + overScene.length + ' past ' + data.sceneHours() + ' h on scene</span>' : ''}`;
-  const now = Date.now();
-  const editing = ops && ps.edit ? data.person(ps.edit) : null;   // Edit on a row opens the same form, filled in (v29)
-  const addForm = ops && (ps.add || editing) ? `
+  const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active') || data.zones().find((z) => z.assigned_to === m.user_id);
+  const mine = data.unitPeople(m.user_id), on = mine.filter((p) => !p.checked_out_at).length;
+  const facts = [m.agency, kindText(m.kind), mine.length ? `${on} on the unit${mine.length > on ? ', ' + (mine.length - on) + ' checked out' : ''}` : ''].filter(Boolean).map(esc).join(' · ');
+  const body = lines.length ? lines.map((p) => personLineHtml(data, p, ps, now)).join('')
+    : data.unitPeople(m.user_id, true).length ? '<p class="muted pp-none">Nobody matches here.</p>'
+    : `<p class="muted pp-none">No names on record${m.crew ? `: crew "${esc(m.crew)}"${m.crew_count != null ? ', ' + m.crew_count + ' people' : ''} as typed at check-in` : m.crew_count != null ? ': ' + m.crew_count + ' counted' : `, <span class="hc-unknown">${HEAD_COUNT_UNKNOWN}</span>`}. Name them for the PAR: a PAR by name says who is missing, not just how many.</p>`;
+  return `
+      <div class="pp-card${m.status === 'checked_out' ? ' out' : ''}" data-unit="${m.user_id}">
+        <div class="pp-card-h">
+          <div class="pp-card-t"><button type="button" class="ulink" data-action="select-unit" data-id="${m.user_id}" title="Open ${esc(unitLabel(m))}: where it is, its panel">${esc(unitLabel(m))}</button><span class="badge st-${esc(m.status)}">${STATUS_LABEL[m.status] || m.status}</span>${zone && m.status === 'assigned' ? `<span class="pp-div">${esc(zone.code)}</span>` : ''}</div>
+          ${facts ? `<div class="muted pp-card-s">${facts}</div>` : ''}
+        </div>
+        ${body}
+        ${ops && m.status !== 'checked_out' ? `<button type="button" class="btn link sm pp-addto" data-action="people-add-to" data-id="${m.user_id}">Add a person</button>` : ''}
+      </div>`;
+}
+// the add or edit form (the same fields as before v65), drawn in the drawer; a card's Add a person fixes the unit
+function personFormHtml(data, { editing, unitId, fixed } = {}) {
+  const members = data.members().filter((m) => m.status !== 'checked_out').sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const unit = editing ? data.member(editing.user_id) : data.member(unitId) || members[0] || null;
+  const uid = unit ? unit.user_id : '';
+  return `
     <form class="inline-form pp-form" data-form="${editing ? 'person-edit' : 'person-add'}"${editing ? ` data-id="${editing.id}"` : ''}>
-      ${editing ? `<div class="k">Edit ${esc(editing.name)} · ${esc(unitLabel(data.member(editing.user_id)))}</div>` : ''}
-      <div class="row-2">
-        ${editing ? '' : `<label>Unit <select name="unit" class="sel">${members.filter((m) => m.status !== 'checked_out').map((m) => `<option value="${m.user_id}"${ps.addUnit === m.user_id ? ' selected' : ''}>${esc(unitLabel(m))}</option>`).join('')}</select></label>`}
-        <label>Name <input name="name" required maxlength="80" placeholder="Surname, or the full name" autocomplete="off" value="${esc(editing ? editing.name : '')}"></label>
-        ${editing ? `<label>Notes <input name="notes" maxlength="200" placeholder="Anything the next shift should know" value="${esc(editing.notes || '')}"></label>` : ''}
-      </div>
-      <div class="row-2">
-        <label>Rank or role <input name="role" maxlength="60" placeholder="Lt., Paramedic, Boat operator" value="${esc(editing ? editing.role || '' : '')}"></label>
-        <label>Agency <input name="agency" maxlength="120" placeholder="The unit's, unless different" value="${esc(editing && data.member(editing.user_id) && editing.agency !== data.member(editing.user_id).agency ? editing.agency || '' : '')}"></label>
-      </div>
+      <div class="pp-dr-h"><div class="k" style="align-self:center">${editing ? `Edit ${esc(editing.name)} · ${esc(unitLabel(unit))}` : fixed && unit ? `Add a person to ${esc(unitLabel(unit))}` : 'Add a person'}</div><button class="btn sm" type="button" data-action="${editing ? 'person-edit-cancel' : 'people-add-toggle'}">Cancel</button></div>
+      ${editing ? '' : fixed && unit ? `<input type="hidden" name="unit" value="${uid}">` : `<label>Unit <select name="unit" class="sel">${members.map((m) => `<option value="${m.user_id}"${uid === m.user_id ? ' selected' : ''}>${esc(unitLabel(m))}</option>`).join('')}</select></label>`}
+      <label>Name <input name="name" required maxlength="80" placeholder="Surname, or the full name" autocomplete="off" value="${esc(editing ? editing.name : '')}"></label>
+      <label>Rank or role <input name="role" maxlength="60" placeholder="Lt., Paramedic, Boat operator" value="${esc(editing ? editing.role || '' : '')}"></label>
+      <label>Agency <input name="agency" maxlength="120" placeholder="The unit's, unless different" value="${esc(editing && unit && editing.agency !== unit.agency ? editing.agency || '' : '')}"></label>
+      ${editing ? `<label>Notes <input name="notes" maxlength="200" placeholder="Anything the next shift should know" value="${esc(editing.notes || '')}"></label>` : ''}
       <div class="chips">${QUALIFICATIONS.map(([q, label]) => `<label class="chip" style="min-height:34px;padding:4px 10px"><input type="checkbox" name="q" value="${q}"${editing && (editing.qualifications || []).includes(q) ? ' checked' : ''}> ${esc(label)}</label>`).join('')}</div>
       <div class="row-btns"><button class="btn sm" type="button" data-action="${editing ? 'person-edit-cancel' : 'people-add-toggle'}">Cancel</button><button class="btn pri sm" type="submit">${editing ? 'Save' : 'Add to the unit'}</button></div>
-    </form>` : '';
-  const groups = members.map((m) => {
-    const rows = shown.filter((p) => p.user_id === m.user_id);
-    if (!rows.length) return '';
-    const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
-    const mine = data.unitPeople(m.user_id);
-    return `
-      <div class="pp-grp" data-unit="${m.user_id}">
-        <button class="pp-grp-h" data-action="select-unit" data-id="${m.user_id}" title="Open the unit">
-          <span class="ur-name">${esc(unitLabel(m))}</span>
-          <span class="badge st-${esc(m.status)}">${STATUS_LABEL[m.status] || m.status}</span>
-          <span class="muted">${[m.agency, zone ? 'in ' + zone.code : '', `${mine.filter((p) => !p.checked_out_at).length} on the unit${mine.length > mine.filter((p) => !p.checked_out_at).length ? ', ' + (mine.length - mine.filter((p) => !p.checked_out_at).length) + ' checked out' : ''}`].filter(Boolean).map(esc).join(' · ')}</span>
-        </button>
-        <div class="pp-list">${rows.map((p) => personRowHtml(data, p, { now })).join('')}</div>
-      </div>`;
-  }).join('');
-  const noNames = data.units().filter((u) => u.status !== 'checked_out' && !data.unitPeople(u.user_id).length);
-  return tabs + `
-    <div class="pp-top">
-      <span class="pp-count">${count}</span>
-      ${ops && !ps.add ? '<button class="btn sm" data-action="people-add-toggle">Add a person</button>' : ''}
-    </div>
-    ${addForm}
-    ${all.length ? (groups || '<p class="muted">Nobody matches. Clear the chips or the find box.</p>') : '<p class="muted">No people on record yet. A unit adds its people by name when it checks in on the phone, or you add them here.</p>'}
-    ${noNames.length ? `<p class="muted" style="font-size:12.5px">No names on record for ${noNames.map((u) => esc(unitLabel(u)) + (u.crew ? ' (crew "' + esc(u.crew) + '"' + (u.crew_count != null ? ', ' + u.crew_count : '') + ')' : u.crew_count != null ? ' (' + u.crew_count + ' counted)' : ` (<span class="hc-unknown">${HEAD_COUNT_UNKNOWN}</span>)`)).join(', ')}. Name them for the PAR: a PAR by name says who is missing, not just how many.</p>` : ''}`;
+    </form>`;
+}
+// the drawer: the form while adding or editing, else the person pressed: the facts as a kv, the actions as full-width
+// buttons and selects, each saying what is kept, and their lines from the 214 (by name in the text, newest first, six)
+function personDrawerHtml(data, ps, now) {
+  const ops = !!data.me() && data.me().role === 'ops';
+  if (ops && ps.add) return `<aside class="pp-drawer" data-form="person-add">${personFormHtml(data, { unitId: ps.addUnit, fixed: !!ps.addFixed })}</aside>`;
+  const p = ps.open ? data.person(ps.open) : null;
+  if (!p) return '';
+  if (ops && ps.edit === p.id) return `<aside class="pp-drawer" data-person="${p.id}">${personFormHtml(data, { editing: p })}</aside>`;
+  const f = personFacts(data, p, now), unit = f.unit;
+  const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
+  const zone = unit ? data.zones().find((z) => z.assigned_to === unit.user_id && z.status === 'active') : null;
+  const mates = data.unitPeople(p.user_id).filter((x) => x.id !== p.id && (!x.checked_out_at || x.id === p.buddy_id));
+  const others = data.members().filter((m) => m.user_id !== p.user_id && m.status !== 'checked_out').sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(p.name) + '(?![\\p{L}\\p{N}])', 'iu');
+  const lines = data.events().filter((e) => re.test(e.text || '')).slice(0, 6);
+  return `<aside class="pp-drawer" data-person="${p.id}">
+      <div class="pp-dr-h"><div><b class="pp-dr-name">${esc(p.name)}</b>${p.role ? ` <span class="muted">${esc(p.role)}</span>` : ''}<div class="muted pp-dr-sub">${esc(unitLabel(unit))}${zone ? ' · ' + esc(zone.code) : ''}${p.agency || (unit && unit.agency) ? ' · ' + esc(p.agency || unit.agency) : ''}</div></div><button type="button" class="btn sm" data-action="person-close">Close</button></div>
+      <div class="kv pp-kv">
+        <span class="k">On scene</span><span class="${f.miss ? 'pp-miss' : f.over ? 'pp-over' : ''}">${esc(f.long)}</span>
+        <span class="k">Last seen</span><span class="${f.stale ? 'pp-over' : ''}">${esc(f.seenLong)}</span>
+        <span class="k">With</span><span>${buddy && !buddy.archived_at ? esc(buddy.name) + (buddy.checked_out_at ? ' <span class="muted">· checked out</span>' : '') : '<span class="muted">nobody</span>'}</span>
+        <span class="k">Qualified</span><span>${(p.qualifications || []).length ? qualBadges(p) : '<span class="muted">nothing listed</span>'}</span>
+        ${p.notes ? `<span class="k">Notes</span><span>${esc(p.notes)}</span>` : ''}
+      </div>
+      ${ops ? `<div class="pp-dr-acts">${p.archived_at ? `<button type="button" class="btn" data-action="person-restore" data-id="${p.id}">Put back</button><span class="muted pp-dr-why">Back on the roster, checked in now.</span>` : `
+        ${p.checked_out_at ? `<button type="button" class="btn" data-action="person-in" data-id="${p.id}">Back in</button>` : `<button type="button" class="btn" data-action="person-out" data-id="${p.id}">Check out</button>`}
+        <select class="sel" data-select="person-unit" data-id="${p.id}" aria-label="Move to another unit" title="Move to another unit: logged, both units recounted"><option value="">Move to…</option>${others.map((u) => `<option value="${u.user_id}">${esc(unitLabel(u))}</option>`).join('')}</select>
+        <select class="sel" data-select="person-buddy" data-id="${p.id}" aria-label="Pair with" title="Who this person pairs with"><option value="">${p.buddy_id ? 'No buddy' : 'Pair with…'}</option>${mates.map((x) => `<option value="${x.id}"${p.buddy_id === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+        <button type="button" class="btn" data-action="person-edit" data-id="${p.id}" title="Correct the name, rank or role, agency, qualifications or notes">Edit</button>
+        ${f.tag ? `<button type="button" class="btn" data-action="band-void" data-id="${f.tag.id}">Void ${esc(f.tag ? bandLabel(f.tag).toLowerCase() : '')}</button><span class="muted pp-dr-why">Never reused; kept on record.</span>` : ''}
+        <button type="button" class="btn" data-action="person-remove" data-id="${p.id}">Remove</button><span class="muted pp-dr-why">Off the roster; kept on record, Put back undoes it.</span>`}</div>` : ''}
+      <div class="k pp-dr-log">In the log</div>
+      <div class="pp-loglines">${lines.map((e) => `<div><span class="mono muted">${hhmm(e.at)}</span> ${esc(e.text)}</div>`).join('') || '<div class="muted">Nothing yet.</div>'}</div>
+    </aside>`;
+}
+
+export function peopleBoardHtml(data, state) {
+  const ps = state.people || {};
+  if (ps.tab === 'members') return membersHtml(data, state);
+  const all = data.people(), on = data.peopleOn(), now = Date.now();
+  const unitOf = (uid) => unitLabel(data.member(uid));
+  const shown = peopleMatch(data.people(true), { q: ps.q, quals: ps.quals, unitLabelOf: unitOf });   // a removed person stays on the card, greyed, with Put back
+  const want = [...(ps.quals || [])], narrowed = want.length || (ps.q || '').trim();
+  const overScene = peopleOverScene(on, data.members(), data.sceneHours());   // v47
+  const count = narrowed ? `${shown.filter((p) => !p.archived_at).length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
+    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}${overScene.length ? ' · <span class="pp-over">' + overScene.length + ' past ' + data.sceneHours() + ' h on scene</span>' : ''}`;
+  // a card for every unit on the incident, and for a member of any role or status with people on record
+  const members = data.members().filter((m) => (m.role === 'unit' && m.status !== 'checked_out') || data.unitPeople(m.user_id, true).length)
+    .sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const cards = members.map((m) => unitCardHtml(data, m, shown.filter((p) => p.user_id === m.user_id).sort((a, b) => !!a.archived_at - !!b.archived_at), ps, now)).join('');
+  const drawer = personDrawerHtml(data, ps, now);
+  return `
+    <div class="pp-top"><span class="pp-count">${count}</span></div>
+    <div class="pp-body${drawer ? ' open' : ''}">
+      <div class="pp-cards">${cards || '<p class="muted">No units have checked in yet. A unit adds its people by name when it checks in on the phone.</p>'}</div>
+      ${drawer}
+    </div>`;
 }
 
 // The check-in list, ICS 211: everyone who checked in, by unit, with when and for how long.

@@ -445,15 +445,21 @@ async function accountability(check) {
 // and the rules a unit cannot get round.
 async function people(check) {
   const u = USERS(), PP = M().ids.people;
-  const rows = () => $$('#people-page .pp-row');
-  const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
+  const rows = () => $$('#people-page .pp-line');
+  const row = (id) => $(`#people-page .pp-line[data-person="${id}"]`);
+  const drawer = async (id) => { const sel = `#people-page .pp-drawer[data-person="${id}"]`; if (!$(sel)) { row(id).click(); await until(() => $(sel)); } return $(sel); };   // a line opens the person's drawer (v65)
   check('six people are seeded on the three units, and the resources board names them', base.people().length === 6 && base.unitPeople(u.unit1).map((p) => p.name).join() === 'Ramirez,Okafor' && has('#panel', 'unit 1, engine', 'ramirez, okafor · 2', 'unit 2, boat crew', 'nguyen, patel · 2', 'unit 3, swift-water team', 'hale, dominguez · 2', '6 people in the field'), text('#panel'));
   check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .log-row').filter((r) => /checked in with/.test(r.textContent) && r.querySelector('.llink[data-action="people"]')).length === 6, logTexts().find((t) => /Ramirez/.test(t)));   // the band lines link to the board too (v55)
   $('.top [data-action="people"]').click();
   await until(() => !$('#people').hidden && rows().length === 6);
-  check('the People board opens with everyone by unit: name, rank, qualifications, status and hours on scene', $$('#people-page .pp-grp').length === 3 && has('#people-page', '6 on scene on 3 units', 'unit 1', 'ramirez', 'lt.', 'swift water', 'emt', 'okafor', 'paramedic', 'boat', 'nguyen', 'capt.', 'boat operator', 'on scene 2 h', 'since'), text('#people-page').slice(0, 400));
+  check('the People board opens with a card per unit and a line per person: name, rank, qualifications and the hours on scene at the right, no drawer yet (v65)', $$('#people-page .pp-card').length === 3 && has('#people-page', '6 on scene on 3 units', 'unit 1', 'assigned', 'a-1', 'engine', '2 on the unit', 'ramirez', 'lt.', 'swift water', 'emt', 'okafor', 'paramedic', 'boat', 'nguyen', 'capt.') && /\b2 h \d+ min\b/.test(text(`#people-page .pp-line[data-person="${PP[0]}"] .pp-l-on`)) && !$('#people-page .pp-drawer') && getComputedStyle($('#people-page .pp-cards')).gridTemplateColumns.split(' ').length === 3, text('#people-page').slice(0, 400));
+  check('the bar is the tabs, the incident\'s name and the buttons on one row, Close last; the find box, the chips and Add a person are the People tab\'s heading row', (() => { const b = $$('#people .briefing-bar .btn, #people .briefing-bar .pp-tabs button'); const tops = b.map((x) => Math.round(x.getBoundingClientRect().top + x.getBoundingClientRect().height / 2)); return Math.max(...tops) - Math.min(...tops) < 8 && b[b.length - 1].textContent.trim() === 'Close' && b[0].textContent.trim() === 'People'; })() && text('#people-sub') === base.incident.name.toLowerCase() && !$('#people-head').hidden && $('#people-head').contains($('#people-q')) && $('#people-head').contains($('#people-quals')) && $('#people-head').contains($('#people-add')) && !$('#people-page').contains($('#people-q')), $$('#people .briefing-bar .btn').map((x) => x.textContent.trim()).join('/'));
   check('the chips count who on scene carries each qualification', has('#people-quals', 'swift water 3', 'boat 2', 'rope 1', 'emt 3', 'paramedic 2', 'k9 0'), text('#people-quals'));
-  check('buddies are paired', $(`select[data-select="person-buddy"][data-id="${PP[0]}"]`).value === PP[1] && $(`select[data-select="person-buddy"][data-id="${PP[5]}"]`).value === PP[4]);
+  const d0 = await drawer(PP[0]);
+  check('a line opens the drawer beside the cards, which fall to two columns: the facts (on scene since when, last seen by whom and the band, with, qualified), every action spelled out, and the person\'s lines from the 214, six at most (v65)', $('#people-page .pp-body').classList.contains('open') && row(PP[0]).classList.contains('sel') && has('#people-page .pp-drawer', 'ramirez', 'lt.', 'unit 1 · a-1', 'on scene', ', since', 'last seen', 'entering a-1', 'by unit 1 · band 001', 'with', 'okafor', 'qualified', 'swift water', 'never reused; kept on record', 'off the roster; kept on record, put back undoes it', 'in the log', 'checked in with unit 1') && ['person-out', 'person-edit', 'band-void', 'person-remove', 'person-close'].every((a) => !!d0.querySelector(`[data-action="${a}"]`)) && !!d0.querySelector('select[data-select="person-unit"]') && !!d0.querySelector('select[data-select="person-buddy"]') && $$('#people-page .pp-drawer .pp-loglines div').length <= 6 && getComputedStyle($('#people-page .pp-cards')).gridTemplateColumns.split(' ').length === 2, text('#people-page .pp-drawer').slice(0, 300));
+  check('buddies are paired', $(`select[data-select="person-buddy"][data-id="${PP[0]}"]`).value === PP[1] && await (async () => { await drawer(PP[5]); return $(`select[data-select="person-buddy"][data-id="${PP[5]}"]`).value === PP[4]; })());
+  $('#people-page .pp-drawer [data-action="person-close"]').click();
+  check('Close puts the drawer away and the cards back to three columns', !$('#people-page .pp-drawer') && getComputedStyle($('#people-page .pp-cards')).gridTemplateColumns.split(' ').length === 3);
   const q = $('#people-q');
   q.value = 'nguyen'; q.dispatchEvent(new Event('input', { bubbles: true }));
   await until(() => rows().length === 1);
@@ -480,11 +486,11 @@ async function people(check) {
   await wait(120);
   check('a hand change to the head count is overruled while the unit has people on record', base.member(u.unit3).crew_count === 2, base.member(u.unit3).crew_count);
 
-  $(`#people-page .pp-row[data-person="${PP[4]}"] [data-action="person-out"]`).click();
+  (await drawer(PP[4])).querySelector('[data-action="person-out"]').click();
   await until(() => base.person(PP[4]).checked_out_at);
-  check('Operations checks Hale out from the board, and the unit is recounted', base.member(u.unit3).crew_count === 1 && base.member(u.unit3).crew === 'Dominguez' && !!eventText(base, 'Hale checked out from Unit 3') && await until(() => field.person(PP[4]) && field.person(PP[4]).checked_out_at));
-  await until(() => $(`#people-page .pp-row[data-person="${PP[4]}"] [data-action="person-in"]`));
-  $(`#people-page .pp-row[data-person="${PP[4]}"] [data-action="person-in"]`).click();
+  check('Operations checks Hale out from the drawer, and the unit is recounted; the line dims and reads out hh:mm', base.member(u.unit3).crew_count === 1 && base.member(u.unit3).crew === 'Dominguez' && !!eventText(base, 'Hale checked out from Unit 3') && await until(() => field.person(PP[4]) && field.person(PP[4]).checked_out_at) && await until(() => row(PP[4]).classList.contains('out') && /^out \d\d:\d\d$/.test(text(`#people-page .pp-line[data-person="${PP[4]}"] .pp-l-on`))), text(`#people-page .pp-line[data-person="${PP[4]}"]`));
+  await until(() => $(`#people-page .pp-drawer[data-person="${PP[4]}"] [data-action="person-in"]`));
+  $(`#people-page .pp-drawer[data-person="${PP[4]}"] [data-action="person-in"]`).click();
   await until(() => !base.person(PP[4]).checked_out_at);
   check('and back in, with the qualifications on the line', base.member(u.unit3).crew_count === 2 && !!eventText(base, 'Hale (swift water, EMT) checked back in with Unit 3'), logTexts()[0]);
   const bsel = $(`select[data-select="person-buddy"][data-id="${PP[4]}"]`);
@@ -492,25 +498,34 @@ async function people(check) {
   await until(() => base.person(PP[4]).buddy_id === null);
   check('the buddy can be cleared from the board', base.person(PP[4]).buddy_id === null);
   const usel = () => $(`select[data-select="person-unit"][data-id="${pid}"]`);
+  await drawer(pid);
   await until(() => usel());
+  check('Move to… lists the other units, not Smith\'s own', usel().options[0].textContent === 'Move to…' && [...usel().options].some((o) => o.value === u.unit1) && ![...usel().options].some((o) => o.value === u.unit3), [...usel().options].map((o) => o.textContent).join('/'));
   usel().value = u.unit1; usel().dispatchEvent(new Event('change', { bubbles: true }));
   await until(() => base.person(pid).user_id === u.unit1);
-  check('Operations moves Smith to Unit 1: the log says from where to where, and both units are recounted', !!eventText(base, 'Smith moved from Unit 3 to Unit 1') && base.member(u.unit1).crew_count === 2 && base.unitPeople(u.unit1).length === 3 && await until(() => row(pid) && row(pid).closest('.pp-grp').dataset.unit === u.unit1), logTexts()[0]);
+  check('Operations moves Smith to Unit 1: the log says from where to where, both units are recounted, and the drawer follows him to the other card', !!eventText(base, 'Smith moved from Unit 3 to Unit 1') && base.member(u.unit1).crew_count === 2 && base.unitPeople(u.unit1).length === 3 && await until(() => row(pid) && row(pid).closest('.pp-card').dataset.unit === u.unit1) && !!$(`#people-page .pp-drawer[data-person="${pid}"]`) && has(`#people-page .pp-drawer[data-person="${pid}"]`, 'unit 1'), logTexts()[0]);
 
-  $('#people-page [data-action="people-add-toggle"]').click();
+  $('#people-head [data-action="people-add-toggle"]').click();
   await until(() => $('#people-page form[data-form="person-add"]'));
   const af = $('#people-page form[data-form="person-add"]');
   af.unit.value = u.unit2; af.name.value = 'Lee'; af.querySelector('input[value="k9"]').checked = true;
   af.requestSubmit();
   await until(() => base.people().some((p) => p.name === 'Lee'));
   const lee = base.people().find((p) => p.name === 'Lee');
-  check('Operations adds a person from the board, with the unit\'s agency and the qualification ticked', lee.user_id === u.unit2 && lee.agency === 'Travis County Rescue' && lee.qualifications.join() === 'k9' && base.member(u.unit2).crew === 'Nguyen, Patel, Lee' && !!eventText(base, 'Lee (K9) checked in with Unit 2') && await until(() => !$('#people-page form[data-form="person-add"]') && row(lee.id)), logTexts()[0]);
+  check('Operations adds a person from the heading row\'s form, with the unit\'s agency and the qualification ticked, and the drawer opens on them', lee.user_id === u.unit2 && lee.agency === 'Travis County Rescue' && lee.qualifications.join() === 'k9' && base.member(u.unit2).crew === 'Nguyen, Patel, Lee' && !!eventText(base, 'Lee (K9) checked in with Unit 2') && await until(() => !$('#people-page form[data-form="person-add"]') && row(lee.id) && $(`#people-page .pp-drawer[data-person="${lee.id}"]`)), logTexts()[0]);
   autoConfirm(true);
   try {
-    $(`#people-page .pp-row[data-person="${lee.id}"] [data-action="person-remove"]`).click();
+    $(`#people-page .pp-drawer[data-person="${lee.id}"] [data-action="person-remove"]`).click();
     await until(() => base.person(lee.id).archived_at);
+    check('Remove archives the person, never deletes: off the roster, in the history, logged, recounted; the line stays on the card greyed, and the drawer offers Put back', !!base.person(lee.id).archived_at && base.people().length === 7 && base.people(true).length === 8 && M().tables.ic_people.length === 8 && !!eventText(base, 'Lee removed from Unit 2') && base.member(u.unit2).crew_count === 2 && await until(() => rows().filter((r) => !r.classList.contains('gone')).length === 7 && row(lee.id) && row(lee.id).classList.contains('gone')) && await until(() => $(`#people-page .pp-drawer[data-person="${lee.id}"] [data-action="person-restore"]`)) && /removed \d\d:\d\d/.test(text(`#people-page .pp-line[data-person="${lee.id}"] .pp-l-on`)), logTexts()[0]);
+    $(`#people-page .pp-drawer[data-person="${lee.id}"] [data-action="person-restore"]`).click();
+    await until(() => !base.person(lee.id).archived_at);
+    check('Put back undoes it: nothing was deleted', !base.person(lee.id).archived_at && base.people().length === 8 && await until(() => row(lee.id) && !row(lee.id).classList.contains('gone')));
+    await until(() => $(`#people-page .pp-drawer[data-person="${lee.id}"] [data-action="person-remove"]`));
+    $(`#people-page .pp-drawer[data-person="${lee.id}"] [data-action="person-remove"]`).click();
+    await until(() => base.person(lee.id).archived_at);
+    await until(() => rows().filter((r) => !r.classList.contains('gone')).length === 7);
   } finally { autoConfirm(false); }
-  check('Remove archives the person, never deletes: off the roster, in the history, logged, recounted', !!base.person(lee.id).archived_at && base.people().length === 7 && base.people(true).length === 8 && M().tables.ic_people.length === 8 && !!eventText(base, 'Lee removed from Unit 2') && base.member(u.unit2).crew_count === 2 && await until(() => rows().length === 7), logTexts()[0]);
 
   const fail = async (fn) => { try { await fn(); return null; } catch (e) { return e; } };
   const e1 = await fail(() => field.addPerson(uuid(), { userId: u.unit1, name: 'Intruder' }));
@@ -1322,7 +1337,7 @@ async function sections(check) {
   check('saving 2 hours is one line of its own', !!eventText(base, 'Operational period 1: on scene too long past 2 hours'), logTexts()[0]);
   $('[data-action="people"]').click();
   await until(() => !$('#people').hidden);
-  check('the People board turns everyone past 2 h orange, says so on each row and counts them', await until(() => $$('#people-page .pp-row.over').length === 6) && has('#people-page', '6 past 2 h on scene') && /on scene 2 h( \d+ min)?, since \d\d:\d\d · past 2 h/.test(text('#people-page')), text('#people-page').slice(0, 300));
+  check('the People board turns everyone past 2 h orange, says so on each line and counts them', await until(() => $$('#people-page .pp-line.over').length === 6) && has('#people-page', '6 past 2 h on scene') && /\b2 h( \d+ min)? · past 2 h\b/.test(text('#people-page')), text('#people-page').slice(0, 300));
   $('[data-action="close-people"]').click();
   await until(() => $('#people').hidden);
   $('[data-action="briefing"]').click();
@@ -1673,7 +1688,7 @@ async function rewalks(check) {
   check('checked out and back in: the check-in stays, the stint stamp is now, and the log says so', base.person(PPL[2]).checked_in_at === was && !base.person(PPL[2]).checked_out_at && Date.now() - new Date(base.person(PPL[2]).stint_at).getTime() < 60000 && !!eventText(base, 'Nguyen (swift water, boat) checked back in with Unit 2'), `${base.person(PPL[2]).checked_in_at === was} ${base.person(PPL[2]).stint_at} | ${logTexts()[0]}`);
   $('[data-action="people"]').click();
   await until(() => !$('#people').hidden);
-  check('the board counts the current stretch: "On scene 0 min, since now · back in"', await until(() => /on scene 0 min, since \d\d:\d\d · back in/.test(text(`#people-page .pp-row[data-person="${PPL[2]}"]`))), text(`#people-page .pp-row[data-person="${PPL[2]}"]`));
+  check('the board counts the current stretch: "0 min · back in" on the line, "0 min, since now · back in" in the drawer', await until(() => /0 min · back in/.test(text(`#people-page .pp-line[data-person="${PPL[2]}"]`))) && await (async () => { $(`#people-page .pp-line[data-person="${PPL[2]}"]`).click(); return until(() => /0 min, since \d\d:\d\d · back in/.test(text(`#people-page .pp-drawer[data-person="${PPL[2]}"]`))); })(), text(`#people-page .pp-line[data-person="${PPL[2]}"]`));
   $('[data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
   check('the 211 keeps every stretch: checked in at the first check-in', has('#briefing-page', 'nguyen, capt. · swift water, boat · checked in ' + new Date(was).toTimeString().slice(0, 5)), text('#briefing-page').slice(0, 500));
@@ -1864,13 +1879,13 @@ async function tags(check) {
   let P = null;
   const PPL = M().ids.people;
   const tagN = (n) => base.tags(true).find((t) => t.number === n) || null;
-  const row = (id) => $(`#people-page .pp-row[data-person="${id}"]`);
-  const openBoard = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden && $$('#people-page .pp-row').length >= 6); };
+  const row = (id) => $(`#people-page .pp-line[data-person="${id}"]`);
+  const openBoard = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden && $$('#people-page .pp-line').length >= 6); };
   const closeBoard = () => { if (!$('#people').hidden) $('[data-action="close-people"]').click(); };
   try {
     check('seeded: 24 bands, four on Unit 1 and Unit 2 with their scans, Unit 3 without', base.tags(true).length === 24 && base.tags(true).filter((t) => t.person_id).length === 4 && base.seen().length === 7 && !base.tags(true).some((t) => t.person_id === PPL[4]), base.tags(true).length + ' bands, ' + base.seen().length + ' scans');
     await openBoard();
-    check('the board reads each band and its last scan: Ramirez entering A-1, Patel at the gym long ago in orange, Hale with no band', has(`#people-page .pp-row[data-person="${PPL[0]}"] .pp-seen`, 'band 001 · seen entering a-1') && row(PPL[3]).querySelector('.pp-seen').classList.contains('stale') && has(`#people-page .pp-row[data-person="${PPL[3]}"] .pp-seen`, 'band 004 · seen at high school gym') && has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'no band'), text(`#people-page .pp-row[data-person="${PPL[3]}"] .pp-seen`));
+    check('the board reads each band and its last scan: Ramirez entering A-1, Patel at the gym long ago in orange, Hale with no band', has(`#people-page .pp-line[data-person="${PPL[0]}"] .pp-seen`, 'band 001 · entering a-1') && row(PPL[3]).querySelector('.pp-seen').classList.contains('stale') && has(`#people-page .pp-line[data-person="${PPL[3]}"] .pp-seen`, 'band 004 · at high school gym', 'ago') && has(`#people-page .pp-line[data-person="${PPL[4]}"] .pp-seen`, 'no band'), text(`#people-page .pp-line[data-person="${PPL[3]}"] .pp-seen`));
     $('#people .briefing-bar [data-action="print-bands"]').click();
     await until(() => base.tags(true).length === 48 && !$('#briefing').hidden && has('#briefing-title', 'bands to print'));
     check('Print bands makes 24 more, numbered on, and shows the sheet: a QR and a number per band, no name on any, logged', base.tags(true).length === 48 && !!tagN(25) && !!tagN(48) && $$('#briefing-page .band').length === 24 && has('#briefing-page .band', 'band 025') && !/ramirez|okafor|nguyen|patel/i.test(text('#briefing-page .band-sheet')) && await until(() => eventText(base, '24 bands printed, 025 to 048')), text('#briefing-page').slice(0, 200));
@@ -1909,14 +1924,14 @@ async function tags(check) {
     await P.act('band-save');
     check('saved: band 025 is Hale\'s, the scan is his check-in, both in the log', await until(() => tagN(25).person_id === PPL[4] && tagN(25).kind === 'responder', 70000) && await until(() => eventText(base, 'Band 025 given to Hale (Unit 3) by Unit 3') && eventText(base, 'Hale seen checking in with Unit 3'), 10000), logTexts().slice(0, 2).join(' | '));
     await openBoard();
-    check('the board reads it', await until(() => has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'band 025 · seen checking in'), 10000), text(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`));
+    check('the board reads it', await until(() => has(`#people-page .pp-line[data-person="${PPL[4]}"] .pp-seen`, 'band 025 · checking in'), 10000), text(`#people-page .pp-line[data-person="${PPL[4]}"] .pp-seen`));
     closeBoard();
     await P.act('scan-band'); await until(() => P.shown('#s-scan'), 5000);
     P.$('#scan-type').value = '025'; await P.act('scan-typed');
     await until(() => P.shown('#s-band') && /hale/i.test(P.text('#band-title')), 5000);
     check('scanned again, the sheet names him with his last scan and preselects Entering A-2, the division Unit 3 is in', /band 025 · hale \(unit 3\)/.test(P.text('#band-title')) && /seen checking in \d\d:\d\d by unit 3/.test(P.text('#band-sub')) && !!P.$('#band-what .chip.on') && P.$('#band-what .chip.on').textContent === 'Entering A-2' && /^Save: Hale entering A-2, \d\d:\d\d$/.test(P.$('#band-save').textContent), P.text('#band-what') + ' | ' + P.$('#band-save').textContent);
     await P.act('band-save');
-    check('the scan is a line, and the board\'s last seen follows', await until(() => eventText(base, 'Hale (Unit 3) seen entering A-2, by Unit 3'), 70000) && await (async () => { await openBoard(); return until(() => has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'seen entering a-2'), 10000); })(), logTexts()[0]);
+    check('the scan is a line, and the board\'s last seen follows', await until(() => eventText(base, 'Hale (Unit 3) seen entering A-2, by Unit 3'), 70000) && await (async () => { await openBoard(); return until(() => has(`#people-page .pp-line[data-person="${PPL[4]}"] .pp-seen`, 'band 025 · entering a-2'), 10000); })(), logTexts()[0]);
     closeBoard();
 
     // ---- the PAR by scan
@@ -2006,9 +2021,12 @@ async function tags(check) {
     const bOpen = document.createElement('button'); bOpen.dataset.action = 'select-facility'; bOpen.dataset.id = M().ids.facilities[2]; bOpen.hidden = true; document.body.appendChild(bOpen); bOpen.click(); bOpen.remove();
     check('the gym card\'s row says her band and its last scan', await until(() => has('#panel', 'lopez, ana', 'band 027, seen at high school gym'), 10000), (text('#panel').match(/lopez[^\n]{0,80}/) || [''])[0]);
     await openBoard();
-    await until(() => row(PPL[4]) && row(PPL[4]).querySelector('[data-action="band-void"]'));
-    row(PPL[4]).querySelector('[data-action="band-void"]').click();
-    check('Void band: voided, logged with who had it, the row says no band', await until(() => tagN(25).voided_at) && await until(() => eventText(base, 'Band 025 (Hale (Unit 3)) voided by Operations')) && await until(() => has(`#people-page .pp-row[data-person="${PPL[4]}"] .pp-seen`, 'no band')), logTexts()[0]);
+    await until(() => row(PPL[4]));
+    row(PPL[4]).click();
+    await until(() => $(`#people-page .pp-drawer[data-person="${PPL[4]}"] [data-action="band-void"]`));
+    check('the drawer says Void band 025 and that it is never reused', has(`#people-page .pp-drawer[data-person="${PPL[4]}"]`, 'void band 025', 'never reused; kept on record'), text(`#people-page .pp-drawer[data-person="${PPL[4]}"] .pp-dr-acts`));
+    $(`#people-page .pp-drawer[data-person="${PPL[4]}"] [data-action="band-void"]`).click();
+    check('Void band: voided, logged with who had it, the line says no band', await until(() => tagN(25).voided_at) && await until(() => eventText(base, 'Band 025 (Hale (Unit 3)) voided by Operations')) && await until(() => has(`#people-page .pp-line[data-person="${PPL[4]}"] .pp-seen`, 'no band')), logTexts()[0]);
     $('#people .briefing-bar [data-action="print-211"]').click();
     await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
     check('the 211 lists each band and its last scan', has('#briefing-page', 'band 001, seen entering a-1') && has('#briefing-page', 'vela', 'band 026, seen checking in'), (text('#briefing-page').match(/vela[^\n]{0,120}/) || [''])[0]);
@@ -2033,7 +2051,7 @@ async function invite(check) {
   autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
   let P = null;
-  const members = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden); if (!$('#people-page form[data-form="invite-send"]')) $('#people-page [data-action="people-tab"][data-tab="members"]').click(); await until(() => $('#people-page form[data-form="invite-send"]')); };
+  const members = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden); if (!$('#people-page form[data-form="invite-send"]')) $('#people [data-action="people-tab"][data-tab="members"]').click(); await until(() => $('#people-page form[data-form="invite-send"]')); };
   try {
     check('seeded: one accepted invitation (Ana Ramirez, Unit 1) and one pending (j.ortiz, Unit 4); the join code is on', base.invites(true).length === 2 && base.invites(true).some((v) => v.email === 'unit1@mock.local' && v.accepted_at) && base.invites(true).some((v) => v.email === 'j.ortiz@cedarfork.gov' && !v.accepted_at && v.sent_at) && !base.incident.invite_only, base.invites(true).map((v) => v.email).join());
     await members();
@@ -2181,11 +2199,11 @@ async function pages(check) {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   check('Escape closes the page', $('#briefing').hidden && !root.classList.contains('page-open'));
   const pb = document.createElement('button'); pb.dataset.action = 'people'; pb.dataset.tab = 'people'; pb.hidden = true; document.body.appendChild(pb); pb.click(); pb.remove();   // the People tab, whatever tab an earlier suite left
-  const onBoard = await until(() => !$('#people').hidden && $$('#people-page .pp-row').length === 6);
+  const onBoard = await until(() => !$('#people').hidden && $$('#people-page .pp-line').length === 6);
   const p = win('#people').getBoundingClientRect(), page = $('#people-page').getBoundingClientRect();
-  check('the People board opens on its People tab with the six rows', !!onBoard, $$('#people-page .pp-row').length + ' rows');
+  check('the People board opens on its People tab with the six rows', !!onBoard, $$('#people-page .pp-line').length + ' lines');
   check('the People board opens as a 1150 px window with the board inside it as wide as before, 1100 px', Math.abs(p.width - 1150) < 2 && Math.abs(page.width - 1100) < 2, `${Math.round(p.width)} / ${Math.round(page.width)}`);
-  $('#people-page [data-action="people-add-toggle"]').click();
+  $('#people-head [data-action="people-add-toggle"]').click();
   await until(() => $('#people-page form[data-form="person-add"]'));
   $('#people-page form[data-form="person-add"] input[name="name"]').value = 'Half typed';
   $('#people').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -2519,6 +2537,11 @@ async function walkfix(check) {
     check('and her briefing opens at its top too', await until(() => P.shown('#s-briefing')) && brief.scrollTop === 0);
     const desk = base.units().find((u) => u.unit_name === 'Gym shelter desk');
     check('the resources row marks her "no ID"', await until(() => has(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`, 'pat doe · no id')), text(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`));
+    $('[data-action="people"]').click(); await until(() => !$('#people').hidden);
+    $('#people [data-action="people-tab"][data-tab="members"]').click(); await until(() => $(`#people-page .mb-row[data-member="${desk.user_id}"]`));
+    check('the Members tab reads "No ID" in orange on her row with Check in person, the same press as Mark verified (v65)', has(`#people-page .mb-row[data-member="${desk.user_id}"] .mb-id`, 'no id', 'check in person') && $(`#people-page .mb-row[data-member="${desk.user_id}"] .idc`).classList.contains('warn') && !!$(`#people-page .mb-row[data-member="${desk.user_id}"] [data-action="verify-profile"]`), text(`#people-page .mb-row[data-member="${desk.user_id}"]`));
+    $('#people [data-action="people-tab"][data-tab="people"]').click();
+    $('[data-action="close-people"]').click(); await until(() => $('#people').hidden);
     $(`#panel [data-action="select-unit"][data-id="${desk.user_id}"]`).click();
     await until(() => $('#panel .ident'));
     check('her unit panel says "identity not given" and how to verify in person', $('#panel .ident').classList.contains('noid') && has('#panel .ident', 'identity not given', 'not verified', 'check who this is in person', 'pat doe', '512 555 0199') && !$$('#panel .ident .kv .k').some((k) => /licence/i.test(k.textContent)) && !!$('#panel .ident [data-action="verify-profile"]'), text('#panel .ident'));
@@ -2777,18 +2800,35 @@ async function members(check) {
     // the Members tab
     $('[data-action="people"]').click();
     await until(() => !$('#people').hidden);
-    $('#people-page [data-action="people-tab"][data-tab="members"]').click();
+    $('#people [data-action="people-tab"][data-tab="members"]').click();
     await until(() => $('#people-page .mb-list'));
-    check('the Members tab lists everyone with role, agency and identity state', has('#people-page', '5 members · 2 operations', 'operations · marcus bell', 'opened the incident', 'unit 1, engine · ana ramirez', 'verified', 'unit 2, boat crew · minh nguyen', 'licence on file, not verified', 'operations · relief chief'), text('#people-page').slice(0, 600));
-    check('the opener has no Make a unit and no Remove; the others do', !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-role"]`) && !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-remove"]`) && !!$(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="unit"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-role"][data-role="ops"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-remove"]`));
+    check('the Members tab is two groups, Operations (the opener first) and Units (the status word beside the name), each row with who, name · phone · agency and the Identity column (v65)', has('#people-page', '5 members · 2 operations', 'operations · 2', 'units · 3', 'marcus bell · opened the incident', 'relief chief · since', 'unit 1, engine', 'assigned', 'a-1', 'ana ramirez · 512 555 0111 · cedar fork fire department', 'id checked ✓', 'unit 2, boat crew', 'minh nguyen · 512 555 0122', 'id given, not checked') && $$('#people-page .mb-list').length === 2 && $$('#people-page .mb-list')[0].querySelector('.mb-row').dataset.member === U.ops && $$('#people-page .mb-row [data-action="member-menu"]').length === 4 && $$('#people-page .mb-row [data-action="member-check"]').length >= 2 && $$('#people-page .mb-row [data-action="select-unit"]').length === 3 && $('#people-head').hidden, text('#people-page').slice(0, 600));
+    check('the opener has no Make a unit and no Remove; the others do, in the row\'s ··· menu', !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-role"]`) && !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-remove"]`) && !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-menu"]`) && !!$(`#people-page .mb-row[data-member="${relief.user.id}"] .mb-menu [data-action="member-role"][data-role="unit"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] .mb-menu [data-action="member-role"][data-role="ops"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] .mb-menu [data-action="member-remove"]`));
+    const menuOpen = () => !!$('#people-page .mb-menu:not([hidden])');
+    $(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-menu"]`).click();
+    await until(() => $(`#people-page .mb-row[data-member="${U.unit1}"] .mb-menu:not([hidden])`));
+    check('··· opens the row\'s menu: Make Operations… and Remove · kept on record; a click outside closes it, so does Escape, the board staying open (v65)', has(`#people-page .mb-row[data-member="${U.unit1}"] .mb-menu`, 'make operations…', 'remove · kept on record') && $(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-menu"]`).getAttribute('aria-expanded') === 'true' && (() => { $('#people-page .pp-count').click(); return !menuOpen(); })() && (() => { $(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-menu"]`).click(); return menuOpen(); })() && (() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return !menuOpen() && !$('#people').hidden; })(), text(`#people-page .mb-row[data-member="${U.unit1}"] .mb-act`));
+    $(`#people-page .mb-row[data-member="${U.unit2}"] [data-action="member-check"]`).click();
+    await until(() => $('#people').hidden && has('#panel .title', 'unit 2') && $('#panel .ident') && !$('#panel .ident').classList.contains('folded'));
+    check('Check on "ID given, not checked" opens the unit\'s panel with the identity unfolded, where Mark verified is (v65)', $('#people').hidden && has('#panel .title', 'unit 2') && !$('#panel .ident').classList.contains('folded') && !!$('#panel .ident [data-action="verify-profile"]'), text('#panel .ident').slice(0, 200));
+    $('[data-action="people"]').click();
+    await until(() => !$('#people').hidden && $('#people-page .mb-list'));
+    autoConfirm(false);   // read the question itself (v62)
     $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="unit"]`).click();
+    await until(() => $('#confirm-dialog').open);
+    check('Make a unit… asks in the app\'s own dialog, mirroring Make Operations: they check in on a phone, hold divisions and send reports; the base is Operations\' alone (v65)', has('#confirm-title', 'make relief chief a unit?') && has('#confirm-text', 'they check in on a phone, hold divisions and send reports; the base is operations\' alone', 'what changes', '"relief chief is now a unit"') && $('#confirm-ok').textContent === 'Make a unit' && $('#confirm-cancel').textContent === 'Cancel', text('#confirm-title') + ' | ' + text('#confirm-text'));
+    $('#confirm-ok').click();
+    autoConfirm(true);
     await until(() => $('#name-dialog').open);   // the app's own sheet, not prompt() (v44)
     $('#name-input').value = 'Unit 9'; $('#name-form').requestSubmit();
     check('Make a unit asks for the unit name, changes the role and logs it by name', await until(() => base.member(relief.user.id).role === 'unit' && base.member(relief.user.id).unit_name === 'Unit 9') && await until(() => eventText(base, 'Relief Chief is now a unit, Unit 9')), logTexts()[0]);
     await until(() => $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`));
     autoConfirm(false);   // read the question itself (v62)
-    $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`).click();
+    $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-menu"]`).click();
+    await until(() => $(`#people-page .mb-row[data-member="${relief.user.id}"] .mb-menu:not([hidden])`));
+    $(`#people-page .mb-row[data-member="${relief.user.id}"] .mb-menu:not([hidden]) [data-action="member-role"][data-role="ops"]`).click();
     await until(() => $('#confirm-dialog').open);
+    check('pressing the item closes the menu', !menuOpen());
     check('Make Operations asks in the app\'s own dialog: what they get, what changes, the 214\'s line, and the button reads Make Operations (v62)', $('#confirm-dialog').open && has('#confirm-title', 'make unit 9 operations?') && has('#confirm-text', 'they get', 'the operations code', 'what changes', 'their phone stops showing a unit\'s briefing', '"unit 9 is now operations"') && $('#confirm-ok').textContent === 'Make Operations' && $('#confirm-cancel').textContent === 'Cancel', text('#confirm-title') + ' | ' + text('#confirm-text'));
     $('#confirm-ok').click();
     autoConfirm(true);
@@ -3062,12 +3102,15 @@ async function parbyname(check) {
     $('#panel [data-action="close-panel"]').click();
     $('[data-action="people"]').click();
     await until(() => !$('#people').hidden);
-    const ptab = $('#people-page [data-action="people-tab"][data-tab="people"]'); if (ptab && !ptab.classList.contains('on')) { ptab.click(); await until(() => $('#people-page .pp-grp')); }   // an earlier suite may have left the Members tab on
-    check('the People board nudges: name them for the PAR', has('#people-page', 'no names on record for', 'unit 7 (head count unknown)', 'unit 9 (3 counted)', 'name them for the par'), text('#people-page').slice(-300));
+    const ptab = $('#people [data-action="people-tab"][data-tab="people"]'); if (ptab && !ptab.classList.contains('on')) { ptab.click(); await until(() => $('#people-page .pp-card')); }   // an earlier suite may have left the Members tab on
+    const cardOf = (re) => $$('#people-page .pp-card').find((c) => re.test(c.textContent));
+    check('the People board nudges on the empty cards: name them for the PAR', has('#people-page', 'no names on record', 'head count unknown', '3 counted', 'name them for the par') && !!cardOf(/Unit 7/) && /head count unknown/i.test(cardOf(/Unit 7/).textContent) && !!cardOf(/Unit 9/) && /3 counted/.test(cardOf(/Unit 9/).textContent), text('#people-page').slice(-300));
     // Edit a person on the base
     const ramirez = base.people().find((p) => p.name === 'Ramirez');
-    $(`#people-page .pp-row[data-person="${ramirez.id}"] [data-action="person-edit"]`).click();
-    const ef = await until(() => $('#people-page form[data-form="person-edit"]'));
+    $(`#people-page .pp-line[data-person="${ramirez.id}"]`).click();
+    await until(() => $(`#people-page .pp-drawer[data-person="${ramirez.id}"] [data-action="person-edit"]`));
+    $(`#people-page .pp-drawer[data-person="${ramirez.id}"] [data-action="person-edit"]`).click();
+    const ef = await until(() => $('#people-page .pp-drawer form[data-form="person-edit"]'));
     check('Edit opens the form filled in', !!ef && ef.name.value === 'Ramirez' && ef.role.value === 'Lt.' && ef.querySelector('input[name="q"][value="emt"]').checked && ef.agency.value === '', ef && JSON.stringify([ef.name.value, ef.role.value, ef.agency.value]));
     ef.role.value = 'Capt.'; ef.notes.value = 'Drives the engine'; ef.requestSubmit();
     check('Save writes the edit and logs it', await until(() => base.person(ramirez.id).role === 'Capt.' && base.person(ramirez.id).notes === 'Drives the engine') && await until(() => eventText(base, 'Ramirez (swift water, EMT) updated on Unit 1, Capt., notes changed')), logTexts()[0]);
@@ -3097,7 +3140,7 @@ async function parbyname(check) {
       check('the yellow bar names who is missing and the unit', await until(() => has('#safety', 'missing · dominguez (unit 3)')), text('#safety'));
       $('[data-action="people"]').click();
       await until(() => !$('#people').hidden);
-      check('the People board turns the person\'s row red with the unit\'s last position', await until(() => $(`#people-page .pp-row.missing[data-person="${dom.id}"]`)) && has(`#people-page .pp-row[data-person="${dom.id}"]`, 'missing since', 'unit 3 last at'), text(`#people-page .pp-row[data-person="${dom.id}"]`));
+      check('the People board turns the person\'s line red, MISSING since when, and the drawer adds the unit\'s last position', await until(() => $(`#people-page .pp-line.missing[data-person="${dom.id}"]`)) && has(`#people-page .pp-line[data-person="${dom.id}"]`, 'missing since') && await (async () => { $(`#people-page .pp-line[data-person="${dom.id}"]`).click(); return until(() => has(`#people-page .pp-drawer[data-person="${dom.id}"]`, 'missing since', 'unit 3 last at')); })(), text(`#people-page .pp-line[data-person="${dom.id}"]`));
       $('[data-action="close-people"]').click();
       $(`#panel [data-action="select-unit"][data-id="${U.unit3}"]`) ? $(`#panel [data-action="select-unit"][data-id="${U.unit3}"]`).click() : null;
       await until(() => has('#panel .title', 'unit 3'));

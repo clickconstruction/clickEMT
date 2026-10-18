@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -285,6 +285,10 @@ t('bands (v55): what a scan or a typed box gives, the band on a person, last see
   assert.equal(bandFromScan('https://clickemt.com/field/?join=CEDAR7'), null, 'a join link is not a band');
   assert.equal(bandFromScan(''), null);
   assert.equal(bandFromSearch('?mock&band=CED-026-AX2Q'), 'CED-026-AX2Q');
+  assert.equal(bandCodeNumber('CED-026-AX2Q'), 26, 'the number read out of the code (v62)');
+  assert.equal(bandCodeNumber('ced-013-k2pq'), 13);
+  assert.equal(bandCodeNumber('26'), null, 'a bare number is not a code');
+  assert.equal(bandCodeNumber(''), null);
   assert.equal(bandLabel({ number: 7 }), 'Band 007');
   assert.equal(bandUrl('CED-013-K2PQ', 'https://clickemt.com/field/'), 'https://clickemt.com/field/?band=CED-013-K2PQ');
   const tags = [{ id: 't1', number: 1, person_id: 'p1', voided_at: null }, { id: 't2', number: 2, person_id: 'p1', voided_at: '2026-10-18T10:00:00Z' }, { id: 't3', number: 3, evacuee_id: 'e1', voided_at: null }];

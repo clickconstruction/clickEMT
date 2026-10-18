@@ -694,3 +694,7 @@ button.pill { border: 0; cursor: pointer; font: inherit; font-size: 12px; line-h
 .par-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .par-chip { font-size: 12px; padding: 2px 8px; border-radius: 6px; border-left: 3px solid var(--line); background: var(--soft); color: var(--ink-2); }
 .par-chip.ok { border-left-color: var(--cleared-fill); } .par-chip.bad { border-left-color: var(--danger); color: var(--danger); font-weight: 600; } .par-chip.wait { border-left-color: var(--hazard); }
+
+/* v62: the app's own questions (#confirm-dialog, askConfirm) in place of the browser's confirm() */
+.confirm-text { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; max-width: 440px; }
+.confirm-text p { margin: 0 0 6px; } .confirm-text p:last-child { margin-bottom: 0; } .confirm-text b { color: var(--ink); }

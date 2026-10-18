@@ -18,7 +18,7 @@ import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
 import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
 import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports } from '../shared/rules.js';   // the transport board (v54)
-import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
+import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, bandCodeNumber, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
 import { inviteFromSearch } from '../shared/rules.js';   // invitations by email (v56)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
@@ -62,6 +62,28 @@ function drawAuthCode() {
   if (!el) return;
   el.hidden = !code; $('#auth-lead').hidden = !!code;
   if (code) $('#auth-code-text').textContent = code;
+  drawAuthBand();
+}
+// a band's link opened on a phone that is signed out (v62): the band waits, and the screen says so, as it does for a
+// join code; for anyone not on the team, the one line that is true of a band
+function drawAuthBand() {
+  const b = pendingBand(), el = $('#auth-band');
+  if (!el) return;
+  el.hidden = !b;
+  if (b) { const n = bandCodeNumber(b); $('#auth-band-text').textContent = n != null ? bandLabel({ number: n }) : 'A band'; $('#auth-lead').hidden = true; }
+}
+// The app's own question (v62), in place of the browser's confirm(): a title, what it does, two buttons.
+function askConfirm({ title, text, ok = 'OK', cancel = 'Cancel', danger = false }) {
+  const dlg = $('#confirm-dialog'), okb = $('#confirm-ok'), cb = $('#confirm-cancel');
+  $('#confirm-title').textContent = title; $('#confirm-text').textContent = text;
+  okb.textContent = ok; okb.classList.toggle('danger', danger); okb.classList.toggle('pri', !danger); cb.textContent = cancel;
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.removeEventListener('close', onClose); if (dlg.open) dlg.close(); resolve(v); };
+    const onClose = () => done(false);
+    dlg.addEventListener('close', onClose);
+    okb.onclick = () => done(true); cb.onclick = () => done(false);
+    dlg.showModal(); okb.focus();
+  });
 }
 function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
@@ -1878,7 +1900,7 @@ document.addEventListener('click', async (e) => {
       case 'par-less': state.parCounts.set(btn.dataset.id, Math.max(0, parCount(btn.dataset.id) - 1)); drawSafety(); drawInbox(); break;
       case 'par-more': state.parCounts.set(btn.dataset.id, Math.min(99, parCount(btn.dataset.id) + 1)); drawSafety(); drawInbox(); break;
       case 'par-ok': await answerPar(btn.dataset.id, true); break;
-      case 'par-missing': if (confirm('Report someone missing? Operations gets an emergency alert with your position.')) await answerPar(btn.dataset.id, false); break;
+      case 'par-missing': if (await askConfirm({ title: 'Report someone missing?', text: 'Operations gets an emergency alert with your position.', ok: 'Report missing', danger: true })) await answerPar(btn.dataset.id, false); break;
       case 'par-missing-open': state.parMissingOpen.add(btn.dataset.id); drawSafety(); drawInbox(); break;
       case 'par-missing-cancel': state.parMissingOpen.delete(btn.dataset.id); state.parPicked.delete(btn.dataset.id); drawSafety(); drawInbox(); break;
       case 'par-missing-send': { const picked = [...(state.parPicked.get(btn.dataset.id) || [])]; if (!picked.length) break; await answerPar(btn.dataset.id, false, picked); break; }

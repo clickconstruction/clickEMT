@@ -178,6 +178,20 @@ async function showPicker() {
 // names of people sheltered) clear by rule 30 days after the close; the card shows the date, with
 // Clear now and Keep 30 more days for Operations, then "cleared … by rule".
 // A small sheet of the app's own in place of the browser's prompt() (v44): resolves with the words, or null on Cancel.
+// The app's own question (v62), in place of the browser's confirm(): a title, what it does in the app's words, and
+// two buttons. True on the first button; false on Cancel, Escape or the dialog closing any other way.
+function askConfirm({ title, text, ok = 'OK', cancel = 'Cancel', danger = false }) {
+  const dlg = $('#confirm-dialog'), okb = $('#confirm-ok'), cb = $('#confirm-cancel');
+  $('#confirm-title').textContent = title; $('#confirm-text').innerHTML = text;
+  okb.textContent = ok; okb.classList.toggle('danger', danger); okb.classList.toggle('pri', !danger); cb.textContent = cancel;
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.removeEventListener('close', onClose); if (dlg.open) dlg.close(); resolve(v); };
+    const onClose = () => done(false);
+    dlg.addEventListener('close', onClose);
+    okb.onclick = () => done(true); cb.onclick = () => done(false);
+    dlg.showModal(); okb.focus();
+  });
+}
 function askName(title, value) {
   const dlg = $('#name-dialog'), form = $('#name-form'), input = $('#name-input');
   $('#name-title').textContent = title; input.value = value || '';
@@ -883,7 +897,7 @@ document.addEventListener('click', async (e) => {
       }
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
       case 'copy-ops-code': await navigator.clipboard.writeText(data.opsCode() || ''); toast('Operations code copied. Give it by radio or phone, never on paper'); break;
-      case 'new-ops-code': if (!data.opsCode() || confirm('Replace the Operations code? Whoever has the old one can no longer join with it; those already on the incident stay.')) { await data.newOpsCode(); toast('New Operations code; the old one no longer joins'); queueDraw(); } break;
+      case 'new-ops-code': if (!data.opsCode() || await askConfirm({ title: 'Replace the Operations code?', text: 'Whoever has the old one can no longer join with it. Those already on the incident stay.', ok: 'Replace it' })) { await data.newOpsCode(); toast('New Operations code; the old one no longer joins'); queueDraw(); } break;
       case 'people-tab': state.people.tab = btn.dataset.tab === 'members' ? 'members' : 'people'; drawPeople(); loadRoster(); break;
       case 'member-role': {
         const m = data.member(id);
@@ -895,7 +909,7 @@ document.addEventListener('click', async (e) => {
           await data.setRole(id, 'unit', name.trim() || null);
           toast(((p && p.full_name) || 'The member') + ' is now a unit' + (name.trim() ? ', ' + name.trim() : ''));
         } else {
-          if (!confirm(`Make ${unitLabelOf(m)} Operations? They can then run the incident from the base: draw divisions, assign units, change roles, clear records.`)) break;
+          if (!await askConfirm({ title: `Make ${esc(unitLabelOf(m))} Operations?`, text: `<p><b>They get</b> the base: the map, drawing and assigning, every identity, the Operations code, roles, the clearing.</p><p><b>What changes:</b> their row leaves the units and reads Operations everywhere; their phone stops showing a unit's briefing; the 214 says "${esc(unitLabelOf(m))} is now Operations".</p>`, ok: 'Make Operations' })) break;
           await data.setRole(id, 'ops');
           toast(unitLabelOf(m) + ' is now Operations');
         }
@@ -904,12 +918,12 @@ document.addEventListener('click', async (e) => {
       }
       case 'member-remove': {
         const m = data.member(id);
-        if (m && confirm(`Remove ${unitLabelOf(m)} from the incident? Everything they sent stays on record, their phone shows they were removed, and you can put them back from the Members tab.`)) { await data.removeMember(id); toast(unitLabelOf(m) + ' removed from the incident'); drawPeople(); }
+        if (m && await askConfirm({ title: `Remove ${esc(unitLabelOf(m))} from the incident?`, text: 'Everything they sent stays on record. Their phone shows they were removed. You can put them back from the Members tab.', ok: 'Remove', danger: true })) { await data.removeMember(id); toast(unitLabelOf(m) + ' removed from the incident'); drawPeople(); }
         break;
       }
       case 'member-restore': { const m = data.member(id); await data.restoreMember(id); toast((m ? unitLabelOf(m) : 'The member') + ' is back on the incident'); drawPeople(); break; }
       case 'clear-personal': {
-        if (!confirm('Clear the personal records of this incident now? Licence numbers, dates of birth, addresses and licence photos of its members (unless they are on another open incident), and the names of the people sheltered, are blanked. Names, phones, the log and the forms stay. This cannot be undone.')) break;
+        if (!await askConfirm({ title: 'Clear the personal records now?', text: 'Licence numbers, dates of birth, addresses and licence photos of its members (unless they are on another open incident), and the names of the people sheltered, are blanked. Names, phones, the log and the forms stay. This cannot be undone.', ok: 'Clear now', danger: true })) break;
         await data.clearPersonal(id);
         toast('Personal records cleared');
         await showPicker();
@@ -917,7 +931,7 @@ document.addEventListener('click', async (e) => {
       }
       case 'keep-personal': await data.keepPersonal(id, 30); toast('Kept 30 more days'); await showPicker(); break;
       case 'close-incident': {
-        if (!confirm(`Close ${data.incident.name}? Phones can no longer check in with its code, and its personal records clear by rule in 30 days (the picker shows the date). It can be reopened.`)) break;
+        if (!await askConfirm({ title: `Close ${esc(data.incident.name)}?`, text: 'Phones can no longer check in with its code. Its personal records clear by rule in 30 days; the picker shows the date. It can be reopened.', ok: 'Close the incident' })) break;
         await data.closeIncident();
         toast('Incident closed');
         closeReplay(); data.close(); localStorage.removeItem(LAST_INCIDENT); await showPicker();
@@ -930,12 +944,12 @@ document.addEventListener('click', async (e) => {
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
       case 'print-join': openOverlay('join'); break;
       case 'invite-resend': { const v = data.invite(id); try { const r = await data.resendInvite(id); toast(r[0] && r[0].ok ? 'Sent again to ' + (v ? v.email : 'them') : (r[0] && r[0].error) || 'Could not send'); } catch (e) { toast(e.message || String(e), true); } queueDraw(); drawPeople(); break; }   // v56
-      case 'invite-withdraw': { const v = data.invite(id); if (v && confirm(`Withdraw the invitation to ${v.email}? The link stops working; it stays on record.`)) { await data.withdrawInvite(id); toast('Invitation to ' + v.email + ' withdrawn'); queueDraw(); drawPeople(); } break; }
+      case 'invite-withdraw': { const v = data.invite(id); if (v && await askConfirm({ title: `Withdraw the invitation to ${esc(v.email)}?`, text: 'The link stops working. It stays on record.', ok: 'Withdraw' })) { await data.withdrawInvite(id); toast('Invitation to ' + v.email + ' withdrawn'); queueDraw(); drawPeople(); } break; }
       case 'invite-roster': { const rows = (state.roster || []).map((r) => ({ email: r.email, role: r.role, unit: r.unit_name })); if (!rows.length) break; try { const res = await data.sendInvites(rows); const ok = res.filter((r) => r.ok).length; toast(ok + ' of ' + rows.length + ' invited' + (ok < rows.length ? '; see the list for the rest' : '')); } catch (e) { toast(e.message || String(e), true); } state.roster = []; queueDraw(); drawPeople(); loadRoster(); break; }
       case 'invite-accept': await acceptInvite(); break;
       case 'invite-dismiss': clearPendingInvite(); drawPickInvite(); break;
       case 'print-bands': { const made = await data.printBands(24); state.printTags = made.map((t) => t.id); toast(made.length + ' bands printed, ' + bandLabel(made[0]).replace('Band ', '') + ' to ' + bandLabel(made[made.length - 1]).replace('Band ', '')); openOverlay('bands'); break; }   // v55
-      case 'band-void': { const t = data.tag(id); if (t && confirm(`Void ${bandLabel(t)}? A voided band is never reused; give a new one by scanning it.`)) { await data.voidBand(id); toast(bandLabel(t) + ' voided'); queueDraw(); drawPeople(); } break; }
+      case 'band-void': { const t = data.tag(id); if (t && await askConfirm({ title: `Void ${esc(bandLabel(t))}?`, text: 'A voided band is never reused. Give a new one by scanning it.', ok: 'Void it' })) { await data.voidBand(id); toast(bandLabel(t) + ' voided'); queueDraw(); drawPeople(); } break; }
       case 'select-zone': selectFromLog({ type: 'zone', id }); break;
       case 'select-photo': if (btn.closest('#public')) closePublic(); selectFromLog({ type: 'photo', id }); break;
       case 'photo-public': await data.setPhotoPublic(id, btn.dataset.ok === '1'); toast(btn.dataset.ok === '1' ? 'Cleared for public information · write its public caption and check it' : 'Withdrawn from public information'); break;
@@ -980,7 +994,7 @@ document.addEventListener('click', async (e) => {
       case 'tr-open': state.tr.open = state.tr.open === id ? null : id; drawTransports(); break;
       case 'tr-gone-toggle': state.tr.gone = !state.tr.gone; drawTransports(); break;
       case 'tr-step': { const t = data.transport(id); if (!t) break; const done = await data.updateTransport(id, { status: btn.dataset.status }); toast(transportLabel(done) + ': ' + TRANSPORT_STATUS[done.status].toLowerCase()); queueDraw(); drawTransports(); break; }
-      case 'tr-withdraw': { const t = data.transport(id); if (t && confirm(`Withdraw ${transportLabel(t)}? It stays in the history and can be put back; the people on it keep their records.`)) { await data.updateTransport(id, { archived_at: new Date().toISOString() }); state.tr.edit = null; toast(transportLabel(t) + ' withdrawn'); queueDraw(); drawTransports(); } break; }
+      case 'tr-withdraw': { const t = data.transport(id); if (t && await askConfirm({ title: `Withdraw ${esc(transportLabel(t))}?`, text: 'It stays in the history and can be put back. The people on it keep their records.', ok: 'Withdraw' })) { await data.updateTransport(id, { archived_at: new Date().toISOString() }); state.tr.edit = null; toast(transportLabel(t) + ' withdrawn'); queueDraw(); drawTransports(); } break; }
       case 'tr-restore': { const t = data.transport(id); await data.updateTransport(id, { archived_at: null }); toast((t ? transportLabel(t) : 'The run') + ' is back'); queueDraw(); drawTransports(); break; }
       case 'tr-take-off': { const ev = data.evacuee(id); const done = await data.putOnTransport(id, null); toast(evacueeWho(done || ev) + ' taken off the run'); queueDraw(); drawTransports(); break; }
       case 'close-public': closePublic(); break;
@@ -1001,13 +1015,13 @@ document.addEventListener('click', async (e) => {
       case 'people-add-toggle': state.people.add = !state.people.add; drawPeople(); if (state.people.add) { const f = $('#people-page form[data-form="person-add"]'); if (f) f.name.focus(); } break;
       case 'person-out': await data.checkOutPerson(id); break;
       case 'person-in': await data.checkInPerson(id); break;
-      case 'person-remove': { const p = data.person(id); if (p && confirm(`Take ${p.name} off the roster? The record is kept and can be put back.`)) { await data.archivePerson(id); toast(p.name + ' removed'); } break; }
+      case 'person-remove': { const p = data.person(id); if (p && await askConfirm({ title: `Take ${esc(p.name)} off the roster?`, text: 'The record is kept and can be put back.', ok: 'Take off' })) { await data.archivePerson(id); toast(p.name + ' removed'); } break; }
       case 'person-restore': await data.updatePerson(id, { archived_at: null }); break;
       case 'person-edit': state.people.edit = id; state.people.add = false; drawPeople(); { const f = $('#people-page form[data-form="person-edit"]'); if (f) f.name.focus(); } break;
       case 'person-edit-cancel': state.people.edit = null; drawPeople(); break;
       case 'overlay-hide': setOverlayHidden(id, true); queueDraw(); break;
       case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
-      case 'overlay-remove': { const o = data.overlay(id); if (o && window.confirm(`Remove "${o.name || 'this imagery'}" from the map for everyone? It is kept and can be put back.`)) { await data.archiveOverlay(id); toast('Imagery removed from the map'); } break; }
+      case 'overlay-remove': { const o = data.overlay(id); if (o && await askConfirm({ title: `Remove "${esc(o.name || 'this imagery')}" from the map?`, text: 'For every screen. It is kept and can be put back.', ok: 'Remove' })) { await data.archiveOverlay(id); toast('Imagery removed from the map'); } break; }
       case 'overlay-restore': await data.updateOverlay(id, { archived_at: null }); toast('Imagery put back'); break;
       case 'overlay-view-bounds': fillOverlayBounds(true); break;
       case 'select-unit': if (btn.closest('#people')) closePeople(); select({ type: 'unit', id }); break;
@@ -1050,7 +1064,7 @@ document.addEventListener('click', async (e) => {
         const z = data.zone(id);
         if (!z) break;
         const pass = btn.dataset.pass;
-        if (!confirm(`${pass === 'secondary' ? 'Mark ' + z.code + ' clear (secondary search complete)' : 'Mark the primary search of ' + z.code + ' complete'} from the base? Normally the unit in the division does this from the field.`)) break;
+        if (!await askConfirm({ title: `${pass === 'secondary' ? 'Mark ' + esc(z.code) + ' clear (secondary search complete)' : 'Mark the primary search of ' + esc(z.code) + ' complete'} from the base?`, text: 'Normally the unit in the division does this from the field.', ok: 'Mark it' })) break;
         await data.finishPass(id, pass, { marking: markingFor('BASE', new Date(), [], 0) });
         break;
       }
@@ -1077,7 +1091,7 @@ document.addEventListener('click', async (e) => {
       case 'oos-cancel': state.oosFor = null; queueDraw(); break;
       case 'check-out': {
         const m = data.member(id);
-        if (m && confirm(`Check ${unitLabelOf(m)} out? Its zones go back to not started.`)) await data.setStatus(id, 'checked_out');
+        if (m && await askConfirm({ title: `Check ${esc(unitLabelOf(m))} out?`, text: 'Its divisions go back to not started.', ok: 'Check out' })) await data.setStatus(id, 'checked_out');
         break;
       }
       case 'period': state.periodNext = false; selectFromLog({ type: 'period' }); break;

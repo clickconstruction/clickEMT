@@ -17,6 +17,16 @@ const text = (s) => ($(s) ? $(s).innerText.replace(/\s+/g, ' ').trim().toLowerCa
 const has = (s, ...needles) => { const t = text(s); return needles.every((x) => t.includes(x.toLowerCase())); };
 const until = async (fn, ms = 4000) => { const end = Date.now() + ms; let v = fn(); while (!v && Date.now() < end) { await wait(50); v = fn(); } return v; };
 const M = () => window.__mock;
+// The app's own questions (v62): while on, every question the base asks is answered with its first button, as the old
+// window.confirm stub did; off, a suite reads the dialog and presses it itself.
+let autoConfirmObs = null;
+function autoConfirm(on) {
+  if (autoConfirmObs) { autoConfirmObs.disconnect(); autoConfirmObs = null; }
+  if (!on) return;
+  const dlg = $('#confirm-dialog'); if (!dlg) return;
+  const press = () => { if (dlg.open) $('#confirm-ok').click(); };
+  autoConfirmObs = new MutationObserver(press); autoConfirmObs.observe(dlg, { attributes: true, attributeFilter: ['open'] }); press();
+}
 const logTexts = () => $$('#log .log-row').map((r) => r.innerText.replace(/\s+/g, ' ').trim());
 const eventText = (data, t) => data.events().find((e) => e.text === t) || null;
 const uuid = () => crypto.randomUUID();
@@ -37,6 +47,8 @@ const USERS = () => M().ids.users;
 // instances on it: the base's client (Operations) and a field client signed in as Unit 3.
 async function reload() {
   await M().ready();
+  window.confirm = () => { throw new Error('the browser confirm() was called: the app asks with #confirm-dialog (v62)'); };   // any confirm() left anywhere fails loudly
+  autoConfirm(false);
   if (base) base.close();
   if (field) field.close();
   M().reset();
@@ -104,6 +116,14 @@ async function seeded(check) {
   check('the CEDAR7 pill opens the codes\' card: the join code with its QR, and the Operations code as dots', await until(() => !$('#codes-pop').hidden) && !!$('#codes-pop .qr-box svg') && has('#codes-pop', 'cedar7', 'operations code', '••••••••') && !text('#codes-pop').includes(M().ids.opsCode.toLowerCase()) && $('#inc-code').getAttribute('aria-expanded') === 'true', text('#codes-pop').slice(0, 200));
   $('#codes-pop [data-action="ops-show"]').click();
   check('Show reveals the Operations code; Hide puts the dots back', has('#codes-pop', M().ids.opsCode.toLowerCase()) && has('#codes-pop', 'hide') && (() => { $('#codes-pop [data-action="ops-show"]').click(); return has('#codes-pop', '••••••••'); })(), text('#codes-pop').slice(0, 200));
+  // the app's own questions (v62): a question is #confirm-dialog, a <dialog> of the page's own, and Cancel changes nothing
+  const opsBefore = base.opsCode();
+  $('#codes-pop [data-action="new-ops-code"]').click();
+  check('New code asks in the app\'s own dialog, not the browser\'s: the question, what it does, Cancel and Replace it (v62)', await until(() => $('#confirm-dialog').open) && $('#confirm-dialog').tagName === 'DIALOG' && has('#confirm-title', 'replace the operations code?') && has('#confirm-text', 'whoever has the old one can no longer join with it') && $('#confirm-ok').textContent === 'Replace it' && $('#confirm-cancel').textContent === 'Cancel', text('#confirm-title') + ' | ' + text('#confirm-text'));
+  $('#confirm-cancel').click();
+  await wait(200);
+  check('Cancel closes it and the code is the same, nothing logged', !$('#confirm-dialog').open && base.opsCode() === opsBefore && !eventText(base, 'Operations code replaced; the old one no longer joins'), base.opsCode());
+  if ($('#codes-pop').hidden) { $('#inc-code').click(); await until(() => !$('#codes-pop').hidden); }   // the click on the dialog counted as one outside the card
   $('#live-pill').click();
   check('the dot opens the connection\'s card and closes the codes\': live since when, the last update, the three units\' last reports, this base\'s version, Reconnect', await until(() => !$('#live-pop').hidden) && $('#codes-pop').hidden && has('#live-pop', 'connection', 'live since', 'last update', 'unit 1', 'unit 2', 'unit 3', 'this base') && !!$('#live-pop [data-action="reconnect"]'), text('#live-pop').slice(0, 300));
   document.body.click();
@@ -484,11 +504,11 @@ async function people(check) {
   await until(() => base.people().some((p) => p.name === 'Lee'));
   const lee = base.people().find((p) => p.name === 'Lee');
   check('Operations adds a person from the board, with the unit\'s agency and the qualification ticked', lee.user_id === u.unit2 && lee.agency === 'Travis County Rescue' && lee.qualifications.join() === 'k9' && base.member(u.unit2).crew === 'Nguyen, Patel, Lee' && !!eventText(base, 'Lee (K9) checked in with Unit 2') && await until(() => !$('#people-page form[data-form="person-add"]') && row(lee.id)), logTexts()[0]);
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   try {
     $(`#people-page .pp-row[data-person="${lee.id}"] [data-action="person-remove"]`).click();
     await until(() => base.person(lee.id).archived_at);
-  } finally { window.confirm = confirmWas; }
+  } finally { autoConfirm(false); }
   check('Remove archives the person, never deletes: off the roster, in the history, logged, recounted', !!base.person(lee.id).archived_at && base.people().length === 7 && base.people(true).length === 8 && M().tables.ic_people.length === 8 && !!eventText(base, 'Lee removed from Unit 2') && base.member(u.unit2).crew_count === 2 && await until(() => rows().length === 7), logTexts()[0]);
 
   const fail = async (fn) => { try { await fn(); return null; } catch (e) { return e; } };
@@ -1117,11 +1137,11 @@ async function layers(check) {
   check('Hide takes it off this screen only', $$('#map img.imagery').length === 1 && (localStorage.getItem('ic.map.hidden') || '').includes(o.id) && !base.overlay(o.id).archived_at && !!$(`#panel [data-action="overlay-show"][data-id="${o.id}"]`));
   $(`#panel [data-action="overlay-show"][data-id="${o.id}"]`).click();
   await until(() => $$('#map img.imagery').length === 2);
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   try {
     $(`#panel [data-action="overlay-remove"][data-id="${ovl}"]`).click();
     await until(() => base.overlay(ovl).archived_at);
-  } finally { window.confirm = confirmWas; }
+  } finally { autoConfirm(false); }
   check('Remove archives it for everyone, never deletes, logs it, and offers to put it back', !!base.overlay(ovl).archived_at && M().tables.ic_overlays.length === 2 && !!eventText(base, 'Imagery: Aerial 06:40, Civil Air Patrol removed from the map') && await until(() => $$('#map img.imagery').length === 1) && await until(() => has('#panel', '1 removed')) && await until(() => field.overlays().length === 1), logTexts()[0]);
   $(`#panel [data-action="overlay-restore"][data-id="${ovl}"]`).click();
   await until(() => !base.overlay(ovl).archived_at);
@@ -1540,7 +1560,7 @@ async function ics100(check) {
   await until(() => $('#briefing').hidden);
 
   // 7 · a unit's kind: the board, the panel, the request
-  check('the resources board groups the units by kind with counts, Unit 4 among the boat crews', has('#panel', 'engines · 1', 'boat crews · 2', 'swift-water teams · 1', 'unit 4, boat crew') && $$('#panel .grp .rs-g').length >= 3, text('#panel').slice(0, 500));
+  check('the resources board groups the units by kind with counts, Unit 4 among the boat crews', await until(() => has('#panel', 'engines · 1', 'boat crews · 2', 'swift-water teams · 1', 'unit 4, boat crew') && $$('#panel .grp .rs-g').length >= 3), text('#panel').slice(0, 500));   // Close puts the home panel back on the next frame; with the pane visible the read must wait for it (v62)
   $('#panel [data-action="board-mode"][data-mode="status"]').click();
   await until(() => $('#panel .grp .badge.st-assigned'));
   check('or by status, the T-card rack', has('#panel .grp', 'assigned') && has('#panel', 'available'), text('#panel').slice(0, 300));
@@ -1680,7 +1700,7 @@ async function rewalks(check) {
 // a run and presses its steps, the gym card lists the runs coming, a crew puts its people on a run from the house
 // record, a unit that drives sees its run card, and the desk signs a whole run in with one tap.
 async function transports(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
   let P = null;
   const gym = M().ids.facilities[2], a2 = ZONE('A-2');
@@ -1802,7 +1822,7 @@ async function transports(check) {
     $('#briefing [data-action="close-briefing"]').click();
     check('the log line for a run opens the board', (() => { const row = $$('#log .log-row').find((r) => /van 4 left/i.test(r.textContent)); return !!row && !!row.querySelector('[data-action="transports"]'); })());
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     if (!$('#transports').hidden) $('[data-action="close-transports"]').click();
@@ -1815,7 +1835,7 @@ async function transports(check) {
 // phone, scans as last seen on the board, the PAR by scan, check-in with a band number, the band link, the desk's
 // sign-in by band, voiding, the 211.
 async function tags(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
   let P = null;
   const PPL = M().ids.people;
@@ -1910,8 +1930,20 @@ async function tags(check) {
     check('a band link opens the band once the incident is open: Vela (Unit 9), with what the scan means', !!P.ready && await until(() => P.shown('#s-band') && /band 026 · vela \(unit 9\)/.test(P.text('#band-title')), 15000), P.text('#band-title'));
     await P.act('band-cancel');
 
+    // ---- the band door (v62): the same link on a phone that is signed out says the band is waiting, and the scan goes through once the incident is open
+    P.frame.remove(); P = null;
+    P = await phoneFrame('&nobody&band=' + tagN(26).code, { signedOut: true });
+    check('a band link on a signed-out phone: the sign-in screen says Band 026 is waiting and what a band is, in place of the plain lead (v62)', !!P.ready && P.shown('#auth-band') && /^band 026 is waiting\. sign in and the scan goes through\./.test(P.text('#auth-band')) && /identifies a person to the incident's team only/.test(P.text('#auth-band')) && /hand it back to them/.test(P.text('#auth-band')) && !P.shown('#auth-lead') && !P.shown('#auth-code'), P.text('#auth-band'));
+    check('the door is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    await phoneSignIn(P, 'unit3@mock.local', false);
+    await until(() => P.$('#join-list [data-action="open-incident"]'), 8000);
+    P.$('#join-list [data-action="open-incident"]').click();
+    check('signed in and the incident opened, the band sheet opens as from a link on a signed-in phone', await until(() => P.shown('#s-band') && /band 026 · vela \(unit 9\)/.test(P.text('#band-title')), 15000) && !P.shown('#auth'), P.text('#band-title'));
+    await P.act('band-cancel');
+
     // ---- the desk: a walk-up gets a band from the box; her band scanned again brings her record up
     await P.act('menu'); await P.act('sign-out'); await until(() => P.shown('#auth'));
+    check('signed out again with the band used, the door is the plain one', P.shown('#auth-lead') && !P.shown('#auth-band'), P.text('#auth'));
     await phoneSignIn(P, 'tags-desk@mock.local', true);
     await until(() => P.shown('#s-identify'));
     P.$('#id-name').value = 'Sam Lee'; P.$('#id-phone').value = '512 555 0198';
@@ -1934,6 +1966,17 @@ async function tags(check) {
     P.$('#scan-type').value = '27'; await P.act('scan-typed');
     check('her band scanned at the desk again brings her record up, with the band on it', await until(() => P.shown('#s-person') && /lopez, ana/i.test(P.text('#person-title')), 5000) && /band 027 on this record/.test(P.text('#ev-band-line')) && P.$('#ev-band-btn').hidden, P.text('#person-title') + ' | ' + P.text('#ev-band-line'));
     await P.act('home');
+    // ---- the phone's one question (v62): Missing someone on a PAR asks in the app's own dialog; Cancel raises nothing
+    const deskId = base.members().find((m) => m.unit_name === 'Gym desk').user_id, alertsBefore = base.alerts().length;
+    const parDesk = await base.startPar('all');
+    await until(() => P.shown('#s-safety') && P.$(`#s-safety [data-action="par-missing"][data-id="${parDesk.id}"]`), 30000);
+    P.$(`#s-safety [data-action="par-missing"][data-id="${parDesk.id}"]`).click();
+    check('Missing someone opens the phone\'s own dialog: Report someone missing?, what it does, Cancel and a red Report missing (v62)', await until(() => P.$('#confirm-dialog') && P.$('#confirm-dialog').open, 3000) && P.text('#confirm-title') === 'report someone missing?' && /operations gets an emergency alert with your position/.test(P.text('#confirm-text')) && P.$('#confirm-ok').textContent === 'Report missing' && P.$('#confirm-ok').classList.contains('danger') && P.$('#confirm-cancel').textContent === 'Cancel', P.text('#confirm-title') + ' | ' + P.text('#confirm-text'));
+    P.$('#confirm-cancel').click();
+    await wait(400);
+    check('Cancel closes it: no alert screen, no alert, the PAR still to answer', !P.$('#confirm-dialog').open && !P.shown('#s-helpsent') && base.alerts().length === alertsBefore && !base.ack(parDesk.id, deskId) && !!P.$(`#s-safety [data-action="par-missing"][data-id="${parDesk.id}"]`), String(base.alerts().length));
+    P.$(`#s-safety [data-action="par-ok"][data-id="${parDesk.id}"]`).click();
+    await until(() => base.ack(parDesk.id, deskId), 70000);
 
     // ---- the base: the gym card says the band, Void band, the 211
     const bOpen = document.createElement('button'); bOpen.dataset.action = 'select-facility'; bOpen.dataset.id = M().ids.facilities[2]; bOpen.hidden = true; document.body.appendChild(bOpen); bOpen.click(); bOpen.remove();
@@ -1950,7 +1993,7 @@ async function tags(check) {
     check('a voided band is refused on the phone', await (async () => { await P.act('menu'); await P.act('scan-band'); await until(() => P.shown('#s-scan'), 5000); P.$('#scan-type').value = '25'; await P.act('scan-typed'); return /band 025 was voided/.test(P.text('#scan-msg')); })(), P.text('#scan-msg'));
     await P.act('scan-cancel');
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
@@ -1963,7 +2006,7 @@ async function tags(check) {
 // uninvited, the link's landing on a phone with no code to type, the roster on a second incident. The function that
 // sends the email is stood in by the mock (client.functions.invoke).
 async function invite(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
   let P = null;
   const members = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden); if (!$('#people-page form[data-form="invite-send"]')) $('#people-page [data-action="people-tab"][data-tab="members"]').click(); await until(() => $('#people-page form[data-form="invite-send"]')); };
@@ -2027,7 +2070,7 @@ async function invite(check) {
     check('Invite the roster sends them all: two rows on the second incident, logged, and the roster is empty there now', res.length === 2 && res.every((r) => r.ok) && await until(() => base.invites().length === 2) && !!eventText(base, 'Invitation sent to ana.lopez@cedarfork.gov as a unit (Unit 7) by Operations') && (await base.roster()).length === 0, JSON.stringify(res));
     await base.open(INC());
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     if (!$('#people').hidden) $('[data-action="close-people"]').click();
@@ -2234,7 +2277,7 @@ async function newcomer(check) {
 }
 
 async function walkfix(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\.(briefed|agency|seen)/.test(k)) localStorage.removeItem(k);
   let P = null;
   try {
@@ -2432,7 +2475,7 @@ async function walkfix(check) {
     P.$('#join-list [data-action="open-incident"]').click();
     check('one tap on it opens the incident', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym shelter desk'));
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     await wait(100);
@@ -2445,7 +2488,7 @@ async function walkfix(check) {
 // the base's shelter card, find a person, Print the list and the situation report follow. The phone is
 // the field app at 375 px in a frame, as in walkfix.
 async function evacuees(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
   let P = null;
   const gym = M().ids.facilities[2], dell = M().ids.facilities[3];
@@ -2618,7 +2661,7 @@ async function evacuees(check) {
     const del = await window.sb.from('ic_evacuees').delete().eq('id', rec('Lopez, Ana').id);
     check('nothing is deleted: a record is moved or withdrawn', !!del.error && !!rec('Lopez, Ana'));
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     if (P) P.frame.remove();
     if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
@@ -2630,8 +2673,7 @@ async function evacuees(check) {
 // code on the home panel, the role following the code, the Members tab with Make Operations / Make a
 // unit / Remove / Restore, the removed phone's notice and its queued rows, and the clearing from the picker.
 async function members(check) {
-  const confirmWas = window.confirm, promptWas = window.prompt;
-  window.confirm = () => true; window.prompt = () => 'Unit 9';
+  autoConfirm(true);   // the role questions (v62); the unit's name goes through #name-dialog (v44)
   let P = null, relief = null;
   try {
     const U = USERS(), opsCode = M().ids.opsCode;
@@ -2668,7 +2710,12 @@ async function members(check) {
     $('#name-input').value = 'Unit 9'; $('#name-form').requestSubmit();
     check('Make a unit asks for the unit name, changes the role and logs it by name', await until(() => base.member(relief.user.id).role === 'unit' && base.member(relief.user.id).unit_name === 'Unit 9') && await until(() => eventText(base, 'Relief Chief is now a unit, Unit 9')), logTexts()[0]);
     await until(() => $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`));
+    autoConfirm(false);   // read the question itself (v62)
     $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`).click();
+    await until(() => $('#confirm-dialog').open);
+    check('Make Operations asks in the app\'s own dialog: what they get, what changes, the 214\'s line, and the button reads Make Operations (v62)', $('#confirm-dialog').open && has('#confirm-title', 'make unit 9 operations?') && has('#confirm-text', 'they get', 'the operations code', 'what changes', 'their phone stops showing a unit\'s briefing', '"unit 9 is now operations"') && $('#confirm-ok').textContent === 'Make Operations' && $('#confirm-cancel').textContent === 'Cancel', text('#confirm-title') + ' | ' + text('#confirm-text'));
+    $('#confirm-ok').click();
+    autoConfirm(true);
     check('Make Operations changes it back and logs it', await until(() => base.member(relief.user.id).role === 'ops') && await until(() => eventText(base, 'Unit 9 (Relief Chief) is now Operations')), logTexts()[0]);
     const e3 = await (async () => { try { await base.setRole(U.ops, 'unit'); return null; } catch (e) { return e; } })();
     check('the person who opened the incident cannot be demoted', !!e3 && /always Operations/.test(e3.message) && base.member(U.ops).role === 'ops', e3 && e3.message);
@@ -2730,7 +2777,7 @@ async function members(check) {
     closed.personal_cleared_at = null; closed.clear_personal_at = new Date(Date.now() - 86400000).toISOString();
     check('the due run clears a closed incident whose date has come', (await field.clearPersonalDue()) === 1 && !!inc().personal_cleared_at);
   } finally {
-    window.confirm = confirmWas; window.prompt = promptWas;
+    autoConfirm(false);
     if (relief) relief.close();
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
@@ -2748,7 +2795,7 @@ function joinCardTextOf() {
 
 // Time in the water, incident settings and the public set (v28, migration 0020), with v25's leftovers.
 async function safetyset(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   const realClick = HTMLAnchorElement.prototype.click;
   let P = null;
   try {
@@ -2899,7 +2946,7 @@ async function safetyset(check) {
     check('words half-typed in a sidebar box survive a live redraw after focus left it', !!again && again.value === 'Half a sentence about the', again && again.value);
     again.value = '';
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     HTMLAnchorElement.prototype.click = realClick;
     if (P) P.frame.remove();
     if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
@@ -2912,7 +2959,7 @@ async function safetyset(check) {
 // Accountability by name (v29, migration 0021): the PAR by name on the phone, who is missing on the bar and
 // the board, a check-in with a count and no names, the unknown head count, an edit on each view.
 async function parbyname(check) {
-  const confirmWas = window.confirm; window.confirm = () => true;
+  autoConfirm(true);
   let P = null;
   try {
     const U = USERS();
@@ -3010,7 +3057,7 @@ async function parbyname(check) {
       P.frame.remove(); P = null;
     }
   } finally {
-    window.confirm = confirmWas;
+    autoConfirm(false);
     if (P) P.frame.remove();
     if (!$('#people').hidden) $('[data-action="close-people"]').click();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);

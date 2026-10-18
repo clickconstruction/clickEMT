@@ -1344,3 +1344,22 @@ The units section: Marcus answering the radio, Dana reading the room, walked on 
 
 - **The request cards** keep their full form under each; the mock-up's one button per request is still to decide.
 - **The lead's name** in the facts line is the only coloured text left on the row; whether it should be a tick alone is the walk's.
+
+---
+
+## Re-walk after v62
+
+Confirmations as the app's own dialogs, and the band door: Marcus making his relief Operations, Dana removing a unit, Rosa with a band's QR on a phone that was signed out, the gym desk on a head count, walked on 2026-10-18 in the mock at 1280 × 800 and 375 × 812 (the pane shared and hidden at times; the words read through the `seeded`, `members` and `tags` suites and the pages' own text).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Make Operations | Marcus | A sheet of the app's own over the Members tab: "Make Unit 9 Operations?", then "They get the base: the map, drawing and assigning, every identity, the Operations code, roles, the clearing." and "What changes: their row leaves the units and reads Operations everywhere; their phone stops showing a unit's briefing; the 214 says "Unit 9 is now Operations"." Cancel · Make Operations. | Clear |
+| Remove a unit | Dana | "Remove Unit 3 from the incident?" with "Everything they sent stays on record. Their phone shows they were removed. You can put them back from the Members tab." and a red Remove. Escape is Cancel. | Clear |
+| New code | Marcus | "Replace the Operations code?" · "Whoever has the old one can no longer join with it. Those already on the incident stay." · Cancel · Replace it. Cancel leaves the code as it was, nothing logged. | Clear |
+| A band on a signed-out phone | Rosa | The sign-in screen opens with "Band 026 is waiting. Sign in and the scan goes through." and, smaller, "An Incident Map band identifies a person to the incident's team only; on its own it tells you nothing. Not on the team? Hand it back to them." After sign-in and the incident, the band sheet opens on Vela (Unit 9) as from a signed-in phone; signed out again, the door is the plain one. | Clear |
+| Missing someone | the desk | "Report someone missing?" · "Operations gets an emergency alert with your position." · Cancel · a red Report missing. Cancel raises nothing and the head count card is still there to answer. | Clear |
+
+**Still bites, small:**
+
+- **The Members tab's four command posts** (punchlist section 15): every unit's row still carries Make Operations as loud as Open and Remove; the question now says what changes, the grouping does not.
+- **The first button has focus when a question opens**, so Enter is the act; on the phone that is right, at the base a stray Enter on Remove is the one to watch.

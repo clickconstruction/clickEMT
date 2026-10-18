@@ -1,7 +1,8 @@
 # Punchlist
 
-The open work on clickEMT as of 17 October 2026, after v37 (`c89a929`, the public demo, the front door, new
-versions, the 404 page). Each numbered release below is written to be picked up cold: why it matters, what to build,
+The open work on clickEMT. Everything from the walk at v37 shipped as v38 to v48 (sections 1 to 10 below, each with its
+Shipped note); the open work now is **section 11**, from the walk at v48 on 18 October 2026. Written 17 October 2026,
+after v37 (`c89a929`, the public demo, the front door, new versions, the 404 page). Each numbered release below is written to be picked up cold: why it matters, what to build,
 what was already decided, and how to know it is done. Read [handoff.md](handoff.md) first for how to run, test and
 ship.
 
@@ -24,6 +25,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 8 | Later: since you last looked (shipped 18 October, v45); on scene too long (shipped 18 October, v47) | medium | v44 | the IC, Marcus's relief, Priya |
 | 9 | Decisions only Grace can make (answered 18 October; built as v46 The decisions) | small to medium | v45 | Ana, Reyes, Priya, the clerk, the resident |
 | 10 | v48 Small items from the re-walks (shipped 18 October) | small | v47 | Rosa, the newcomer, Reyes, Priya, Moreno, the resident, the IC, Finance |
+| 11 | The walk at v48: the unit panel's order, the check-in count, a Public page, small words (open) | small | v48 | Marcus, the newcomer, Moreno, Reyes, the PIO, Priya |
 
 ---
 
@@ -331,6 +333,39 @@ The eight Still bites from the re-walks after v38 to v47, swept together.
 
 **Shipped** 18 October 2026 as `Small items from the re-walks (v48)`, migration `0030_rewalks.sql`, rule test
 `supabase/tests/rewalks.sql`, smoke suite `rewalks`; re-walk after v48 in walkthroughs.md.
+
+## 11. The walk at v48: open work
+
+From "Walk at v48: best we can do" in [walkthroughs.md](walkthroughs.md) (18 October 2026, commit 84a18c4): all twelve
+personas plus the newcomer at the check-in table, each job asked "is this the best we can do?", with the eleven releases
+since v37 read with fresh eyes. Nothing was LOST or SLOWED; three PUZZLED items and some small words are left. Take them
+as one small release, v49, by the routine in [handoff.md](handoff.md). Not started: the user reads the walk first.
+
+1. **The unit panel: where it is first, identity folded** (Marcus, and every unit's privacy). *Why.* Unit 1's panel
+   puts IDENTITY in full (verified, name, phone, licence tail and expiry, date of birth, home address, Withdraw
+   verification) under the status line, then the request, the water clock and Set status, and only then Agency, Head
+   count, Assigned, Standing in, Position, Heading, Last report. The answer to "where is Unit 1" is a screen down, and
+   every unit lead's date of birth and home address are in front of Operations on every open. *Build.* The facts right
+   under the status line; identity as one line ("Verified 23:13 · Ana Ramirez · 512 555 0111 · licence on file") with
+   the details, the photo and Withdraw verification a press away (`identityHtml` in js/base/ui.js, a `state` flag per
+   unit or a `<details>`); the 211 and the rule that only Operations sees it are unchanged. *Done when* the `walkfix` or
+   `identity` suite reads the position before the identity and the folded line's words; re-walk Marcus's "answer the radio".
+2. **The check-in count starts at one** (the newcomer, Moreno, Reyes, any unit alone). *Why.* "How many with you,
+   including you?" has no default; a volunteer who skips it is "head count unknown" in orange on the base and her
+   briefing says "add your people from the menu". *Build.* `#join-count` starts at 1 on a fresh form (`clearJoinForm`),
+   a typed number stands, names raise it as now; `ic_join` already works the unnamed out of the count. *Done when* the
+   `newcomer` suite checks in with the box untouched and the base reads "1" with "you alone" in the briefing.
+3. **A Public page for the PIO** (the PIO). *Why.* Public information is about 4,000 px down Operations' home panel, the
+   same as at v37. *Build.* A Public button on the header beside People, opening an overlay (like `#people`) with the
+   cleared photos, their captions and checks, Download the public set and who is PIO; the home panel's section stays
+   for Operations. *Done when* the `publicInfo` suite opens it from the header and the walk's PIO job reads it there.
+4. **Small words.** The bar's hazard item repeats the kind when the note restates it ("Person or car in the water, Car in
+   the water at the bridge"): the note alone when it starts with the kind's words (`barItem` in `safetyHtml`); the
+   check-in page's row for an incident a unit has checked out of reads "you were Brush 12 · checked out 02:10"
+   (`showJoin` in js/field/main.js).
+
+**Seen by the walker, not for the list:** the seed's period reads "22:48 to 19:00" (its start three hours before the
+clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty seconds to give a new phone its first fix.
 
 ---
 

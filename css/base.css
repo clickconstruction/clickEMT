@@ -605,3 +605,18 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .band-code { font-size: 10px; color: #777; letter-spacing: .04em; }
 @media (max-width: 600px) { .band-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media print { .band-sheet { grid-template-columns: repeat(4, minmax(0, 1fr)); } .kind-bands section p { display: none; } }
+
+/* ---- invitations by email (v56): the Members tab's box and lists, the switch beside the codes, the landing's card */
+.inv-form { margin-bottom: 12px; }
+.inv-list { display: flex; flex-direction: column; margin-bottom: 10px; }
+.inv-row { display: grid; grid-template-columns: minmax(200px, 1.2fr) minmax(200px, 1.6fr) auto; gap: 6px 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.inv-row:last-child { border-bottom: 0; }
+.inv-row.st-withdrawn, .inv-row.st-expired { color: var(--muted); }
+.inv-bad { color: var(--hazard-ink); font-weight: 600; }
+.inv-act { display: flex; gap: 6px; justify-content: flex-end; }
+.inv-only { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.inv-only input { accent-color: var(--accent); margin: 0; }
+.pick-invite, .land-invite { border: 2px solid var(--accent); background: var(--tint-blue); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.pick-invite .big, .land-invite .big { font-size: 17px; font-weight: 700; }
+.pick-invite form, .land-invite form { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+@media (max-width: 760px) { .inv-row { grid-template-columns: 1fr; } .inv-act { justify-content: flex-start; } }

@@ -265,3 +265,12 @@ body { background: var(--bg-2); }
 .pp-edit-top .input[data-jp="band"] { flex: 0 0 86px; }
 .ev-band { display: flex; gap: 10px; align-items: center; }
 .ev-band .btn { min-height: 48px; flex: none; }
+
+/* ---- invitations by email (v56): the card from the link, on the sign-in screen and the check-in screen */
+.invite-card { border: 2px solid var(--accent); background: var(--tint-blue); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; text-align: left; margin-bottom: 10px; }
+.invite-card .big { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.invite-card .k { color: var(--accent-text); }
+.invite-card form { display: flex; flex-direction: column; gap: 6px; }
+.invite-card .input { border: 1px solid var(--control-border); border-radius: 10px; padding: 10px 12px; font-size: 16px; min-height: 48px; background: var(--control-bg); color: var(--ink); width: 100%; }
+.invite-card .btn.big { min-height: 54px; font-size: 16px; border-radius: 12px; }
+.invite-bad { color: var(--hazard-ink); font-weight: 600; }

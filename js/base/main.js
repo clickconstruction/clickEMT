@@ -3,7 +3,7 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc } from './ui.js';
-import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel } from '../shared/rules.js';
+import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -22,7 +22,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -52,9 +52,9 @@ async function boot() {
   if (!data) { document.body.innerHTML = '<p style="padding:24px">Supabase is not configured. See config.example.js.</p>'; return; }
   const user = await data.init();
   data.on(onData);
-  if (!user) { show('auth'); return; }
+  if (!user) { show('auth'); drawLandingInvite(); return; }
   const last = localStorage.getItem(LAST_INCIDENT);
-  if (last) {
+  if (last && !pendingInvite()) {   // an invitation is accepted on the picker first (v56)
     try { await openIncident(last); return; } catch (e) { console.warn('could not reopen', e); localStorage.removeItem(LAST_INCIDENT); }
   }
   await showPicker();
@@ -100,9 +100,63 @@ $('#auth-signup').addEventListener('click', async () => {
 });
 
 // ---- picker
+// ---- an invitation's link (v56): ?invite=<token> in the address, kept through sign-in, accepted on the picker
+const INVITE_KEY = 'ic.base.invite';
+(function takeInviteLink() {
+  const t = inviteFromSearch(location.search);
+  if (!t) return;
+  try { sessionStorage.setItem(INVITE_KEY, t); } catch (e) { /* storage blocked */ }
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* fine */ }
+})();
+function pendingInvite() { try { return sessionStorage.getItem(INVITE_KEY) || ''; } catch (e) { return ''; } }
+function clearPendingInvite() { state.invite = null; try { sessionStorage.removeItem(INVITE_KEY); } catch (e) { /* fine */ } }
+async function peekInvite() {
+  const t = pendingInvite();
+  if (!t) return null;
+  if (state.invite && state.invite.token === t) return state.invite;
+  try { const v = await data.invitePeek(t); state.invite = v ? Object.assign({ token: t }, v) : { token: t, state: 'missing' }; } catch (e) { state.invite = { token: t, state: 'missing' }; }
+  return state.invite;
+}
+const inviteAs = (v) => (v.role === 'ops' ? 'Operations' : v.unit ? 'a unit, ' + v.unit : 'a unit');
+// signed out: the landing says who invited whom, and the sign-in form takes the address
+async function drawLandingInvite() {
+  const el = $('#land-invite'); if (!el) return;
+  const v = await peekInvite();
+  if (!v || v.state === 'missing') { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="k">You're invited</div><div class="big">${esc(v.incident)}</div><div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>
+    <div class="muted" style="font-size:13px">${v.state === 'pending' ? 'Sign in below with ' + esc(v.email) + ' to accept it. The link from the email signs you in by itself the first time and asks for a password.' : v.state === 'expired' ? 'This invitation has expired; ask ' + esc(v.by) + ' to send it again.' : v.state === 'withdrawn' ? 'This invitation was withdrawn.' : v.state === 'accepted' ? 'This invitation was accepted already; sign in to open the incident.' : ''}</div>`;
+  const em = $('#auth-email'); if (em && !em.value) em.value = v.email;
+}
+// signed in: the picker offers to accept, with a password the first time
+async function drawPickInvite() {
+  const el = $('#pick-invite'); if (!el) return;
+  const v = await peekInvite();
+  if (!v) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const me = (data.user && data.user.email || '').toLowerCase();
+  const fresh = data.user && data.user.last_sign_in_at && Date.now() - new Date(data.user.last_sign_in_at).getTime() < 10 * 60000;
+  const can = v.state === 'pending' || v.state === 'accepted';
+  el.innerHTML = `<div class="pick-invite"><div class="k">You're invited</div><div class="big">${esc(v.incident || 'an incident')}</div>
+    ${v.state === 'missing' ? '<div>This invitation is not on record; ask Operations for a new one.</div>' : `<div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>`}
+    ${v.email && me && v.email !== me ? `<div class="inv-bad">This invitation is for ${esc(v.email)}; you are signed in as ${esc(me)}. Sign out and sign in with that address.</div>` : ''}
+    ${v.state === 'expired' ? '<div class="inv-bad">It has expired; ask them to send it again.</div>' : v.state === 'withdrawn' ? '<div class="inv-bad">It was withdrawn.</div>' : ''}
+    ${can && fresh ? `<form data-form="invite-password"><label style="flex:1;min-width:200px">Choose a password for next time <input name="password" type="password" minlength="8" autocomplete="new-password" placeholder="8 or more characters"></label><button class="btn sm" type="submit">Save the password</button></form>` : ''}
+    <div class="row-btns">${can && (!me || v.email === me) ? `<button class="btn pri sm" data-action="invite-accept">${v.role === 'ops' ? 'Join as Operations' : 'Check in'} · ${esc(v.incident)}</button>` : ''}<button class="btn sm" data-action="invite-dismiss">Not now</button></div></div>`;
+}
+async function acceptInvite() {
+  const v = state.invite; if (!v) return;
+  try {
+    const inc = await data.join(null, v.role, v.unit || null, null, null, null, null, null, v.token);
+    clearPendingInvite();
+    toast('You are in ' + inc.name + (v.role === 'ops' ? ' as Operations' : ''));
+    await openIncident(inc.id);
+  } catch (e) { toast(e.message || String(e), true); }
+}
 async function showPicker() {
   show('pick');
   $('#pick-user').textContent = data.user ? data.user.email : '';
+  drawPickInvite();
   const list = $('#pick-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
   try { await data.clearPersonalDue(); } catch (e) { console.warn('personal records due', e); }   // whatever is due clears on open too, not only nightly
@@ -550,7 +604,11 @@ function drawTransports() {
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
 }
 function focusTrForm() { setTimeout(() => { const f = $('#transports-page form.tr-form'); if (f) f.label.focus(); }, 30); }
-function openPeople() { $('#people').hidden = false; drawPeople(); }
+function openPeople() { $('#people').hidden = false; drawPeople(); loadRoster(); }
+function loadRoster() {   // the addresses invited on earlier incidents, for the Members tab (v56)
+  if (state.people.tab !== 'members' || !data.me() || data.me().role !== 'ops') return;
+  data.roster().then((r) => { state.roster = r; drawPeople(); }).catch(() => {});
+}
 function closePeople() { $('#people').hidden = true; state.people.add = false; }
 function drawPeople() {
   if (!data.incident || $('#people').hidden) return;
@@ -804,7 +862,7 @@ document.addEventListener('click', async (e) => {
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
       case 'copy-ops-code': await navigator.clipboard.writeText(data.opsCode() || ''); toast('Operations code copied. Give it by radio or phone, never on paper'); break;
       case 'new-ops-code': if (!data.opsCode() || confirm('Replace the Operations code? Whoever has the old one can no longer join with it; those already on the incident stay.')) { await data.newOpsCode(); toast('New Operations code; the old one no longer joins'); queueDraw(); } break;
-      case 'people-tab': state.people.tab = btn.dataset.tab === 'members' ? 'members' : 'people'; drawPeople(); break;
+      case 'people-tab': state.people.tab = btn.dataset.tab === 'members' ? 'members' : 'people'; drawPeople(); loadRoster(); break;
       case 'member-role': {
         const m = data.member(id);
         if (!m) break;
@@ -849,6 +907,11 @@ document.addEventListener('click', async (e) => {
       case 'unverify-profile': await data.verifyProfile(id, false); toast('Verification withdrawn'); break;
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
       case 'print-join': openOverlay('join'); break;
+      case 'invite-resend': { const v = data.invite(id); try { const r = await data.resendInvite(id); toast(r[0] && r[0].ok ? 'Sent again to ' + (v ? v.email : 'them') : (r[0] && r[0].error) || 'Could not send'); } catch (e) { toast(e.message || String(e), true); } queueDraw(); drawPeople(); break; }   // v56
+      case 'invite-withdraw': { const v = data.invite(id); if (v && confirm(`Withdraw the invitation to ${v.email}? The link stops working; it stays on record.`)) { await data.withdrawInvite(id); toast('Invitation to ' + v.email + ' withdrawn'); queueDraw(); drawPeople(); } break; }
+      case 'invite-roster': { const rows = (state.roster || []).map((r) => ({ email: r.email, role: r.role, unit: r.unit_name })); if (!rows.length) break; try { const res = await data.sendInvites(rows); const ok = res.filter((r) => r.ok).length; toast(ok + ' of ' + rows.length + ' invited' + (ok < rows.length ? '; see the list for the rest' : '')); } catch (e) { toast(e.message || String(e), true); } state.roster = []; queueDraw(); drawPeople(); loadRoster(); break; }
+      case 'invite-accept': await acceptInvite(); break;
+      case 'invite-dismiss': clearPendingInvite(); drawPickInvite(); break;
       case 'print-bands': { const made = await data.printBands(24); state.printTags = made.map((t) => t.id); toast(made.length + ' bands printed, ' + bandLabel(made[0]).replace('Band ', '') + ' to ' + bandLabel(made[made.length - 1]).replace('Band ', '')); openOverlay('bands'); break; }   // v55
       case 'band-void': { const t = data.tag(id); if (t && confirm(`Void ${bandLabel(t)}? A voided band is never reused; give a new one by scanning it.`)) { await data.voidBand(id); toast(bandLabel(t) + ' voided'); queueDraw(); drawPeople(); } break; }
       case 'select-zone': selectFromLog({ type: 'zone', id }); break;
@@ -1065,6 +1128,8 @@ function timeToIso(hhmmValue) {
 }
 
 document.addEventListener('change', async (e) => {
+  const box = e.target.closest('[data-check="invite-only"]');
+  if (box) { try { await data.setInviteOnly(box.checked); toast(box.checked ? 'Invited members only: the join code is off' : 'The join code is on again'); } catch (err) { toast(err.message || String(err), true); box.checked = !box.checked; } queueDraw(); return; }   // v56
   const sel = e.target.closest('[data-select], [data-range]');
   if (!sel) return;
   try {
@@ -1143,6 +1208,20 @@ document.addEventListener('submit', async (e) => {
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
+    } else if (form.dataset.form === 'invite-send') {   // v56
+      const email = form.email.value.trim().toLowerCase(), role = form.role.value === 'ops' ? 'ops' : 'unit', unit = form.unit.value.trim();
+      if (!email) { toast('An email address is needed', true); return; }
+      try {
+        const res = await data.sendInvites([{ email, role, unit }]);
+        const r = res[0];
+        if (r && r.ok) { toast('Invitation sent to ' + email); form.email.value = ''; form.unit.value = ''; }
+        else toast((r && r.error) || 'Could not send', true);
+      } catch (e) { toast(e.message || String(e), true); }
+      queueDraw(); drawPeople();
+    } else if (form.dataset.form === 'invite-password') {
+      const pw = form.password.value;
+      if (pw.length < 8) { toast('8 characters or more', true); return; }
+      try { await data.setPassword(pw); toast('Password saved'); form.remove(); } catch (e) { toast(e.message || String(e), true); }
     } else if (form.dataset.form === 'transport-add' || form.dataset.form === 'transport-edit') {   // the board's New run and Edit (v54)
       const fields = transportFormFields(form);
       if (!fields.to_facility_id) { toast('Say where to: place a shelter or a hospital first', true); return; }

@@ -10,10 +10,11 @@
 (function () {
   'use strict';
   const FIELD = /\/field\//.test(location.pathname);
+  const NOBODY = /[?&]nobody\b/.test(location.search);   // start signed out (v56): the invitation's landing
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 32;
+  const SEED_VERSION = 33;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -46,6 +47,7 @@
   const TR = [1, 2, 3].map((n) => 'ab000000-0000-4000-8000-' + String(n).padStart(12, '0'));   // the runs on the transport board (ic_transports)
   const TG = Array.from({ length: 24 }, (_, i) => 'ac000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));   // the bands (ic_tags), 001 to 024
   const SN = Array.from({ length: 8 }, (_, i) => 'ad000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));    // the scans (ic_seen)
+  const IV = [1, 2].map((n) => 'ae000000-0000-4000-8000-' + String(n).padStart(12, '0'));   // the invitations (ic_invites)
   const OPS_CODE = 'MR7KQ2VD';   // the seeded incident's Operations code (ic_ops_codes), read by Operations alone
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
@@ -223,6 +225,11 @@
         { id: SN[5], incident_id: INC, tag_id: TG[1], kind: 'enter', at: ago(60), lat: 30.2662, lng: -97.7392, zone_id: Z['A-1'], facility_id: null, transport_id: null, message_id: null, seen_by: U.unit1, created_at: ago(60) },
         { id: SN[6], incident_id: INC, tag_id: TG[3], kind: 'arrive', at: ago(140), lat: 30.2566, lng: -97.7426, zone_id: null, facility_id: FAC[2], transport_id: null, message_id: null, seen_by: U.unit2, created_at: ago(140) }   // long ago: the board draws it orange
       ],
+      // invitations by email (v56): Ana Ramirez came in by one before dawn; J. Ortiz is invited and not yet in
+      ic_invites: [
+        { id: IV[0], incident_id: INC, email: 'unit1@mock.local', role: 'unit', unit_name: 'Unit 1', token: 'MOCKINVITERAMIREZ0000001', invited_by: U.ops, user_id: U.unit1, created_at: ago(185), sent_at: ago(185), sends: 1, expires_at: ago(185 - 7 * 1440), accepted_at: ago(170), accepted_by: U.unit1, withdrawn_at: null, withdrawn_by: null, last_error: '' },
+        { id: IV[1], incident_id: INC, email: 'j.ortiz@cedarfork.gov', role: 'unit', unit_name: 'Unit 4', token: 'MOCKINVITEORTIZ000000002', invited_by: U.ops, user_id: null, created_at: ago(30), sent_at: ago(30), sends: 1, expires_at: ago(30 - 7 * 1440), accepted_at: null, accepted_by: null, withdrawn_at: null, withdrawn_by: null, last_error: '' }
+      ],
       ic_evacuees: [
         evacuee(4, 'Okonkwo family', 5, ['infant', 'pets'], '', 'Riverside Drive', 'here', FAC[2], U.ops, 75, { signed_in_by: U.ops, signed_in_at: ago(75) }),
         evacuee(3, 'family of 3', 3, [], 'wet, no shoes', 'Mill Street', 'here', FAC[2], U.unit2, 48, { signed_in_by: U.ops, signed_in_at: ago(48), created_at: ago(55) }),
@@ -312,6 +319,9 @@
     ev(6, U.ops, 'transport', 'Ambulance 1 arrived at Dell Seton Medical Center with 1 person in 1 record', 'ic_transports', TR[1]);
     ev(10, U.ops, 'transport', 'Bus 3 planned by Operations: A-1 Riverside Drive to High school gym, 40 seats', 'ic_transports', TR[2]);
     ev(175, U.ops, 'ops', '24 bands printed, 001 to 024');
+    ev(185, U.ops, 'ops', 'Invitation sent to unit1@mock.local as a unit (Unit 1) by Operations', 'ic_invites', IV[0]);
+    ev(170, U.unit1, 'ops', 'Ana Ramirez accepted the invitation from Operations', 'ic_invites', IV[0]);
+    ev(30, U.ops, 'ops', 'Invitation sent to j.ortiz@cedarfork.gov as a unit (Unit 4) by Operations', 'ic_invites', IV[1]);
     ev(170, U.unit1, 'seen', 'Band 001 given to Ramirez (Unit 1) by Unit 1', 'ic_tags', TG[0]); ev(170, U.unit1, 'seen', 'Ramirez seen checking in with Unit 1', 'ic_seen', SN[0]);
     ev(169.9, U.unit1, 'seen', 'Band 002 given to Okafor (Unit 1) by Unit 1', 'ic_tags', TG[1]); ev(169.9, U.unit1, 'seen', 'Okafor seen checking in with Unit 1', 'ic_seen', SN[1]);
     ev(168, U.unit2, 'seen', 'Band 003 given to Nguyen (Unit 2) by Unit 2', 'ic_tags', TG[2]); ev(168, U.unit2, 'seen', 'Nguyen seen checking in with Unit 2', 'ic_seen', SN[2]);
@@ -328,7 +338,7 @@
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null, settings: {} }),
+    ic_incidents: () => ({ id: uuid(), invite_only: false, period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null, settings: {} }),
     ic_ops_codes: () => ({ created_at: now(), created_by: null }),
     ic_id_purge: () => ({ id: eventId(), queued_at: now(), done_at: null }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', address: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
@@ -353,6 +363,7 @@
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
     ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
     ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now(), scanned: null }),
+    ic_invites: () => ({ id: uuid(), role: 'unit', unit_name: '', invited_by: null, user_id: null, created_at: now(), sent_at: null, sends: 0, expires_at: new Date(Date.now() + 7 * 86400000).toISOString(), accepted_at: null, accepted_by: null, withdrawn_at: null, withdrawn_by: null, last_error: '' }),
     ic_tags: () => ({ id: uuid(), kind: '', person_id: null, evacuee_id: null, issued_at: null, issued_by: null, voided_at: null, voided_by: null, created_by: null, created_at: now() }),
     ic_seen: () => ({ id: uuid(), kind: '', at: now(), lat: null, lng: null, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: null, created_at: now() })
   };
@@ -406,6 +417,7 @@
       case 'ic_evacuees': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (row.logged_by === uid || isOps(row.incident_id, uid) || isDesk(row.incident_id, uid, row.facility_id) || isDesk(row.incident_id, uid, row.prev_facility_id));
       // members add a run; Operations, the one who made it, the driver or the desk at its destination change it (checked on the row as it was)
       case 'ic_transports': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (isOps(row.incident_id, uid) || row.created_by === uid || row.driver_user_id === uid || isDesk(row.incident_id, uid, row.to_facility_id));
+      case 'ic_invites': return isOps(row.incident_id, uid);
       case 'ic_tags': return op === 'update' && isMember(row.incident_id, uid);   // made by ic_print_bands alone; the trigger says who gives and voids
       case 'ic_seen': return op === 'insert' && mayWrite(row.incident_id, uid, row.at);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && mayWrite(row.incident_id, uid, row.created_at);
@@ -477,6 +489,7 @@
       if (!Array.isArray(r.needs) || r.needs.some((x) => !NEED_KEYS.includes(x))) throw chk('ic_evacuees_needs_check');
       if (!['on_the_way', 'here', 'moved', 'with_family', 'own_transport', 'unknown'].includes(r.status)) throw chk('ic_evacuees_status_check');
     }
+    if (table === 'ic_invites' && !['unit', 'ops'].includes(r.role)) throw chk('ic_invites_role_check');
     if (table === 'ic_tags') {
       if (!['', 'responder', 'evacuee'].includes(r.kind)) throw chk('ic_tags_kind_check');
       if (!(r.number >= 1 && r.number <= 99999)) throw chk('ic_tags_number_check');
@@ -640,6 +653,36 @@
     }
     if (line) log(changes, r.incident_id, uid, 'shelter', line, 'ic_evacuees', r.id);
   }
+  // ---- invitations by email (v56): ic_invite_before / ic_invite_after; the function's stand-in is client.functions.invoke
+  const inviteToken = () => Array.from({ length: 24 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 54)]).join('');
+  const inviteState = (v) => (v.withdrawn_at ? 'withdrawn' : v.accepted_at ? 'accepted' : new Date(v.expires_at).getTime() < Date.now() ? 'expired' : !v.sent_at ? 'unsent' : 'pending');
+  function inviteBefore(r, old, uid) {
+    r.email = String(r.email ?? '').trim().toLowerCase(); r.unit_name = String(r.unit_name ?? '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.email)) throw dbError('an email address is needed');
+    if (!old) {
+      if (!isOps(r.incident_id, uid) && !system) throw dbError('Only Operations invites people');
+      r.invited_by = uid || r.invited_by; r.token = r.token || inviteToken();
+      if (tables.ic_invites.some((x) => x.incident_id === r.incident_id && x.email === r.email && !x.withdrawn_at && !x.accepted_at)) throw dbError(r.email + ' is invited already; send it again from the list');
+    } else {
+      if (r.incident_id !== old.incident_id || r.email !== old.email) throw dbError('an invitation keeps its incident and its address');
+      r.invited_by = old.invited_by; r.created_at = old.created_at;
+      if (r.withdrawn_at && !old.withdrawn_at) r.withdrawn_by = uid || r.withdrawn_by;
+      if (!r.withdrawn_at && old.withdrawn_at) throw dbError('a withdrawn invitation is not put back; send a new one');
+      if (r.accepted_at && !old.accepted_at && !joining) throw dbError('an invitation is accepted by joining with it');
+      if (r.sent_at && r.sent_at !== old.sent_at) { r.sends = (old.sends || 0) + 1; r.expires_at = new Date(new Date(r.sent_at).getTime() + 7 * 86400000).toISOString(); }
+    }
+  }
+  function inviteLog(r, old, uid, changes) {
+    if (quiet) return;
+    const unit = label(r.incident_id, uid), what = r.role === 'ops' ? 'as Operations' : 'as a unit' + (r.unit_name ? ' (' + r.unit_name + ')' : '');
+    let line = null;
+    if (!old) line = r.sent_at ? `Invitation sent to ${r.email} ${what} by ${unit}` : `Invitation to ${r.email} ${what} made by ${unit}`;
+    else if (r.withdrawn_at && !old.withdrawn_at) line = `Invitation to ${r.email} withdrawn by ${unit}`;
+    else if (r.accepted_at && !old.accepted_at) { const pr = tables.ic_profiles.find((p) => p.user_id === r.accepted_by); line = `${(pr && pr.full_name) || r.email} accepted the invitation from ${label(r.incident_id, r.invited_by)}`; }
+    else if (r.last_error && r.last_error !== old.last_error) line = `Invitation to ${r.email} could not be sent: ${r.last_error}`;
+    else if (r.sent_at && r.sent_at !== old.sent_at) line = old.sent_at ? `Invitation to ${r.email} sent again by ${unit}` : `Invitation sent to ${r.email} ${what} by ${unit}`;
+    if (line) log(changes, r.incident_id, uid, 'ops', line, 'ic_invites', r.id);
+  }
   // ---- people and tags (v55): ic_tag_before / ic_tag_after / ic_seen_before / ic_seen_after
   const bandLabel = (n) => 'Band ' + String(n).padStart(3, '0');
   const tagWho = (t) => { const p = t.person_id && tables.ic_people.find((x) => x.id === t.person_id); if (p) return p.name + ' (' + label(p.incident_id, p.user_id) + ')'; const e = t.evacuee_id && tables.ic_evacuees.find((x) => x.id === t.evacuee_id); return e ? R.evacueeWho(e) : null; };
@@ -749,6 +792,7 @@
     if (table === 'ic_evacuees') evacueeLog(r, null, uid, changes);
     if (table === 'ic_transports') transportLog(r, null, uid, changes);
     if (table === 'ic_seen') seenLog(r, uid, changes);
+    if (table === 'ic_invites') inviteLog(r, null, uid, changes);
     if (table === 'ic_people') {
       if (!r.archived_at && !quiet) log(changes, r.incident_id, uid, 'status', `${r.name}${personQuals(r)} checked in with ${label(r.incident_id, r.user_id)}`, 'ic_people', r.id);
       if (!r.archived_at && !joining) { const m = member(r.incident_id, r.user_id); if (m && m.unnamed_count > 0) updateRow('ic_members', m, { unnamed_count: m.unnamed_count - 1 }, uid, changes, true); }   // naming one of the unnamed keeps the count
@@ -812,6 +856,7 @@
     if (table === 'ic_evacuees') evacueeLog(r, old, uid, changes);
     if (table === 'ic_transports') transportLog(r, old, uid, changes);
     if (table === 'ic_tags') tagLog(r, old, uid, changes);
+    if (table === 'ic_invites') inviteLog(r, old, uid, changes);
     if (table === 'ic_periods') periodCommand(r, old, uid, changes);
     if (table === 'ic_period_agencies' && !quiet && (r.name !== old.name || r.phone !== old.phone)) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
     if (table === 'ic_people') {   // ic_person_after
@@ -945,6 +990,7 @@
       if (JSON.stringify(r.boundary ?? null) !== JSON.stringify(old.boundary ?? null)) log(changes, r.id, uid, 'ops', 'Incident boundary redrawn');
       if (JSON.stringify(r.channels ?? []) !== JSON.stringify(old.channels ?? [])) log(changes, r.id, uid, 'ops', 'Communications plan updated: ' + ((r.channels || []).length ? r.channels.map((c) => (c.use || '') + ' ' + (c.channel || '')).join(', ') : 'no channels'));
       if ((r.lead_agency || '') !== (old.lead_agency || '')) log(changes, r.id, uid, 'ops', 'Lead agency: ' + (r.lead_agency || 'not set'));
+      if (!!r.invite_only !== !!old.invite_only) log(changes, r.id, uid, 'ops', r.invite_only ? 'Invited members only: the join code is off' : 'The join code is on again');   // v56
       if (r.status === 'closed' && old.status !== 'closed') log(changes, r.id, uid, 'ops', 'Incident closed' + (r.clear_personal_at ? ' · personal records clear by rule in ' + Math.max(1, Math.round((new Date(r.clear_personal_at) - Date.now()) / 86400000)) + ' days' : ''));
       else if (r.status === 'active' && old.status === 'closed') log(changes, r.id, uid, 'ops', 'Incident reopened');
       const ns = r.settings || {}, os = old.settings || {};   // the settings: what changed, never the key (ic_log_incident)
@@ -983,6 +1029,7 @@
     if (table === 'ic_evacuees') evacueeBefore(row, null, uid);
     if (table === 'ic_transports') transportBefore(row, null, uid);
     if (table === 'ic_seen') seenBefore(row, uid);
+    if (table === 'ic_invites') inviteBefore(row, null, uid);
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -1006,6 +1053,7 @@
     if (table === 'ic_evacuees') evacueeBefore(next, old, uid);
     if (table === 'ic_transports') transportBefore(next, old, uid);
     if (table === 'ic_tags') tagBefore(next, old, uid);
+    if (table === 'ic_invites') inviteBefore(next, old, uid);
     if (table === 'ic_seen') throw dbError('a scan is never changed');
     Object.assign(r, next);
     if (table === 'ic_zones') {
@@ -1296,15 +1344,31 @@
         if (!uid) throw dbError('not signed in');
         if (!['ops', 'unit'].includes(a.p_role)) throw dbError('role must be ops or unit');
         const code = String(a.p_code || '').trim().toUpperCase();
-        // the role follows the code: the join code makes a unit, the Operations code makes Operations
-        const oc = tables.ic_ops_codes.find((o) => o.code === code);
-        let inc = oc ? tables.ic_incidents.find((i) => i.id === oc.incident_id && i.status === 'active') : null;
-        let role = 'ops';
-        if (!inc) {
-          inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
-          if (!inc) throw dbError('No active incident has the code ' + code);
-          if (a.p_role === 'ops') throw dbError('That is the join code for field units. Operations joins with the Operations code, shown on the Operations home panel.');
-          role = 'unit';
+        const myEmail = String((client.user && client.user.email) || '').toLowerCase();
+        let inc = null, role = 'ops', inv = null;
+        if (String(a.p_invite || '').trim()) {   // by invitation (v56): the token in place of the code
+          inv = tables.ic_invites.find((x) => x.token === String(a.p_invite).trim()) || null;
+          if (!inv) throw dbError('That invitation is not on record; ask Operations for a new one');
+          if (inv.withdrawn_at) throw dbError('That invitation was withdrawn; ask Operations for a new one');
+          if (inv.accepted_at && inv.accepted_by !== uid) throw dbError('That invitation was used already; ask Operations for a new one');
+          if (new Date(inv.expires_at).getTime() < Date.now() && !inv.accepted_at) throw dbError('That invitation has expired; ask Operations to send it again');
+          if (myEmail !== inv.email) throw dbError('That invitation is for ' + inv.email + '; sign in with that address');
+          inc = tables.ic_incidents.find((i) => i.id === inv.incident_id && i.status === 'active');
+          if (!inc) throw dbError('That incident is closed');
+          role = inv.role;
+          if (!trim(a.p_unit_name)) a.p_unit_name = inv.unit_name;
+        } else {
+          // the role follows the code: the join code makes a unit, the Operations code makes Operations
+          const oc = tables.ic_ops_codes.find((o) => o.code === code);
+          inc = oc ? tables.ic_incidents.find((i) => i.id === oc.incident_id && i.status === 'active') : null;
+          if (!inc) {
+            inc = tables.ic_incidents.find((i) => i.code === code && i.status === 'active');
+            if (!inc) throw dbError('No active incident has the code ' + code);
+            if (a.p_role === 'ops') throw dbError('That is the join code for field units. Operations joins with the Operations code, shown on the Operations home panel.');
+            role = 'unit';
+            const mm = member(inc.id, uid);
+            if (inc.invite_only && !(mm && !mm.removed_at)) throw dbError('This incident is by invitation; ask Operations for one');
+          }
         }
         const m = member(inc.id, uid);
         if (m && m.removed_at) throw dbError('You were removed from ' + inc.name + ' by Operations. Only Operations can put you back.');
@@ -1321,6 +1385,7 @@
             tables.ic_members.push(nm); changes.push(['INSERT', 'ic_members', nm, null]);
           }
         } finally { quiet = false; }
+        if (inv && !inv.accepted_at) { joining = true; try { updateRow('ic_invites', inv, { accepted_at: now(), accepted_by: uid, user_id: uid }, uid, changes, true); } finally { joining = false; } }   // the trigger writes the line
         // the roster: a name already on the unit is checked back in and updated, a new one is added
         quiet = false; joining = true;   // the roster: names added here are not taken off the unnamed
         if (Array.isArray(a.p_people)) {
@@ -1358,8 +1423,26 @@
         const n = member(inc.id, uid).crew_count;
         const pr = tables.ic_profiles.find((x) => x.user_id === uid);
         const who = pr && pr.full_name ? ' as ' + pr.full_name + (pr.phone ? ', ' + pr.phone : '') + (!pr.photo_path && !pr.licence_number ? ', identity not given' : ({ scan: ', licence scanned', photo: ', licence photographed', typed: ', licence typed' }[pr.id_source] || '')) + (pr.verified_at ? ', verified' : '') : '';
-        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + (role === 'ops' ? ' joined as Operations with the Operations code' : ' checked in') + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
+        log(changes, inc.id, uid, 'ops', label(inc.id, uid) + (role === 'unit' && kind ? ', ' + KIND_TEXT[kind] : '') + (role === 'ops' ? (inv ? ' joined as Operations by invitation' : ' joined as Operations with the Operations code') : ' checked in' + (inv ? ' by invitation' : '')) + who + (n != null && (Array.isArray(a.p_people) || count != null) ? ' with ' + n + (n === 1 ? ' person' : ' people') : ''));
         out = copy(inc);
+      } else if (name === 'ic_invite_peek') {
+        const v = tables.ic_invites.find((x) => x.token === String(a.p_token || ''));
+        const inc = v && tables.ic_incidents.find((i) => i.id === v.incident_id);
+        const pr = v && tables.ic_profiles.find((p) => p.user_id === v.invited_by);
+        out = v ? { incident: inc ? inc.name : '', role: v.role, unit: v.unit_name, email: v.email, state: inviteState(v), by: (pr && pr.full_name) || label(v.incident_id, v.invited_by), agency: inc ? inc.lead_agency : '', expires_at: v.expires_at } : null;
+      } else if (name === 'ic_roster') {
+        if (!uid || !isOps(a.p_incident, uid)) out = [];
+        else {
+          const mine = tables.ic_invites.filter((v) => v.invited_by === uid && v.incident_id !== a.p_incident && !v.withdrawn_at).sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
+          const seen = new Map();
+          for (const v of mine) {
+            if (tables.ic_invites.some((x) => x.incident_id === a.p_incident && x.email === v.email && !x.withdrawn_at)) continue;
+            if (tables.ic_members.some((m) => m.incident_id === a.p_incident && !m.removed_at && (users.find((u) => u.id === m.user_id) || {}).email === v.email)) continue;
+            if (!seen.has(v.email)) seen.set(v.email, { email: v.email, role: v.role, unit_name: v.unit_name, incidents: new Set() });
+            seen.get(v.email).incidents.add(v.incident_id);
+          }
+          out = [...seen.values()].map((r) => ({ email: r.email, role: r.role, unit_name: r.unit_name, incidents: r.incidents.size }));
+        }
       } else if (name === 'ic_print_bands') {
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations prints bands');
         const inc = tables.ic_incidents.find((i) => i.id === a.p_incident);
@@ -1569,18 +1652,52 @@
     return u;
   }
   function makeClient() {
-    const client = { user: FIELD ? users[3] : users[0], listeners: new Set() };
+    const client = { user: NOBODY ? null : FIELD ? users[3] : users[0], listeners: new Set() };
     const session = () => (client.user ? { access_token: 'mock-' + client.user.id, token_type: 'bearer', expires_in: 3600, user: client.user } : null);
     const fire = (event) => { const s = session(); for (const cb of [...client.listeners]) { try { cb(event, s); } catch (e) { console.error(e); } } };
     client.auth = {
       async getSession() { await ready; return { data: { session: session() }, error: null }; },
       async getUser() { await ready; return { data: { user: client.user }, error: client.user ? null : { message: 'Auth session missing!' } }; },
       onAuthStateChange(cb) { client.listeners.add(cb); setTimeout(() => cb('INITIAL_SESSION', session()), 0); return { data: { subscription: { unsubscribe() { client.listeners.delete(cb); } } } }; },
-      async signInWithPassword({ email }) { await ready; client.user = userFor(email); fire('SIGNED_IN'); return { data: { user: client.user, session: session() }, error: null }; },
-      async signUp({ email }) { await ready; client.user = userFor(email); fire('SIGNED_IN'); return { data: { user: client.user, session: session() }, error: null }; },
+      async signInWithPassword({ email }) { await ready; client.user = Object.assign(userFor(email), { last_sign_in_at: now() }); fire('SIGNED_IN'); return { data: { user: client.user, session: session() }, error: null }; },
+      async signUp({ email }) { await ready; client.user = Object.assign(userFor(email), { last_sign_in_at: now() }); fire('SIGNED_IN'); return { data: { user: client.user, session: session() }, error: null }; },
+      async updateUser() { await ready; return { data: { user: client.user }, error: client.user ? null : { message: 'Auth session missing!' } }; },
       async signOut() { client.user = null; fire('SIGNED_OUT'); return { error: null }; }
     };
     client.from = (table) => builder(client, table);
+    // the Edge Function `invite`, stood in: the rows the function would write, and the link the email would carry
+    client.functions = {
+      async invoke(name, { body } = {}) {
+        await ready;
+        if (name !== 'invite') return { data: null, error: { message: 'no such function: ' + name } };
+        const uid = client.user && client.user.id;
+        if (!uid) return { data: null, error: { message: 'not signed in', context: null } };
+        const b = body || {};
+        if (!b.incident || !isOps(b.incident, uid)) return { data: { error: 'Only Operations of the incident invites people' }, error: null };
+        const changes = [], results = [], rows = [];
+        const link = (v) => location.origin + (v.role === 'ops' ? '/' : '/field/') + '?mock&nobody&invite=' + v.token;
+        try {
+          if (b.resend) {
+            const v = tables.ic_invites.find((x) => x.id === b.resend && x.incident_id === b.incident);
+            if (!v) return { data: { error: 'That invitation is not on record' }, error: null };
+            if (v.withdrawn_at) return { data: { error: 'That invitation was withdrawn; send a new one' }, error: null };
+            if (v.accepted_at) return { data: { error: 'That invitation was accepted already' }, error: null };
+            rows.push(v);
+          } else {
+            for (const i of Array.isArray(b.invites) ? b.invites : []) {
+              try { rows.push(insertRow('ic_invites', { incident_id: b.incident, email: String(i.email || ''), role: i.role === 'ops' ? 'ops' : 'unit', unit_name: String(i.unit || '').slice(0, 60) }, uid, changes)); }
+              catch (e) { results.push({ email: String(i.email || '').trim().toLowerCase(), ok: false, error: e.message }); }
+            }
+          }
+          for (const v of rows) {
+            const token = inviteToken();
+            updateRow('ic_invites', v, { token, sent_at: now(), last_error: '', user_id: (users.find((u) => u.email === v.email) || {}).id || null }, uid, changes);
+            results.push({ email: v.email, ok: true, id: v.id, link: link(v) });
+          }
+        } finally { flush(changes); }
+        return { data: { results }, error: null };
+      }
+    };
     client.rpc = (name, args) => ready.then(() => rpc(client, name, args || {}));
     client.channel = (name) => {
       const ch = {

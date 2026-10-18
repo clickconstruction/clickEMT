@@ -2,7 +2,7 @@
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT } from './rules.js';
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen', 'ic_invites'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
@@ -11,9 +11,14 @@ const MESSAGES_LIMIT = 300;
 const SEEN_LIMIT = 3000;   // the newest scans (v55); last seen comes from them
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map(), tags: new Map(), seen: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map(), tags: new Map(), seen: new Map(), invites: new Map() };
 }
 
+// a function's refusal, in its own words (supabase-js wraps the response)
+async function functionError(error) {
+  try { if (error && error.context && typeof error.context.json === 'function') { const j = await error.context.json(); if (j && j.error) return j.error; } } catch (e) { /* not json */ }
+  return (error && error.message) || String(error);
+}
 function keyOf(table, row) {
   if (table === 'ic_message_acks') return row.message_id + ':' + row.user_id;
   if (table === 'ic_profiles') return row.user_id;
@@ -76,8 +81,8 @@ export class Data {
   }
   // people is a list of { name, role, qualifications, notes }: the unit's roster, checked in with it;
   // kind is what the unit is (UNIT_KINDS in rules.js), kept from the last check-in when not given
-  async join(code, role, unitName, crew, crewCount, agency, people, kind) {
-    const { data, error } = await this.sb.rpc('ic_join', { p_code: code, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null, p_people: Array.isArray(people) ? people : null, p_kind: kind || null });
+  async join(code, role, unitName, crew, crewCount, agency, people, kind, invite) {
+    const { data, error } = await this.sb.rpc('ic_join', { p_code: code || null, p_role: role, p_unit_name: unitName || null, p_crew: crew || null, p_crew_count: crewCount == null || crewCount === '' ? null : Number(crewCount), p_agency: agency || null, p_people: Array.isArray(people) ? people : null, p_kind: kind || null, p_invite: invite || null });
     if (error) throw error;
     return data;
   }
@@ -171,6 +176,7 @@ export class Data {
       const [tg, sn] = await Promise.all([q('ic_tags').order('number'), q('ic_seen').order('at', { ascending: false }).limit(SEEN_LIMIT)]);
       if (!tg.error) put('ic_tags', tg.data); if (!sn.error) put('ic_seen', sn.data);
     } catch (e) { /* a client without the tables */ }
+    try { const { data: iv, error: ivErr } = await q('ic_invites').order('created_at', { ascending: false }); if (!ivErr) put('ic_invites', iv); } catch (e) { /* a client without the table (migration 0033); a unit gets none */ }
     try { const { data: oc, error: ocErr } = await q('ic_ops_codes'); if (!ocErr) put('ic_ops_codes', oc); } catch (e) { /* a client without the table (migration 0019); a unit gets no row */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
@@ -376,6 +382,34 @@ export class Data {
     this.local('ic_seen', data || row);
     return data || row;
   }
+  // ---- invitations by email (v56): the rows Operations sees; the function `invite` writes and sends them
+  invites(all) { return [...this.store.invites.values()].filter((v) => all || !v.withdrawn_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
+  invite(id) { return this.store.invites.get(id) || null; }
+  async sendInvites(list) {
+    const { data, error } = await this.sb.functions.invoke('invite', { body: { incident: this.store.incident.id, invites: list } });
+    if (error) throw new Error(await functionError(error));
+    if (data && data.error) throw new Error(data.error);
+    return (data && data.results) || [];
+  }
+  async resendInvite(id) {
+    const { data, error } = await this.sb.functions.invoke('invite', { body: { incident: this.store.incident.id, resend: id } });
+    if (error) throw new Error(await functionError(error));
+    if (data && data.error) throw new Error(data.error);
+    return (data && data.results) || [];
+  }
+  async withdrawInvite(id) {
+    const { data, error } = await this.sb.from('ic_invites').update({ withdrawn_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_invites', data);
+    return data;
+  }
+  // what the link's landing may know of an invitation without a session: the incident, the role, the unit, the address, who asked
+  async invitePeek(token) { const { data, error } = await this.sb.rpc('ic_invite_peek', { p_token: token }); if (error) throw error; return data || null; }
+  // the addresses this account invited on earlier incidents, not yet on this one
+  async roster() { const { data, error } = await this.sb.rpc('ic_roster', { p_incident: this.store.incident.id }); if (error) throw error; return data || []; }
+  async setInviteOnly(on) { return this.updateIncident({ invite_only: !!on }); }
+  // the first sign-in from an invitation's link: the password is set once
+  async setPassword(password) { const { error } = await this.sb.auth.updateUser({ password }); if (error) throw error; }
   // the facility a unit works at: a shelter desk's shelter (ic_members.facility_id)
   async setUnitFacility(userId, facilityId) { return this.updateMember(userId, { facility_id: facilityId || null }); }
 

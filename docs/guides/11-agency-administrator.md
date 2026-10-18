@@ -8,6 +8,11 @@
 
 ## Your jobs
 
+### 0. Set the roster up before the season (v56)
+
+- **Base** · Open an incident (even a drill), then on the People board's Members tab invite each member of the agency by email with their role and unit. Each one sets a password from the link once. When a real incident opens, its Members tab offers **Invite the roster**: one press, and every address from before gets a link to the new incident. **Invited members only** keeps the join code off until mutual aid needs it.
+
+
 ### 1. Who is a member, and what can they do
 
 - **Base** · **People → Members**: every member with role, agency and identity state (verified, not verified, name and phone only), with **Make Operations**, **Make a unit**, **Remove** and, for removed members, **Restore**. Every change is logged.

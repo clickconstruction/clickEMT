@@ -119,7 +119,8 @@
         <a class="btn pri" href="https://github.com/clickconstruction/clickEMT/issues" rel="noopener">Get in touch on GitHub</a>
         <p class="after"><a href="try/">Try it as any role first</a>, no account needed.</p>
       </div>
-      <form id="auth-form" class="auth-card">
+      <div id="land-invite" class="land-invite" hidden></div>
+        <form id="auth-form" class="auth-card">
         <h2>Running the base?</h2>
         <p class="muted">Sign in, or create an account with any email and a password. Whoever opens an incident is its Operations and decides who else runs the base, with the Operations code on the home panel; field units join with the six-letter code instead.</p>
         <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
@@ -151,6 +152,7 @@
     </header>
     <section class="card">
       <h2>Your incidents</h2>
+      <div id="pick-invite" hidden></div>
       <div id="pick-list" class="pick-list"><p class="muted">Loading…</p></div>
     </section>
     <section class="card">

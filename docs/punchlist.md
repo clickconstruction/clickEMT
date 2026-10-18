@@ -418,6 +418,27 @@ shelter door; last seen on the board; the PAR by scan.
    *Shipped 18 October 2026 as `People and tags, phase 1 (v55)`; rule test `supabase/tests/tags.sql` (28), smoke suite
    `tags` (29).*
 
+## 14. v56 Invite by email
+
+The third of the three pieces in the plan "Invite by email, a transport board, and people and tags" (18 October 2026),
+mock-up at `/try/mockups/#invite`: an account that arrives by invitation instead of self-made, a closed roster, the
+season's roster to invite in one press. The app's first server code.
+
+1. **One link, one email, no code** (Ana, the administrator, Marcus). *Built.* `ic_invites` and the Edge Function
+   `invite` (the service key lives there alone): Operations invites from the Members tab, the function makes the account
+   or a sign-in link through Supabase Auth's admin API and sends the email through Resend; the link lands on the field
+   app (a unit) or the base (Operations) with the token, the person sets a password once, gives their name and phone,
+   and `ic_join` with the token joins them as the role invited. Resend, Withdraw, seven days, every step in the 214.
+   `invite_only` turns the units' code off for the uninvited; `ic_roster` offers the addresses invited on earlier
+   incidents to a new one. *Decisions kept from the plan:* an invitation is to an incident, not to the app; email only;
+   an invited account is self-service after that; the function needs its own deploy step (in CLAUDE.md's routine).
+   *Found on the way:* the shared project's auth has sign-ups turned off since 18 October (the charity app's change),
+   so Create account on the phone and the base is refused there until it is turned on again; an invitation is the way
+   in for a new address. *Not in this cut:* SMS; an invitation to the app without an incident; a test of the real
+   function's email from the pane (it was deployed and answers; the mock stands in for it in the suite).
+   *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
+   `invite` (18).*
+
 ## Done before this list
 
 The previous punchlist (items 1 to 6, from the v24 walkthroughs and the re-walks after v25 and v26) shipped on 17

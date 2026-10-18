@@ -747,3 +747,9 @@ export function lastSeenText(s, opts = {}) { return s ? 'seen ' + seenWords(s, o
 // the likely meaning of a scan from where the phone is: a head count while one is open, a desk → at the shelter door,
 // a crew in a division → entering it, else checking in
 export function seenGuess({ desk, zone, par } = {}) { return par ? 'par' : desk ? 'arrive' : zone ? 'enter' : 'check_in'; }
+
+// ---- invitations by email (v56): an invitation is to an incident with a role (ic_invites); the link lands the
+// person in the app with ?invite=<token>, and ic_join with the token joins them. The state words are ic_invite_state.
+export const INVITE_STATE = { pending: 'Invited, not yet in', accepted: 'Accepted', withdrawn: 'Withdrawn', expired: 'Expired', unsent: 'Not sent' };
+export function inviteState(v, now = Date.now()) { return v.withdrawn_at ? 'withdrawn' : v.accepted_at ? 'accepted' : new Date(v.expires_at).getTime() < now ? 'expired' : !v.sent_at ? 'unsent' : 'pending'; }
+export function inviteFromSearch(search) { const m = /[?&]invite=([A-Za-z0-9-]+)/.exec(String(search || '')); return m ? m[1] : ''; }

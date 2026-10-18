@@ -40,6 +40,7 @@
   <form id="auth-form" class="auth-card">
     <img src="../icons/icon-192.png" alt="" width="64" height="64">
     <h1>Field</h1>
+    <div id="auth-invite" class="invite-card" hidden></div>
     <p id="auth-code" class="code-ready" hidden>Code <strong class="mono" id="auth-code-text"></strong> is ready. Sign in below, or make an account with any email and a password: it takes a minute, and only this incident's Operations sees who you are.</p>
     <p class="muted" id="auth-lead">Sign in, or make an account with any email and a password: it takes a minute. You check in to the incident next.</p>
     <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
@@ -56,6 +57,7 @@
       <span id="join-user" class="muted"></span>
       <button class="btn sm" data-action="sign-out">Sign out</button>
     </header>
+    <div id="join-invite" hidden></div>
     <section class="card" id="join-mine" hidden>
       <h2>Incidents you are already in</h2>
       <div id="join-list"></div>

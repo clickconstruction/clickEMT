@@ -19,6 +19,7 @@ import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, D
 import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
 import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports } from '../shared/rules.js';   // the transport board (v54)
 import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
+import { inviteFromSearch } from '../shared/rules.js';   // invitations by email (v56)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
 const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
@@ -30,7 +31,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map() };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null };
 function blankPerson() { return { name: '', role: '', quals: new Set(), band: '' }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -54,7 +55,7 @@ function toast(msg, bad) {
   clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
-function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; if (which !== 'app') $('#s-removed').hidden = true; if (which === 'auth') drawAuthCode(); }
+function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; if (which !== 'app') $('#s-removed').hidden = true; if (which === 'auth') { drawAuthCode(); drawAuthInvite(); } }
 // The sign-in screen with a code waiting (v39): says so, and that any email makes an account.
 function drawAuthCode() {
   const code = pendingJoin(), el = $('#auth-code');
@@ -134,7 +135,7 @@ async function boot() {
   });
   if (!user) { show('auth'); return; }
   const last = localStorage.getItem(LAST_INCIDENT);
-  if (last && !pendingJoin()) { try { await openIncident(last); return; } catch (e) { console.warn(e); localStorage.removeItem(LAST_INCIDENT); } }
+  if (last && !pendingJoin() && !pendingInvite()) { try { await openIncident(last); return; } catch (e) { console.warn(e); localStorage.removeItem(LAST_INCIDENT); } }
   await showJoin();
 }
 
@@ -155,6 +156,64 @@ const BAND_KEY = 'ic.field.band';
 })();
 function pendingBand() { try { return sessionStorage.getItem(BAND_KEY) || ''; } catch (e) { return ''; } }
 function clearPendingBand() { try { sessionStorage.removeItem(BAND_KEY); } catch (e) { /* fine */ } }
+// ---- an invitation's link (v56): ?invite=<token> in the address, kept through sign-in, accepted on the check-in screen
+const INVITE_KEY = 'ic.field.invite';
+(function takeInviteLink() {
+  const t = inviteFromSearch(location.search);
+  if (!t) return;
+  try { sessionStorage.setItem(INVITE_KEY, t); } catch (e) { /* storage blocked */ }
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) { /* fine */ }
+})();
+function pendingInvite() { try { return sessionStorage.getItem(INVITE_KEY) || ''; } catch (e) { return ''; } }
+function clearPendingInvite() { state.invite = null; try { sessionStorage.removeItem(INVITE_KEY); } catch (e) { /* fine */ } }
+async function peekInvite() {
+  const t = pendingInvite();
+  if (!t) return null;
+  if (state.invite && state.invite.token === t) return state.invite;
+  try { const v = await data.invitePeek(t); state.invite = v ? Object.assign({ token: t }, v) : { token: t, state: 'missing' }; } catch (e) { state.invite = { token: t, state: 'missing' }; }
+  return state.invite;
+}
+const inviteAs = (v) => (v.role === 'ops' ? 'Operations' : v.unit ? 'a unit, ' + v.unit : 'a unit');
+// signed out: the card says who invited whom; the form takes the address
+async function drawAuthInvite() {
+  const el = $('#auth-invite'); if (!el) return;
+  const v = await peekInvite();
+  if (!v || v.state === 'missing') { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="k">You're invited</div><div class="big">${esc(v.incident)}</div><div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>
+    <div class="muted small">${v.state === 'pending' ? 'The link from the email signs you in by itself the first time. Here, sign in with ' + esc(v.email) + ', or make the account with it.' : v.state === 'expired' ? 'This invitation has expired; ask ' + esc(v.by) + ' to send it again.' : v.state === 'withdrawn' ? 'This invitation was withdrawn.' : 'This invitation was accepted already; sign in to open the incident.'}</div>`;
+  $('#auth-lead').hidden = true;
+  const em = $('#auth-email'); if (em && !em.value) em.value = v.email;
+}
+// signed in: the check-in screen offers to accept, with a password the first time
+async function drawJoinInvite() {
+  const el = $('#join-invite'); if (!el) return;
+  const v = await peekInvite();
+  if (!v) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const me = (data.user && data.user.email || '').toLowerCase();
+  const fresh = data.user && data.user.last_sign_in_at && Date.now() - new Date(data.user.last_sign_in_at).getTime() < 10 * 60000;
+  const can = (v.state === 'pending' || v.state === 'accepted') && (!me || v.email === me);
+  el.innerHTML = `<div class="invite-card"><div class="k">You're invited</div><div class="big">${esc(v.incident || 'an incident')}</div>
+    ${v.state === 'missing' ? '<div>This invitation is not on record; ask Operations for a new one.</div>' : `<div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>`}
+    ${v.email && me && v.email !== me ? `<div class="invite-bad">This invitation is for ${esc(v.email)}; you are signed in as ${esc(me)}. Sign out and sign in with that address.</div>` : ''}
+    ${v.state === 'expired' ? '<div class="invite-bad">It has expired; ask them to send it again.</div>' : v.state === 'withdrawn' ? '<div class="invite-bad">It was withdrawn.</div>' : ''}
+    ${can && fresh ? `<form data-form="invite-password"><label class="k">Choose a password for next time<input class="input" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="8 or more characters"></label><button class="btn" type="submit">Save the password</button></form>` : ''}
+    ${can ? `<button type="button" class="btn pri big" data-action="invite-accept">${v.role === 'ops' ? 'Join as Operations' : 'Check in'} · no code to type</button><div class="muted small">Your name and phone are asked first if they are not on record. The code form below is not needed.</div>` : ''}
+    <button type="button" class="btn sm" data-action="invite-dismiss">Not this one</button></div>`;
+}
+async function acceptInvite() {
+  const v = state.invite; if (!v) return;
+  if (v.role !== 'ops' && !data.profileReady()) { toast('Your name and phone first, then the invitation'); openIdentify(); return; }
+  try {
+    const f = $('#join-form');
+    const inc = await data.join(null, v.role, v.unit || null, null, v.role === 'ops' ? null : 1, f && f.agency ? f.agency.value : null, [], state.joinKind, v.token);
+    clearPendingInvite(); clearJoinForm();
+    state.briefOnce = true;
+    toast('You are in ' + inc.name + (v.role === 'ops' ? ' as Operations' : v.unit ? ' as ' + v.unit : ''));
+    await openIncident(inc.id);
+  } catch (err) { toast(err.message || String(err), true); }
+}
 function pendingJoin() { try { return sessionStorage.getItem(JOIN_KEY) || ''; } catch (e) { return ''; } }
 function clearPendingJoin() { try { sessionStorage.removeItem(JOIN_KEY); } catch (e) { /* fine */ } }
 
@@ -189,6 +248,7 @@ async function showJoin() {
   note.hidden = !pending;
   if (pending) { f.code.value = pending; f.unit.focus(); note.textContent = 'Code ' + pending + ' came with the link. Name your unit and check in.'; }   // on the form, not a toast (v39)
   try { await data.myProfile(); } catch (e) { console.warn(e); }
+  drawJoinInvite();   // an invitation waiting (v56)
   drawYouLine();
   if (!data.profileReady() && !state.identShown) { state.identShown = true; openIdentify(); }
   drawJoinPeople();
@@ -292,6 +352,15 @@ function joinPeopleList() {
   return state.joinPeople.filter((p) => p.name.trim()).map((p) => Object.assign({ name: p.name.trim(), role: p.role.trim(), qualifications: [...p.quals] }, (p.band || '').trim() ? { band: p.band.trim() } : {}));
 }
 
+// the password an invited person chooses on the check-in screen (v56)
+document.addEventListener('submit', async (e) => {
+  const form = e.target.closest('form[data-form="invite-password"]');
+  if (!form) return;
+  e.preventDefault();
+  const pw = form.password.value;
+  if (pw.length < 8) { toast('8 characters or more', true); return; }
+  try { await data.setPassword(pw); toast('Password saved'); form.remove(); } catch (err) { toast(err.message || String(err), true); }
+});
 $('#join-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target, msg = f.querySelector('[data-msg]');
@@ -1756,6 +1825,8 @@ document.addEventListener('click', async (e) => {
       case 'id-photo': await takeIdPhoto(); break;
       case 'id-save': await saveIdentity(); break;
       case 'scan-cancel': closeScan(); break;
+      case 'invite-accept': await acceptInvite(); break;   // v56
+      case 'invite-dismiss': clearPendingInvite(); drawJoinInvite(); break;
       case 'scan-band': await openScan('band', { purpose: 'seen' }); break;
       case 'scan-band-desk': await openScan('band', { purpose: 'desk' }); break;
       case 'par-scan': await openScan('band', { purpose: 'par', messageId: btn.dataset.id }); break;

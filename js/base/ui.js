@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale } from '../shared/rules.js';
+import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -127,6 +127,7 @@ function homeHtml(data, state) {
       <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
         <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
         <div class="muted" style="font-size:12.5px">A unit scans this with its phone, or opens the field app and types the code with its unit name.</div>
+        <label class="chk inv-only" title="Invited members only: the join code stops working for anyone not yet on the incident; the door says the incident is by invitation. Members, the Operations code and invitations go on working."><input type="checkbox" data-check="invite-only"${inc.invite_only ? ' checked' : ''}> Invited members only${inc.invite_only ? ' <span class="muted">· the join code is off; invite from the People board\'s Members tab</span>' : ''}</label>
         <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button><button class="btn sm" data-action="print-bands" title="A sheet of 24 wristbands with a QR code each: a number and nothing else. A unit gives one to each person by scanning it; the desk gives one to each family.">Print bands</button></div>
       </div>
     </div>
@@ -519,7 +520,37 @@ export function identityState(data, m) {
 
 // The Members tab: who is on the incident, in which role, with what identity; Operations changes
 // roles and removes or restores members. The person who opened the incident is always Operations.
-function membersHtml(data) {
+// Invite by email (v56): the box, the invited list with Resend and Withdraw, the accepted ones, and the roster
+function invitesHtml(data, state) {
+  const me = data.me(), ops = !!me && me.role === 'ops';
+  if (!ops) return '';
+  const all = data.invites(true), now = Date.now();
+  const by = (v) => { const p = data.profileOf(v.invited_by); return (p && p.full_name) || unitLabel(data.member(v.invited_by)); };
+  const what = (v) => (v.role === 'ops' ? 'Operations' : 'Unit' + (v.unit_name ? ' · ' + v.unit_name : ''));
+  const row = (v) => { const st = inviteState(v, now); return `<div class="inv-row st-${st}" data-invite="${v.id}">
+      <span class="inv-who"><strong>${esc(v.email)}</strong> · ${esc(what(v))}</span>
+      <span class="muted">${st === 'accepted' ? 'accepted ' + hhmm(v.accepted_at) + (v.accepted_by && data.member(v.accepted_by) ? ' as ' + esc(unitLabel(data.member(v.accepted_by))) : '') : st === 'withdrawn' ? 'withdrawn ' + hhmm(v.withdrawn_at) : (v.sent_at ? 'sent ' + hhmm(v.sent_at) + (v.sends > 1 ? ' (' + v.sends + ' times)' : '') : 'not sent') + ' by ' + esc(by(v)) + (st === 'expired' ? ' · <span class="inv-bad">expired</span>' : '')}${v.last_error ? ` · <span class="inv-bad">could not be sent: ${esc(v.last_error)}</span>` : ''}</span>
+      <span class="inv-act">${st === 'pending' || st === 'expired' || st === 'unsent' ? `<button class="btn sm" data-action="invite-resend" data-id="${v.id}" title="A new link by email; the old one stops working">${v.sent_at ? 'Resend' : 'Send'}</button><button class="btn sm" data-action="invite-withdraw" data-id="${v.id}" title="The link stops working; kept on record">Withdraw</button>` : ''}</span>
+    </div>`; };
+  const pending = all.filter((v) => ['pending', 'expired', 'unsent'].includes(inviteState(v, now))), accepted = all.filter((v) => inviteState(v, now) === 'accepted'), gone = all.filter((v) => inviteState(v, now) === 'withdrawn');
+  const roster = (state && state.roster) || [];
+  return `
+    <div class="k">Invite by email</div>
+    <form class="inline-form inv-form" data-form="invite-send">
+      <div class="row-3">
+        <label>Email <input name="email" type="email" required maxlength="120" placeholder="name@agency.gov" autocomplete="off"></label>
+        <label>Role <select name="role" class="sel"><option value="unit">Unit</option><option value="ops">Operations</option></select></label>
+        <label>Unit name <input name="unit" maxlength="60" placeholder="Unit 4 (optional)" autocomplete="off"></label>
+      </div>
+      <div class="row-btns"><button class="btn pri sm" type="submit">Send the invitation</button><span class="muted" style="font-size:12.5px;flex:1">One link in one email. The person sets a password once and lands in this incident as the role you chose; their name and phone are asked as today. The link works for seven days, once.</span></div>
+    </form>
+    ${pending.length ? `<div class="k">Invited, not yet in · ${pending.length}</div><div class="inv-list">${pending.map(row).join('')}</div>` : ''}
+    ${accepted.length ? `<div class="k">Accepted · ${accepted.length}</div><div class="inv-list">${accepted.map(row).join('')}</div>` : ''}
+    ${gone.length ? `<div class="k">Withdrawn · ${gone.length}</div><div class="inv-list">${gone.map(row).join('')}</div>` : ''}
+    <div class="k">The roster</div>
+    <div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">${roster.length ? `${roster.length} address${roster.length === 1 ? '' : 'es'} you invited on earlier incidents, not yet here: ${roster.slice(0, 6).map((r) => esc(r.email)).join(', ')}${roster.length > 6 ? ' and ' + (roster.length - 6) + ' more' : ''}.` : 'Everyone you invited on earlier incidents is here or invited already. The invitations you send double as the season\'s roster.'}</span>${roster.length ? `<button class="btn sm" data-action="invite-roster" title="One email each, as the role and unit they had last time">Invite the roster · ${roster.length}</button>` : ''}</div>`;
+}
+function membersHtml(data, state) {
   const me = data.me(), ops = !!me && me.role === 'ops', inc = data.incident;
   const members = data.members().sort((a, b) => (b.role === 'ops') - (a.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   const removed = data.removedMembers();
@@ -543,15 +574,16 @@ function membersHtml(data) {
   };
   return `
     <div class="pp-top"><span class="pp-count">${members.length} member${members.length === 1 ? '' : 's'} · ${members.filter((m) => m.role === 'ops').length} Operations${removed.length ? ' · ' + removed.length + ' removed' : ''}</span></div>
-    <p class="muted" style="font-size:12.5px;margin:0 0 8px">The six-letter join code makes a unit; the Operations code on the home panel makes Operations. Removing a member keeps everything they sent and can be undone here.</p>
+    <p class="muted" style="font-size:12.5px;margin:0 0 8px">The six-letter join code makes a unit; the Operations code on the home panel makes Operations; an invitation by email (below) makes either with no code to type. Removing a member keeps everything they sent and can be undone here.</p>
     <div class="mb-list">${members.map(row).join('')}</div>
-    ${removed.length ? `<div class="k">Removed · kept, never deleted</div><div class="mb-list">${removed.map(row).join('')}</div>` : ''}`;
+    ${removed.length ? `<div class="k">Removed · kept, never deleted</div><div class="mb-list">${removed.map(row).join('')}</div>` : ''}
+    ${invitesHtml(data, state)}`;
 }
 
 export function peopleBoardHtml(data, state) {
   const ps = state.people || {};
   const tabs = `<div class="pp-tabs chips"><button class="chip${ps.tab === 'members' ? '' : ' on'}" data-action="people-tab" data-tab="people" aria-pressed="${ps.tab !== 'members'}">People</button><button class="chip${ps.tab === 'members' ? ' on' : ''}" data-action="people-tab" data-tab="members" aria-pressed="${ps.tab === 'members'}">Members</button></div>`;
-  if (ps.tab === 'members') return tabs + membersHtml(data);
+  if (ps.tab === 'members') return tabs + membersHtml(data, state);
   const all = data.people();
   const on = data.peopleOn();
   const ops = !!data.me() && data.me().role === 'ops';
@@ -1536,6 +1568,7 @@ function logLink(e) {
     case 'ic_evacuees': return `<button class="llink" data-action="select-evacuee" data-id="${id}">Where now</button>`;
     case 'ic_transports': return `<button class="llink" data-action="transports" data-id="${id}">Open the board</button>`;
     case 'ic_tags': case 'ic_seen': return `<button class="llink" data-action="people">Open people</button>`;
+    case 'ic_invites': return `<button class="llink" data-action="people" data-tab="members">Open members</button>`;
     default: return '';
   }
 }

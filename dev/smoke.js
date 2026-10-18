@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1666,11 +1666,13 @@ async function transports(check) {
     $('#transports-page [data-action="tr-add-toggle"]').click();
     const f = await until(() => $('#transports-page form[data-form="transport-add"]'));
     check('New run opens the form with the label focused and the shelter as the destination', !!f && await until(() => document.activeElement === f.label, 1500) && f.to.value === gym && [...f.kind.options].map((o) => o.textContent).join('|') === 'Bus|Van|Ambulance|Boat run|High-water vehicle|Transport', f && f.to.value);
-    f.kind.value = 'van'; f.label.value = 'Van 4'; f.capacity.value = '12'; f.from.value = 'z:' + a2; f.to.value = gym; f.leaves.value = '13:00'; f.expected.value = '13:20'; f.driver.value = USERS().unit2; f.notes.value = 'wheelchair lift';
+    const hm = (ms) => { const d = new Date(Date.now() + ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };   // three hours on: after the seeded Bus 3, whatever the clock says
+    const leaves = hm(3 * 3600000), expected = hm(3 * 3600000 + 20 * 60000);
+    f.kind.value = 'van'; f.label.value = 'Van 4'; f.capacity.value = '12'; f.from.value = 'z:' + a2; f.to.value = gym; f.leaves.value = leaves; f.expected.value = expected; f.driver.value = USERS().unit2; f.notes.value = 'wheelchair lift';
     f.requestSubmit();
     const van = await until(() => run('Van 4'));
     check('Save the run makes it: planned, from A-2, to the gym, 12 seats, Unit 2 driving, and the log says so', !!van && van.status === 'planned' && van.from_zone_id === a2 && van.to_facility_id === gym && van.capacity === 12 && van.driver_user_id === USERS().unit2 && van.notes === 'wheelchair lift' && !!van.leaves_at && await until(() => eventText(base, 'Van 4 planned by Operations: A-2 Pecan Mobile Home Park to High school gym, 12 seats, driver Unit 2')), logTexts()[0]);
-    check('the new run\'s row is open with nobody on it yet, in its place among the planned', await until(() => $(`#transports-page .tr-row[data-id="${van.id}"].open`)) && has(`#transports-page .tr-row[data-id="${van.id}"]`, 'nobody on it yet', 'leaves 13:00 · expected 13:20') && $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Bus 3|Van 4|Ambulance 1', $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|'));
+    check('the new run\'s row is open with nobody on it yet, in its place among the planned', await until(() => $(`#transports-page .tr-row[data-id="${van.id}"].open`)) && has(`#transports-page .tr-row[data-id="${van.id}"]`, 'nobody on it yet', 'leaves ' + leaves + ' · expected ' + expected) && $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Bus 3|Van 4|Ambulance 1', $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|'));
     $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-step"]`).click();
     check('Loading is one press: the status, the stamp, the log line and the row moving up with the runs under way', await until(() => run('Van 4').status === 'loading') && await until(() => eventText(base, 'Van 4 loading at A-2 Pecan Mobile Home Park for High school gym')) && await until(() => $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Van 4|Bus 3|Ambulance 1') && $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-step"]`).textContent === 'Leaving', logTexts()[0]);
     const amb = run('Ambulance 1');
@@ -1918,6 +1920,81 @@ async function tags(check) {
   }
 }
 
+// ---- invitations by email (v56): the Members tab's box, Resend and Withdraw, the switch, the code refused for the
+// uninvited, the link's landing on a phone with no code to type, the roster on a second incident. The function that
+// sends the email is stood in by the mock (client.functions.invoke).
+async function invite(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+  let P = null;
+  const members = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden); if (!$('#people-page form[data-form="invite-send"]')) $('#people-page [data-action="people-tab"][data-tab="members"]').click(); await until(() => $('#people-page form[data-form="invite-send"]')); };
+  try {
+    check('seeded: one accepted invitation (Ana Ramirez, Unit 1) and one pending (j.ortiz, Unit 4); the join code is on', base.invites(true).length === 2 && base.invites(true).some((v) => v.email === 'unit1@mock.local' && v.accepted_at) && base.invites(true).some((v) => v.email === 'j.ortiz@cedarfork.gov' && !v.accepted_at && v.sent_at) && !base.incident.invite_only, base.invites(true).map((v) => v.email).join());
+    await members();
+    check('the Members tab has Invite by email, the invited list with Resend and Withdraw, the accepted, and the roster line', has('#people-page', 'invite by email', 'invited, not yet in · 1', 'j.ortiz@cedarfork.gov · unit · unit 4', 'accepted · 1', 'unit1@mock.local · unit · unit 1', 'the roster') && $$('#people-page [data-action="invite-resend"]').length === 1 && $$('#people-page [data-action="invite-withdraw"]').length === 1, text('#people-page').slice(-700));
+    const f = $('#people-page form[data-form="invite-send"]');
+    f.email.value = 'Ana.Lopez@CedarFork.gov'; f.role.value = 'unit'; f.unit.value = 'Unit 7';
+    f.requestSubmit();
+    const v = await until(() => base.invites(true).find((x) => x.email === 'ana.lopez@cedarfork.gov'));
+    check('Send the invitation: the row, tidied, sent once by Operations with a token; the 214 says so; the list shows it', !!v && v.role === 'unit' && v.unit_name === 'Unit 7' && !!v.sent_at && v.sends === 1 && v.token.length === 24 && v.invited_by === USERS().ops && await until(() => eventText(base, 'Invitation sent to ana.lopez@cedarfork.gov as a unit (Unit 7) by Operations')) && await until(() => has('#people-page', 'invited, not yet in · 2', 'ana.lopez@cedarfork.gov · unit · unit 7')), logTexts()[0]);
+    const tok1 = v.token;
+    $(`#people-page .inv-row[data-invite="${v.id}"] [data-action="invite-resend"]`).click();
+    check('Resend: a new link, counted, logged', await until(() => base.invite(v.id).token !== tok1 && base.invite(v.id).sends === 2) && await until(() => eventText(base, 'Invitation to ana.lopez@cedarfork.gov sent again by Operations')) && await until(() => has('#people-page', '(2 times)')), logTexts()[0]);
+    const ortiz = base.invites(true).find((x) => x.email === 'j.ortiz@cedarfork.gov');
+    $(`#people-page .inv-row[data-invite="${ortiz.id}"] [data-action="invite-withdraw"]`).click();
+    check('Withdraw: kept on record under Withdrawn, logged, never deleted', await until(() => base.invite(ortiz.id).withdrawn_at) && await until(() => eventText(base, 'Invitation to j.ortiz@cedarfork.gov withdrawn by Operations')) && await until(() => has('#people-page', 'withdrawn · 1')) && M().tables.ic_invites.some((x) => x.id === ortiz.id), logTexts()[0]);
+    const f2 = $('#people-page form[data-form="invite-send"]');   // the page was redrawn since
+    f2.email.value = 'ana.lopez@cedarfork.gov'; f2.requestSubmit();
+    check('the same address twice is refused with the reason', await until(() => $('#toast') && /is invited already; send it again from the list/.test($('#toast').textContent), 4000), $('#toast') && $('#toast').textContent);
+    $('[data-action="close-people"]').click();
+
+    // ---- the switch: the join code off for the uninvited
+    const box = $('#panel [data-check="invite-only"]');
+    check('the home panel has Invited members only beside the codes, off', !!box && !box.checked, text('#panel').slice(0, 400));
+    box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true }));
+    check('switched on: the incident says so, the 214 says the code is off, the panel too', await until(() => base.incident.invite_only === true) && await until(() => eventText(base, 'Invited members only: the join code is off')) && await until(() => has('#panel', 'the join code is off')), logTexts()[0]);
+    const e1 = await (async () => { const fc = window.supabase.createClient(); await fc.auth.signInWithPassword({ email: 'stranger@mock.local', password: 'any' }); const D = new Data(fc); await D.init(); try { await D.join('CEDAR7', 'unit', 'Unit 9', null, 1, 'x', [], 'engine'); return null; } catch (e) { return e; } finally { D.close(); } })();
+    check('with the code off, a stranger with CEDAR7 is told the incident is by invitation', !!e1 && /by invitation; ask operations/i.test(e1.message), e1 && e1.message);
+    await field.join('CEDAR7', 'unit', 'Unit 3', null, 2, 'Cedar Fork Fire Department', [], 'swift_water');
+    check('a member still checks in by code', !!field.me() && field.me().status !== 'checked_out');
+
+    // ---- the link on a phone: signed out, the card; the account with that address; Check in with no code
+    P = await phoneFrame('&nobody&invite=' + base.invite(v.id).token, { signedOut: true });
+    check('the link opens the phone signed out with the invitation card: the incident, as a unit, Unit 7, by Marcus Bell, the address on the form', !!P.ready && await until(() => P.shown('#auth-invite'), 8000) && /you're invited cedar fork flooding as a unit, unit 7, by marcus bell/.test(P.text('#auth-invite')) && P.$('#auth-email').value === 'ana.lopez@cedarfork.gov', P.text('#auth-invite'));
+    check('the card is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#auth-password').value = 'walkfix-pw'; P.$('#auth-signup').click();
+    await until(() => P.shown('#join'), 8000);
+    check('signed in with that address, the check-in screen offers the invitation: Check in · no code to type, and a password for next time', await until(() => P.shown('#join-invite') && P.$('#join-invite [data-action="invite-accept"]'), 8000) && /check in · no code to type/.test(P.text('#join-invite')) && !!P.$('#join-invite form[data-form="invite-password"]'), P.text('#join-invite'));
+    await until(() => P.shown('#s-identify'), 5000);
+    P.$('#id-name').value = 'Ana Lopez'; P.$('#id-phone').value = '512 555 0170';
+    await P.act('id-save');
+    await until(() => !P.shown('#s-identify'), 5000);
+    P.$('#join-invite form[data-form="invite-password"] input[name="password"]').value = 'walkfix-pw-2';
+    P.$('#join-invite form[data-form="invite-password"]').requestSubmit();
+    check('the password is saved', await until(() => P.$('#toast') && /password saved/i.test(P.$('#toast').textContent), 4000) && await until(() => !P.$('#join-invite form[data-form="invite-password"]'), 3000), P.$('#toast') && P.$('#toast').textContent);
+    P.$('#join-invite [data-action="invite-accept"]').click();
+    check('Check in by invitation: in as Unit 7 with no code, the invitation accepted, both lines in the 214', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Unit 7', 15000) && await until(() => base.invite(v.id).accepted_at && base.members().some((m) => m.unit_name === 'Unit 7'), 10000) && await until(() => eventText(base, 'Ana Lopez accepted the invitation from Operations') && eventText(base, 'Unit 7 checked in by invitation as Ana Lopez, 512 555 0170, identity not given with 1 person'), 10000), logTexts().slice(0, 3).join(' | '));
+    await members();
+    check('the Members tab lists her under Accepted as Unit 7', await until(() => has('#people-page', 'accepted · 2', 'ana.lopez@cedarfork.gov · unit · unit 7', 'as unit 7'), 8000), text('#people-page').slice(-500));
+    $('[data-action="close-people"]').click();
+
+    // ---- the roster: a second incident offers the addresses invited on this one, and invites them in one press
+    const second = await base.createIncident({ name: 'Second incident', period: 'OP 1', base: null, lat: 30.26, lng: -97.74, zoom: 14 });
+    await base.open(second.id);
+    const roster = await base.roster();
+    check('the roster on a second incident: the two addresses invited here and accepted (not the withdrawn one), with their role and unit', roster.length === 2 && roster.some((r) => r.email === 'ana.lopez@cedarfork.gov' && r.role === 'unit' && r.unit_name === 'Unit 7') && roster.some((r) => r.email === 'unit1@mock.local') && !roster.some((r) => r.email === 'j.ortiz@cedarfork.gov'), JSON.stringify(roster));
+    const res = await base.sendInvites(roster.map((r) => ({ email: r.email, role: r.role, unit: r.unit_name })));
+    check('Invite the roster sends them all: two rows on the second incident, logged, and the roster is empty there now', res.length === 2 && res.every((r) => r.ok) && await until(() => base.invites().length === 2) && !!eventText(base, 'Invitation sent to ana.lopez@cedarfork.gov as a unit (Unit 7) by Operations') && (await base.roster()).length === 0, JSON.stringify(res));
+    await base.open(INC());
+  } finally {
+    window.confirm = confirmWas;
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    if (!$('#people').hidden) $('[data-action="close-people"]').click();
+    await wait(100);
+  }
+}
+
 // ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.
 async function demo(check) {
   await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });
@@ -1964,7 +2041,7 @@ async function demo(check) {
 // ---- the walkthrough fixes (v25): each as the persona who hit it met it. The phone is the field app at
 // 375 px in a frame beside the base; its own mock copies the base's data over the BroadcastChannel and
 // opens signed in as Unit 3. The frame goes before the suite ends, so the next reset is not undone by it.
-async function phoneFrame(extra = '') {   // extra: more of the address, like '&band=CODE' (v55)
+async function phoneFrame(extra = '', { signedOut = false } = {}) {   // extra: more of the address, like '&band=CODE' (v55); signedOut: opened with &nobody (v56)
   await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });   // an earlier frame's unsent entries would block this one's
   const frame = document.createElement('iframe');
   frame.src = '/field/?mock' + extra;
@@ -1989,7 +2066,7 @@ async function phoneFrame(extra = '') {   // extra: more of the address, like '&
       return out;
     }
   };
-  P.ready = await until(() => P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 20000);   // a hidden pane throttles the frame's timers
+  P.ready = await until(() => signedOut ? P.$('#auth') && !P.$('#auth').hidden : P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 20000);   // a hidden pane throttles the frame's timers
   return P;
 }
 async function phoneSignIn(P, email, signUp) {

@@ -1232,3 +1232,22 @@ People and tags, phase 1: Marcus, Ana, Rosa, the shelter desk and Priya, walked 
 - **The base cannot give a sheltered person a band**: only the desk and the crew that made the record can (the plan's choice); Operations gives responders theirs from nowhere either, the units do at check-in. A "Band" box on the base's rows is a later item if the desks ask for it.
 - **One scan at a time on the PAR**: Scan them in opens the camera once per band; with a crew of six that is six presses. A sheet that keeps the camera open and ticks names as bands pass it would be the next cut.
 - **Boarding needs a run loading from here**: the Boarding chip names the first run planned or loading from the crew's division, or "a run" when there is none.
+
+---
+
+## Re-walk after v56
+
+Invite by email: Marcus, Ana (as the invited person) and the administrator, walked on 2026-10-18 in the same mock on the base at 1280 × 900 and the phone at 375 × 812 (the pane visible; the words read from the screen and through the `invite` suite's phone frame, which stands in for the email by opening the link the mock's function returns).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Invite someone | Marcus | People → Members: **Invite by email** with Email, Role (Unit / Operations), Unit name and **Send the invitation**; "One link in one email. The person sets a password once and lands in this incident as the role you chose; their name and phone are asked as today. The link works for seven days, once." Sent: "Invited, not yet in · 2 · ana.lopez@cedarfork.gov · Unit · Unit 7 · sent 12:40 by Marcus Bell · Resend · Withdraw"; the 214 "Invitation sent to ana.lopez@cedarfork.gov as a unit (Unit 7) by Operations". Resend counts "(2 times)"; Withdraw moves it under Withdrawn; the same address twice says "is invited already; send it again from the list". | Clear |
+| Close the door | Marcus | **Invited members only** beside the join code: on, the panel says "the join code is off; invite from the People board's Members tab", the 214 "Invited members only: the join code is off"; a stranger with CEDAR7 reads "This incident is by invitation; ask Operations for one"; Unit 3 still checks in. | Clear |
+| Arrive by the link | Ana | The phone, signed out: "You're invited · Cedar Fork Flooding · as a unit, Unit 7, by Marcus Bell · Cedar Fork Fire Department", the address on the form. Signed in with it: the check-in screen leads with the same card, "Choose a password for next time", **Check in · no code to type**, "Your name and phone are asked first if they are not on record. The code form below is not needed." Identify yourself, then the button: "You are in Cedar Fork Flooding as Unit 7"; the 214 "Ana Lopez accepted the invitation from Operations" and "Unit 7 checked in by invitation as Ana Lopez, 512 555 0170, identity not given with 1 person". | Clear |
+| The roster | The administrator | A second incident's Members tab: "2 addresses you invited on earlier incidents, not yet here: ana.lopez@cedarfork.gov, unit1@mock.local" and **Invite the roster · 2**; one press sends both and the line reads "Everyone you invited on earlier incidents is here or invited already." | Clear |
+
+**Still bites, small:**
+
+- **Sign-ups are off on the shared project** since 18 October, so the front door's "make an account with any email" and the phone's Create account are refused on the real project; an invitation is the only way in for a new address until it is turned on again. The words on the door do not yet say so.
+- **The real email was not seen from the pane**: the function is deployed and refuses a call with no session; the first real invitation is the test, and if the mail sender refuses, the row says "could not be sent: …" on the Members tab and in the 214.
+- **A unit's invitation opened on a laptop** lands on the base as a unit; the base is made for Operations. The link routes units to the field app; a laptop is the person's choice.

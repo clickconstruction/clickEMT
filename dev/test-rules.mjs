@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
+import { sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -195,6 +195,18 @@ t('the situation report\'s line: counts, beds, hospital, expected, no names', ()
   assert.equal(line, 'People sheltered: 8 at High school gym (60 beds), 0 at Church hall, 1 moved to hospital, 16 expected · 2 records with no name yet');
   assert.ok(!/Alvarez|Okonkwo|Nguyen/.test(line));
   assert.equal(peopleShelteredLine({ evacuees: [], facilities: [] }), 'People sheltered: no shelter open and nobody on record');
+});
+
+t('the since-you-last-looked line counts what came in by what it is (v45)', () => {
+  const E = [
+    { kind: 'hazard', text: 'Hazard in A-2 (act on now): gas smell, reported by Unit 3' }, { kind: 'hazard', text: 'Hazard resolved in A-2: gas smell' },
+    { kind: 'help', text: 'EMERGENCY, Unit 2 needs help in B-1: Missing: Patel' }, { kind: 'help', text: 'Unit 2 stood down, all OK' },
+    { kind: 'par', text: 'Unit 2: Missing someone: Patel (1 accounted for)' }, { kind: 'par', text: 'Patel found, reported by Unit 2', notable: true }, { kind: 'par', text: 'Unit 1: All accounted for (2)' }, { kind: 'par', text: 'PAR, Operations to everyone: PAR: is everyone accounted for?' },
+    { kind: 'msg', text: 'SO 14 to Operations (act on now): Road closed' }, { kind: 'safety', text: 'SAFETY MESSAGE, Operations to everyone: Stay out' },
+    { kind: 'photo', text: 'Unit 1 sent a photo from A-1, facing E 095°: Water over road' }, { kind: 'clear', text: 'Structure cleared in A-2 (6 of 18)' }, { kind: 'ops', text: 'B-2 assigned to SO 14' }
+  ];
+  assert.equal(sinceSummary(E), '1 hazard, 1 emergency (1 stood down), 1 missing person (1 found), 1 PAR started, 2 PAR answers, 1 safety message, 1 message, 1 photo, 1 division or structure update, 1 line by Operations · 1 notable');
+  assert.equal(sinceSummary([]), 'nothing new');
 });
 
 t('times and dates read in one form, and the period knows when its planned end has passed (v40)', () => {

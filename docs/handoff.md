@@ -22,7 +22,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v44**, "Small words and buttons" (after v43, paper that leaves the base). The service worker reads `v44`.
+- `main` is at **v45**, "Since you last looked" (after v44, small words and buttons). The service worker reads `v45`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0027` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
@@ -32,9 +32,9 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
-- **Open work:** the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do": every persona
-  plus a newcomer at the check-in table) ranked what still bites; [punchlist.md](punchlist.md) is that list as
-  releases v38 to v44, with the decisions that wait for Grace at its end.
+- **Open work:** the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do") ranked what still
+  bites; [punchlist.md](punchlist.md) is that list. Releases v38 to v45 shipped on 17 and 18 October; left are "on scene
+  too long" (item 8, Later) and the decisions that wait for Grace (item 9).
 
 ## Read these first
 

@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
+import { sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -1329,13 +1329,22 @@ export function sitrepFormHtml(data) {
 // ---- the activity log (ICS 214): folded or open, filtered by where a line came from (or to the
 // lines Operations marked notable), searched, with the hours marked and every line linked to the
 // thing it is about.
-export const LOG_GROUPS = [['all', 'All'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];
+export const LOG_GROUPS = [['all', 'All'], ['new', 'Since you looked'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];   // 'new' is the lines since state.log.sinceAt (v45)
 const GROUP_OF = { shelter: 'field', request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
 export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
-const inGroup = (e, g) => !g || g === 'all' || (g === 'notable' ? !!e.notable : logGroupOf(e.kind) === g);
-export function logFilter(events, { group, q } = {}) {
+const inGroup = (e, g, sinceAt) => !g || g === 'all' || (g === 'notable' ? !!e.notable : g === 'new' ? !!sinceAt && e.at > sinceAt : logGroupOf(e.kind) === g);
+export function logFilter(events, { group, q, sinceAt } = {}) {
   const needle = (q || '').trim().toLowerCase();
-  return events.filter((e) => inGroup(e, group) && (!needle || String(e.text).toLowerCase().includes(needle)));
+  const rows = events.filter((e) => inGroup(e, group, sinceAt) && (!needle || String(e.text).toLowerCase().includes(needle)));
+  return group === 'new' ? rows.filter((e) => e.notable).concat(rows.filter((e) => !e.notable)) : rows;   // the notable ones first when catching up
+}
+// Since you last looked (v45): one line above the log with what came in since the mark, Show them and Seen.
+export function logSinceHtml(data, state) {
+  const since = state && state.log ? state.log.sinceAt : null;
+  if (!since) return '';
+  const news = data.events().filter((e) => e.at > since);
+  if (!news.length) return '';
+  return `<div class="log-since"><span class="x"><strong>Since you last looked (${hhmm(since)}):</strong> ${esc(sinceSummary(news))}</span><button class="btn sm" data-action="log-group" data-group="new">Show them</button><button class="btn sm" data-action="log-since-seen" title="Marks now as the last look">Seen</button></div>`;
 }
 function logLink(e) {
   if (!e.ref_id) return '';
@@ -1352,9 +1361,9 @@ function logLink(e) {
   }
 }
 export function logFiltersHtml(data, state) {
-  const events = data.events(), cur = (state.log && state.log.group) || 'all';
-  return LOG_GROUPS.map(([g, label]) => {
-    const n = events.filter((e) => inGroup(e, g)).length;
+  const events = data.events(), cur = (state.log && state.log.group) || 'all', sinceAt = state.log && state.log.sinceAt;
+  return LOG_GROUPS.filter(([g]) => g !== 'new' || (sinceAt && events.some((e) => e.at > sinceAt))).map(([g, label]) => {
+    const n = events.filter((e) => inGroup(e, g, sinceAt)).length;
     return `<button class="chip${cur === g ? ' on' : ''}" data-action="log-group" data-group="${g}">${label} <span class="n">${n}</span></button>`;
   }).join('');
 }

@@ -561,3 +561,7 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 
 /* the app's own name sheet in place of prompt() (v44): the division card's dialog style */
 #name-dialog .inline-form { min-width: 320px; }
+
+/* since you last looked (v45): one line above the log's rows */
+.log-since { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 2px 12px 6px; padding: 7px 10px; border-radius: 8px; background: var(--tint-accent, var(--soft)); font-size: 12.5px; }
+.log-since .x { flex: 1; min-width: 0; }

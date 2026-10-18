@@ -987,7 +987,7 @@ async function log(check) {
     const $f = (sel) => (d() ? d().querySelector(sel) : null);
     const loaded = await until(() => $f('html.log-only') && $f('#app') && !$f('#app').hidden && d().querySelectorAll('#log .log-row').length === all + 1, 8000);
     const gone = (sel) => $f(sel) && frame.contentWindow.getComputedStyle($f(sel)).display === 'none';
-    check('the pop-out draws the log alone, open, with its chips and search; the map, the sidebar and the Pop out button left out', !!loaded && gone('#map') && gone('.side') && gone('.tools') && gone('[data-action="log-popout"]') && !gone('#log-filters') && !gone('#log-search') && !$f('#logbox').classList.contains('closed') && d().querySelectorAll('#log-filters .chip').length === 6 && d().title === 'Activity log · Cedar Fork Flooding' && $f('#inc-name').textContent === 'Cedar Fork Flooding', loaded ? d().title : 'did not load');
+    check('the pop-out draws the log alone, open, with its chips and search; the map, the sidebar and the Pop out button left out', !!loaded && gone('#map') && gone('.side') && gone('.tools') && gone('[data-action="log-popout"]') && !gone('#log-filters') && !gone('#log-search') && !$f('#logbox').classList.contains('closed') && d().querySelectorAll('#log-filters .chip').length >= 6 && d().title === 'Activity log · Cedar Fork Flooding' && $f('#inc-name').textContent === 'Cedar Fork Flooding', loaded ? d().title : 'did not load');
     await field.addNote('The pop-out sees this');
     const live = await until(() => $f('#log .log-row.new') && /The pop-out sees this/.test($f('#log').textContent) && !$f('#log-new').hidden, 6000);
     check('a line that arrives shows in the pop-out, counted as new on its header', !!live && $f('#log-new').textContent === '1 new' && /The pop-out sees this/.test($f('#log .log-row').textContent), $f('#log-new') && $f('#log-new').textContent);
@@ -995,6 +995,22 @@ async function log(check) {
     const shown = await until(() => has('#panel', 'bus barn'), 4000);
     check('a link in the pop-out opens the thing on the main screen', !!shown, text('#panel').slice(0, 120));
   } finally { frame.remove(); }
+  // v45: since you last looked
+  if ($('#logbox').classList.contains('closed')) { $('[data-action="log-toggle"]').click(); await until(() => !$('#logbox').classList.contains('closed')); }
+  $('[data-action="log-group"][data-group="all"]').click(); await until(() => $('[data-action="log-group"][data-group="all"].on'));
+  const before = rows();
+  if ($('#log-since [data-action="log-since-seen"]')) $('#log-since [data-action="log-since-seen"]').click();
+  await until(() => !$('#log-since .log-since'));
+  check('with nothing new since the mark there is no summary line and no Since you looked chip', !$('#log-since .log-since') && !$('[data-action="log-group"][data-group="new"]'), text('#log-since'));
+  await field.addHazard(uuid(), { kind: 'Gas smell', note: 'since-check', zoneId: ZONE('A-2') });
+  await base.sendMessage(null, { toUsers: [USERS().unit3], toLabel: 'Unit 3', kind: 'message', text: 'since-check message' });
+  check('a line above the log says what came in since the mark, with Show them and Seen', await until(() => has('#log-since', 'since you last looked', '1 hazard', '1 message') && !!$('#log-since [data-action="log-group"][data-group="new"]') && !!$('#log-since [data-action="log-since-seen"]')), text('#log-since'));
+  $('#log-since [data-action="log-group"][data-group="new"]').click();
+  await until(() => $('[data-action="log-group"][data-group="new"].on'));
+  check('Show them keeps only the new lines', rows() === 2 && $$('#log .log-row').every((r) => /since-check/.test(r.textContent)), $$('#log .log-row').map((r) => r.textContent.trim().slice(0, 60)).join(' | '));
+  $('#log-since [data-action="log-since-seen"]').click();
+  await until(() => !$('#log-since .log-since') && rows() === before + 2);
+  check('Seen clears the line, drops the chip and goes back to All', !$('#log-since .log-since') && !$('[data-action="log-group"][data-group="new"]') && $('[data-action="log-group"][data-group="all"]').classList.contains('on'), text('#log-filters'));
 }
 
 // The map underneath and the imagery over it: streets or satellite per device, and custom imagery

@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, esc } from './ui.js';
+import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, esc } from './ui.js';
 import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
@@ -27,9 +27,9 @@ function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'sta
 function loadLogPrefs() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(LOG_KEY) || '{}') || {}; } catch (e) { /* storage blocked */ }
-  return { open: LOG_ONLY || saved.open !== false, group: saved.group || 'all', q: '', seenAt: null };
+  return { open: LOG_ONLY || saved.open !== false, group: saved.group || 'all', q: '', seenAt: null, sinceAt: saved.sinceAt || null };   // sinceAt: the last look the operator marked (v45), kept per device
 }
-function saveLogPrefs() { try { localStorage.setItem(LOG_KEY, JSON.stringify({ open: state.log.open, group: state.log.group })); } catch (e) { /* storage blocked */ } }
+function saveLogPrefs() { try { localStorage.setItem(LOG_KEY, JSON.stringify({ open: state.log.open, group: state.log.group, sinceAt: state.log.sinceAt || null })); } catch (e) { /* storage blocked */ } }
 let map = null;
 let drawQueued = false;
 
@@ -410,12 +410,16 @@ document.addEventListener('contextmenu', (e) => {
 // The log under the map: folded to its latest line or open; new lines since the operator last
 // looked are counted on the header and tinted until the pointer comes over the log.
 function markLogSeen() { const n = data.events()[0]; state.log.seenAt = n ? n.at : null; }
+// the "since you last looked" mark (v45): set by Seen, or on the first draw of an incident when there is none yet
+function markSince() { const n = data.events()[0]; state.log.sinceAt = n ? n.at : new Date().toISOString(); saveLogPrefs(); }
 function unseenCount() { return state.log.seenAt ? data.events().filter((e) => e.at > state.log.seenAt).length : 0; }
 function drawLog() {
   const box = $('#logbox');
   box.classList.toggle('closed', !state.log.open);
   $('[data-action="log-toggle"]').setAttribute('aria-expanded', String(state.log.open));
   $('#log-filters').innerHTML = logFiltersHtml(data, state);
+  if (!state.log.sinceAt && data.events().length) markSince();
+  const sinceEl = $('#log-since'); if (sinceEl) { const sh = state.log.open ? logSinceHtml(data, state) : ''; if (sinceEl.__html !== sh) { sinceEl.__html = sh; sinceEl.innerHTML = sh; } }
   const unseen = unseenCount();
   const badge = $('#log-new');
   badge.hidden = !unseen;
@@ -837,6 +841,7 @@ document.addEventListener('click', async (e) => {
       case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
       case 'log-toggle': if (LOG_ONLY) break; state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
       case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
+      case 'log-since-seen': markSince(); if (state.log.group === 'new') state.log.group = 'all'; saveLogPrefs(); drawLog(); break;
       case 'log-notable': await data.setNotable(id, btn.dataset.on === '1'); drawLog(); break;
       case 'log-popout': popOutLog(); break;
       case 'print-214': openOverlay('214'); break;

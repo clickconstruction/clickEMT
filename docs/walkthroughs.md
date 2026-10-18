@@ -855,3 +855,22 @@ Item 11 of "What to do first" is clear, all but one line: a phone with no camera
 
 - **"Bus has arrived" on the desk's chips** is a guess at the words a desk sends most; the desk will say.
 - **The deputy on the phone is two lines**, in the menu and the briefing; the home screen's header does not carry it, by design (the IC's name is not there either).
+
+---
+
+## Re-walk after v45
+
+Since you last looked: Dana's "what changed while I was away", walked on 2026-10-18 in the same mock on the base at 1280 × 800, through the `log` suite's steps (the pane was hidden; the words were read from the screen).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Coming back to the base | Dana | Above the log's rows: "Since you last looked (00:17): 1 hazard, 1 message · Show them · Seen" once something had come in after the mark; nothing while nothing had. The "Since you looked" chip appears among the filters only then. | Clear |
+| Show them | Dana | The log filtered to the new lines, the notable ones first; Seen marks now, clears the line, drops the chip and goes back to All. The mark is kept per device, so it survives closing the laptop. | Clear |
+| The pop-out | The clerk | The log alone keeps its own mark and line. | Clear |
+
+Item 12 ("Later") is built. The one left on the list, on scene too long (item 13), was not started.
+
+**Still bites, small:**
+
+- **The line counts, it does not name**: "1 missing person (1 found)" says what, not who; Show them is one press away.
+- **The first mark is set when the incident is first drawn on this device**, so the very first "since" is since the base was opened, not since the IC's last look.

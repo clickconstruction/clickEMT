@@ -259,6 +259,30 @@ export function sortZones(zones) {
 }
 
 // "OP 2 · 07:00 to 19:00": how a period is named everywhere.
+// What came in since the operator last looked (v45): the log lines after a moment, counted by what they are.
+export function sinceSummary(events) {
+  const n = (re, kind) => events.filter((e) => (!kind || e.kind === kind) && re.test(e.text)).length;
+  const one = (c, s, p) => (c ? c + ' ' + (c === 1 ? s : p || s + 's') : '');
+  const stood = n(/ stood down, all OK$/, 'help'), found = n(/ found, reported by /, 'par');
+  const parts = [
+    one(n(/^Hazard in /, 'hazard'), 'hazard'),
+    n(/^EMERGENCY, /, 'help') ? one(n(/^EMERGENCY, /, 'help'), 'emergency', 'emergencies') + (stood ? ' (' + stood + ' stood down)' : '') : (stood ? one(stood, 'stand-down') : ''),
+    n(/: Missing someone/, 'par') ? one(n(/: Missing someone/, 'par'), 'missing person', 'missing people') + (found ? ' (' + found + ' found)' : '') : (found ? one(found, 'person found', 'people found') : ''),
+    one(n(/^PAR, /, 'par'), 'PAR started', 'PARs started'),
+    one(n(/: (All accounted for|Missing someone)/, 'par'), 'PAR answer'),
+    one(n(/^SAFETY MESSAGE, /, 'safety'), 'safety message'),
+    one(n(/ to /, 'msg'), 'message'),
+    one(n(/sent a photo/, 'photo'), 'photo'),
+    one(n(/^Structure cleared|marked clear|search (done|complete)/i, 'clear'), 'division or structure update'),
+    one(n(/./, 'shelter'), 'shelter record'),
+    one(n(/./, 'request'), 'request update'),
+    one(n(/./, 'status'), 'status change'),
+    one(n(/./, 'ops'), 'line by Operations'),
+    one(n(/./, 'note'), 'note')
+  ].filter(Boolean);
+  const notable = events.filter((e) => e.notable).length;
+  return (parts.length ? parts.join(', ') : 'nothing new') + (notable ? ' · ' + notable + ' notable' : '');
+}
 // A day and a time in one form everywhere (v40): "17 Oct 2026 21:58", never the browser's locale with seconds.
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function dateText(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }

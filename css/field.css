@@ -224,3 +224,7 @@ body { background: var(--bg-2); }
 .water-row.over { background: var(--safety); color: #1B1B18; }
 .water-row.over .btn { color: #1B1B18; border-color: #1B1B18; }
 .water-row.over .btn.pri { background: #1B1B18; color: #fff; }
+
+/* the sign-in screen with a join code waiting (v39) */
+.code-ready { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--tint-green, #e8f3e8); color: var(--ink); font-size: 14.5px; line-height: 1.4; }
+.code-ready .mono { letter-spacing: .1em; }

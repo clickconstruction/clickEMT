@@ -50,7 +50,14 @@ function toast(msg, bad) {
   clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
-function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; if (which !== 'app') $('#s-removed').hidden = true; }
+function show(which) { for (const id of ['auth', 'join', 'app']) $('#' + id).hidden = id !== which; if (which !== 'app') $('#s-removed').hidden = true; if (which === 'auth') drawAuthCode(); }
+// The sign-in screen with a code waiting (v39): says so, and that any email makes an account.
+function drawAuthCode() {
+  const code = pendingJoin(), el = $('#auth-code');
+  if (!el) return;
+  el.hidden = !code; $('#auth-lead').hidden = !!code;
+  if (code) $('#auth-code-text').textContent = code;
+}
 function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
   const was = state.screen;
@@ -160,7 +167,9 @@ async function showJoin() {
   if (state.joinFor !== (data.user && data.user.id)) { clearJoinForm(); state.joinFor = data.user && data.user.id; }
   if (!f.agency.value) { f.agency.value = lastAgency(); f.agency.dataset.prefill = f.agency.value; }
   const pending = pendingJoin();
-  if (pending) { const f = $('#join-form'); f.code.value = pending; f.unit.focus(); toast('Code ' + pending + ' from the link. Name your unit and check in.'); }
+  const note = $('#join-code-note');
+  note.hidden = !pending;
+  if (pending) { f.code.value = pending; f.unit.focus(); note.textContent = 'Code ' + pending + ' came with the link. Name your unit and check in.'; }   // on the form, not a toast (v39)
   try { await data.myProfile(); } catch (e) { console.warn(e); }
   drawYouLine();
   if (!data.profileReady() && !state.identShown) { state.identShown = true; openIdentify(); }
@@ -193,7 +202,8 @@ function clearJoinForm() {
   const f = $('#join-form');
   f.reset(); delete f.agency.dataset.prefill;
   const msg = f.querySelector('[data-msg]'); if (msg) msg.textContent = '';
-  state.joinPeople = [blankPerson(), blankPerson()]; state.joinKind = '';
+  state.joinPeople = [blankPerson(), blankPerson()]; state.joinKind = ''; state.joinPeopleShown = false;
+  const note = $('#join-code-note'); if (note) { note.hidden = true; note.textContent = ''; }
   drawJoinPeople(); drawJoinKind();
 }
 function clearForms() {
@@ -229,6 +239,7 @@ document.addEventListener('input', (e) => {
   const c = $('#join-count'); if (!c) return;
   const n = joinPeopleList().length;
   if (n && (c.value === '' || Number(c.value) < n)) c.value = String(n);
+  toggleJoinPeople();
 });
 $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
 
@@ -240,7 +251,14 @@ function qualChips(quals, action, extra) {
 // what the unit is, one tap at check-in (kept from the last check-in when nothing is picked)
 function kindChips(cur, action) { return UNIT_KINDS.map(([k, label]) => `<button type="button" class="chip sm${cur === k ? ' on' : ''}" data-action="${action}" data-kind="${k}" aria-pressed="${cur === k}">${esc(label)}</button>`).join(''); }
 function drawJoinKind() { setHtml($('#join-kind'), kindChips(state.joinKind, 'jp-kind')); }
+// The people rows are folded for someone on their own (v39): they open with a count above one, a name typed, or Add a person.
+function toggleJoinPeople() {
+  const c = $('#join-count');
+  const show = !!state.joinPeopleShown || state.joinPeople.some((p) => (p.name || '').trim()) || (c && Number(c.value) > 1);
+  $('#join-people').hidden = !show;
+}
 function drawJoinPeople() {
+  toggleJoinPeople();
   $('#join-people').innerHTML = state.joinPeople.map((p, i) => `
     <div class="pp-edit">
       <div class="pp-edit-top"><input class="input" placeholder="Name" data-jp="name" data-i="${i}" value="${esc(p.name)}" autocapitalize="words" autocomplete="off" maxlength="80"><input class="input" placeholder="Rank or role" data-jp="role" data-i="${i}" value="${esc(p.role)}" autocomplete="off" maxlength="60">${state.joinPeople.length > 1 ? `<button type="button" class="btn pp-x" data-action="jp-remove" data-i="${i}" aria-label="Remove this person" title="Remove this person">×</button>` : ''}</div>
@@ -1515,7 +1533,7 @@ document.addEventListener('click', async (e) => {
       case 'oos': state.oosPick = Number(btn.dataset.i); drawStatus(); break;
       case 'oos-cancel': state.oosPick = null; drawStatus(); break;
       case 'oos-go': await setMyStatus('out_of_service', OOS_REASONS[state.oosPick || 0]); break;
-      case 'jp-add': syncJoinPeople(); state.joinPeople.push(blankPerson()); drawJoinPeople(); { const last = document.querySelector('#join-people .pp-edit:last-child [data-jp="name"]'); if (last) last.focus(); } break;
+      case 'jp-add': syncJoinPeople(); state.joinPeopleShown = true; state.joinPeople.push(blankPerson()); drawJoinPeople(); { const last = document.querySelector('#join-people .pp-edit:last-child [data-jp="name"]'); if (last) last.focus(); } break;
       case 'jp-remove': syncJoinPeople(); state.joinPeople.splice(Number(btn.dataset.i), 1); if (!state.joinPeople.length) state.joinPeople.push(blankPerson()); drawJoinPeople(); break;
       case 'jp-qual': { syncJoinPeople(); const p = state.joinPeople[Number(btn.dataset.i)]; if (p) { if (p.quals.has(btn.dataset.q)) p.quals.delete(btn.dataset.q); else p.quals.add(btn.dataset.q); } drawJoinPeople(); break; }
       case 'mp-qual': if (state.mpQuals.has(btn.dataset.q)) state.mpQuals.delete(btn.dataset.q); else state.mpQuals.add(btn.dataset.q); setHtml($('#mp-quals'), qualChips(state.mpQuals, 'mp-qual')); break;

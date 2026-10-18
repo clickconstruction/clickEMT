@@ -116,14 +116,14 @@ export function unitLabel(member) {
 // What a unit is (ICS-100's single resource): the kind Operations asks for and Logistics fills.
 // [key, label, plural, the words in a line]; ic_kind_text in SQL says the same words.
 // A shelter desk is not a search crew: its phone opens on People here (v26).
-export const UNIT_KINDS = [['engine', 'Engine', 'Engines', 'engine'], ['boat', 'Boat crew', 'Boat crews', 'boat crew'], ['swift_water', 'Swift-water team', 'Swift-water teams', 'swift-water team'], ['high_water', 'High-water vehicle', 'High-water vehicles', 'high-water vehicle'], ['ambulance', 'Ambulance', 'Ambulances', 'ambulance'], ['search', 'Search team', 'Search teams', 'search team'], ['k9', 'K9 team', 'K9 teams', 'K9 team'], ['drone', 'Drone team', 'Drone teams', 'drone team'], ['pump', 'Pump crew', 'Pump crews', 'pump crew'], ['shelter_desk', 'Shelter desk', 'Shelter desks', 'shelter desk'], ['other', 'Other', 'Other', 'other']];
+export const UNIT_KINDS = [['engine', 'Engine', 'Engines', 'engine'], ['boat', 'Boat crew', 'Boat crews', 'boat crew'], ['swift_water', 'Swift-water team', 'Swift-water teams', 'swift-water team'], ['high_water', 'High-water vehicle', 'High-water vehicles', 'high-water vehicle'], ['ambulance', 'Ambulance', 'Ambulances', 'ambulance'], ['search', 'Search team', 'Search teams', 'search team'], ['k9', 'K9 team', 'K9 teams', 'K9 team'], ['drone', 'Drone team', 'Drone teams', 'drone team'], ['pump', 'Pump crew', 'Pump crews', 'pump crew'], ['shelter_desk', 'Shelter desk', 'Shelter desks', 'shelter desk'], ['volunteer', 'Volunteer', 'Volunteers', 'volunteer'], ['other', 'Other', 'Other', 'other']];
 export function unitKind(kind) { return UNIT_KINDS.find((k) => k[0] === kind) || null; }
 export function kindText(kind) { const k = unitKind(kind); return k && k[0] !== 'other' ? k[3] : ''; }
 // "Unit 2, boat crew": how a unit reads on the 203, the 204 and the board
 export function unitWithKind(member) { const t = member ? kindText(member.kind) : ''; return unitLabel(member) + (t ? ', ' + t : ''); }
 // Which kinds of unit answer a request: the words in what was asked for first ("2 boat crews"),
 // else the request's kind (a boat or water team, an ambulance, a pump).
-const KIND_WORDS = [['boat', /\bboats?\b/i], ['swift_water', /swift[\s-]?water/i], ['high_water', /high[\s-]?water|deuce|lmtv/i], ['ambulance', /ambulance|medic\b|ems\b/i], ['engine', /\bengine/i], ['search', /search team|search crew/i], ['k9', /\bk-?9\b|dog/i], ['drone', /drone|uas\b/i], ['pump', /pump/i]];
+const KIND_WORDS = [['boat', /\bboats?\b/i], ['swift_water', /swift[\s-]?water/i], ['high_water', /high[\s-]?water|deuce|lmtv/i], ['ambulance', /ambulance|medic\b|ems\b/i], ['engine', /\bengine/i], ['search', /search team|search crew/i], ['k9', /\bk-?9\b|dog/i], ['drone', /drone|uas\b/i], ['pump', /pump/i], ['volunteer', /volunteer/i]];
 const KINDS_FOR_REQUEST = { water: ['boat', 'swift_water', 'high_water'], medical: ['ambulance'] };
 export function kindsAsked(r) {
   const words = KIND_WORDS.filter(([, re]) => re.test(r.what || '')).map(([k]) => k);

@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, checkIn, permissions, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -1518,6 +1518,41 @@ async function phoneSignIn(P, email, signUp) {
   P.$('#auth-email').value = email; P.$('#auth-password').value = 'walkfix-pw';
   if (signUp) P.$('#auth-signup').click(); else P.$('#auth-form').requestSubmit();
   return until(() => P.shown('#join') && P.$('#join-user').textContent === email, 5000);
+}
+
+// The newcomer's door (v39): the sign-in screen with a code waiting, the code's sentence on the form, the
+// people rows folded for someone on their own, and the Volunteer kind, on the phone at 375 px.
+async function newcomer(check) {
+  let P = null;
+  try {
+    P = await phoneFrame();
+    check('the field app opens at 375 px as Unit 3', !!P.ready);
+    if (P.ready) {
+      P.frame.contentWindow.sessionStorage.setItem('ic.field.join', 'CEDAR7');   // as the front door's code box leaves it
+      await P.act('sign-out');
+      await until(() => P.shown('#auth'), 5000);
+      check('with a code waiting, the sign-in screen says the code is ready and that any email makes an account, with Create account beside Sign in', P.shown('#auth-code') && /code cedar7 is ready/.test(P.text('#auth-code')) && /make an account with any email/.test(P.text('#auth-code')) && !P.shown('#auth-lead') && P.$('#auth-signup').classList.contains('btn') && !P.$('#auth-signup').classList.contains('link'), P.text('#auth-code'));
+      await phoneSignIn(P, 'newcomer@mock.local', true);
+      check('after Create account the code is on the form with its sentence, and Identify yourself is open over it', P.$('#join-form').code.value === 'CEDAR7' && P.shown('#join-code-note') && /came with the link/.test(P.text('#join-code-note')) && !P.$('#s-identify').hidden, P.text('#join-code-note'));
+      check('the people rows are folded for someone on their own, and the unit box says a name will do', !P.shown('#join-people') && /your own name will do/.test(P.text('#join-unit-hint')) && /or your name/.test(P.$('#join-form').unit.placeholder), P.$('#join-form').unit.placeholder);
+      P.$('#id-name').value = 'Kim Tran'; P.$('#id-phone').value = '512 555 0190';
+      P.$$('#s-identify button').find((b) => b.textContent.trim() === 'Save').click();
+      await until(() => P.$('#s-identify').hidden, 5000);
+      const f = P.$('#join-form');
+      f.count.value = '2'; f.count.dispatchEvent(new Event('input', { bubbles: true }));
+      const unfold2 = P.shown('#join-people');
+      f.count.value = '1'; f.count.dispatchEvent(new Event('input', { bubbles: true }));
+      const fold1 = !P.shown('#join-people');
+      await P.act('jp-add');
+      check('a count of two unfolds the rows, one folds them, Add a person unfolds them', unfold2 && fold1 && P.shown('#join-people'), [unfold2, fold1, P.shown('#join-people')].join());
+      check('a Volunteer kind is offered', !!P.$('#join [data-kind="volunteer"]'), P.$$('#join [data-kind]').map((e) => e.dataset.kind).join());
+      f.unit.value = 'Volunteer 4'; f.agency.value = 'Cedar Fork volunteers'; f.count.value = '1'; P.$('#join [data-kind="volunteer"]').click();
+      f.requestSubmit();
+      await until(() => base.members().some((m) => m.unit_name === 'Volunteer 4'), 70000);
+      check('the base sees the volunteer under Volunteers, and the check-in line says so', await until(() => eventText(base, 'Volunteer 4, volunteer checked in as Kim Tran, 512 555 0190, identity not given with 1 person'), 8000) && base.members().find((m) => m.unit_name === 'Volunteer 4').kind === 'volunteer' && await until(() => has('#panel', 'volunteers', 'volunteer 4')), text('#panel').slice(0, 400));
+      check('the sheet that opened is at its top and nothing is wider than the phone', P.sideways().length === 0, P.sideways().join(' | '));
+    }
+  } finally { if (P) P.frame.remove(); }
 }
 
 async function walkfix(check) {

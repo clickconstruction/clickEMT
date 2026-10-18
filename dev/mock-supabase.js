@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 23;
+  const SEED_VERSION = 24;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -392,7 +392,7 @@
       if (!['assigned', 'available', 'out_of_service', 'checked_out'].includes(r.status)) throw chk('ic_members_status_check');
       if (r.crew_count != null && !(r.crew_count >= 0 && r.crew_count <= 99)) throw chk('ic_members_crew_count_check');
       if (r.unnamed_count != null && !(r.unnamed_count >= 0 && r.unnamed_count <= 99)) throw chk('ic_members_unnamed_count_check');
-      if (!['', 'engine', 'boat', 'swift_water', 'high_water', 'ambulance', 'search', 'k9', 'drone', 'pump', 'shelter_desk', 'other'].includes(r.kind ?? '')) throw chk('ic_members_kind_check');
+      if (!['', 'engine', 'boat', 'swift_water', 'high_water', 'ambulance', 'search', 'k9', 'drone', 'pump', 'shelter_desk', 'volunteer', 'other'].includes(r.kind ?? '')) throw chk('ic_members_kind_check');
     }
     if (table === 'ic_messages') {
       if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
@@ -437,7 +437,7 @@
   const QUALS = ['swift_water', 'boat', 'rope', 'emt', 'paramedic', 'k9', 'hazmat', 'drone'];
   const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', camp: 'Camp', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', ramp: 'Boat ramp', helibase: 'Helibase', helispot: 'Helispot', other: 'Facility' };
   // ic_kind_text: the words for a unit's kind, as UNIT_KINDS in rules.js
-  const KIND_TEXT = { engine: 'engine', boat: 'boat crew', swift_water: 'swift-water team', high_water: 'high-water vehicle', ambulance: 'ambulance', search: 'search team', k9: 'K9 team', drone: 'drone team', pump: 'pump crew', shelter_desk: 'shelter desk', other: 'other' };
+  const KIND_TEXT = { engine: 'engine', boat: 'boat crew', swift_water: 'swift-water team', high_water: 'high-water vehicle', ambulance: 'ambulance', search: 'search team', k9: 'K9 team', drone: 'drone team', pump: 'pump crew', shelter_desk: 'shelter desk', volunteer: 'volunteer', other: 'other' };
   // ic_transfer_text: the words every unit gets on a transfer of command
   const transferText = (to, ops, at) => 'Command transferred to ' + to + (at ? ' at ' + at : '') + '.' + (ops ? ' Operations Section Chief is ' + ops + '.' : '') + ' Your assignment, your division and your channel do not change.';
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');

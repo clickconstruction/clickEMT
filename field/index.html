@@ -40,11 +40,11 @@
   <form id="auth-form" class="auth-card">
     <img src="../icons/icon-192.png" alt="" width="64" height="64">
     <h1>Field</h1>
-    <p class="muted">Sign in with the account your agency gave you. You will check in to the incident next.</p>
+    <p id="auth-code" class="code-ready" hidden>Code <strong class="mono" id="auth-code-text"></strong> is ready. Sign in below, or make an account with any email and a password: it takes a minute, and only this incident's Operations sees who you are.</p>
+    <p class="muted" id="auth-lead">Sign in, or make an account with any email and a password: it takes a minute. You check in to the incident next.</p>
     <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
     <label>Password <input id="auth-password" type="password" autocomplete="off" required minlength="8"></label>
-    <button type="submit" class="btn pri">Sign in</button>
-    <button type="button" id="auth-signup" class="btn link">Create account</button>
+    <div class="row-btns"><button type="submit" class="btn pri">Sign in</button><button type="button" id="auth-signup" class="btn">Create account</button></div>
     <p id="auth-msg" class="msg" role="status"></p>
   </form>
 </div>
@@ -66,10 +66,12 @@
         <div class="you-line" id="join-you"></div>
         <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
         <div class="row-btns" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="btn sm" data-action="scan-code">Scan a code</button><span class="muted small">Operations' screen, a printed card or another unit's phone shows one.</span></div>
+        <p class="muted small" id="join-code-note" hidden></p>
         <div class="row-2">
-          <label>Your unit <input name="unit" required placeholder="Unit 3"></label>
+          <label>Your unit <input name="unit" required placeholder="Engine 3, Boat 1, or your name"></label>
           <label>Agency <input name="agency" placeholder="e.g. Red Cross, county sheriff"></label>
         </div>
+        <p class="muted small" id="join-unit-hint" style="margin:-4px 0 8px">Your callsign; if you are on your own, your own name will do.</p>
         <div class="k">What the unit is</div>
         <p class="muted small" style="margin:0">What Operations asks for and Logistics fills: an engine, a boat crew, a swift-water team. Set once; Operations can change it.</p>
         <div class="chips kind-chips" id="join-kind"></div>

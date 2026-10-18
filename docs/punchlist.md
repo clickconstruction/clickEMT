@@ -15,7 +15,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | # | What | Size | After | Serves |
 |---|---|---|---|---|
 | 1 | v38 One head count at a time, and a missing person who is found (shipped 17 October) | small to medium | now | Marcus, Priya, Dana, Ana, Rosa, Moreno, every phone |
-| 2 | v39 The newcomer's door | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
+| 2 | v39 The newcomer's door (shipped 17 October) | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
 | 3 | v40 A period that has ended says so, and times and dates in one form | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
 | 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
 | 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
@@ -81,9 +81,9 @@ answer's missing entries, not a column of its own, so no update policy on acks w
 
 **Why.** A volunteer handed a phone at the check-in table typed the join code on the front door and landed on "Sign in
 with the account your agency gave you", with nothing saying the code had arrived and Create account a second button on
-the same form. The second and third new accounts on the same phone were not shown Identify yourself (the sheet opens
-once per page load) and were sent back in red when they pressed Check in. "Your unit" asks for a unit a volunteer does
-not have. The code's sentence is a toast that is gone in seconds.
+the same form. "Your unit" asks for a unit a volunteer does not have. The code's sentence is a toast that is gone in
+seconds. (The walk's note that the Identify sheet opened only once per page load was the walker's misreading of a
+fixed-position sheet; it opens for every new account.)
 
 **Build.**
 
@@ -91,7 +91,7 @@ not have. The code's sentence is a toast that is gone in seconds.
    words "Sign in, or make an account with any email and a password: it takes a minute, and only this incident's
    Operations sees who you are." Create account becomes a full button beside Sign in, always; its hint moves above
    the boxes.
-2. `state.identShown` is reset by Sign out, and the sheet opens whenever `profileReady()` is false on `showJoin()`.
+2. (Dropped: the Identify sheet already opens for every new account; `clearForms` resets `identShown` on Sign out.)
 3. The join form: "Your unit" placeholder "Your callsign, or your own name if you are on your own"; a sentence under
    the code box when it came from the link: "Code CEDAR7 came with the link; name your unit and check in." The toast
    goes.
@@ -110,6 +110,10 @@ front door at 375 wide.
 
 **Start in.** `js/field/main.js` (`showJoin`, `takeJoinLink`, the auth form, `openIdentify`), `field/index.html`
 (`#auth`, `#join-form`), `js/shared/rules.js` (`UNIT_KINDS`), `supabase/migrations/0016_ics100.sql` (the kind check).
+
+**Shipped** 17 October 2026 as `The newcomer's door (v39)`, migration `0024_volunteer.sql`, rule test
+`supabase/tests/newcomer.sql` (3 of 3), smoke suite `newcomer`. Step 2 was dropped: the Identify sheet already opened for
+every new account (the walk had misread a fixed-position sheet).
 
 ## 3. v40 A period that has ended says so, and times and dates in one form
 

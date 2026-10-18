@@ -194,6 +194,7 @@
       <input id="find-q" class="log-search find-q" type="search" placeholder="Find a person" aria-label="Find a person: anyone sheltered, moved or on the way, and the responders" aria-controls="find-pop" autocomplete="off">
       <div id="find-pop" class="find-pop" hidden></div>
     </div>
+    <button type="button" class="ppl" id="head-count" data-action="people" hidden></button>
     <span class="top-btns">
     <button class="btn sm" data-action="period">Period</button>
     <button class="btn sm" data-action="briefing">Briefing</button>
@@ -204,15 +205,25 @@
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
     <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
-    <button class="btn sm" data-action="theme" id="btn-theme" title="Light or dark, for this screen">Dark</button>
-    <button class="btn sm" data-action="settings" title="Incident settings: the Google Maps key, how long personal records are kept, the default rotation in the water">Settings</button>
-    <button class="btn sm" data-action="switch-incident">Switch incident</button>
-    <button class="btn sm" data-action="sign-out">Sign out</button>
+    <span class="gear-wrap">
+      <button class="btn sm gear" data-action="gear" id="btn-gear" title="Settings, this screen, switch incident, sign out" aria-haspopup="menu" aria-expanded="false" aria-controls="gear-menu">&#9881;&#xFE0E;<span class="chev">&#9662;</span></button>
+      <div class="menu" id="gear-menu" role="menu" hidden>
+        <button class="menu-item" role="menuitem" data-action="settings" title="Incident settings: the Google Maps key, how long personal records are kept, the default rotation in the water">Incident settings…</button>
+        <hr>
+        <button class="menu-item" role="menuitem" data-action="theme" id="btn-theme" title="Light or dark, for this screen">Dark</button>
+        <button class="menu-item" role="menuitem" data-action="show-around" title="The labels over each part of the screen, as on this screen's first open">Show me around</button>
+        <hr>
+        <button class="menu-item" role="menuitem" data-action="switch-incident">Switch incident</button>
+        <button class="menu-item" role="menuitem" data-action="sign-out">Sign out</button>
+      </div>
+    </span>
     </span>
     <span class="top-pills">
-      <span class="pill mono" id="inc-code" title="Join code for field phones; the home panel has it large, with the QR">Join code</span>
-      <span class="pill" id="live-pill" title="Connecting"><span class="dot" id="live-dot"></span><span id="live-text">connecting</span></span>
+      <button type="button" class="pill mono" id="inc-code" data-action="codes" title="The join code for field phones. Click: the QR, the join card, the bands, the Operations code." aria-haspopup="dialog" aria-expanded="false" aria-controls="codes-pop">Join code</button>
+      <button type="button" class="pill" id="live-pill" data-action="live" title="Connecting" aria-haspopup="dialog" aria-expanded="false" aria-controls="live-pop"><span class="dot" id="live-dot"></span><span id="live-text">connecting</span></button>
       <button type="button" class="pill mono clock" id="clock" data-action="clock" title="Local time; click for UTC"></button>
+      <div class="pop codes-pop" id="codes-pop" role="dialog" aria-label="The codes" hidden></div>
+      <div class="pop live-pop" id="live-pop" role="dialog" aria-label="The connection" hidden></div>
     </span>
   </header>
 
@@ -226,8 +237,9 @@
   <div class="body">
     <div class="mapcol">
       <div class="tools">
-        <button class="btn sm" data-action="draw-boundary" id="btn-boundary">Draw boundary</button>
-        <button class="btn sm" data-action="draw-zone" id="btn-zone" title="A division is an area of the map given to a unit">Draw division</button>
+        <span class="k draw-k" aria-hidden="true">Draw</span>
+        <button class="btn sm" data-action="draw-boundary" id="btn-boundary" title="The incident's outer edge, drawn once. It frames every printed map; nothing is assigned to it."><span class="sw-b" aria-hidden="true"></span>Boundary</button>
+        <button class="btn sm" data-action="draw-zone" id="btn-zone" title="An area of the map given to one unit. Draw as many as you need, inside the boundary."><span class="sw-d" aria-hidden="true"></span>Division</button>
         <span id="draw-btns" hidden>
           <button class="btn pri sm" data-action="finish-draw">Finish</button>
           <button class="btn sm" data-action="undo-point" id="btn-undo-point" title="Backspace or Delete does this too" hidden>Remove last point</button>
@@ -348,6 +360,7 @@
 <dialog id="transfer-dialog" class="zdialog tdialog" aria-label="Transfer of command"><div id="transfer-dialog-body"></div></dialog>
 <dialog id="settings-dialog" class="zdialog tdialog" aria-label="Incident settings"><div id="settings-dialog-body"></div></dialog>
 
+<div id="zone-hover" class="zone-hover" role="tooltip" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
 <div id="update-chip" class="update-chip" role="status" hidden><span>New version ready</span><button type="button" class="btn sm pri" data-action="update-reload">Reload</button><button type="button" class="btn sm" data-action="update-later">Later</button></div>

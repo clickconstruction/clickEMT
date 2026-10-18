@@ -46,7 +46,7 @@ async function reload() {
   const btn = document.createElement('button');
   btn.dataset.action = 'open-incident'; btn.dataset.id = INC(); btn.hidden = true;
   document.body.appendChild(btn); btn.click(); btn.remove();
-  const ok = await until(() => !$('#app').hidden && $('#inc-name').textContent === 'Cedar Fork Flooding' && $$('#zones .zr').length === 6 && $('#panel').textContent.includes('Join code'));
+  const ok = await until(() => !$('#app').hidden && $('#inc-name').textContent === 'Cedar Fork Flooding' && $$('#zones .zr').length === 6 && !!$('#panel [data-home]'));
   if (!ok) throw new Error('the page did not reopen the seeded incident');
   if ($('#logbox').classList.contains('closed')) $('[data-action="log-toggle"]').click();   // a folded log from an earlier run hides the rows the suites read
   base = new Data(window.sb);
@@ -94,6 +94,25 @@ async function seeded(check) {
   check('a click swaps it to UTC, the right hour, kept for this device', /^\d\d:\d\d UTC$/.test(clk()) && nowUtc().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'utc' && /local/i.test($('#clock').title), clk() + ' | ' + nowUtc().join('/'));
   $('[data-action="clock"]').click();
   check('and back to local', !/UTC$/.test(clk()) && nowLocal().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'local', clk());
+  // ---- v60: the gear in place of four buttons, the head count, the codes' and the connection's cards, the drawing buttons, a division's hover card
+  check('the header row ends with a gear; Light, Settings, Switch incident and Sign out are in its menu, not on the row', !!$('.top-btns [data-action="gear"]') && !$('.top-btns > [data-action="settings"]') && !$('.top-btns > [data-action="sign-out"]') && $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' ') === 'settings theme show-around switch-incident sign-out' && $('#gear-menu').hidden, $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' '));
+  $('[data-action="gear"]').click();
+  check('the gear opens its menu; Escape closes it', !$('#gear-menu').hidden && (() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return $('#gear-menu').hidden; })());
+  check('a head count sits beside Find a person: six people on three units, and it opens the People board', !$('#head-count').hidden && has('#head-count', '6', 'on 3 units') && /6 people in the field on 3 units/.test($('#head-count').title) && $('#head-count').dataset.action === 'people', text('#head-count'));
+  $('#inc-code').click();
+  check('the CEDAR7 pill opens the codes\' card: the join code with its QR, and the Operations code as dots', await until(() => !$('#codes-pop').hidden) && !!$('#codes-pop .qr-box svg') && has('#codes-pop', 'cedar7', 'operations code', '••••••••') && !text('#codes-pop').includes(M().ids.opsCode.toLowerCase()) && $('#inc-code').getAttribute('aria-expanded') === 'true', text('#codes-pop').slice(0, 200));
+  $('#codes-pop [data-action="ops-show"]').click();
+  check('Show reveals the Operations code; Hide puts the dots back', has('#codes-pop', M().ids.opsCode.toLowerCase()) && has('#codes-pop', 'hide') && (() => { $('#codes-pop [data-action="ops-show"]').click(); return has('#codes-pop', '••••••••'); })(), text('#codes-pop').slice(0, 200));
+  $('#live-pill').click();
+  check('the dot opens the connection\'s card and closes the codes\': live since when, the last update, the three units\' last reports, this base\'s version, Reconnect', await until(() => !$('#live-pop').hidden) && $('#codes-pop').hidden && has('#live-pop', 'connection', 'live since', 'last update', 'unit 1', 'unit 2', 'unit 3', 'this base') && !!$('#live-pop [data-action="reconnect"]'), text('#live-pop').slice(0, 300));
+  document.body.click();
+  check('a click outside closes it', $('#live-pop').hidden);
+  check('the drawing buttons read Draw · Boundary · Division with their marks; on an incident with a boundary and divisions neither is lit and the hint is the plain one', has('.tools', 'draw', 'boundary', 'division') && !!$('#btn-boundary .sw-b') && !!$('#btn-zone .sw-d') && !$('#btn-boundary').classList.contains('pri') && !$('#btn-zone').classList.contains('pri') && has('#tool-hint', 'click a division, a unit or a photo pin'), text('.tools'));
+  const a1row = $(`#zones .zr[data-id="${ZONE('A-1')}"]`);
+  a1row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+  check('resting on A-1\'s row for half a second opens its hover card beside the panel: tasked against in it now, the search, hazards, the last report, the objective', await until(() => !$('#zone-hover').hidden, 1500) && has('#zone-hover', 'a-1 riverside drive, east', 'tasked', 'unit 1', 'in it now', 'searched', '9 of 24', 'hazards open', 'last report', 'objective 1') && $('#zone-hover').getBoundingClientRect().right < $('.side').getBoundingClientRect().left, text('#zone-hover').slice(0, 300));
+  $('#zones').dispatchEvent(new Event('mouseleave'));
+  check('leaving the list closes it', $('#zone-hover').hidden);
   check('the field client is Unit 3, assigned A-2', field.user.id === USERS().unit3 && field.me().unit_name === 'Unit 3' && field.myZones().map((z) => z.code).join() === 'A-2');
 }
 
@@ -222,7 +241,7 @@ async function fieldReports(check) {
   check('Resolved from the base logs it and takes the hazard off the open list on both sides', !!eventText(base, 'Hazard resolved in B-2: gas smell') && !base.hazards().some((h) => h.id === hid) && base.hazards(true).some((h) => h.id === hid) && await until(() => !field.hazards().some((h) => h.id === hid)));
   // v41: an act-on-now hazard waits on the bar until Operations acknowledges it; the home panel lists what is open and the header counts it
   const hid2 = uuid();
-  if ($('#panel [data-action="close-panel"]')) { $('#panel [data-action="close-panel"]').click(); await until(() => has('#panel', 'join code')); }   // the Hazards open section is on the home panel
+  if ($('#panel [data-action="close-panel"]')) { $('#panel [data-action="close-panel"]').click(); await until(() => !!$('#panel [data-home]')); }   // the Hazards open section is on the home panel
   await field.addHazard(hid2, { kind: 'Person or car in the water', note: 'one inside', urgency: 'now', lat: 30.2598, lng: -97.7475, zoneId: b2 });
   check('an urgent hazard sits on the bar with Acknowledge, the home panel lists it under Hazards open with its urgency, the header counts it, and the log carries the word', await until(() => has('#safety', 'hazard · person or car in the water, one inside', 'b-2') && !!$('#safety [data-action="ack-hazard"]')) && await until(() => has('#panel', 'hazards open · ', 'person or car in the water', 'act on now')) && has('#inc-sub', 'hazards open') && !!eventText(base, 'Hazard in B-2 (act on now): person or car in the water (one inside), reported by Unit 3'), text('#safety') + ' | ' + text('#inc-sub'));
   $('#safety [data-action="ack-hazard"]').click();
@@ -611,7 +630,7 @@ async function periods(check) {
 // panel, shown to the unit, printed as a 204, and the base speaks ICS.
 async function assignment(check) {
   const a1 = ZONE('A-1'), b3 = ZONE('B-3');
-  check('the base says division where ICS does', has('#btn-zone', 'draw division') && has('.side-h', 'divisions by priority') && has('#inc-sub', '6 divisions') && /Division A-1 drawn/.test(logTexts().join(' ')), text('#inc-sub'));
+  check('the base says division where ICS does', has('.tools', 'draw') && has('#btn-zone', 'division') && has('.side-h', 'divisions by priority') && has('#inc-sub', '6 divisions') && /Division A-1 drawn/.test(logTexts().join(' ')), text('#inc-sub'));
   $(`#zones .zr[data-id="${a1}"]`).click();
   await until(() => has('#panel .title', 'division a-1'));
   const f = $('#panel form[data-form="zone-edit"]');
@@ -1053,6 +1072,7 @@ async function layers(check) {
   const radios = () => $$('#layers-pop [data-action="layer-pick"]');
   $('#btn-layers').click();
   await until(() => !$('#layers-pop').hidden && radios().length === 2);
+  check('the panel\'s left column is the overlays, the right the map underneath (v60)', $$('#layers-pop .lp-col .k').map((k) => k.textContent).join(' | ') === 'Overlays | Map underneath', $$('#layers-pop .lp-col .k').map((k) => k.textContent).join(' | '));
   check('Layers opens a panel: the map underneath on one side (Streets, Satellite, and Google twice because the mock\'s settings carry a key; Streets on), the overlays on the other', radios().map((r) => r.dataset.layer).join(' ') === 'streets satellite google-streets google-satellite' && radios()[0].checked && has('#layers-pop', 'map underneath', 'overlays', 'aerial 06:40', 'upload aerial photography', 'google maps, streets') && tileHosts().some((h) => /openstreetmap/.test(h)), text('#layers-pop').slice(0, 300) + ' | ' + radios().map((r) => r.dataset.layer).join(' '));
   radios()[1].click();
   await until(() => tileHosts().includes('server.arcgisonline.com') && !tileHosts().some((h) => /openstreetmap/.test(h)), 6000);
@@ -1139,8 +1159,10 @@ async function zoneCard(check) {
 // back by the phone's decoder from the very picture the base draws.
 async function join(check) {
   const url = location.origin + '/field/?join=' + M().tables.ic_incidents[0].code;   // whatever port serves this checkout
-  check('the home panel draws the join code as a QR beside the code', !!$('#panel .qr-box svg') && has('#panel', 'join code for field phones', 'cedar7', 'print a join card'), text('#panel').slice(0, 200));
-  $('#panel [data-action="print-join"]').click();
+  $('#inc-code').click();
+  await until(() => !$('#codes-pop').hidden);
+  check('the CEDAR7 pill opens the codes\' card: the QR beside the code, the join card, the link, the bands (v60)', !!$('#codes-pop .qr-box svg') && has('#codes-pop', 'join code for field phones', 'cedar7', 'print a join card', 'copy the link', 'print bands') && !$('#panel .qr-box'), text('#codes-pop').slice(0, 200));
+  $('#codes-pop [data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
   check('the join card has the big code, the QR and the how-to', !!$('#briefing-page .join-card-qr svg') && has('#briefing-page', 'cedar7', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 300));
   const svg = $('#briefing-page .join-card-qr svg').outerHTML;
@@ -1269,7 +1291,7 @@ async function sections(check) {
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('#panel [data-action="close-panel"]').click();
-  await until(() => has('#panel', 'join code'));
+  await until(() => !!$('#panel [data-home]'));
   $(`#panel [data-action="select-unit"][data-id="${u.unit1}"]`).click();
   await until(() => has('#panel .title', 'unit 1'));
   check('the unit panel\'s people are orange too', await until(() => $$('#panel .pp-row.over').length === 2) && has('#panel', 'past 2 h'), text('#panel').slice(0, 300));
@@ -1509,8 +1531,8 @@ async function ics100(check) {
 
   // 6 · the join card as the deployment briefing
   $('[data-action="close-panel"]').click();
-  await until(() => $('#panel [data-action="print-join"]'));
-  $('#panel [data-action="print-join"]').click();
+  await until(() => $('#codes-pop [data-action="print-join"]'));
+  $('#codes-pop [data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
   check('the join card carries the six deployment lines and what to bring, from the data, and when it was printed', has('#briefing-page', 'deployment briefing', 'incident: cedar fork flooding · lead agency cedar fork fire department · ic priya natarajan', 'check in at: staging, high school east lot · units wait here between assignments', 'your assignment: given at check-in by operations. the period', 'report by:', 'for the operational period 3 briefing at staging', 'getting there: high school east lot · 1200 mill st, east lot · units wait here between assignments · for a satnav 30.25560, -97.74000', 'radio: command cmd 1 · tactical, division a tac 2', 'safety:', 'bring: pfds and dry bags for water crews', 'who to ask for', 'staging: sam whitaker (logistics) · operations: jo castillo', 'printed') && has('#briefing-page', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 1400));
   $('[data-action="close-briefing"]').click();
@@ -1565,7 +1587,7 @@ async function rewalks(check) {
   await until(() => base.facility(staging).address === '1200 Mill St, east lot, gate 3');
   check('a changed address is saved and logged as an update', base.facility(staging).address === '1200 Mill St, east lot, gate 3' && !!eventText(base, 'Staging area: High school east lot updated'), logTexts()[0]);
   $('#panel [data-action="close-panel"]').click();
-  await until(() => has('#panel', 'join code'));
+  await until(() => !!$('#panel [data-home]'));
   $('[data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
   const there = text('#briefing-page');
@@ -1596,7 +1618,7 @@ async function rewalks(check) {
   await until(() => base.structure(rid));
   check('a revisit for tomorrow reads "tomorrow 06:00" on the division\'s list and in the log', await until(() => has('#panel', '115 bee creek rd · not searched · revisit tomorrow 06:00')) && !!eventText(base, 'B-2: 115 Bee Creek Rd · revisit tomorrow at 06:00 (gas off)'), text('#panel').slice(0, 400));
   $('#panel [data-action="close-panel"]').click();
-  await until(() => has('#panel', 'join code'));
+  await until(() => !!$('#panel [data-home]'));
   // the current stretch: Nguyen checked out and back in
   const ng = base.person(PPL[2]), was = ng.checked_in_at;
   await base.checkOutPerson(PPL[2]);
@@ -1965,10 +1987,11 @@ async function invite(check) {
     $('[data-action="close-people"]').click();
 
     // ---- the switch: the join code off for the uninvited
-    const box = $('#panel [data-check="invite-only"]');
-    check('the home panel has Invited members only beside the codes, off', !!box && !box.checked, text('#panel').slice(0, 400));
+    $('#inc-code').click(); await until(() => !$('#codes-pop').hidden);
+    const box = $('#codes-pop [data-check="invite-only"]');
+    check('the codes\' card has Invited members only beside the code, off', !!box && !box.checked, text('#codes-pop').slice(0, 400));
     box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true }));
-    check('switched on: the incident says so, the 214 says the code is off, the panel too', await until(() => base.incident.invite_only === true) && await until(() => eventText(base, 'Invited members only: the join code is off')) && await until(() => has('#panel', 'the join code is off')), logTexts()[0]);
+    check('switched on: the incident says so, the 214 says the code is off, the panel too', await until(() => base.incident.invite_only === true) && await until(() => eventText(base, 'Invited members only: the join code is off')) && await until(() => has('#codes-pop', 'the join code is off')), logTexts()[0]);
     const e1 = await (async () => { const fc = window.supabase.createClient(); await fc.auth.signInWithPassword({ email: 'stranger@mock.local', password: 'any' }); const D = new Data(fc); await D.init(); try { await D.join('CEDAR7', 'unit', 'Unit 9', null, 1, 'x', [], 'engine'); return null; } catch (e) { return e; } finally { D.close(); } })();
     check('with the code off, a stranger with CEDAR7 is told the incident is by invitation', !!e1 && /by invitation; ask operations/i.test(e1.message), e1 && e1.message);
     await field.join('CEDAR7', 'unit', 'Unit 3', null, 2, 'Cedar Fork Fire Department', [], 'swift_water');
@@ -2023,14 +2046,15 @@ async function around(check) {
   // ---- the first open on a device that has not seen the base
   try { localStorage.removeItem('ic.base.around'); } catch (e) { /* storage blocked */ }
   reopen();
-  check('the first open on this device shows ten labels, numbered in order, each a name and a sentence, and the pill counts them', await until(() => cards().length === 10 && !!$('#around .around-pill')) && cards().every((c, i) => c.querySelector('.n').textContent === String(i + 1) && c.querySelector('b').textContent.length > 3 && c.querySelector('p').textContent.length > 20) && has('#around .around-pill', 'showing you around', '10 to read'), cards().length + ' | ' + text('#around .around-pill'));
+  check('the first open on this device shows nine labels, numbered in order, each the part\'s name and one line of twelve words at most, and the pill counts them (v60)', await until(() => cards().length === 9 && !!$('#around .around-pill')) && cards().every((c, i) => c.querySelector('.n').textContent === String(i + 1) && c.querySelector('b').textContent.length > 3 && c.querySelector('p').textContent.split(/\s+/).length <= 14) && has('#around .around-pill', 'show me around', '9 left'), cards().length + ' | ' + text('#around .around-pill'));
+  check('each tint carries its number too, and a thin row\'s card hangs under it with a caret while a tall part\'s sits inside (v60)', $$('#around .around-zone .n').length === 9 && card('head').classList.contains('below') && card('tools').classList.contains('below') && !card('map').classList.contains('below') && zone('map').classList.contains('tall') && (() => { const r = $('.tools').getBoundingClientRect(), c = card('tools').getBoundingClientRect(); return Math.abs(c.top - r.bottom - 7) < 3; })(), String(card('tools').getBoundingClientRect().top - $('.tools').getBoundingClientRect().bottom));
   const offs = [over('map', '#map'), over('tools', '.tools'), over('log', '#logbox'), over('bars', '#bars')].filter(Boolean);
   check('each tint sits over its part: the map, the tools, the log, the alarm line', offs.length === 0, offs.join(' | '));
-  check('the join code and the Operations code have labels of their own; the log\'s is the tenth', !!card('join') && !!card('ops') && card('ops').querySelector('.n').textContent === '9' && card('log').querySelector('.n').textContent === '10');
+  check('the codes have one label, on the CEDAR7 pill; the log\'s is the ninth (v60)', !!card('codes') && card('codes').querySelector('.n').textContent === '8' && card('log').querySelector('.n').textContent === '9' && !card('join') && !card('ops'));
   check('every card is on the screen and none sits on another', (() => { const rs = cards().filter((c) => !c.hidden).map((c) => c.getBoundingClientRect()); const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight; if (!rs.every((r) => r.left >= 0 && r.top >= 0 && r.right <= vw + 1 && r.bottom <= vh + 1)) return false; for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i], b = rs[j]; if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) return false; } return true; })(), cards().filter((c) => !c.hidden).map((c) => c.dataset.aroundKey + ':' + Math.round(c.getBoundingClientRect().top)).join(' '));
   // ---- one click clears one label; the device is not marked until the last goes
   zone('map').click();
-  check('clicking the map\'s tint clears that label alone: the pill counts nine, the device is not yet marked', zone('map').hidden && card('map').hidden && !card('log').hidden && has('#around .around-pill', '9 to read') && mark() !== '1', text('#around .around-pill') + ' | ' + mark());
+  check('clicking the map\'s tint clears that label alone: the pill counts eight, the device is not yet marked', zone('map').hidden && card('map').hidden && !card('log').hidden && has('#around .around-pill', '8 left') && mark() !== '1', text('#around .around-pill') + ' | ' + mark());
   // ---- Escape clears the rest and marks the device
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   check('Escape clears the rest, marks this device as shown around, and says where they come back from', await until(() => !$('#around')) && mark() === '1' && await until(() => has('#toast', 'show me around is in settings')), text('#toast') + ' | ' + mark());
@@ -2039,18 +2063,18 @@ async function around(check) {
   await until(() => !$('#app').hidden && $('#inc-name').textContent === 'Cedar Fork Flooding');
   await wait(300);
   check('the next open on this device shows no labels', !$('#around'));
-  // ---- Settings brings them back; Clear all puts them away
-  $('[data-action="settings"]').click();
-  check('Settings has a This device line with Show me around', await until(() => $('#settings-dialog[open] [data-action="show-around"]')) && has('#settings-dialog', 'this device', 'show me around'), text('#settings-dialog').slice(-300));
-  $('#settings-dialog [data-action="show-around"]').click();
-  check('Show me around closes Settings and puts every label back', await until(() => cards().length === 10 && !$('#settings-dialog').open) && has('#around .around-pill', '10 to read'), cards().length);
+  // ---- the gear brings them back; Clear all puts them away
+  $('[data-action="gear"]').click();
+  check('the gear menu has Show me around (v60)', await until(() => !$('#gear-menu').hidden) && !!$('#gear-menu [data-action="show-around"]'), text('#gear-menu'));
+  $('#gear-menu [data-action="show-around"]').click();
+  check('Show me around closes the menu and puts every label back', await until(() => cards().length === 9 && $('#gear-menu').hidden) && has('#around .around-pill', '9 left'), cards().length);
   $('#around .around-all').click();
   check('Clear all puts them away', await until(() => !$('#around')) && mark() === '1');
   // ---- the alarm line is never tinted while something is open on it; an emergency puts every label away
   const par = await base.startPar('user:' + USERS().unit3);   // Unit 3 alone, so its answer closes it
   await until(() => !$('#safety').hidden);
-  $('[data-action="settings"]').click(); await until(() => $('#settings-dialog[open] [data-action="show-around"]')); $('#settings-dialog [data-action="show-around"]').click();
-  check('with a PAR waiting on the alarm line, its label shows but the line is not tinted', await until(() => cards().length === 10 && card('bars') && !card('bars').hidden) && zone('bars').hidden && !zone('map').hidden, String(zone('bars') && zone('bars').hidden) + ' | ' + String(card('bars') && card('bars').hidden));
+  $('[data-action="gear"]').click(); await until(() => !$('#gear-menu').hidden); $('#gear-menu [data-action="show-around"]').click();
+  check('with a PAR waiting on the alarm line, its label shows but the line is not tinted', await until(() => cards().length === 9 && card('bars') && !card('bars').hidden) && zone('bars').hidden && !zone('map').hidden, String(zone('bars') && zone('bars').hidden) + ' | ' + String(card('bars') && card('bars').hidden));
   await field.answerPar(par.id, true, 2);
   check('the PAR answered and the alarm line quiet again, its tint is back', await until(() => $('#safety').hidden && !zone('bars').hidden, 6000), String(zone('bars') && zone('bars').hidden));
   const aid = uuid();
@@ -2249,7 +2273,7 @@ async function walkfix(check) {
     const nf = $('#panel form[data-form="new-zone"]').getBoundingClientRect(), sr = side.getBoundingClientRect();
     check('after Finish the new-division form is in view, though the sidebar was scrolled down', nf.top >= sr.top - 1 && nf.top < sr.bottom - 60, `form at ${Math.round(nf.top)}, sidebar ${Math.round(sr.top)}–${Math.round(sr.bottom)}, scrolled ${side.scrollTop}`);
     $('[data-action="newzone-discard"]').click();
-    await until(() => has('#panel', 'join code'));
+    await until(() => !!$('#panel [data-home]'));
 
     // the PIO reading Public information while a message arrives above it
     const pubHead = () => $$('#panel .k').find((k) => /public information/i.test(k.textContent));
@@ -2288,9 +2312,9 @@ async function walkfix(check) {
     check('the facility card has a plain Close where Close was, and Mark closed beside its Open badge', !!closeBtn && closeBtn.textContent === 'Close' && has('#panel', 'open', 'mark closed') && !$$('#panel button').some((b) => b.textContent.trim() === 'Close' && b.dataset.action === 'close-facility'), text('#panel').slice(0, 200));
     const lines = base.events().length;
     closeBtn.click();
-    await until(() => has('#panel', 'join code'));
+    await until(() => !!$('#panel [data-home]'));
     await wait(200);
-    check('Close puts the card away and leaves the command post open, with nothing logged', !base.facility(icp).closed_at && base.events().length === lines && has('#panel', 'join code'));
+    check('Close puts the card away and leaves the command post open, with nothing logged', !base.facility(icp).closed_at && base.events().length === lines && !!$('#panel [data-home]'));
     const btnSel2 = document.createElement('button'); btnSel2.dataset.action = 'select-facility'; btnSel2.dataset.id = icp; btnSel2.hidden = true; document.body.appendChild(btnSel2); btnSel2.click(); btnSel2.remove();
     await until(() => $('#panel [data-action="close-facility"]'));
     $('#panel [data-action="close-facility"]').click();
@@ -2313,7 +2337,7 @@ async function walkfix(check) {
     rf.requestSubmit();
     check('placing it is logged as a boat ramp and drawn with its letters', await until(() => eventText(base, 'Boat ramp: Low-water crossing ramp updated')) && !!eventText(base, 'Boat ramp opened') && await until(() => $$('#map .fmark-ramp').length === 1 && $('#map .fmark-ramp').textContent === 'BR'), logTexts()[0]);
     $('#panel [data-action="close-panel"]').click();
-    await until(() => has('#panel', 'join code'));
+    await until(() => !!$('#panel [data-home]'));
     // the safety message, the PAR and the alert answered by Unit 3, so its phone opens on its own screens
     await field.ackMessage(safetyMsg.id, 'Copy');
     await field.answerPar(parMsg.id, true, 2);
@@ -2554,7 +2578,7 @@ async function evacuees(check) {
     check('a click elsewhere closes it', await until(() => $('#find-pop').hidden && $('#find-q').value === ''));
     // the home panel's line per place, and its own find box
     $('#panel [data-action="close-panel"]').click();
-    await until(() => has('#panel', 'join code'));
+    await until(() => !!$('#panel [data-home]'));
     check('the home panel lists people sheltered and moved per place', has('#panel', 'people sheltered and moved', 'high school gym', '9 of 40 beds', '4 on the way', 'dell seton medical center', '3 sent here'), text('#panel').slice(0, 200));
     const hf = $('#panel [data-find="home"]');
     hf.value = 'okafor'; hf.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2610,9 +2634,10 @@ async function members(check) {
   let P = null, relief = null;
   try {
     const U = USERS(), opsCode = M().ids.opsCode;
-    check('the home panel shows the Operations code with Copy and New code, and says it never goes on paper', has('#panel', 'operations code', opsCode.toLowerCase(), 'never on paper') && !!$('#panel [data-action="new-ops-code"]') && !!$('#panel [data-action="copy-ops-code"]'), text('#panel').slice(0, 400));
+    $('#inc-code').click(); await until(() => !$('#codes-pop').hidden);
+    check('the codes\' card shows the Operations code as dots until Show is pressed, then the code, with Copy and New code, and says it never goes on paper (v60)', has('#codes-pop', 'operations code', '••••••••', 'never on paper') && !text('#codes-pop').includes(opsCode.toLowerCase()) && !!$('#codes-pop [data-action="ops-show"]') && (() => { $('#codes-pop [data-action="ops-show"]').click(); return has('#codes-pop', opsCode.toLowerCase()) && !!$('#codes-pop [data-action="new-ops-code"]') && !!$('#codes-pop [data-action="copy-ops-code"]'); })(), text('#codes-pop').slice(0, 400));
     check('a unit cannot read it', !field.opsCode() && ((await field.sb.from('ic_ops_codes').select('*')).data || []).length === 0);
-    check('the join box and the join card do not carry it', !$('#panel .join-box').textContent.includes(opsCode) && !joinCardTextOf().includes(opsCode));
+    check('the join box and the join card do not carry it', !$('#codes-pop .join-box').textContent.includes(opsCode) && !joinCardTextOf().includes(opsCode));
     // the role follows the code
     const c = window.supabase.createClient();
     await c.auth.signInWithPassword({ email: 'relief@mock.local', password: 'any' });
@@ -2625,9 +2650,9 @@ async function members(check) {
     check('the Operations code makes the member Operations, whatever the phone meant, and the log says so', base.member(relief.user.id).role === 'ops' && await until(() => eventText(base, 'Operations joined as Operations with the Operations code as Relief Chief, 512 555 0177, licence typed')), logTexts()[0]);
     await relief.open(INC());
     check('and they read the code too', relief.opsCode() === opsCode);
-    $('#panel [data-action="new-ops-code"]').click();
+    $('#codes-pop [data-action="new-ops-code"]').click();
     await until(() => base.opsCode() && base.opsCode() !== opsCode);
-    check('New code gives a new eight-letter code, logged without the code itself, and the panel shows it', base.opsCode().length === 8 && !!eventText(base, 'Operations code replaced; the old one no longer joins') && await until(() => has('#panel', base.opsCode().toLowerCase())) && !base.events().some((e) => e.text.includes(opsCode)), logTexts()[0]);
+    check('New code gives a new eight-letter code, logged without the code itself, and the panel shows it', base.opsCode().length === 8 && !!eventText(base, 'Operations code replaced; the old one no longer joins') && await until(() => has('#codes-pop', base.opsCode().toLowerCase())) && !base.events().some((e) => e.text.includes(opsCode)), logTexts()[0]);
     const e2 = await (async () => { try { await relief.join(opsCode, 'unit', 'X'); return null; } catch (e) { return e; } })();
     check('the old code no longer joins', !!e2 && /No active incident has the code/.test(e2.message), e2 && e2.message);
     // the Members tab
@@ -2712,7 +2737,7 @@ async function members(check) {
   }
 }
 function joinCardTextOf() {
-  const btn = $('#panel [data-action="print-join"]');
+  const btn = $('#codes-pop [data-action="print-join"]');
   if (!btn) return '';
   btn.click();
   const t = $('#briefing-page') ? $('#briefing-page').innerText : '';
@@ -2841,7 +2866,7 @@ async function safetyset(check) {
     await base.setPhotoPublic(M().ids.photos[1], true);   // cleared, not checked: listed as missing
     await until(() => base.publicPhotos().length === 2);
     $('#panel [data-action="close-panel"]').click();
-    await until(() => has('#panel', 'join code', '2 photos cleared for the public'), 8000);   // the page's own data has the second photo before the counts are read
+    await until(() => $('#panel [data-home]') && has('#panel', '2 photos cleared for the public'), 8000);   // the page's own data has the second photo before the counts are read
     check('Public information counts cleared and checked, lists each photo\'s caption and check, and offers the public set', has('#panel', '2 photos cleared for the public, 1 checked', 'download the public set', '1 of 2', 'checked · floodwater over riverside drive', 'not checked · no public caption'), text('#panel').slice(text('#panel').indexOf('public information'), text('#panel').indexOf('public information') + 400));
     let saved = null;
     HTMLAnchorElement.prototype.click = function () { if (this.download) saved = { name: this.download, href: this.href }; else realClick.call(this); };

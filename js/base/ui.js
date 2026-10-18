@@ -121,18 +121,7 @@ export function parHtml(data) {
 function homeHtml(data, state) {
   const inc = data.incident;
   return `
-    <div class="k">Join code for field phones</div>
-    <div class="join-box" data-around="join">
-      <div class="qr-box">${qrSvg(fieldJoinUrl(inc.code), { label: 'QR code to join ' + inc.name })}</div>
-      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-        <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
-        <div class="muted" style="font-size:12.5px">A unit scans this with its phone, or opens the field app and types the code with its unit name.</div>
-        <label class="chk inv-only" title="Invited members only: the join code stops working for anyone not yet on the incident; the door says the incident is by invitation. Members, the Operations code and invitations go on working."><input type="checkbox" data-check="invite-only"${inc.invite_only ? ' checked' : ''}> Invited members only${inc.invite_only ? ' <span class="muted">· the join code is off; invite from the People board\'s Members tab</span>' : ''}</label>
-        <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button><button class="btn sm" data-action="print-bands" title="A sheet of 24 wristbands with a QR code each: a number and nothing else. A unit gives one to each person by scanning it; the desk gives one to each family.">Print bands</button></div>
-      </div>
-    </div>
-    ${opsCodeHtml(data)}
-    <div class="k" style="margin-top:6px">Resources</div>
+    <div class="k" data-home>Resources</div>
     ${resourcesHtml(data, state)}
     ${parHtml(data)}
     ${requestsHtml(data)}
@@ -166,16 +155,37 @@ function homeHtml(data, state) {
 
 // The Operations code (migration 0019): joining with it makes someone Operations, so it is read here
 // alone, said by radio or phone, never printed and never on the join card. New code retires one that leaked.
-function opsCodeHtml(data) {
+function opsCodeHtml(data, state) {
   const me = data.me();
   if (!me || me.role !== 'ops') return '';
   const code = data.opsCode();
+  const shown = !!(state && state.opsShown);
   return `
-    <div class="k" style="margin-top:6px">Operations code</div>
-    <div class="ops-code" data-around="ops">
-      <div class="d-row"><span class="code-big mono" data-ops-code>${code ? esc(code) : '—'}</span>${code ? '<button class="btn sm" data-action="copy-ops-code">Copy</button>' : ''}<button class="btn sm" data-action="new-ops-code" title="Retire this code: the old one no longer joins">New code</button></div>
-      <div class="muted" style="font-size:12.5px">${code ? 'Whoever joins with this code is Operations and can run the incident. Give it by radio or phone, never on paper; the join card carries the units\' code only. The Members tab on the People board shows who holds which role.' : 'No Operations code on record yet. Press New code to make one.'}</div>
+    <div class="k" style="margin-top:12px">Operations code</div>
+    <div class="ops-code">
+      <div class="d-row"><span class="code-big mono" data-ops-code>${code ? (shown ? esc(code) : '••••••••') : '—'}</span>${code ? `<button class="btn sm" data-action="ops-show">${shown ? 'Hide' : 'Show'}</button><button class="btn sm" data-action="copy-ops-code">Copy</button>` : ''}<button class="btn sm" data-action="new-ops-code" title="Retire this code: the old one no longer joins">${code ? 'New code' : 'Make one'}</button></div>
+      <div class="muted" style="font-size:12.5px">${code ? 'Makes a second Operations. Say it by radio, never on paper; the join card carries the units\' code only.' : 'No Operations code yet. Press Make one.'}</div>
     </div>`;
+}
+
+// The codes' card (v60), under the header's join-code pill: the QR, the code, Invited members only, the join card,
+// the link and the bands, then the Operations code as dots until Show is pressed, so it is never on a screen
+// someone walks past. Drawn on every draw and shown by main.js while state.codesOpen.
+export function codesPopHtml(data, state) {
+  const inc = data.incident;
+  return `
+    <div class="k">Join code for field phones</div>
+    <div class="join-box">
+      <div class="qr-box">${qrSvg(fieldJoinUrl(inc.code), { label: 'QR code to join ' + inc.name })}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+        <div class="d-row"><span class="code-big mono">${esc(inc.code)}</span><button class="btn sm" data-action="copy-code">Copy</button></div>
+        <div class="muted" style="font-size:12.5px">Units scan this, or type it with their unit name.</div>
+        <label class="chk inv-only" title="Invited members only: the join code stops working for anyone not yet on the incident; the door says the incident is by invitation. Members, the Operations code and invitations go on working."><input type="checkbox" data-check="invite-only"${inc.invite_only ? ' checked' : ''}> Invited members only${inc.invite_only ? ' <span class="muted">· the join code is off; invite from the People board\'s Members tab</span>' : ''}</label>
+        <div class="d-row"><button class="btn sm" data-action="print-join">Print a join card</button><button class="btn sm" data-action="copy-join-link">Copy the link</button><button class="btn sm" data-action="print-bands" title="A sheet of 24 wristbands with a QR code each: a number and nothing else. A unit gives one to each person by scanning it; the desk gives one to each family.">Print bands</button></div>
+      </div>
+    </div>
+    ${opsCodeHtml(data, state)}
+`;
 }
 
 // The Layers panel under the tools bar: the map underneath on one side, the imagery over it on the other.
@@ -185,15 +195,14 @@ export function layersPopHtml(data, state) {
   const active = data.overlays();
   return `
     <div class="lp-col">
-      <div class="k">Map underneath</div>
-      ${availableLayers().map((l) => `<label class="lp-row"><input type="radio" name="base-layer" value="${l.id}" data-action="layer-pick" data-layer="${l.id}"${cur === l.id ? ' checked' : ''}><span class="lp-name">${esc(l.name)}</span><span class="muted">${esc(l.source || '')}</span></label>`).join('')}
-      ${googleKey() ? '' : '<div class="muted lp-note">Google Maps streets and satellite appear here once a Map Tiles API key is set in config.js.</div>'}
-    </div>
-    <div class="lp-col">
       <div class="k">Overlays</div>
       ${active.length ? active.map((o) => `<div class="lp-ovl"><label class="lp-row"><input type="checkbox" data-action="overlay-toggle" data-id="${o.id}"${hidden.has(o.id) ? '' : ' checked'}><span class="lp-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) : 'added ' + hhmm(o.created_at)}</span></label><input type="range" class="lp-range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity of ${esc(o.name || 'the imagery')}"></div>`).join('') : '<div class="muted lp-note">No imagery over the map yet.</div>'}
       ${state.layersUpload ? overlayFormHtml() : '<button class="btn sm" data-action="layers-upload">Upload aerial photography</button>'}
       <div class="muted lp-note">Hiding is for this screen; opacity and the upload are for everyone. Remove or put back under Map imagery on the home panel.</div>
+    </div>    <div class="lp-col">
+      <div class="k">Map underneath</div>
+      ${availableLayers().map((l) => `<label class="lp-row"><input type="radio" name="base-layer" value="${l.id}" data-action="layer-pick" data-layer="${l.id}"${cur === l.id ? ' checked' : ''}><span class="lp-name">${esc(l.name)}</span><span class="muted">${esc(l.source || '')}</span></label>`).join('')}
+      ${googleKey() ? '' : '<div class="muted lp-note">Google Maps streets and satellite appear here once a Map Tiles API key is set in config.js.</div>'}
     </div>`;
 }
 
@@ -1759,8 +1768,56 @@ export function settingsDialogHtml(data) {
       <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
       <div class="k" style="margin-top:4px">Bands</div>
       <div class="muted" style="font-size:12px">${data.tags(true).length} printed, ${data.tags(true).filter((t) => t.person_id || t.evacuee_id).length} on someone, ${data.tags(true).filter((t) => t.voided_at).length} voided. Print bands from the home panel's join box or the People board; a lost band is voided from its person's row on the People board and a new one given by scanning it. A sheltered person's band is voided with their name when the personal records clear.</div>
-            <div class="k" style="margin-top:4px">This device</div>
-      <div class="d-row"><span class="muted" style="font-size:12px;flex:1;min-width:0">Light or dark is on the header. The labels over each part of the screen, shown on this device's first open, come back from here.</span><button type="button" class="btn sm" data-action="show-around">Show me around</button></div>
-<div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
+      <div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
     </form>`;
+}
+
+// A division's hover card (v60): rest on its row for half a second. How many people are tasked to it against how
+// many are in it now (the units whose phones reported inside its outline in the last five minutes), the search,
+// the hazards open, the last report, the objective's words. Orange when fewer are in it than tasked.
+export function zoneHoverHtml(data, z, now = Date.now()) {
+  const units = data.activeUnits();
+  const tasked = z.assigned_to ? units.filter((u) => u.user_id === z.assigned_to) : [];
+  const inside = units.filter((u) => { const p = data.position(u.user_id); return p && now - new Date(p.at).getTime() < 5 * 60000 && !!zoneAt([z], p.lat, p.lng); });
+  const count = (list) => list.reduce((n, u) => n + (u.crew_count || 0), 0);
+  const haz = data.hazards().filter((h) => h.zone_id === z.id);
+  const last = Math.max(0, ...[...tasked, ...inside].map((u) => { const p = data.position(u.user_id); return p ? new Date(p.at).getTime() : 0; }));
+  const o = z.objective_id ? data.objective(z.objective_id) : null;
+  const low = tasked.length > 0 && count(inside) < count(tasked);
+  return `
+    <div><b>${esc(z.code)} ${esc(z.name)}</b> <span class="muted">· priority ${z.priority} · ${esc(zoneStatusText(z, assignedLabel(data, z), data.zoneAccepted(z)))}</span></div>
+    <div class="zh-two">
+      <div class="zh-big">${count(tasked)}<small>tasked${tasked.length ? ' · ' + tasked.map(unitLabel).join(', ') : ''}</small></div>
+      <div class="zh-big${low ? ' low' : ''}">${count(inside)}<small>in it now${inside.length ? ' · ' + inside.map(unitLabel).join(', ') : ''}</small></div>
+    </div>
+    <div class="zh-row"><span>Searched</span><b>${z.cleared} of ${z.structures}</b></div>
+    <div class="zh-row"><span>Hazards open</span><b${haz.length ? ' class="warn"' : ''}>${haz.length ? haz.length + ' · ' + esc(hazardWords(haz[0])) : 'none'}</b></div>
+    <div class="zh-row"><span>Last report</span><b>${last ? esc(ago(new Date(last).toISOString(), now)) : 'none'}</b></div>
+    ${o ? `<div class="zh-row"><span>Objective ${o.number}</span><span>${esc(o.text)}</span></div>` : ''}
+    <div class="muted" style="font-size:11.5px;margin-top:6px">Click for the division; right-click for its card.</div>`;
+}
+
+// The head count beside Find a person (v60): people in the field, on how many units, and how many are past the
+// hours-on-scene threshold; it opens the People board.
+export function headCountHtml(data) {
+  const n = data.peopleInField(), units = data.activeUnits().filter((u) => u.status !== 'out_of_service').length;
+  const hours = data.sceneHours(), over = peopleOverScene(data.people(), data.members(), hours).length;
+  const html = `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.5" cy="4.5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M1 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4z"/><path d="M9.5 9.4c.5-.3 1-.4 1.5-.4 2 0 3.5 1.2 3.5 3.3V13h-3.6c0-1.6-.5-2.8-1.4-3.6z"/></svg><b>${n}</b> <span class="muted">on ${units} unit${units === 1 ? '' : 's'}</span>${over ? ` <span class="over">· ${over} past ${hours} h</span>` : ''}`;
+  const title = `${n} ${n === 1 ? 'person' : 'people'} in the field on ${units} unit${units === 1 ? '' : 's'}${over ? `; ${over} past ${hours} h on scene` : ''}. Opens the People board.`;
+  return { html, title };
+}
+
+// The connection's card (v60), under the header's dot: is what I am looking at current? Connected since when, the
+// last update and what it was, each phone's last report (quiet past five minutes, in orange), this base's version.
+export function liveHtml(data, state, now = Date.now()) {
+  const ok = data.realtime === 'SUBSCRIBED';
+  const units = data.activeUnits();
+  const rows = units.map((u) => { const p = data.position(u.user_id); const age = p ? now - new Date(p.at).getTime() : null; const quiet = age == null || age > 5 * 60000; return `<div class="lv-row"><span>${esc(unitLabel(u))}</span><span${quiet ? ' class="warn"' : ''}>${p ? esc(ago(p.at, now)) + (quiet ? ' · quiet' : '') : 'no position yet'}</span></div>`; }).join('');
+  const lu = state.lastUpdate;
+  return `
+    <div class="lv-row"><span>Connection</span><b class="${ok ? 'ok' : 'warn'}">${ok ? 'Live' + (state.liveSince ? ' since ' + hhmm(state.liveSince) : '') : (state.liveSeen ? 'Not connected' : 'Connecting')}</b></div>
+    <div class="lv-row"><span>Last update</span><span>${lu ? esc(ago(new Date(lu.at).toISOString(), now)) + ' · ' + esc(lu.what) : 'none yet'}</span></div>
+    ${rows}
+    <div class="lv-row"><span>This base</span><span>${state.version ? esc(state.version) : 'version unknown'}${state.updateReady ? ' · <b class="warn">new version ready</b>' : ''}</span></div>
+    <div class="d-row" style="margin-top:8px"><button class="btn sm" data-action="reconnect">Reconnect</button></div>`;
 }

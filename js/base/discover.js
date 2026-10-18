@@ -1,32 +1,35 @@
-// Show me around (v58). The first time the base opens an incident on this device, a label sits over each part of
-// the screen, numbered in the order a new Operations uses it: what it is called, what it is for, what to do there
-// first. Click a label and it goes; click through it to the part underneath and it goes too (the first click
-// clears, the next one works). Clear all or Escape clears the rest; Settings → Show me around brings them back.
-// Per device, like the theme: nothing goes to the database and the mock needs nothing. The alarm line is never
-// tinted while something is open on it, and main.js clears every label the moment an emergency arrives.
-// The labels are placed from the parts' rectangles on every draw, resize and scroll, and whenever a part changes
-// size without a draw (the header losing a row as "connecting" becomes "live", a font arriving); a part scrolled
-// out of the side panel, or not on the panel showing, waits: its label hides until it is in view and the pill counts it as
-// out of view. DOM only, no data: main.js wires it (the first open, the Settings button, Escape, the emergency).
+// Show me around (v58, shortened and pointed in v60). The first time the base opens an incident on this device, a
+// label sits over each part of the screen, numbered in the order a new Operations uses it: the part's own name and
+// one short line. The part is tinted and carries the same number at its top right, so a label and its part read as a
+// pair; a thin part (a header row) has its label hung right under it with a caret pointing up at it, a tall one (the
+// map, the log, the side panel) has its label inside. Click a label and it goes; click through it to the part
+// underneath and it goes too (the first click clears, the next one works). Clear all or Escape clears the rest; the
+// gear menu's Show me around brings them back. Per device, like the theme: nothing goes to the database and the mock
+// needs nothing. The alarm line is never tinted while something is open on it, and main.js clears every label the
+// moment an emergency arrives. The labels are placed from the parts' rectangles on every draw, resize and scroll,
+// when a part changes size between draws (a ResizeObserver, and a 500 ms tick for a hidden pane, which gets no
+// frames); a part scrolled out of the side panel, or not on the panel showing, waits: its label hides until it is in
+// view and the pill counts it as out of view. DOM only, no data: main.js wires it.
 export const AROUND_KEY = 'ic.base.around';   // '1' once this device has been shown around
 
-const CARD_W = 272;
-// each label: the parts it covers (the first found is enough), where its card sits in the part (fractions of the
-// part's width and height; past 1 is below it), and the words. `quiet`: tinted only while the alarm line is quiet.
+const CARD_W = 236;
+const THIN = 80;   // a part shorter than this gets its label hung under it, not inside it
+// each label: the part it covers (the first found is enough), where its card sits (`x`: a fraction of the part's width
+// from its left; `y`: a fraction of a tall part's height; a thin part's card hangs under it), and the words: the part's
+// own name, then one line of twelve words at most. `quiet`: tinted only while the alarm line is quiet.
 const LABELS = [
-  { key: 'head', targets: ['.top-main'], at: [0.14, 0], title: 'The incident in one line', text: 'Command, the operational period, the units in, how far the search has got, what is open. Read it first whenever you come back. Find a person looks up a responder, a family or a band.' },
-  { key: 'btns', targets: ['.top-btns'], at: [0.5, 0], title: 'The sheets, the boards and the forms', text: 'Period and Briefing are this period\'s sheet and the shift briefing. People, Transports and Public are boards. Org chart, Sitrep and IAP are the ICS forms, filled in from the map. Replay plays the day back. At the row\'s end: the join code, whether the base is live, and the clock, which a click swaps to UTC.' },
-  { key: 'bars', targets: ['#bars'], at: [0, 1.1], quiet: true, title: 'The alarm line', text: 'Red when a crew presses Need help now, yellow for a safety message or a head count still waiting on an answer. Quiet is good. Click the page once so the base can ring.' },
-  { key: 'tools', targets: ['.tools'], at: [0.35, 1.1], title: 'Start here', text: 'Draw the incident boundary, then the divisions inside it: click points on the map, Finish closes the shape. Layers swaps the map underneath and shows imagery.' },
-  { key: 'map', targets: ['#map'], at: [0.3, 0.42], title: 'The map is the truth', text: 'Divisions coloured by status, units where their phones say they are, photo pins facing the way the camera did, hazards as triangles, facilities as letters. Click anything to open it; right-click a division for its card.' },
-  { key: 'legend', targets: ['.legend'], at: [0.1, 0], title: 'What the marks mean', text: 'The four status entries are buttons: press one to light the divisions in that status and dim the rest.' },
-  { key: 'zones', targets: ['.side-h', '#zones'], at: [0.05, 0.3], title: 'Divisions, most urgent first', text: 'Priority, who is on it, structures searched of how many. Click a row to assign a unit, set its priority or write its assignment; its 204 prints from there.' },
-  { key: 'join', targets: ['[data-around="join"]'], at: [0.05, 0.02], title: 'How phones get in', text: 'A unit scans this code or types it in the field app with its unit name. Print a join card for staging. Invited members only turns the code off for strangers; Print bands makes the wristbands.' },
-  { key: 'ops', targets: ['[data-around="ops"]'], at: [0.05, 0.1], title: 'The other code', text: 'Whoever joins with this one is Operations too: a relief chief, a second screen. Give it by radio or phone, never on paper.' },
-  { key: 'log', targets: ['#logbox'], at: [0.55, 0.15], title: 'The 214 writes itself', text: 'Every report, assignment, message and head count as it happens, with who and when. Filter by where a line came from, star what is notable, Print 214 at the period\'s end. You only add notes.' },
+  { key: 'head', targets: ['.top-main'], x: 0.02, title: 'The incident line', text: 'Command, period, units in, search done, what\'s open. Read it first.' },
+  { key: 'btns', targets: ['.top-btns'], x: 0.4, title: 'The buttons', text: 'The period\'s sheets, the boards, the ICS forms, filled from the map.' },
+  { key: 'bars', targets: ['#bars'], x: 0.45, quiet: true, title: 'Emergency and alarms', text: 'Red: a crew in trouble. Yellow: a safety message or head count.' },
+  { key: 'tools', targets: ['.tools'], x: 0.02, title: 'Draw · Boundary · Division · Layers', text: 'Start here: the boundary, then the divisions inside it.' },
+  { key: 'map', targets: ['#map'], x: 0.3, y: 0.42, title: 'The map', text: 'Divisions by status, units, photos with their heading, hazards. Click anything.' },
+  { key: 'legend', targets: ['.legend'], x: 0.02, title: 'Legend', text: 'The four statuses are buttons: press one to light those divisions.' },
+  { key: 'zones', targets: ['.side-h', '#zones'], x: 0.05, y: 0.3, title: 'Divisions by priority', text: 'Click a row: assign, set priority, print its 204. Hover for more.' },
+  { key: 'codes', targets: ['#inc-code'], x: 0, title: 'CEDAR7, the codes', text: 'Phones join with it. Click for the QR, join card, Operations code.' },
+  { key: 'log', targets: ['#logbox'], x: 0.55, y: 0.15, title: 'Activity log · ICS 214', text: 'Every report as it happens. Filter, star, print. You only add notes.' },
 ];
 
-let on = null;   // while showing: { labels, pending (keys still to read), root, onDone }
+let on = null;   // while showing: { labels, pending (keys still to read), root, onDone, ro, timer }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export const aroundOn = () => !!on;
@@ -34,17 +37,17 @@ export const aroundOn = () => !!on;
 export function aroundSeen() { try { return localStorage.getItem(AROUND_KEY) === '1'; } catch (e) { return true; } }
 function markSeen() { try { localStorage.setItem(AROUND_KEY, '1'); } catch (e) { /* storage blocked */ } }
 
-// Start from the top (again, from Settings). Labels whose part is not on the page at all (the Operations code for a
-// unit's screen) are left out, so reading every label on the screen is enough to finish.
+// Start from the top (again, from the gear). Labels whose part is not on the page at all are left out, so reading
+// every label on the screen is enough to finish.
 export function startAround({ onDone } = {}) {
   if (on) end();
   const labels = LABELS.filter((l) => l.targets.some((t) => document.querySelector(t)));
   if (!labels.length) return;
   const root = document.createElement('div');
   root.id = 'around'; root.className = 'around';
-  root.innerHTML = labels.map((l) => `<button type="button" class="around-zone" data-around-key="${l.key}" aria-label="${esc(l.title)}: click to clear" hidden></button>`).join('')
-    + labels.map((l, i) => `<button type="button" class="around-card" data-around-key="${l.key}" hidden><span class="n">${i + 1}</span><b>${esc(l.title)}</b><p>${esc(l.text)}</p><small>Click to clear</small></button>`).join('')
-    + '<div class="around-pill" role="status">Showing you around · <span data-around-left></span> <button type="button" class="around-all">Clear all</button><span class="esc">Esc</span></div>';
+  root.innerHTML = labels.map((l, i) => `<button type="button" class="around-zone" data-around-key="${l.key}" aria-label="${esc(l.title)}: click to clear" hidden><span class="n">${i + 1}</span></button>`).join('')
+    + labels.map((l, i) => `<button type="button" class="around-card" data-around-key="${l.key}" hidden><span class="n">${i + 1}</span><b>${esc(l.title)}</b><p>${esc(l.text)}</p></button>`).join('')
+    + '<div class="around-pill" role="status" title="Click a label, or the part under it, to clear it. Escape clears them all.">Show me around · <span data-around-left></span> <button type="button" class="around-all">Clear all</button></div>';
   document.body.appendChild(root);
   on = { labels, pending: new Set(labels.map((l) => l.key)), root, onDone };
   root.addEventListener('click', (e) => {
@@ -87,7 +90,7 @@ function finish(reason) {
   if (cb) cb(reason);
 }
 
-// Place every label still to read over its part as it is now: called on each draw, resize and scroll.
+// Place every label still to read over its part as it is now: called on each draw, resize, scroll and size change.
 export function layoutAround() {
   if (!on) return;
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
@@ -108,15 +111,18 @@ export function layoutAround() {
     if (!r || r.right - r.left < 24 || r.bottom - r.top < 12) { zone.hidden = true; card.hidden = true; away++; continue; }
     const tint = !(l.quiet && alarmOpen);   // the alarm line is never covered while something is open on it
     zone.hidden = !tint;
+    zone.classList.toggle('tall', r.bottom - r.top >= THIN);
     if (tint) place(zone, r.left, r.top, r.right - r.left, r.bottom - r.top);
-    // the card: at its place in the part, kept on the screen, and moved off any card placed before it
+    // the card: under a thin part with a caret up at it, inside a tall one; kept on the screen and off the cards
+    // placed before it (below them when there is room, else above, else beside; checked again after each move)
+    const thin = r.bottom - r.top < THIN;
+    card.classList.toggle('below', thin);
     card.hidden = false;
     const cw = Math.min(CARD_W, vw - 16);
     card.style.width = cw + 'px';
-    const ch = card.offsetHeight || 140;
-    let x = r.left + (r.right - r.left) * l.at[0], y = r.top + (r.bottom - r.top) * l.at[1];
+    const ch = card.offsetHeight || 80;
+    let x = r.left + (r.right - r.left) * l.x, y = thin ? r.bottom + 7 : r.top + (r.bottom - r.top) * (l.y || 0);
     x = Math.max(8, Math.min(x, vw - cw - 8)); y = Math.max(8, Math.min(y, vh - ch - 8));
-    // off any card placed before it: below it when there is room, else above, else beside it; checked again after each move
     for (let guard = 0; guard < 12; guard++) {
       const p = placed.find((q) => x < q.x + q.w && x + cw > q.x && y < q.y + q.h && y + ch > q.y);
       if (!p) break;
@@ -128,7 +134,7 @@ export function layoutAround() {
     placed.push({ x, y, w: cw, h: ch });
   }
   const left = on.pending.size;
-  on.root.querySelector('[data-around-left]').textContent = (left === 1 ? '1 to read' : left + ' to read') + (away ? ' · ' + away + ' out of view' : '');
+  on.root.querySelector('[data-around-left]').textContent = (left === 1 ? '1 left' : left + ' left') + (away ? ' · ' + away + ' out of view' : '');
 }
 
 function union(rs) { return rs.length ? { left: Math.min(...rs.map((r) => r.left)), top: Math.min(...rs.map((r) => r.top)), right: Math.max(...rs.map((r) => r.right)), bottom: Math.max(...rs.map((r) => r.bottom)) } : null; }

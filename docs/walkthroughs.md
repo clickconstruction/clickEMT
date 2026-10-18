@@ -1303,3 +1303,26 @@ The header's right end: Marcus at the base, the clerk, and a mutual-aid captain 
 
 - **Only the clock swaps.** A captain who thinks in Zulu reads the log in local time; "every time in UTC" is in punchlist section 15.
 - **The front door's screenshots** still show the header as it was at v33.
+
+---
+
+## Re-walk after v60
+
+A cleaner base: Marcus's relief on the first open, Marcus answering the radio, Dana reading the room, walked on 2026-10-18 in the mock at 1280 × 800 and 1700 × 900 (the pane hidden on this computer; the places and words read through the suites and the page's own text).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The first open | Marcus's relief | Nine labels, each the part's own name and one line: "1 The incident line · Command, period, units in, search done, what's open. Read it first." … "8 CEDAR7, the codes · Phones join with it. Click for the QR, join card, Operations code." "9 Activity log · ICS 214 · Every report as it happens. Filter, star, print. You only add notes." Every tint carries its number; the four thin rows' cards hang under their rows with a caret; the pill reads "Show me around · 9 left · Clear all". | Clear |
+| The codes | Marcus | The home panel starts with Units. `CEDAR7` in the header opens the card: the QR, the code and Copy, Invited members only, Print a join card, Copy the link, Print bands, then "Operations code ········ Show Copy New code · Makes a second Operations. Say it by radio, never on paper". Show reveals it, Hide puts the dots back; a click outside or Escape closes the card. | Clear |
+| Is this current | Dana | The green dot opens: "Connection · Live since 14:12 · Last update 8 s ago · Unit 3 position · Unit 1 12 s ago · Unit 2 45 s ago · Unit 3 6 min ago · quiet (orange) · This base · v60 · Reconnect". | Clear |
+| How many are out there | Dana | Beside Find a person: "6 on 3 units", orange "· 2 past 12 h" when it applies; it opens the People board. | Clear |
+| What to draw first | Marcus's relief | "Draw · Boundary · Division", each with its legend mark; on a fresh incident Boundary is the lit button and the hint reads "Start with the boundary: the incident's outer edge, drawn once."; with a boundary and no divisions, Division is lit and the hint says "Now divisions inside it: an area of the map for each unit."; on Cedar Fork neither is lit. Hover either for a sentence. | Clear |
+| The row of buttons | Marcus | Ten buttons and a gear; the gear's menu: Incident settings…, Light, Show me around, Switch incident, Sign out. At 1700 the whole header is one row (78 px); at 1280 two (101 px), the buttons' row ending with the pills. | Clear |
+| Layers | Marcus | Overlays on the left, the map underneath on the right. | Clear |
+| A division at a glance | Marcus | Resting on A-1's row: "A-1 Riverside Drive, east · priority 1 · In progress · Unit 1 · 9 of 24 / 2 tasked · Unit 1 / 2 in it now · Unit 1 / Searched 9 of 24 / Hazards open none / Last report 33 s ago / Objective 1 …"; fewer in it than tasked turns the number orange. It goes on leaving the list. | Clear |
+
+**Still bites, small:**
+
+- **The units section** is as it was (panel 2 of the cleaner mock-up waits for its own release).
+- **"In it now" counts phones**, not bands: a crew whose phones are in a dry bag reads as nobody in the division until a scan.
+- **The hover card needs a mouse**; a touch screen gets the row's click instead.

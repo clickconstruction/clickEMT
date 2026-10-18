@@ -3,17 +3,17 @@
 The work on clickEMT, release by release. Everything here has shipped: the walk at v37's list as v38 to v48 (sections 1
 to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
-back on the real database (section 16), v58, Show me around (section 17), and v59, the header's right end and a clock
-that swaps to UTC (section 18). **Nothing ranked is open** (18 October 2026, v59): the next step is a fresh walk at
-v59, and section 15 lists the candidates already known for it. Written 17 October 2026, after v37 (`c89a929`),
-brought up to date at v59. Each numbered release below is written to be picked
+back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
+that swaps to UTC (section 18), and v60, a cleaner base from Todd's walk (section 19). **Open and not yet ranked**
+(18 October 2026, v60): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v60. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v60**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v61**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -33,10 +33,11 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 12 | v54 A transport board (shipped 18 October) | medium | v53 | Marcus, the desk, the crews, a driver |
 | 13 | v55 People and tags, phase 1: QR bands (shipped 18 October) | medium to large | v54 | everyone: Ana, Rosa, the desk, Marcus, Priya |
 | 14 | v56 Invite by email, the app's first server code (shipped 18 October) | medium | v55 | Ana, the administrator, Marcus |
-| 15 | Known candidates for the walk at v59 (open, not ranked) | small to medium | v59 | see the section |
+| 15 | Known candidates, and the rest of Todd's walk at v59 (open, not ranked) | small to large | v60 | see the section |
 | 16 | v57 The check-in head count put back on the real database (shipped 18 October) | small | v56 | every unit with more people than names, Marcus's PAR |
 | 17 | v58 Show me around: a label over each part of the base on a device's first open (shipped 18 October) | small to medium | v57 | Marcus's relief, the IC, the clerk, anyone new at the base |
 | 18 | v59 The header's right end, and a clock that swaps to UTC (shipped 18 October) | small | v58 | Marcus, the IC, the clerk, mutual aid on Zulu time |
+| 19 | v60 A cleaner base: shorter labels, the codes behind the pill, the connection's card, the head count, the drawing buttons, the gear, Layers flipped, a division's hover card (shipped 18 October) | medium | v59 | Marcus, his relief, the IC, anyone new at the base |
 
 ---
 
@@ -451,10 +452,27 @@ season's roster to invite in one press. The app's first server code.
    *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
    `invite` (18).*
 
-## 15. Known candidates for the walk at v59 (open, not ranked)
+## 15. Known candidates, and the rest of Todd's walk at v59 (open, not ranked)
 
 Nothing here is decided. These are the "Still bites" items of the re-walks after v50 to v56 in
-[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v59 starts from them.
+[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk starts from them. The second
+list is what Todd marked walking the base at v59 on 18 October that v60 did not take; each has a mock-up to judge.
+
+**From Todd's walk at v59, mocked up and waiting:**
+
+- **The units section, cleaner** (panel 2 of `/try/mockups/#cleaner`): one line per unit with the division at the right,
+  the facts under it, groups as headings, the count in the heading, the PAR as one line, each request with its one button.
+  Touches the home panel every suite reads; its own release.
+- **The People board, offered better** (`/try/mockups/people.html`, its own session): the six controls on every person's
+  row crowd out the facts; two or three directions drawn.
+- **Replay: a time you name, and a speed in words** (`/try/mockups/replay.html`): Pick a time bounded by the first
+  record (the earliest `ic_tracks` row), the slider hatched before it, the speed menu saying what a second of play covers.
+- **The pages as large modals, not full screens** (`/try/mockups/modals.html`): Briefing, People and the rest over the
+  dimmed map with Expand to full screen; the alarm line, printing and the pop-out log thought through there.
+- **Placing aerial imagery by its corners** (`/try/mockups/imagery.html`): drag the picture to fit instead of typing four
+  edges; a rectangle first (today's bounds), four free corners later.
+- **A transport on the map** (Todd, 18 October): a run shown on the map view, its pickup and destination and where the
+  bus is when the driver's phone reports. Not drawn yet.
 Walk first, then rank, as before.
 
 - **Verify the first real invitation email** (Marcus, Ana). The Edge Function is deployed but no email has been sent
@@ -576,6 +594,35 @@ styles in base.css, `drawClock` / `drawLive` in main.js, `hhmmUtc` / `zoneShort`
 test pass; every rule test 20 of 20 files. No migration. On the way: the labels of v58 were placed from a stale layout
 when the header lost a row after they were drawn, so discover.js re-lays them on a `ResizeObserver` and a 500 ms tick
 (a hidden pane gets no frames), and the `around` suite's check now names the part that is off.
+
+## 19. v60 A cleaner base
+
+**Why.** Todd walked the base at v59 on 18 October and marked what was unclear or wordy, with a picture of each:
+the labels said too much and a thin row's label floated free of its row; the join code and the Operations code took
+half the home panel; the green dot said nothing about what it meant; the header had no head count; Draw boundary and
+Draw division sat as equals with nothing saying which comes first; Settings, Switch incident and Sign out were three
+buttons for one idea; the Layers panel read better flipped; a division's row packed facts a hover could unpack. Each
+was drawn first on `/try/mockups/#cleaner` (panels 1 and 3 to 9) and judged, then built together.
+
+**Built.** The labels: the part's own name and one line of twelve words at most, the number on the tint too, a thin
+row's card hung under it with a caret; nine labels, the two codes' as one. The codes behind the header's `CEDAR7`
+pill: click it for the QR, Invited members only, the join card, the link, the bands, and the Operations code as dots
+until Show, so it is never on a screen someone walks past; the home panel starts with the units. The connection's
+card on the green dot: live since when, the last update and what it was, each phone's last report (quiet past five
+minutes, in orange), this base's version and whether a newer one is ready, Reconnect. A head count beside Find a
+person, opening the People board. Draw · Boundary · Division with the legend's marks and a hover sentence each; which
+is lit follows the map, and the hint says why. A gear in place of Light, Settings, Switch incident and Sign out, with
+Show me around in it (the Settings dialog's This device line went). The Layers panel with the overlays on the left.
+A division's hover card after half a second on its row: tasked against in it now (the units whose phones reported
+inside the outline in the last five minutes), searched of how many, hazards open, the last report, the objective.
+
+*Decided:* the Operations code is dots until Show; the cards open on a click, not a hover, and close on a click
+outside or Escape; Boundary first is a nudge, not a rule; a phone is quiet after five minutes.
+
+**Shipped** 18 October 2026 as `A cleaner base (v60)`: index.html, base.css, `codesPopHtml` / `zoneHoverHtml` /
+`headCountHtml` / `liveHtml` in ui.js, the wiring in main.js, discover.js shortened; the `seeded`, `join`, `invite`,
+`members`, `layers` and `around` suites moved to the codes' card and gained the new checks; full run 731 of 731 across
+38 suites; check and test pass; every rule test 20 of 20 files. No migration; the mock needed nothing.
 
 ## Done before this list
 

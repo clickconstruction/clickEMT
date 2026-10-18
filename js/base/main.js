@@ -2,7 +2,7 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc } from './ui.js';
+import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml } from './ui.js';
 import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
@@ -24,7 +24,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -68,6 +68,7 @@ function onData(what, detail) {
     if ($('#auth').hidden === false) showPicker();
   }
   if (what === 'change' && detail && detail.table === 'ic_incidents' && data.incident) setGoogleKey(data.settings().maps_key);   // the settings changed on another screen
+  if (what === 'change' && detail) state.lastUpdate = { at: Date.now(), what: updateWords(detail) };   // v60: the connection card's last update
   if (what === 'change' || what === 'open') queueDraw();
   if (what === 'realtime') drawLive();
 }
@@ -226,7 +227,8 @@ async function openIncident(id) {
   setGoogleKey(data.settings().maps_key);   // the Google layers come from the incident's settings (v28)
   localStorage.setItem(LAST_INCIDENT, id);
   state.selected = null; state.newZone = null; state.pendingPolygon = null;
-  state.liveSeen = false;   // v59: this open has not been live yet
+  state.liveSeen = false; state.liveSince = null;   // v59: this open has not been live yet
+  state.codesOpen = false; state.liveOpen = false; state.opsShown = false; setGearOpen(false); hideZoneHover();   // v60: the cards close with the incident
   show('app');
   if (LOG_ONLY) document.title = 'Activity log · ' + inc.name;
   if (!map && !LOG_ONLY) {
@@ -356,6 +358,7 @@ function drawAll() {
   if (!$('#transports').hidden) drawTransports();
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
+  drawHeadCount(); drawTools(); drawCodes(); drawLivePop(); refreshZoneHover();   // v60
   map.render(data, state);
   drawSide();
   drawZoneModal();
@@ -776,6 +779,7 @@ function drawLive() {
   // v59: until this open has been live once, "off" is still connecting, not a loss; the dot stays alone while live or
   // connecting, and the words show only when a connection that was there has gone
   if (ok) state.liveSeen = true;
+  state.liveSince = ok ? (state.liveSince || new Date().toISOString()) : null;   // v60: the connection card's "since"
   const quiet = ok || !state.liveSeen;
   $('#live-text').textContent = ok ? 'live' : !state.liveSeen ? 'connecting' : (data.realtime === 'off' ? 'not connected' : String(data.realtime).toLowerCase().replace(/_/g, ' '));
   $('#live-pill').classList.toggle('quiet', quiet);
@@ -858,11 +862,15 @@ async function loadIdPhoto() {
 // ---- actions
 document.addEventListener('click', async (e) => {
   if (state.layersOpen && !e.target.closest('#layers-pop') && !e.target.closest('#btn-layers')) setLayersOpen(false);
+  if (state.gearOpen && !e.target.closest('.gear-wrap')) setGearOpen(false);   // v60: the menu and the cards close on a click outside
+  if (state.codesOpen && !e.target.closest('#codes-pop') && !e.target.closest('#inc-code')) { state.codesOpen = false; drawCodes(); }
+  if (state.liveOpen && !e.target.closest('#live-pop') && !e.target.closest('#live-pill')) { state.liveOpen = false; drawLivePop(); }
   if (state.find.top && !e.target.closest('.find-top')) closeFind();
   else if (state.find.top && e.target.closest('#find-pop [data-action="select-facility"], #find-pop [data-action="select-unit"]')) setTimeout(closeFind, 0);
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const act = btn.dataset.action, id = btn.dataset.id;
+  if (btn.closest('#gear-menu')) setGearOpen(false);   // v60: a menu item chosen closes the menu
   try {
     switch (act) {
       case 'sign-out': localStorage.removeItem(LAST_INCIDENT); await data.signOut(); show('auth'); break;
@@ -948,6 +956,11 @@ document.addEventListener('click', async (e) => {
       case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
       case 'replay-close': closeReplay(); break;
       case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
+      case 'gear': setGearOpen(!state.gearOpen); break;   // v60
+      case 'codes': state.codesOpen = !state.codesOpen; state.liveOpen = false; drawCodes(); drawLivePop(); break;   // v60
+      case 'ops-show': state.opsShown = !state.opsShown; drawCodes(); break;   // v60
+      case 'live': state.liveOpen = !state.liveOpen; state.codesOpen = false; drawLivePop(); drawCodes(); break;   // v60
+      case 'reconnect': state.liveOpen = false; drawLivePop(); toast('Reconnecting…'); await openIncident(data.incident.id); break;   // v60
       case 'clock': clockUtcOn = !clockUtcOn; try { localStorage.setItem(CLOCK_KEY, clockUtcOn ? 'utc' : 'local'); } catch (err) { /* storage blocked */ } drawClock(); break;   // v59
       case 'log-toggle': if (LOG_ONLY) break; state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
       case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
@@ -1172,6 +1185,7 @@ document.addEventListener('change', async (e) => {
 // While outlining, Backspace or Delete takes the last corner off (not while typing in a field).
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && aroundOn()) { clearAround('cleared'); return; }   // v58
+  if (e.key === 'Escape' && (state.gearOpen || state.codesOpen || state.liveOpen)) { setGearOpen(false); state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); return; }   // v60
   if (e.key === 'Escape' && state.layersOpen) { setLayersOpen(false); return; }
   if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;
@@ -1192,7 +1206,8 @@ function stopDraw() {
   $('#btn-boundary').classList.remove('on');
   $('#btn-zone').classList.remove('on');
   $('#draw-btns').hidden = true;
-  setHint('Click a division, a unit or a photo pin to open it.');
+  setHint(defaultHint());
+  drawTools();
 }
 
 document.addEventListener('submit', async (e) => {
@@ -1383,6 +1398,74 @@ $('#note-form').addEventListener('submit', async (e) => {
 });
 
 // the clock and "ago" texts
+// The gear (v60): the incident's settings, this screen (Light or dark, Show me around), Switch incident and Sign out,
+// one icon in place of four buttons.
+function setGearOpen(open) { state.gearOpen = !!open; $('#gear-menu').hidden = !state.gearOpen; $('#btn-gear').setAttribute('aria-expanded', String(state.gearOpen)); $('#btn-gear').classList.toggle('on', state.gearOpen); }
+
+// The codes' card and the connection's card under the header's pills (v60). Both are drawn on every draw, so a
+// hidden button is still there to press, and shown while their state says so.
+function drawCodes() {
+  if (!data.incident) return;
+  const pop = $('#codes-pop'), html = codesPopHtml(data, state);
+  if (pop.__html !== html) { pop.__html = html; pop.innerHTML = html; }
+  pop.hidden = !state.codesOpen;
+  $('#inc-code').setAttribute('aria-expanded', String(state.codesOpen)); $('#inc-code').classList.toggle('on', state.codesOpen);
+}
+function drawLivePop() {
+  if (!data.incident) return;
+  const pop = $('#live-pop');
+  if (state.liveOpen) { const html = liveHtml(data, state); if (pop.__html !== html) { pop.__html = html; pop.innerHTML = html; } }
+  pop.hidden = !state.liveOpen;
+  $('#live-pill').setAttribute('aria-expanded', String(state.liveOpen)); $('#live-pill').classList.toggle('on', state.liveOpen);
+}
+// what a change was, for the connection card's "last update"
+function updateWords(d) {
+  const t = String(d.table || '').replace(/^ic_/, '');
+  const m = d.row && d.row.user_id ? data.member(d.row.user_id) : null;
+  const word = { positions: 'position', photos: 'photo', events: 'log line', members: 'unit', zones: 'division', hazards: 'hazard', messages: 'message', message_acks: 'answer', structures: 'house record', alerts: 'emergency', evacuees: 'shelter record', transports: 'run', people: 'person', tags: 'band', seen: 'scan', incidents: 'the incident', periods: 'the period', requests: 'request', facilities: 'facility', invites: 'invitation' }[t] || t.replace(/_/g, ' ');
+  return ((m ? unitLabelOf(m) + ' ' : '') + word).trim();
+}
+// the head count beside Find a person (v60)
+function drawHeadCount() {
+  const el = $('#head-count'); if (!el || !data.incident) return;
+  const { html, title } = headCountHtml(data);
+  el.hidden = false; el.title = title;
+  if (el.__html !== html) { el.__html = html; el.innerHTML = html; }
+}
+// The drawing buttons (v60): which one is lit follows the map. No boundary yet: Boundary. A boundary and no
+// divisions: Division. Otherwise neither. The hint says why while nothing is being drawn.
+function defaultHint() {
+  if (!data.incident) return '';
+  if (!data.incident.boundary) return 'Start with the boundary: the incident\'s outer edge, drawn once.';
+  if (!data.zones().length) return 'Now divisions inside it: an area of the map for each unit.';
+  return 'Click a division, a unit or a photo pin to open it.';
+}
+function drawTools() {
+  if (!map || !data.incident) return;
+  const drawing = !!map.mode, noB = !data.incident.boundary, noZ = !data.zones().length;
+  $('#btn-boundary').classList.toggle('pri', !drawing && noB);
+  $('#btn-zone').classList.toggle('pri', !drawing && !noB && noZ);
+  if (!drawing) setHint(defaultHint());
+}
+// A division's hover card (v60): rest on a row for half a second and it opens beside the side panel, over the map;
+// it goes on leaving the list, scrolling it or clicking.
+let hoverT = null, hoverZone = null;
+function hideZoneHover() { clearTimeout(hoverT); hoverT = null; hoverZone = null; const el = $('#zone-hover'); if (el) el.hidden = true; }
+function showZoneHover(id, row) {
+  const z = data.zone(id); if (!z) { hideZoneHover(); return; }
+  const el = $('#zone-hover');
+  el.innerHTML = zoneHoverHtml(data, z); el.hidden = false;
+  const r = row.getBoundingClientRect(), side = $('.side').getBoundingClientRect();
+  el.style.left = Math.max(8, side.left - el.offsetWidth - 10) + 'px';
+  el.style.top = Math.max(8, Math.min(r.top, document.documentElement.clientHeight - el.offsetHeight - 8)) + 'px';
+  hoverZone = id;
+}
+function refreshZoneHover() { if (!hoverZone) return; const row = $(`#zones .zr[data-id="${hoverZone}"]`); if (row) showZoneHover(hoverZone, row); else hideZoneHover(); }
+$('#zones').addEventListener('mouseover', (e) => { const row = e.target.closest('.zr[data-id]'); if (!row) return; if (row.dataset.id === hoverZone) return; clearTimeout(hoverT); hoverT = setTimeout(() => showZoneHover(row.dataset.id, row), 500); });
+$('#zones').addEventListener('mouseleave', hideZoneHover);
+$('#zones').addEventListener('click', hideZoneHover);
+$('.side').addEventListener('scroll', hideZoneHover, { passive: true });
+
 // the header clock (v59): local with the zone's short name, or UTC; a click swaps, kept per device. The log and
 // the forms stay local, as ICS has them.
 const CLOCK_KEY = 'ic.base.clock';
@@ -1401,10 +1484,12 @@ drawClock();
 // New versions: the signed-out front door reloads itself once when a new worker takes over; a signed-in
 // base gets the chip instead. The front door's footer says which version is on screen, with Reload.
 const updates = watchUpdates({ script: 'sw.js', mayReload: () => !$('#auth').hidden, chip: 'update-chip' });
+new MutationObserver(() => { state.updateReady = !$('#update-chip').hidden; if (state.liveOpen) drawLivePop(); }).observe($('#update-chip'), { attributes: true, attributeFilter: ['hidden'] });   // v60
 (async () => {
   let v = await updates.version();
   if (!v) { try { v = ((await (await fetch('sw.js', { cache: 'no-store' })).text()).match(/VERSION = '([^']+)'/) || [])[1]; } catch (e) { /* offline */ } }
   if ($('#land-ver')) $('#land-ver').textContent = v ? 'Version ' + v : '';
+  state.version = v || null;   // v60: the connection card says which version this base runs
 })();
 if ($('#land-reload')) $('#land-reload').addEventListener('click', async () => { await updates.check(); location.reload(); });
 

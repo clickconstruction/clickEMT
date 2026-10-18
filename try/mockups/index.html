@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Mock-ups: invite by email, a transport board, people and tags, show me around · Incident Map</title>
+<title>Mock-ups: invite by email, a transport board, people and tags, show me around, a cleaner base · Incident Map</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
@@ -99,6 +99,77 @@
   .hdr-groups .g.right { margin-left: auto; }
   .decisions li { margin: 0 0 8px; line-height: 1.4; }
   .decisions b { color: var(--ink); }
+  /* a cleaner base (v60 candidates) */
+  .stage.v60 .disc-card { width: 236px; padding: 8px 10px; }
+  .stage.v60 .disc-card b.t { font-size: 13px; }
+  .stage.v60 .disc-card p { font-size: 12px; }
+  .disc-card.below::before { content: ""; position: absolute; top: -7px; left: 18px; border: 7px solid transparent; border-top: 0; border-bottom-color: var(--accent); }
+  .disc-zone .zn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .disc-zone.tall .zn { top: 8px; transform: none; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: none; color: var(--ink); padding: 4px 11px; font-size: 12.5px; cursor: pointer; font: inherit; font-size: 12.5px; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .rs-g { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 12px 0 2px; }
+  .ur { display: grid; grid-template-columns: 12px 1fr auto; gap: 1px 10px; padding: 8px 0; border-top: 1px solid var(--line-soft); align-items: center; }
+  .ur .dot { width: 10px; height: 10px; border-radius: 5px; background: var(--cleared-fill); }
+  .ur .dot.avail { background: var(--accent); } .ur .dot.oos { background: var(--hazard); }
+  .ur .name b { color: var(--ink); } .ur .name { font-size: 14px; color: var(--ink-2); }
+  .ur .div { font-weight: 600; background: var(--sel-bg); color: var(--accent-text); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; white-space: nowrap; }
+  .ur .sub { grid-column: 2 / 4; font-size: 12px; color: var(--muted); }
+  .ur .sub .ok { color: var(--cleared); } .ur .sub .warn { color: var(--hazard-ink); }
+  .parline { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+  .hdr { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; position: relative; font-size: 13px; }
+  .hdr .sp { flex: 1; }
+  .hdr .pill { cursor: pointer; }
+  .hdr .pill.on { outline: 2px solid var(--accent); }
+  .pop { position: absolute; top: calc(100% + 6px); right: 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px 14px; width: 340px; z-index: 5; font-size: 13px; text-align: left; }
+  .pop[hidden] { display: none; }
+  .pop .qr { display: flex; gap: 12px; align-items: flex-start; }
+  .pop .qr svg { width: 128px; height: 128px; background: #fff; padding: 6px; border-radius: 8px; flex: none; }
+  .pop .big { font-size: 22px; letter-spacing: .14em; }
+  .pop .line { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line-soft); }
+  .pop .line:first-child { border-top: 0; }
+  .pop .warn { color: var(--hazard-ink); font-weight: 600; }
+  .tools-m { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  .tools-m .hint { color: var(--muted); font-size: 12.5px; flex: 1; }
+  .sw-b { display: inline-block; width: 14px; height: 10px; border: 2px dashed currentColor; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .sw-d { display: inline-block; width: 14px; height: 10px; background: var(--active-fill); border: 1.5px solid var(--active); border-radius: 2px; margin-right: 6px; vertical-align: -1px; opacity: .85; }
+  .tools-m .btn.pri .sw-b { border-color: #fff; }
+  .states { display: flex; gap: 6px; margin: 0 0 10px; }
+  .lay { display: flex; gap: 22px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  .lay > div { flex: 1; min-width: 0; }
+  .lay .opt { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  .lay .radio { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--control-border); display: inline-block; flex: none; }
+  .lay .radio.on { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+  .lay .box { width: 14px; height: 14px; border-radius: 3px; border: 2px solid var(--control-border); display: inline-block; flex: none; }
+  .lay .box.on { background: var(--accent); border-color: var(--accent); }
+  .lay input[type=range] { width: 100%; }
+  .menu { position: absolute; top: calc(100% + 6px); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 6px; min-width: 200px; z-index: 5; display: flex; flex-direction: column; }
+  .menu[hidden] { display: none; }
+  .menu button { border: 0; background: none; color: var(--ink); text-align: left; padding: 8px 10px; border-radius: 6px; font: inherit; font-size: 13.5px; cursor: pointer; }
+  .menu button:hover { background: var(--hover); }
+  .menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 0; }
+  .find-m { display: flex; align-items: center; gap: 8px; }
+  .find-m input { width: 190px; border: 1px solid var(--control-border); border-radius: 8px; padding: 7px 10px; background: var(--control-bg); color: var(--ink); font: inherit; font-size: 13px; }
+  .ppl { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px 4px 8px; background: var(--soft); color: var(--ink-2); font-size: 12.5px; cursor: pointer; border: 0; font: inherit; }
+  .ppl svg { width: 14px; height: 14px; fill: currentColor; }
+  .ppl b { color: var(--ink); }
+  .ppl .over { color: var(--hazard-ink); font-weight: 600; }
+  .zl { width: 340px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: visible; position: relative; font-size: 14px; }
+  .zl .zh { padding: 10px 14px 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .zl .zr { display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--line-soft); cursor: default; position: relative; }
+  .zl .zr:hover { background: var(--hover); }
+  .zl .zr .pb { width: 22px; height: 22px; font-size: 12px; }
+  .zl .zr .m { flex: 1; min-width: 0; } .zl .zr .m .s { font-size: 12.5px; color: var(--muted); }
+  .zl .zr .d { width: 10px; height: 10px; border-radius: 5px; background: var(--active-fill); flex: none; }
+  .zl .zr .d.c { background: var(--cleared-fill); } .zl .zr .d.o { background: var(--dot-off); }
+  .hover-card { position: absolute; left: calc(100% + 10px); top: -6px; width: 300px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 10px 12px; font-size: 13px; z-index: 5; }
+  .hover-card[hidden] { display: none; }
+  .hover-card .row2 { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line-soft); }
+  .hover-card .row2:first-of-type { border-top: 0; }
+  .hover-card .big2 { font-size: 20px; font-weight: 700; line-height: 1; }
+  .hover-card .big2 small { font-size: 12px; font-weight: 400; color: var(--muted); display: block; margin-top: 2px; }
+  .hover-card .two { display: flex; gap: 16px; padding: 8px 0 6px; }
 </style>
 </head>
 <body>
@@ -109,6 +180,7 @@
     <button data-tab="transport">A transport board</button>
     <button data-tab="tags">People and tags</button>
     <button data-tab="discovery">Show me around</button>
+    <button data-tab="cleaner">A cleaner base</button>
   </div>
   <span class="sp"></span>
   <a class="btn sm" href="/try/">‹ Try it</a>
@@ -433,6 +505,221 @@
   </div>
 </section>
 
+<!-- ============================================================ A CLEANER BASE (v60 candidates) -->
+<section class="feature" id="cleaner">
+  <div class="intro"><h1>A cleaner base</h1>Nine of the things Todd marked on 18 October, walking the base at v59. Panels 1 and 3 to 9 were built as v60 (docs/punchlist.md, section 19); the units section (2) waits. The People board, Replay, the pages as modals and imagery by its corners have pages of their own beside this one. Made-up data; press things.</div>
+  <div class="screens">
+
+    <div class="screen" style="flex-basis:100%">
+      <div class="stage-wrap">
+      <div class="stage v60" id="disc2-stage">
+        <div class="disc-pill" id="disc2-pill">Show me around · <span id="disc2-left">10 left</span> <button type="button" id="disc2-all">Clear all</button></div>
+        <button type="button" class="disc-zone" data-n="1" style="left:1%;top:1%;width:62%;height:5%" aria-label="The incident line"><span class="zn">1</span></button>
+        <button type="button" class="disc-zone" data-n="2" style="left:1%;top:6.2%;width:78%;height:3.4%" aria-label="The buttons"><span class="zn">2</span></button>
+        <button type="button" class="disc-zone" data-n="3" style="left:0;top:10.5%;width:73.5%;height:3.8%" aria-label="Emergency and alarms"><span class="zn">3</span></button>
+        <button type="button" class="disc-zone" data-n="4" style="left:1%;top:15.2%;width:72%;height:3.5%" aria-label="Draw boundary, Draw division, Layers"><span class="zn">4</span></button>
+        <button type="button" class="disc-zone tall" data-n="5" style="left:0;top:19.2%;width:73.5%;height:51.6%" aria-label="The map"><span class="zn">5</span></button>
+        <button type="button" class="disc-zone" data-n="6" style="left:0;top:71.4%;width:73.5%;height:5.9%" aria-label="Legend"><span class="zn">6</span></button>
+        <button type="button" class="disc-zone tall" data-n="7" style="left:74%;top:15.2%;width:26%;height:33.9%" aria-label="Divisions by priority"><span class="zn">7</span></button>
+        <button type="button" class="disc-zone tall" data-n="8" style="left:74%;top:49.6%;width:26%;height:27.8%" aria-label="Join code for field phones"><span class="zn">8</span></button>
+        <button type="button" class="disc-zone tall" data-n="9" style="left:74%;top:77.8%;width:26%;height:22.2%" aria-label="Operations code"><span class="zn">9</span></button>
+        <button type="button" class="disc-zone tall" data-n="10" style="left:0;top:78%;width:73.5%;height:22%" aria-label="Activity log, ICS 214"><span class="zn">10</span></button>
+
+        <button type="button" class="disc-card below" data-n="1" style="left:2%;top:6.4%"><span class="n">1</span><b class="t">The incident line</b><p>Command, period, units in, search done, what's open. Read it first.</p></button>
+        <button type="button" class="disc-card below" data-n="2" style="left:24%;top:10%"><span class="n">2</span><b class="t">The buttons</b><p>The period's sheets, the boards, the ICS forms, filled from the map.</p></button>
+        <button type="button" class="disc-card below" data-n="3" style="left:46%;top:14.7%"><span class="n">3</span><b class="t">Emergency and alarms</b><p>Red: a crew in trouble. Yellow: a safety message or head count.</p></button>
+        <button type="button" class="disc-card below" data-n="4" style="left:2%;top:19.1%"><span class="n">4</span><b class="t">Draw boundary · Draw division · Layers</b><p>Start here: the boundary, then the divisions inside it.</p></button>
+        <button type="button" class="disc-card" data-n="5" style="left:28%;top:44%"><span class="n">5</span><b class="t">The map</b><p>Divisions by status, units, photos with their heading, hazards. Click anything.</p></button>
+        <button type="button" class="disc-card below" data-n="6" style="left:2%;top:77.8%"><span class="n">6</span><b class="t">Legend</b><p>The four statuses are buttons: press one to light those divisions.</p></button>
+        <button type="button" class="disc-card" data-n="7" style="left:75.5%;top:27%"><span class="n">7</span><b class="t">Divisions by priority</b><p>Click a row: assign a unit, set priority, print its 204.</p></button>
+        <button type="button" class="disc-card" data-n="8" style="left:75.5%;top:52%"><span class="n">8</span><b class="t">Join code for field phones</b><p>Units scan or type it. Print a join card, or bands.</p></button>
+        <button type="button" class="disc-card" data-n="9" style="left:75.5%;top:85%"><span class="n">9</span><b class="t">Operations code</b><p>Makes a second Operations. Say it by radio, never on paper.</p></button>
+        <button type="button" class="disc-card" data-n="10" style="left:50%;top:83%"><span class="n">10</span><b class="t">Activity log · ICS 214</b><p>Every report as it happens. Filter, star, print. You only add notes.</p></button>
+      </div>
+      </div>
+      <button type="button" class="btn sm disc-again" id="disc2-again" hidden>Show me around again</button>
+      <div class="cap" style="max-width:760px"><b>1 · Labels, shorter and pointed.</b> Each title is the part's own name; one line under it, twelve words at most. The number sits on the part as well as on the card, and a thin row's card hangs under that row with a caret. "Click to clear" is gone; the pill's hover says it once.</div>
+    </div>
+
+    <div class="screen">
+      <div class="panel" style="width:360px">
+        <div class="row between"><span class="k" style="margin:0">Units · 3 units · 6 people</span><span class="seg" id="rs-seg"><button class="on" data-rs="kind">Kind</button><button data-rs="status">Status</button></span></div>
+        <div id="rs-kind">
+          <div class="rs-g">Engines · 1</div>
+          <div class="ur"><span class="dot"></span><span class="name"><b>Unit 1</b> · engine</span><span class="div">A-1</span><span class="sub">Ramirez, Okafor · 2 · lead Ana Ramirez <span class="ok">✓</span> · 2 min ago · E 095°</span></div>
+          <div class="rs-g">Boat crews · 1</div>
+          <div class="ur"><span class="dot"></span><span class="name"><b>Unit 2</b> · boat crew</span><span class="div">B-1</span><span class="sub">Nguyen, Patel · 2 · lead Minh Nguyen <span class="warn">not verified</span> · 2 min ago · NW 300°</span></div>
+          <div class="rs-g">Swift-water teams · 1</div>
+          <div class="ur"><span class="dot"></span><span class="name"><b>Unit 3</b> · swift-water team</span><span class="div">A-2</span><span class="sub">Hale, Dominguez · 2 · lead Jordan Lee Hale <span class="warn">not verified</span> · 2 min ago · S 180°</span></div>
+        </div>
+        <div id="rs-status" hidden>
+          <div class="rs-g">Assigned · 3</div>
+          <div class="ur"><span class="dot"></span><span class="name"><b>Unit 1</b> · engine</span><span class="div">A-1</span><span class="sub">Ramirez, Okafor · 2 · since 13:23 · 2 min ago</span></div>
+          <div class="ur"><span class="dot"></span><span class="name"><b>Unit 2</b> · boat crew</span><span class="div">B-1</span><span class="sub">Nguyen, Patel · 2 · since 15:25 · 2 min ago</span></div>
+          <div class="ur"><span class="dot"></span><span class="name"><b>Unit 3</b> · swift-water team</span><span class="div">A-2</span><span class="sub">Hale, Dominguez · 2 · since 13:25 · 2 min ago</span></div>
+          <div class="rs-g">Available · 0</div><div class="sub" style="padding:4px 0">Nobody waiting at staging.</div>
+        </div>
+        <div class="row between" style="margin-top:14px"><span class="k" style="margin:0">Head count (PAR)</span><button class="btn sm">Start PAR</button></div>
+        <div class="sub" style="margin:4px 0 6px">14:23 to everyone · all 6 accounted for by 14:26</div>
+        <div class="parline"><span>Unit 1 <span class="ok">✓</span> 14:24</span><span>Unit 2 <span class="ok">✓</span> 14:25</span><span>Unit 3 <span class="ok">✓</span> 14:26</span></div>
+        <div class="row between" style="margin-top:14px"><span class="k" style="margin:0">Requests (213RR) · 2 open</span><span class="chip orange" style="min-height:0;padding:2px 8px;font-size:12px">1 act on now</span></div>
+        <div class="ur"><span class="dot oos"></span><span class="name"><b>Unit 2</b> · a second boat</span><button class="btn sm">Approve</button><span class="sub">asked 14:10 · act on now · 2 boat crews on scene</span></div>
+        <div class="ur"><span class="dot avail"></span><span class="name"><b>Unit 3</b> · dry suits × 2</span><button class="btn sm">Ordered</button><span class="sub">approved 14:15</span></div>
+        <div class="row" style="margin-top:12px"><a class="btn link" href="#">People board</a><a class="btn link" href="#">Hours</a></div>
+      </div>
+      <div class="cap" style="max-width:360px"><b>2 · Units, cleaner.</b> One line per unit: the name, its kind, and the division at the right, where the eye looks for "where". Under it, the small facts. Groups are headings, not chips. The count is in the heading, not a wrapped sentence. Verified is a tick, not a coloured name. The PAR is one line and the answers one row. Requests show the one button each needs.</div>
+    </div>
+
+    <div class="screen" style="flex-basis:100%">
+      <div class="hdr" id="code-hdr">
+        <span><b>Cedar Fork Flooding</b> <span class="sub">· OP 1 · 11:46 to 19:00, IC Dana Ruiz · 3 units · 6 divisions, 1 cleared</span></span>
+        <span class="sp"></span>
+        <span class="pill mono" id="code-pill" title="Join code for field phones: click for the QR, the join card and the Operations code">CEDAR7 ▾</span>
+        <span class="pill" id="live-pill-m" style="padding:3px 7px"><span class="dot on" style="width:8px;height:8px;border-radius:4px;background:var(--cleared-fill);display:inline-block"></span></span>
+        <span class="pill mono">16:06 CDT</span>
+        <div class="pop" id="code-pop" hidden>
+          <div class="qr"><span id="code-qr"></span><div style="flex:1;min-width:0">
+            <div class="row between"><span class="mono big">CEDAR7</span><button class="btn sm">Copy</button></div>
+            <div class="sub" style="margin:4px 0 8px">Units scan this, or type it with their unit name.</div>
+            <label class="switch" id="code-only"><i></i><span>Invited members only</span></label>
+          </div></div>
+          <div class="row" style="margin:10px 0 4px"><button class="btn sm">Print a join card</button><button class="btn sm">Copy the link</button><button class="btn sm">Print bands</button></div>
+          <div class="k" style="margin-top:12px">Operations code</div>
+          <div class="row between"><span class="mono big" id="ops-val">••••••••</span><span><button class="btn sm" id="ops-show">Show</button> <button class="btn sm" id="ops-copy" disabled>Copy</button> <button class="btn sm">New code</button></span></div>
+          <div class="sub" style="margin-top:4px">Makes a second Operations. Say it by radio, never on paper.</div>
+        </div>
+        <div class="pop" id="live-pop" hidden style="right:88px;width:300px">
+          <div class="line"><span>Connection</span><b style="color:var(--cleared)">Live since 14:12</b></div>
+          <div class="line"><span>Last update</span><span>8 s ago · Unit 3 position</span></div>
+          <div class="line"><span>Unit 1</span><span>12 s ago</span></div>
+          <div class="line"><span>Unit 2</span><span>45 s ago</span></div>
+          <div class="line"><span>Unit 3</span><span class="warn">6 min ago · quiet</span></div>
+          <div class="line"><span>This base</span><span>v59 · up to date</span></div>
+          <div class="row" style="margin-top:8px"><button class="btn sm">Reconnect</button></div>
+        </div>
+      </div>
+      <div class="cap" style="max-width:760px"><b>3 · The codes behind the pill, and 4 · the live dot's card.</b> Click <b>CEDAR7</b>: the QR, the code, the join card, the bands and the Operations code open under it, and the home panel loses 430 px. The Operations code is dots until Show is pressed, so it is never on a screen someone walks past. Hover the green dot: is what I am looking at current? Connected since when, the last update, each phone's last report (a quiet one in orange), the version, Reconnect.</div>
+    </div>
+
+    <div class="screen" style="flex-basis:100%">
+      <div class="states" id="draw-states"><button class="chip sm on" data-st="0">No boundary yet</button><button class="chip sm" data-st="1">Boundary drawn, no divisions</button><button class="chip sm" data-st="2">Working</button></div>
+      <div class="tools-m" id="tools-m">
+        <span class="k" style="margin:0 4px 0 0">Draw</span>
+        <button class="btn sm pri" id="t-b" title="The incident's outer edge, drawn once. It frames every printed map and nothing is assigned to it."><span class="sw-b"></span>Boundary</button>
+        <button class="btn sm" id="t-d" title="An area of the map given to one unit. Draw as many as you need, inside the boundary."><span class="sw-d"></span>Division</button>
+        <span class="hint" id="t-hint">Start with the boundary: the incident's outer edge, drawn once.</span>
+        <button class="btn sm">Layers</button>
+      </div>
+      <div class="cap" style="max-width:760px"><b>5 · Boundary and division, told apart.</b> One word each under a "Draw" label, each with its legend mark. Which one is lit follows the map: no boundary yet, Boundary is the button and the hint says why; boundary drawn, Division takes over; working, neither is lit and the hint goes back to "click a division, a unit or a photo pin". Hover either for one sentence on what it is. Press the three states above.</div>
+    </div>
+
+    <div class="screen" style="flex-basis:100%">
+      <div class="lay" style="max-width:760px">
+        <div>
+          <div class="k">Overlays</div>
+          <div class="opt"><span class="box on"></span><b>Aerial 06:40, Civil Air Patrol</b><span class="sub">taken 11:03</span></div>
+          <input type="range" value="60" aria-label="Opacity">
+          <button class="btn sm" style="margin:6px 0">Upload aerial photography</button>
+          <div class="sub">Hiding is for this screen; opacity and the upload are for everyone.</div>
+        </div>
+        <div>
+          <div class="k">Map underneath</div>
+          <div class="opt"><span class="radio on"></span><b>Streets</b><span class="sub">OpenStreetMap</span></div>
+          <div class="opt"><span class="radio"></span><b>Satellite</b><span class="sub">Esri World Imagery</span></div>
+          <div class="opt"><span class="radio"></span><b>Google Maps, streets</b><span class="sub">Google</span></div>
+          <div class="opt"><span class="radio"></span><b>Google Maps, satellite</b><span class="sub">Google</span></div>
+        </div>
+      </div>
+      <div class="cap" style="max-width:760px"><b>6 · Layers, the sides flipped.</b> Overlays on the left, the map underneath on the right. Two lines in <span class="mono">layersPopHtml</span>.</div>
+    </div>
+
+    <div class="screen" style="flex-basis:100%">
+      <div class="hdr" id="gear-hdr" style="max-width:760px">
+        <span class="sub">… Sitrep · IAP · Replay</span>
+        <span class="sp"></span>
+        <span style="position:relative"><button class="btn sm" id="gear-btn" title="Settings, this device, switch incident, sign out" aria-haspopup="menu">⚙︎ ▾</button>
+        <div class="menu" id="gear-menu" hidden style="right:0">
+          <button>Incident settings…</button>
+          <hr>
+          <button>Light</button>
+          <button>Show me around</button>
+          <hr>
+          <button>Switch incident</button>
+          <button>Sign out</button>
+        </div></span>
+        <span class="pill mono">CEDAR7 ▾</span><span class="pill" style="padding:3px 7px"><span style="width:8px;height:8px;border-radius:4px;background:var(--cleared-fill);display:inline-block"></span></span><span class="pill mono">16:06 CDT</span>
+      </div>
+      <div class="cap" style="max-width:760px"><b>7 · Settings as a gear.</b> One icon in place of four buttons: the incident's settings, then this device (Light or dark, Show me around), then Switch incident and Sign out. Thirteen buttons become ten. Press the gear.</div>
+    </div>
+
+    <div class="screen" style="flex-basis:100%">
+      <div class="hdr" style="max-width:760px">
+        <span><b>Cedar Fork Flooding</b> <span class="sub">· OP 1 · 11:46 to 19:00, IC Dana Ruiz</span></span>
+        <span class="sp"></span>
+        <span class="find-m"><input placeholder="Find a person" aria-label="Find a person"><button class="ppl" title="6 people in the field on 3 units · 2 past 12 h on scene · opens the People board"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.5" cy="4.5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M1 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4z"/><path d="M9.5 9.4c.5-.3 1-.4 1.5-.4 2 0 3.5 1.2 3.5 3.3V13h-3.6c0-1.6-.5-2.8-1.4-3.6z"/></svg><b>6</b> <span class="sub">on 3 units</span> <span class="over">· 2 past 12 h</span></button></span>
+      </div>
+      <div class="cap" style="max-width:760px"><b>8 · A head count beside Find a person.</b> How many people are in the field right now, on how many units, and how many are past the hours-on-scene threshold, in orange. Pressing it opens the People board. The same numbers the Units heading shows, where the eye already goes for a person.</div>
+    </div>
+
+    <div class="screen">
+      <div class="zl" id="zl">
+        <div class="zh">Divisions by priority</div>
+        <div class="zr" data-hc="1"><span class="pb p1">1</span><span class="m"><b>A-1</b> Riverside Drive, east<div class="s">In progress · Unit 1 · 9 of 24 · objective 1</div></span><span class="d"></span>
+          <div class="hover-card" id="hc-1" hidden>
+            <div><b>A-1 Riverside Drive, east</b> <span class="sub">· priority 1 · in progress since 13:23</span></div>
+            <div class="two"><div class="big2">2<small>tasked · Unit 1</small></div><div class="big2">3<small>in it now · Unit 1, and Hale of Unit 3</small></div></div>
+            <div class="row2"><span>Searched</span><b>9 of 24</b></div>
+            <div class="row2"><span>Hazards open</span><b>none</b></div>
+            <div class="row2"><span>Last report</span><b>2 min ago · a photo</b></div>
+            <div class="row2"><span>Objective 1</span><span>Primary search of the riverside blocks</span></div>
+            <div class="sub" style="margin-top:6px">Click for the division; right-click for its card.</div>
+          </div>
+        </div>
+        <div class="zr" data-hc="2"><span class="pb p1">1</span><span class="m"><b>A-2</b> Pecan Mobile Home Park<div class="s">In progress · Unit 3 · 6 of 18 · hazard · objective 1</div></span><span class="d"></span>
+          <div class="hover-card" id="hc-2" hidden>
+            <div><b>A-2 Pecan Mobile Home Park</b> <span class="sub">· priority 1 · in progress since 13:25</span></div>
+            <div class="two"><div class="big2">2<small>tasked · Unit 3</small></div><div class="big2" style="color:var(--hazard-ink)">1<small>in it now · Dominguez; Hale is in A-1</small></div></div>
+            <div class="row2"><span>Searched</span><b>6 of 18</b></div>
+            <div class="row2"><span>Hazards open</span><b style="color:var(--hazard-ink)">1 · downed power line</b></div>
+            <div class="row2"><span>Last report</span><b>6 min ago</b></div>
+            <div class="row2"><span>Objective 1</span><span>Primary search of the riverside blocks</span></div>
+            <div class="sub" style="margin-top:6px">Click for the division; right-click for its card.</div>
+          </div>
+        </div>
+        <div class="zr"><span class="pb p2">2</span><span class="m"><b>A-3</b> Cedar Fork Elementary<div class="s">Cleared at 15:23 · 6 of 6 · objective 1</div></span><span class="d c"></span></div>
+        <div class="zr"><span class="pb p2">2</span><span class="m"><b>B-1</b> Mill Street bridge approach<div class="s">In progress · Unit 2 · 2 of 15 · objective 2</div></span><span class="d"></span></div>
+        <div class="zr"><span class="pb p2">2</span><span class="m"><b>B-2</b> Bee Creek low-water crossing<div class="s">Not started · 9 structures · objective 2</div></span><span class="d o"></span></div>
+        <div class="zr"><span class="pb p3">3</span><span class="m"><b>B-3</b> Fairgrounds<div class="s">Not started · 4 structures</div></span><span class="d o"></span></div>
+      </div>
+      <div class="cap" style="max-width:340px"><b>9 · A division's hover card.</b> Rest on a row for half a second and a card opens beside it: how many people are tasked to the division against how many are in it now (from the phones' positions and the bands' scans), searched of how many, hazards open, the last report, the objective's words. Orange when fewer are in it than tasked. Hover A-1 and A-2.</div>
+    </div>
+
+    <div class="screen">
+      <div class="panel wide">
+        <h2 class="t">Decided here, and yours to decide</h2>
+        <div class="k">Decided here (say if any is wrong)</div>
+        <ul class="decisions">
+          <li><b>Twelve words a label</b>, titles in the screen's own words, the number on the part too.</li>
+          <li><b>The division at the right of a unit's row</b>, the small facts under it, groups as headings.</li>
+          <li><b>The Operations code is dots until Show</b>; the rest of the codes' card opens on the pill, not on hover.</li>
+          <li><b>The live card is on hover and on click</b> (a touch screen has no hover), closed by a click outside or Escape.</li>
+          <li><b>Boundary first is a nudge, not a rule</b>: Division stays pressable with no boundary, as today.</li>
+          <li><b>The gear holds four things</b>: the incident's settings, this device (Light, Show me around), Switch incident, Sign out. Light leaves the header row.</li>
+          <li><b>The head count by Find a person</b> reads the same numbers as the Units heading; the orange part is the hours-on-scene threshold, already on the board.</li>
+          <li><b>"In it now" counts phones inside the polygon and bands last seen entering it</b>; a phone that has not reported for five minutes is not counted, and the card says so.</li>
+        </ul>
+        <div class="k">Yours to decide</div>
+        <ul class="decisions">
+          <li><b>How to cut the releases.</b> Small and together as v60: labels (1), the codes behind the pill (3), the live card (4), the drawing buttons (5), Layers flipped (6), the gear (7), the head count (8), the division's hover card (9). On its own: the units section (2), which touches the panel every suite reads. The People board, Replay and the pages as modals follow their own mock-ups.</li>
+          <li><b>A quiet phone</b>: the live card marks a unit quiet after how long? Five minutes is drawn.</li>
+          <li><b>Where the codes' card closes</b>: a click outside, Escape, or only the pill again.</li>
+          <li><b>Hours and the People board</b> at the foot of Units as links, or kept as buttons in the heading.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 <div class="toast" id="toast" hidden></div>
 <script>
@@ -443,7 +730,7 @@
   // tabs
   const show = (name) => { for (const s of document.querySelectorAll('section.feature')) s.classList.toggle('on', s.id === name); for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name); try { history.replaceState(null, '', '#' + name); } catch (e) {} };
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
-  const h = location.hash.slice(1); if (['invite', 'transport', 'tags', 'discovery'].includes(h)) show(h);
+  const h = location.hash.slice(1); if (['invite', 'transport', 'tags', 'discovery', 'cleaner'].includes(h)) show(h);
   // discovery: a label over each part of the base; click one to clear it, Clear all or Escape for the rest
   const zones = () => Array.from(document.querySelectorAll('#disc-stage .disc-zone, #disc-stage .disc-card'));
   const left = () => new Set(zones().filter((z) => !z.hidden).map((z) => z.dataset.n)).size;
@@ -453,6 +740,34 @@
   $('disc-all').addEventListener('click', () => { for (const z of zones()) z.hidden = true; discCount(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('discovery').classList.contains('on') && left()) { for (const z of zones()) z.hidden = true; discCount(); } });
   $('disc-settings').addEventListener('click', () => { for (const z of zones()) z.hidden = false; $('disc-pill').hidden = false; $('disc-again').hidden = true; discCount(); $('disc-stage').scrollIntoView({ behavior: 'smooth', block: 'start' }); toast('Every label is back on the base.'); });
+  // a cleaner base: the second stage, the units' toggle, the codes' pill, the live card, the drawing states
+  const z2 = () => Array.from(document.querySelectorAll('#disc2-stage .disc-zone, #disc2-stage .disc-card'));
+  const left2 = () => new Set(z2().filter((z) => !z.hidden).map((z) => z.dataset.n)).size;
+  const count2 = () => { const n = left2(); $('disc2-left').textContent = n === 1 ? '1 left' : n + ' left'; if (n === 0) { $('disc2-pill').hidden = true; $('disc2-again').hidden = false; toast('That is the base. Show me around is in Settings.'); } };
+  $('disc2-stage').addEventListener('click', (e) => { const z = e.target.closest('[data-n]'); if (z) { for (const x of z2()) if (x.dataset.n === z.dataset.n) x.hidden = true; count2(); } });
+  $('disc2-all').addEventListener('click', () => { for (const z of z2()) z.hidden = true; count2(); });
+  $('disc2-again').addEventListener('click', () => { for (const z of z2()) z.hidden = false; $('disc2-pill').hidden = false; $('disc2-again').hidden = true; count2(); });
+  $('rs-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-rs]'); if (!b) return; for (const x of $('rs-seg').children) x.classList.toggle('on', x === b); $('rs-kind').hidden = b.dataset.rs !== 'kind'; $('rs-status').hidden = b.dataset.rs !== 'status'; });
+  { const qr = window.qrcode(0, 'M'); qr.addData('https://clickemt.com/field/?join=CEDAR7'); qr.make(); $('code-qr').innerHTML = qr.createSvgTag({ cellSize: 3, margin: 0 }); }
+  $('code-pill').addEventListener('click', () => { const open = $('code-pop').hidden; $('code-pop').hidden = !open; $('live-pop').hidden = true; $('code-pill').classList.toggle('on', open); });
+  $('code-only').addEventListener('click', () => $('code-only').classList.toggle('on'));
+  $('ops-show').addEventListener('click', () => { const shown = $('ops-val').textContent !== '••••••••'; $('ops-val').textContent = shown ? '••••••••' : 'MR7KQ2VD'; $('ops-show').textContent = shown ? 'Show' : 'Hide'; $('ops-copy').disabled = shown; });
+  const liveOn = (on) => { $('live-pop').hidden = !on; if (on) { $('code-pop').hidden = true; $('code-pill').classList.remove('on'); } };
+  $('live-pill-m').addEventListener('mouseenter', () => liveOn(true)); $('live-pill-m').addEventListener('click', () => liveOn($('live-pop').hidden));
+  $('code-hdr').addEventListener('mouseleave', () => { if (!$('live-pop').hidden && !$('live-pop').dataset.pinned) liveOn(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $('code-pop').hidden = true; $('live-pop').hidden = true; $('code-pill').classList.remove('on'); } });
+  const DRAW = [
+    ['Start with the boundary: the incident\'s outer edge, drawn once.', true, false],
+    ['Now divisions inside it: an area of the map for each unit.', false, true],
+    ['Click a division, a unit or a photo pin to open it.', false, false],
+  ];
+  $('draw-states').addEventListener('click', (e) => { const b = e.target.closest('[data-st]'); if (!b) return; for (const x of $('draw-states').children) x.classList.toggle('on', x === b); const [hint, bb, dd] = DRAW[Number(b.dataset.st)]; $('t-hint').textContent = hint; $('t-b').classList.toggle('pri', bb); $('t-d').classList.toggle('pri', dd); });
+  $('gear-btn').addEventListener('click', () => { $('gear-menu').hidden = !$('gear-menu').hidden; });
+  let hcT = null;
+  for (const row of document.querySelectorAll('#zl .zr[data-hc]')) {
+    row.addEventListener('mouseenter', () => { clearTimeout(hcT); hcT = setTimeout(() => { for (const c of document.querySelectorAll('#zl .hover-card')) c.hidden = true; $('hc-' + row.dataset.hc).hidden = false; }, 500); });
+    row.addEventListener('mouseleave', () => { clearTimeout(hcT); hcT = setTimeout(() => { $('hc-' + row.dataset.hc).hidden = true; }, 250); });
+  }
   $('disc-again').addEventListener('click', () => { for (const z of zones()) z.hidden = false; $('disc-pill').hidden = false; $('disc-again').hidden = true; discCount(); toast('Showing you around again, as Settings would.'); });
   // invite
   $('inv-send').addEventListener('click', () => { const em = $('inv-email').value.trim() || 'new.member@agency.gov'; const role = $('inv-role').value; const row = document.createElement('div'); row.className = 'row between'; row.innerHTML = '<span>' + em.replace(/[<>&]/g, '') + ' · <b>' + role + '</b> · invited just now</span><span><button class="btn sm">Resend</button> <button class="btn sm">Withdraw</button></span>'; $('inv-list').prepend(row); $('inv-count').textContent = String(Number($('inv-count').textContent) + 1); $('inv-email').value = ''; toast('Invitation sent to ' + em + ' · logged in the 214'); });

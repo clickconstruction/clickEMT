@@ -2,7 +2,7 @@
 
 For whoever picks up clickEMT next. This says where things stand, how to get it running, how a change is shipped,
 and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026, brought
-up to date on 18 October 2026 at v59.
+up to date on 18 October 2026 at v60.
 
 ## What it is
 
@@ -23,14 +23,13 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v59**, "The header's right end, and a clock that swaps to UTC" (after v58, Show me around). The
-  service worker reads `v59`.
+- `main` is at **v60**, "A cleaner base" (after v59, the header's right end). The service worker reads `v60`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0034` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
   (`joincount.sql` 10 of 10, `invites.sql` 32 of 32, `tags.sql` 28 of 28, `transports.sql` 33 of 33, `rewalks.sql` 10 of 10, `scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
-  10 of 10, `ics100.sql` 33 of 33, `people.sql` 28 of 28), all twenty files run on 18 October at v57, v58 and v59. At v55 and v56
+  10 of 10, `ics100.sql` 33 of 33, `people.sql` 28 of 28), all twenty files run on 18 October at v57, v58, v59 and v60. At v55 and v56
   `parbyname.sql` and `people.sql` failed on the real database (section 16 of the punchlist) without anyone
   noticing: run every rule test before a release is called done. v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
@@ -45,10 +44,14 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   pieces of the plan "Invite by email, a transport board, and people and tags" as v54 (the transport board), v55 (QR
   bands, tags phase 1) and v56 (invitations by email); v57 put back on the real database the check-in head count
   that 0032 and 0033 had lost; v58 is Show me around, a label over each part of the base on a device's first open; v59 moved the header's
-  pills to the end of the buttons row and made the clock swap between local and UTC. v49 was the front door's redesign. Each release has its section
-  in [punchlist.md](punchlist.md) (1 to 14, 16 to 18) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
-- **Nothing ranked is open.** The next step, by Grace's routine, is a fresh walk at v59: every persona, every job,
-  "is this the best we can do?", then a ranked list. The candidates already known are in punchlist section 15 (the
+  pills to the end of the buttons row and made the clock swap between local and UTC; v60 took eight marks from Todd's
+  walk of the base (shorter labels, the codes behind the pill, the connection's card, the head count, the drawing
+  buttons, the gear, Layers flipped, a division's hover card). v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14, 16 to 19) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+- **Open, not yet ranked: the rest of Todd's walk.** Todd walked the base at v59 on 18 October and marked fifteen
+  things; v60 took eight. The rest are mocked up and waiting in punchlist section 15 ("From Todd's walk at v59"): the
+  units section, the People board, Replay's time picker, the pages as modals, imagery placed by its corners, a transport
+  on the map. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
   "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on
   the hardware Grace chooses.
 - **Not yet seen working for real:** the first real invitation email. The Edge Function `invite` is deployed and
@@ -199,6 +202,8 @@ without them.
   click-through mock-ups it was judged on are in the repository at `try/mockups/` (published at
   https://clickemt.com/try/mockups/); they are kept as the design record now that all three are built.
 - The pilot agreement (a Claude Doc, 18 October): the draft an agency signs to pilot the app, with one comment open.
+- "A cleaner base" (18 October, `try/mockups/#cleaner`, with `people.html`, `replay.html`, `modals.html` and
+  `imagery.html` beside it): Todd's walk of the base at v59 as mock-ups; panels 1 and 3 to 9 were built as v60.
 - "Show me around" (18 October, in the repository at `try/mockups/#discovery`): the labels over the base on a device's
   first open, drawn over a screenshot of the base at v57 and judged before v58 was built; its last panel says what was
   decided and what was left for the walk.

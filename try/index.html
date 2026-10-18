@@ -74,7 +74,8 @@
   .who-head { margin: 4px 0 14px; }
   .who-head .role { font-size: 21px; font-weight: 700; line-height: 1.2; }
   .who-head .name { color: var(--muted); font-size: 13px; margin-top: 3px; }
-  #stage { flex: 1; min-width: 0; overflow: auto; padding: 12px; display: flex; align-items: flex-start; gap: 20px; }
+  #stage { flex: 1; min-width: 0; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .frames { display: flex; align-items: flex-start; gap: 20px; }
   .slot { flex: none; overflow: hidden; position: relative; border-radius: 8px; }
   .slot[hidden] { display: none; }
   .scaled { transform-origin: top left; }
@@ -98,6 +99,7 @@
   .tabs button { padding: 4px 10px; }
   .intro { color: #cfd3d9; font-size: 14px; margin: 0 0 10px; }
   .play { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+  .play button { white-space: nowrap; }
   ol.steps { list-style: none; padding: 0; margin: 0; }
   ol.steps li.step { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 8px; background: rgba(255,255,255,.015); }
   ol.steps li.step.cur { border-color: var(--accent); }
@@ -113,6 +115,21 @@
   .step .res.on { display: block; }
   .step .res.bad { color: #f0a8a8; }
   .nodo { color: var(--muted); font-size: 12px; }
+  .stage-note { position: sticky; top: -12px; z-index: 6; margin: -12px -12px 0; padding: 10px 14px; background: rgba(29,31,36,.96); border-bottom: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0,0,0,.35); display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; }
+  .stage-note[hidden] { display: none; }
+  .stage-note .sn-head { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); grid-column: 1; }
+  .stage-note .sn-text { grid-column: 1; font-size: 15px; line-height: 1.4; color: var(--ink); }
+  .stage-note .sn-text.doing::before { content: "Now: "; color: var(--accent); font-weight: 600; }
+  .stage-note .sn-text.done::before { content: "✓ "; color: var(--phone); font-weight: 700; }
+  .stage-note .sn-text.bad { color: #f0a8a8; }
+  .stage-note .sn-acts { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; }
+  .stage-note .sn-acts button { white-space: nowrap; }
+  .stage-note .sn-acts button.pri { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600; }
+  .slot.watch { box-shadow: 0 0 0 3px var(--accent), 0 0 0 7px rgba(232,184,74,.25); }
+  .slot .watch-tag { position: absolute; top: 8px; left: 8px; z-index: 3; background: var(--accent); color: #111; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; display: none; pointer-events: none; }
+  .slot.watch .watch-tag { display: block; }
+  ol.steps li.step.cur .say { font-size: 15px; }
+  @media (max-width: 760px) { .stage-note { grid-template-columns: 1fr; margin: -8px -8px 0; top: -8px; } .stage-note .sn-acts { grid-column: 1; grid-row: auto; } }
   .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: #111; padding: 8px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.4); z-index: 30; }
   .toast[hidden] { display: none; }
   footer { max-width: 1040px; margin: 0 auto; padding: 28px 24px 48px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
@@ -183,8 +200,15 @@
   <main>
     <aside id="aside"><p class="muted">Pick a role above.</p></aside>
     <div id="stage">
-      <div class="slot" id="slot-base"><div class="scaled"><div class="base-box"><iframe id="base" title="The base" data-src="/?demo"></iframe></div></div></div>
-      <div class="slot" id="slot-phone"><div class="scaled"><div class="phone-box"><iframe id="phone" title="The phone" data-src="/field/?demo"></iframe></div></div></div>
+      <div class="stage-note" id="stage-note" hidden>
+        <div class="sn-head"><span class="chip base" id="sn-on">Base</span><span id="sn-step"></span></div>
+        <div class="sn-text" id="sn-text"></div>
+        <div class="sn-acts"><button id="sn-next" class="pri">Next step ›</button><button id="sn-close" title="Hide this bar">×</button></div>
+      </div>
+      <div class="frames" id="frames">
+        <div class="slot" id="slot-base"><span class="watch-tag">Watch the base</span><div class="scaled"><div class="base-box"><iframe id="base" title="The base" data-src="/?demo"></iframe></div></div></div>
+        <div class="slot" id="slot-phone"><span class="watch-tag">Watch the phone</span><div class="scaled"><div class="phone-box"><iframe id="phone" title="The phone" data-src="/field/?demo"></iframe></div></div></div>
+      </div>
     </div>
   </main>
 </section>
@@ -275,7 +299,7 @@
     const t = TOURS[p.slug];
     if (!t) return '<p class="intro">No tour for this role yet; the guide walks the jobs step by step.</p>';
     const steps = t.steps.map((st, i) => '<li class="step' + (i === state.step ? ' cur' : '') + '" data-i="' + i + '"><div class="say"><b>' + (i + 1) + '.</b> ' + escape(st.say) + '</div><div class="acts"><span class="chip ' + st.on + '">' + (st.on === 'base' ? 'Base' : 'Phone') + '</span><button data-act="show">Show me</button>' + (st.do ? '<button data-act="do" class="do">Do it for me</button>' : '<span class="nodo">look, then read on</span>') + '</div><div class="res"></div></li>').join('');
-    return '<p class="intro">' + escape(t.intro) + '</p><div class="play"><button id="play-all">Play the tour</button><span class="muted small">every step, a few seconds apart</span></div><ol class="steps">' + steps + '</ol>';
+    return '<p class="intro">' + escape(t.intro) + '</p><div class="play"><button id="play-all">Play the tour</button><span class="muted small">every step by itself, nine seconds apart; or press Next step over the frames</span></div><ol class="steps">' + steps + '</ol>';
   }
   async function drawAside() {
     const p = PERSONAS.find((x) => x.n === state.who) || PERSONAS[0];
@@ -304,6 +328,7 @@
     try { history.replaceState(null, '', '#' + p.n); } catch (e) { /* ignore */ }
     try { localStorage.setItem('ic.try.who', String(p.n)); } catch (e) { /* ignore */ }
     state.step = 0; state.tab = TOURS[p.slug] ? 'tour' : 'guide';
+    $('stage-note').hidden = true; watchFrame(null);
     await drawAside();
   }
 
@@ -339,7 +364,7 @@
     unring: () => { for (const k of ['base', 'phone']) { const d = frameDoc(k); const r = d && d.getElementById('ic-ring'); if (r) r.style.display = 'none'; } },
     // Tap a button: ring it, then click. `target` may be a finder, re-run at click time, because a live
     // update can redraw the panel or the log between the ring and the click and leave the old button detached.
-    tap: async (target) => { const get = typeof target === 'function' ? target : () => target; let el = get(); if (!el) throw new Error('nothing to tap'); await h.ring(el); await wait(650); if (!el.isConnected) el = get(); if (!el) throw new Error('the button went away'); el.click(); await wait(250); },
+    tap: async (target) => { const get = typeof target === 'function' ? target : () => target; let el = get(); if (!el) throw new Error('nothing to tap'); await h.ring(el); await wait(1300); if (!el.isConnected) el = get(); if (!el) throw new Error('the button went away'); el.click(); await wait(250); },
     act: async (k, action, extra = {}) => { const d = frameDoc(k); const b = d.createElement('button'); b.dataset.action = action; Object.assign(b.dataset, extra); b.hidden = true; d.body.appendChild(b); b.click(); b.remove(); await wait(200); },
     baseHome: async () => {
       const cb = h.b('[data-action="close-briefing"]'); if (cb && h.b('#briefing') && !h.b('#briefing').hidden) { cb.click(); await wait(150); }
@@ -376,31 +401,58 @@
   };
   function currentTour() { const p = PERSONAS.find((x) => x.n === state.who); return p && TOURS[p.slug] ? TOURS[p.slug] : null; }
   function focusFrame(k) { const slot = $('slot-' + k); if (slot.hidden) { state.modeChosen = true; setMode(k); layout(); } }
+  // Which frame to watch: a ring around it and a tag in its corner, so the eyes go to the right screen.
+  function watchFrame(k) { for (const f of ['base', 'phone']) $('slot-' + f).classList.toggle('watch', f === k); if (k) focusFrame(k); }
+  // The narration bar over the frames: which screen, which step, what is happening or what just happened.
+  function narrate(i, on, phase, text) {
+    const t = currentTour(); const bar = $('stage-note');
+    bar.hidden = false;
+    $('sn-on').className = 'chip ' + on; $('sn-on').textContent = on === 'base' ? 'Base' : 'Phone';
+    $('sn-step').textContent = 'Step ' + (i + 1) + ' of ' + t.steps.length + (phase === 'doing' ? ' · watch the ' + on : phase === 'done' ? ' · look at the ' + on : '');
+    const el = $('sn-text'); el.textContent = text; el.className = 'sn-text ' + phase;
+    const last = i + 1 >= t.steps.length;
+    $('sn-next').textContent = phase === 'done' && last ? 'Start over' : phase === 'done' ? 'Next step ›' : last ? 'Finish' : 'Skip ›';
+    $('sn-next').dataset.next = String(phase === 'done' && last ? 0 : i + 1);
+    layout();
+    const d = $('demo').getBoundingClientRect(); if (d.top > 80 || d.bottom < 200) $('demo').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  $('sn-next').addEventListener('click', () => { if (busy) return; const k = Number($('sn-next').dataset.next); const t = currentTour(); if (!t) return; if (k >= t.steps.length) { narrate(t.steps.length - 1, t.steps[t.steps.length - 1].on, 'done', 'That is the tour. Pick another role above, or try the app by hand.'); return; } const st = t.steps[k]; if (st.do) doStep(k); else showStep(k); });
+  $('sn-close').addEventListener('click', () => { $('stage-note').hidden = true; watchFrame(null); layout(); });
   function stepEl(i) { return $('aside').querySelector('.step[data-i="' + i + '"]'); }
   function setResult(i, text, bad) { const el = stepEl(i); if (!el) return; const r = el.querySelector('.res'); r.textContent = text; r.className = 'res on' + (bad ? ' bad' : ''); }
   function setCurrent(i) { state.step = i; for (const el of $('aside').querySelectorAll('.step')) el.classList.toggle('cur', Number(el.dataset.i) === i); }
   let busy = false;
+  function scrollStepIntoView(i) { const el = stepEl(i); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   async function showStep(i) {
     const t = currentTour(); if (!t || busy) return; const st = t.steps[i]; busy = true;
-    try { loadFrames(); focusFrame(st.on); setCurrent(i); if (st.prep) await st.prep(h); const el = st.show ? st.show(h) : null; if (el) await h.ring(el); else throw new Error('not on screen yet'); if (!st.do && st.result) setResult(i, st.result); }
-    catch (e) { setResult(i, 'Could not find that on the screen here (' + (e.message || e) + '). Try it by hand.', true); }
+    try {
+      loadFrames(); watchFrame(st.on); setCurrent(i); scrollStepIntoView(i); narrate(i, st.on, 'doing', st.say);
+      if (st.prep) await st.prep(h);
+      const el = st.show ? st.show(h) : null; if (el) await h.ring(el); else throw new Error('not on screen yet');
+      if (st.result) { setResult(i, st.result); narrate(i, st.on, 'done', st.result); } else narrate(i, st.on, 'done', 'Ringed on the ' + st.on + '. ' + st.say);
+    }
+    catch (e) { setResult(i, 'Could not find that on the screen here (' + (e.message || e) + '). Try it by hand.', true); narrate(i, st.on, 'bad', 'Could not find that on the screen here. Try it by hand, or reset the mock.'); }
     finally { busy = false; }
   }
   async function doStep(i) {
     const t = currentTour(); if (!t || busy) return false; const st = t.steps[i]; busy = true;
     const btn = stepEl(i) && stepEl(i).querySelector('[data-act="do"]'); if (btn) btn.disabled = true;
     try {
-      loadFrames(); focusFrame(st.on); setCurrent(i);
+      loadFrames(); watchFrame(st.on); setCurrent(i); scrollStepIntoView(i); narrate(i, st.on, 'doing', st.say);
       await until(() => frameWin('base') && frameWin('base').__mock && frameWin('phone') && frameWin('phone').__mock, 15000);
       if (st.prep) await st.prep(h);
       if (st.do) await st.do(h);
       const ok = st.done ? await until(() => { try { return st.done(h); } catch (e) { return false; } }, 15000) : true;
       h.unring();
       if (!ok) throw new Error('it did not show up on the other side in time');
-      setResult(i, st.result || 'Done.'); stepEl(i).classList.add('done');
-      if (i + 1 < t.steps.length) setCurrent(i + 1);
+      // Then where to look: the other screen when the result landed there, and a ring on the thing itself.
+      const watch = st.watch || (st.done && /logHas/.test(String(st.done)) && st.on === 'phone' ? 'base' : st.on);
+      watchFrame(watch);
+      const look = st.look ? st.look(h) : (watch === 'base' && st.on === 'phone' ? h.b('#log .log-row') : null);
+      if (look) { try { await h.ring(look); } catch (e) { /* the ring is a nicety */ } }
+      setResult(i, st.result || 'Done.'); stepEl(i).classList.add('done'); narrate(i, watch, 'done', st.result || 'Done.');
       return true;
-    } catch (e) { h.unring(); setResult(i, 'That did not go through here (' + (e.message || e) + '). Reset the mock and try again, or do it by hand.', true); return false; }
+    } catch (e) { h.unring(); setResult(i, 'That did not go through here (' + (e.message || e) + '). Reset the mock and try again, or do it by hand.', true); narrate(i, st.on, 'bad', 'That did not go through here. Reset the mock and try again, or do it by hand.'); return false; }
     finally { busy = false; if (btn) btn.disabled = false; }
   }
   let playing = false;
@@ -411,9 +463,8 @@
     playing = true; pb.textContent = 'Stop';
     for (let i = 0; i < t.steps.length && playing; i++) {
       const st = t.steps[i];
-      stepEl(i).scrollIntoView({ block: 'nearest' });
       if (st.do) { const ok = await doStep(i); if (!ok) break; } else { await showStep(i); }
-      await wait(2600);
+      for (let s = 0; s < 9 && playing; s++) await wait(1000);   // nine seconds to read what happened and look
     }
     playing = false; pb.textContent = 'Play the tour';
   }
@@ -439,7 +490,8 @@
   }
   function layout() {
     const stage = $('stage');
-    const W = stage.clientWidth - 24, H = stage.clientHeight - 24, gap = 20;
+    const note = $('stage-note'); const noteH = note.hidden ? 0 : note.offsetHeight + 12;
+    const W = stage.clientWidth - 24, H = stage.clientHeight - 24 - noteH, gap = 20;
     // A narrow window (a phone, or a narrow pane) starts on one frame; Both would draw them too small to read.
     if (!state.modeChosen && state.mode === 'both' && W < 700) setMode('phone');
     const showBase = state.mode !== 'phone', showPhone = state.mode !== 'base';

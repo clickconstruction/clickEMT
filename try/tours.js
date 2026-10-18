@@ -75,24 +75,28 @@ window.IC_TOURS = (function () {
           show: (h) => h.b('#inc-sub'),
           do: async (h) => { await h.baseHome(); await h.tap(() => h.b('[data-action="briefing"]')); },
           done: (h) => !h.b('#briefing').hidden,
+          look: (h) => h.b('#briefing-page'),
           result: 'The header counts units and divisions; the bar under it is red while anyone needs help and yellow while a message or a head count is open; the legend counts divisions by status. Briefing puts the whole picture on one sheet.' },
         { on: 'base', say: 'Sign the Incident Action Plan.',
           prep: (h) => h.baseHome(),
           show: (h) => h.b('[data-action="iap"]'),
           do: async (h) => { await h.tap(() => h.b('[data-action="iap"]')); },
           done: (h) => !h.b('#briefing').hidden && /incident action plan/i.test(h.b('#briefing-title').textContent),
+          look: (h) => h.b('#briefing-page'),
           result: 'The 202, the 203, the 207, every division\'s 204 with its map and medical lines, the 205, 206 and 208, stitched from the data. Print it or copy it as text.' },
         { on: 'base', say: 'Hand command to the county chief.',
           prep: async (h) => { await h.baseHome(); await h.tap(() => h.b('[data-action="period"]')); await h.until(() => h.b('#panel form[data-form="period-edit"]')); },
           show: (h) => h.b('#panel form[data-form="period-edit"] input[name="ic"]'),
           do: async (h) => {
             const f = h.b('#panel form[data-form="period-edit"]');
-            h.fill(f.ic, 'Chief Al Barnes'); await h.wait(300); f.requestSubmit();
+            const name = f.ic.value === 'Chief Al Barnes' ? 'Chief Rosa Delgado' : 'Chief Al Barnes';   // a re-run without a reset still transfers
+            h.fill(f.ic, name); await h.wait(300); f.requestSubmit();
             await h.until(() => h.b('#transfer-dialog').open, 6000);
             await h.wait(900);
             await h.tap(() => h.b('#transfer-dialog [data-action="transfer-go"]'));
           },
           done: (h) => h.logHas('Command transferred'),
+          watch: 'phone', look: (h) => h.p('#s-safety'),
           result: 'A different name in the Incident Commander seat asked "Transfer command?" with ICS-100\'s wording. Every phone got a card to acknowledge, the handover briefing opened, the 214 got a notable line, and the 203 keeps who held command when.' },
         { on: 'base', say: 'Who is in which seat, and who is stretched.',
           prep: (h) => h.baseHome(),
@@ -103,8 +107,8 @@ window.IC_TOURS = (function () {
         { on: 'base', say: 'Seat a deputy.',
           prep: async (h) => { await h.baseHome(); await h.tap(() => h.b('[data-action="period"]')); await h.until(() => h.b('#panel form[data-form="period-edit"]')); },
           show: (h) => h.b('#panel form[data-form="period-edit"] input[name="deputy"]'),
-          do: async (h) => { const f = h.b('#panel form[data-form="period-edit"]'); h.fill(f.deputy, 'Capt. Nina Ortiz'); await h.wait(300); f.requestSubmit(); },
-          done: (h) => h.logHas('Deputy Capt. Nina Ortiz'),
+          do: async (h) => { const f = h.b('#panel form[data-form="period-edit"]'); h._deputy = f.deputy.value === 'Capt. Nina Ortiz' ? 'Capt. Omar Haddad' : 'Capt. Nina Ortiz'; h.fill(f.deputy, h._deputy); await h.wait(300); f.requestSubmit(); },
+          done: (h) => h.logHas('Deputy ' + h._deputy),
           result: 'Logged like every seat, carried into the next period, printed on the 203 and drawn under the IC on the 207.' },
         { on: 'base', say: 'What changed while you were away: play the day back.',
           prep: (h) => h.baseHome(),
@@ -121,8 +125,8 @@ window.IC_TOURS = (function () {
         { on: 'base', say: 'Open division A-1 and give it priority 3.',
           prep: (h) => h.baseHome(),
           show: (h) => h.byText(h.bb('#zones .zr'), /A-1/),
-          do: async (h) => { await h.tap(() => h.byText(h.bb('#zones .zr'), /A-1/)); await h.until(() => h.b('#panel [data-action="set-priority"][data-p="3"]')); await h.tap(() => h.b('#panel [data-action="set-priority"][data-p="3"]')); },
-          done: (h) => h.logHas('A-1 priority set to 3'),
+          do: async (h) => { await h.tap(() => h.byText(h.bb('#zones .zr'), /A-1/)); await h.until(() => h.b('#panel [data-action="set-priority"][data-p="3"]')); h._p = h.b('#panel [data-action="set-priority"][data-p="3"]').classList.contains('on') ? '2' : '3'; await h.tap(() => h.b('#panel [data-action="set-priority"][data-p="' + h._p + '"]')); },
+          done: (h) => h.logHas('A-1 priority set to ' + h._p),
           result: 'The row moved down with a 3, the crew\'s phone shows the new priority on its zone card, and the 214 has the line, pointing at the division.' },
         { on: 'base', say: 'Assign Unit 2 to B-2.',
           prep: (h) => h.baseHome(),
@@ -141,6 +145,7 @@ window.IC_TOURS = (function () {
           show: (h) => h.b('#panel [data-action="start-par"][data-target="all"]'),
           do: async (h) => { await h.tap(() => h.b('#panel [data-action="start-par"][data-target="all"]')); await h.until(() => h.shown(h.p('#s-safety')), 10000); },
           done: (h) => h.b('#safety') && !h.b('#safety').hidden && /par/i.test(h.b('#safety').innerText),
+          watch: 'phone', look: (h) => h.p('#s-safety'),
           result: 'The yellow bar counts the answers and names who is waiting. Unit 3\'s phone shows the card with Hale and Dominguez and one button, All 2 accounted for. A missing person turns a row red on your board and raises an emergency.' },
         { on: 'phone', say: 'Unit 3 answers.',
           show: (h) => h.byText(h.pp('#s-safety button'), /^All \d+ accounted for$/),
@@ -163,6 +168,7 @@ window.IC_TOURS = (function () {
             if (!h.logHas('SAFETY MESSAGE')) f.requestSubmit();
           },
           done: (h) => h.logHas('SAFETY MESSAGE'),
+          watch: 'phone', look: (h) => h.p('#s-safety'),
           result: 'Unit 3\'s phone shows it over whatever was open until the crew answers Copy, Will do or Cannot. The yellow bar says who is still waiting, and the 214 marks it as a safety message.' }
       ]
     },

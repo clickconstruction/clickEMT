@@ -44,8 +44,8 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   (punchlist sections 12 to 14). v56 is the app's first server code: the Edge Function `invite`
   (`supabase/functions/invite/`), deployed with `supabase functions deploy invite --project-ref cjwybuhogxyayjnuxpem
   --use-api`; its secrets are the project's (`RESEND_*`, the Supabase keys) plus `APP_URL`. The shared project's auth
-  has sign-ups turned off since 18 October (the charity app's change): Create account is refused on the real project
-  until it is turned on again. Trackers (tags phase 2) wait on the hardware.
+  had sign-ups turned off for a few hours on 18 October (the charity app's change); they were turned on again the same
+  day, so Create account works as before (email confirmation still required). Trackers (tags phase 2) wait on the hardware.
 
 ## Read these first
 

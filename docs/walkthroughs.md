@@ -1248,6 +1248,6 @@ Invite by email: Marcus, Ana (as the invited person) and the administrator, walk
 
 **Still bites, small:**
 
-- **Sign-ups are off on the shared project** since 18 October, so the front door's "make an account with any email" and the phone's Create account are refused on the real project; an invitation is the only way in for a new address until it is turned on again. The words on the door do not yet say so.
+- **Sign-ups were off on the shared project** for a few hours on 18 October (the charity app's change), which refused the front door's "make an account with any email" and the phone's Create account; they are on again, with email confirmation as before.
 - **The real email was not seen from the pane**: the function is deployed and refuses a call with no session; the first real invitation is the test, and if the mail sender refuses, the row says "could not be sent: …" on the Members tab and in the 214.
 - **A unit's invitation opened on a laptop** lands on the base as a unit; the base is made for Operations. The link routes units to the field app; a laptop is the person's choice.

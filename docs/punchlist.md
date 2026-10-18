@@ -432,9 +432,9 @@ season's roster to invite in one press. The app's first server code.
    `invite_only` turns the units' code off for the uninvited; `ic_roster` offers the addresses invited on earlier
    incidents to a new one. *Decisions kept from the plan:* an invitation is to an incident, not to the app; email only;
    an invited account is self-service after that; the function needs its own deploy step (in CLAUDE.md's routine).
-   *Found on the way:* the shared project's auth has sign-ups turned off since 18 October (the charity app's change),
-   so Create account on the phone and the base is refused there until it is turned on again; an invitation is the way
-   in for a new address. *Not in this cut:* SMS; an invitation to the app without an incident; a test of the real
+   *Found on the way:* the shared project's auth had sign-ups turned off for a few hours on 18 October (the charity
+   app's change), which refused Create account on the phone and the base; they were turned on again the same day, and
+   an invitation is the other way in for a new address. *Not in this cut:* SMS; an invitation to the app without an incident; a test of the real
    function's email from the pane (it was deployed and answers; the mock stands in for it in the suite).
    *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
    `invite` (18).*

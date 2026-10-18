@@ -499,6 +499,13 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .land-three li { padding-left: 14px; border-left: 3px solid var(--accent); color: var(--ink-2); font-size: 15px; line-height: 1.45; }
 .land-three b { color: var(--ink); }
 .land-hero h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+.land-shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 16px; margin: 0 0 36px; }
+.shot { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.shot img { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+.shot.wide { grid-column: span 2; }
+.shot.phone img { aspect-ratio: 375 / 600; object-fit: cover; object-position: top; border-radius: 22px; }
+.shot figcaption { font-size: 13.5px; line-height: 1.4; color: var(--muted); }
+.shot figcaption b { color: var(--ink); font-weight: 600; }
 .land-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin: 0 0 12px; }
 .land-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; text-decoration: none; color: var(--ink); }
 .land-card:hover { border-color: var(--accent); color: var(--ink); }
@@ -514,7 +521,11 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .land-ops p { margin: 0 0 12px; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
 .land-foot { border-top: 1px solid var(--line); }
 .land-foot .land-wrap { padding: 22px 24px 44px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+@media (max-width: 900px) { .land-shots { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) {
+  .land-shots { grid-template-columns: 1fr; }
+  .shot.wide { grid-column: auto; }
+  .shot.phone { max-width: 340px; }
   .land-wrap, .land-top { padding-left: 16px; padding-right: 16px; }
   .door .land-wrap { padding: 26px 16px 24px; }
   .door-code input { width: 100%; font-size: 24px; }

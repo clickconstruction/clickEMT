@@ -1464,6 +1464,13 @@ async function demo(check) {
   check('the code box refuses a code outside the join code\'s alphabet, and stays on the page', /never has 0, O, 1 or I/.test($('#door-msg').textContent) && location.pathname === '/', $('#door-msg').textContent);
   $('#door-code').value = ''; $('#door-msg').textContent = '';
   check('the front door\'s footer says which version is on screen, with Reload, and the new-version chip waits hidden', await until(() => /^Version v\d+$/.test(($('#land-ver') || {}).textContent || ''), 6000) && !!$('#land-reload') && !!$('#update-chip') && $('#update-chip').hidden, ($('#land-ver') || {}).textContent);
+  const nf = document.createElement('iframe'); nf.src = '/404.html'; nf.style.cssText = 'position:fixed;right:0;top:0;width:375px;height:700px;z-index:3000;background:#fff;border:0'; document.body.appendChild(nf);
+  const nd = () => nf.contentDocument;
+  check('the 404 page says the page is not here and asks for the join code, with the ways back', await until(() => nd() && nd().querySelector('#door-form') && /not here/i.test(nd().body.innerText) && nd().querySelectorAll('a[href="/"], a[href="/try/"]').length >= 3, 8000), nd() && nd().title);
+  await until(() => nd().defaultView.__doorReady, 6000);   // the page's script is a module; the box is a plain join link until it loads
+  nd().getElementById('door-code').value = 'CEDAR0'; nd().getElementById('door-form').requestSubmit();
+  check('its code box refuses a code outside the alphabet and stays put', await until(() => /never has 0, O, 1 or I/.test(nd().getElementById('door-msg').textContent), 4000) && /404\.html$/.test(nd().location.pathname), nd().getElementById('door-msg').textContent);
+  nf.remove();
   const tour = page.contentWindow.__tour;
   check('six roles have a tour, with Show me on every step and Do it for me on most', !!tour && tour.tours.length === 6 && pd().querySelectorAll('.step [data-act="show"]').length === pd().querySelectorAll('.step').length && pd().querySelectorAll('.step [data-act="do"]').length >= 5, tour && tour.tours.join());
   await tour.pick('03-unit-lead-on-foot');

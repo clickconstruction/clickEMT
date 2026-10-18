@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not here · Incident Map</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1F4E79">
+<script>
+  // the device's light/dark choice, before first paint (the same as index.html)
+  try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<!-- GitHub Pages serves this for any address that is not a page, so every path here is absolute. The join code
+     box is the front door's: a six-letter code opens the field app with the code filled in. -->
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/base.css">
+<style>
+  .nf { min-height: 100%; }
+  .nf-top { display: flex; align-items: center; gap: 10px; max-width: 1040px; margin: 0 auto; padding: 12px 24px; }
+  .nf-top .brand { font-weight: 700; font-size: 16px; }
+  .nf-top .sp { flex: 1; }
+  .nf-note { max-width: 1040px; margin: 0 auto; padding: 28px 24px 4px; }
+  .nf-note h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .nf-note p { margin: 0; font-size: 16px; color: var(--ink-2); max-width: 680px; line-height: 1.45; }
+  .nf-ways { max-width: 1040px; margin: 0 auto; padding: 28px 24px 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 28px; }
+  .nf-ways h3 { font-size: 16px; margin: 0 0 4px; }
+  .nf-ways p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); line-height: 1.45; }
+  @media (max-width: 600px) { .nf-top, .nf-note, .nf-ways { padding-left: 16px; padding-right: 16px; } .nf-top .land-how { display: none; } }
+</style>
+</head>
+<body class="nf">
+<div class="nf-top">
+  <div class="brand">Incident Map <span class="muted">· clickEMT</span></div>
+  <span class="sp"></span>
+  <a class="btn sm" href="/">Front door</a>
+  <a class="btn sm" href="/try/">Try it</a>
+  <a class="btn sm land-how" href="https://github.com/clickconstruction/clickEMT" rel="noopener">How it is built</a>
+</div>
+
+<div class="nf-note">
+  <h1>That page is not here</h1>
+  <p>The address you opened is not a page on clickemt.com. If someone sent it to you so you could join an incident, what you need is the six-letter join code, not the link.</p>
+</div>
+
+<section class="door">
+  <div class="land-wrap">
+    <h1>Part of an incident right now?</h1>
+    <p class="lead">Enter the join code from your join card, from Operations' screen or from another unit's phone. It opens the field app on this phone with the code filled in; you check in with your name and your unit.</p>
+    <form class="door-code" id="door-form" action="/field/" method="get" novalidate>
+      <input id="door-code" name="join" class="mono" placeholder="CEDAR7" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Join code" autofocus>
+      <button type="submit" class="btn pri">Join on this phone</button>
+      <span class="msg" id="door-msg" role="status"></span>
+    </form>
+    <p class="no-code"><b>No code?</b> It is on the join card at the check-in table and on the screen at the base. Ask whoever sent you, or the person running the base. Only the incident's Operations can add you.</p>
+  </div>
+</section>
+
+<div class="nf-ways">
+  <div>
+    <h3>Running the base?</h3>
+    <p>The base lives at the front door: sign in there to open an incident or join one as Operations.</p>
+    <a class="btn" href="/">Go to the front door</a>
+  </div>
+  <div>
+    <h3>Just looking?</h3>
+    <p>Try the app as any role, live in your browser, with no account: the base and the phone side by side on a made-up incident.</p>
+    <a class="btn" href="/try/">Try it as a role</a>
+  </div>
+  <div>
+    <h3>Followed a link from the app?</h3>
+    <p>A join link looks like <span class="mono">clickemt.com/field/?join=CEDAR7</span>. If yours was cut short, type the code above instead.</p>
+  </div>
+</div>
+
+<script type="module">
+  import { joinUrl, CODE_RE } from '/js/shared/qr.js';
+  const code = document.getElementById('door-code'), msg = document.getElementById('door-msg');
+  code.addEventListener('input', () => { code.value = code.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); msg.textContent = ''; });
+  document.getElementById('door-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const c = code.value.trim().toUpperCase();
+    if (!CODE_RE.test(c)) { msg.textContent = 'A join code is six letters and numbers, like CEDAR7. It never has 0, O, 1 or I.'; code.focus(); return; }
+    location.href = joinUrl(c, new URL('/field/', location.href));
+  });
+  window.__doorReady = true;
+</script>
+</body>
+</html>

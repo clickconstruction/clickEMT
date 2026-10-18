@@ -46,8 +46,8 @@
     <div class="land-wrap">
       <h1>Part of an incident right now?</h1>
       <p class="lead">Enter the six-letter join code from your join card, from Operations' screen or from another unit's phone. It opens the field app on this phone with the code filled in; you check in with your name and your unit.</p>
-      <form class="door-code" id="door-form" novalidate>
-        <input id="door-code" name="code" class="mono" placeholder="CEDAR7" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Join code">
+      <form class="door-code" id="door-form" action="field/" method="get" novalidate>
+        <input id="door-code" name="join" class="mono" placeholder="CEDAR7" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Join code">
         <button type="submit" class="btn pri">Join on this phone</button>
         <span class="msg" id="door-msg" role="status"></span>
       </form>

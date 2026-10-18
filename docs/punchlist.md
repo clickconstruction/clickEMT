@@ -5,15 +5,15 @@ to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "I
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
 that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), v61, the units section
-(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), and v63, Replay with a time you name and a speed in words (section 22). **Open and not yet ranked** (18 October 2026, v63): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
-Written 17 October 2026, after v37 (`c89a929`), brought up to date at v63. Each numbered release below is written to be picked
+(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), and v64, the pages as windows (section 23). **Open and not yet ranked** (18 October 2026, v64): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v64. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v64**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v65**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -41,6 +41,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 20 | v61 The units section, cleaner: one line per unit with where it is at the right, the PAR as one line (shipped 18 October) | small | v60 | Marcus, Dana, the clerk |
 | 21 | v62 Confirmations as the app's own dialogs, and the band door (shipped 18 October) | small | v61 | Marcus, Dana, Rosa, the desk, anyone handed a band |
 | 22 | v63 Replay: a time you name, and a speed in words (shipped 18 October) | small | v62 | Marcus, the clerk, Dana |
+| 23 | v64 The pages as windows: Briefing, People and the rest over the dimmed map, Expand to full screen (shipped 18 October) | small to medium | v63 | Marcus, the IC, the clerk, Priya |
 
 ---
 
@@ -484,7 +485,8 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
   run-up before the first position cut off rather than hatched; past periods in the menu and clicking the time to type a
   moment are still to do.
 - **The pages as large modals, not full screens** (`/try/mockups/modals.html`): Briefing, People and the rest over the
-  dimmed map with Expand to full screen; the alarm line, printing and the pop-out log thought through there.
+  dimmed map with Expand to full screen; the alarm line, printing and the pop-out log thought through there. Built as
+  v64 (section 23).
 - **Placing aerial imagery by its corners** (`/try/mockups/imagery.html`): drag the picture to fit instead of typing four
   edges; a rectangle first (today's bounds), four free corners later.
 - **A transport on the map** (Todd, 18 October): a run shown on the map view, its pickup and destination and where the
@@ -725,6 +727,44 @@ past periods in the menu and clicking the time to type a moment are left for lat
 js/base/main.js, `#replay-pick` in index.html and its styles in base.css; the `replay` suite reads the menu's words,
 the speed words, the sheet's bounds and refusals, Go and Cancel; full run 748 of 748 across 38 suites on v62 plus this release alone (the shared tree, with the pages-as-windows work still open in it, ran 751 of 756, the five misses in that work);
 check and test pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
+
+## 23. v64 The pages as windows
+
+**Why.** Todd, walking the base at v59 on 18 October, opened Briefing, then People, and each took the whole window:
+the map, the alarm line and the log gone behind it. "Perhaps for all of these buttons, instead of opening a full
+screen window, we show it as a modal that takes up the majority of the screen and then a user can choose to expand a
+full screen." Drawn first as `try/mockups/modals.html` (the base at 1280 × 800 in its own stylesheets, the Briefing and
+the People board as a window and full screen, an emergency arriving in each, a phone, the decisions), then built as
+drawn.
+
+**Built.** Briefing, Org chart, People, Public, Transports, Sitrep and IAP, and the printed 204, 211, 214, join card,
+band sheet, Hours and the shelter's list, open in a window over the dimmed body: 870 px wide for a paper (its 820 px
+sheet with the desk showing at the sides), 1150 px for a board (the People board kept its 1100 px, so at 1280 it loses
+no width), 20 px above and below, scrolling inside, under the header and the alarm line, which stay live (the gear
+menu, the codes' and the connection's cards and Find a person sit over the dim). **Expand** before Close makes the
+page full screen: the header folds away, the alarm line stays as the top strip, the page fills the rest; **Shrink**
+brings the window back. The choice is this device's (`ic.base.pages`, like the theme), and the gear menu's "Pages
+full screen" / "Pages as windows" swaps it too. An emergency, a safety message or a PAR arriving while a page is open
+is on the alarm line in front of it in either state, and the base rings as before. Escape closes the page (a focused
+field is left first), and so does a click on the dim, as the division's card does; a form in the page with typed words
+not yet saved holds both off with "Save or cancel the form first". Printing is unchanged: the paper alone, the window's
+edges and the dim off. Under 900 px a page is full screen always and the buttons are hidden. A window's bar stays one
+row: the title whole, the sub-line cut short.
+
+*Decided:* all seven pages and the printed forms move together, one setting, not the papers full screen and the boards
+as windows; the header folds away in full screen (kept, full screen would gain only the dim and 40 px); the dim is 38%
+black (the division's card's backdrop is 45%); the words are Expand and Shrink; the pop-out log is unchanged (it never
+opens a page itself; a line's link asks the main window, which opens the page in the remembered state). Not built: a
+Pop out for the papers (the Briefing or the IAP alone in a window of its own, like the log, for the second screen at
+the command post), a natural next step now that the pages are windows.
+
+**Shipped** 18 October 2026 as `The pages as windows (v64)`: `.briefing` as the dim and `.briefing-win` as the window in
+base.css (the full-screen, print and narrow rules with them), `placePages` / `setPagesFull` / `pageDirty` / `closePage`
+/ `closeOverlay` and the `pages-size` action in js/base/main.js, the wrapper and the Expand button in each of the four
+overlays and the gear menu's item in index.html; the `pages` smoke suite (13 checks: the window's place and width, Expand
+and Shrink with the setting, an emergency in front of a full-screen page, Escape, the board's width, the half-filled
+form, the dim click, the print rules, the gear menu's item); full run 761 of 761 across 39 suites; check and test pass;
+every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
 
 ## Done before this list
 

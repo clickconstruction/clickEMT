@@ -370,6 +370,7 @@ function drawAll() {
   if (!$('#people').hidden) drawPeople();
   if (!$('#public').hidden) drawPublic();
   if (!$('#transports').hidden) drawTransports();
+  if (openPages().length) placePages();   // v64: the header's height may have changed under the window
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
   drawHeadCount(); drawTools(); drawCodes(); drawLivePop(); refreshZoneHover();   // v60
@@ -569,7 +570,36 @@ function mapsReady(root, ms = 3000) {
   const one = (src) => new Promise((done) => { const im = new Image(); im.onload = im.onerror = () => done(); im.src = src; });
   return Promise.race([Promise.all(urls.map(one)), new Promise((done) => setTimeout(done, ms))]);
 }
-function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); }
+function openOverlay(kind, zoneId) { state.print = kind; state.printZone = zoneId || null; $('#briefing').hidden = false; drawBriefing(); placePages(); }
+function closeOverlay() { $('#briefing').hidden = true; state.printZone = null; state.print = null; state.printFacility = null; placePages(); }
+
+// ---- the pages as windows (v64): #people, #public, #transports and #briefing open in a window over the dimmed body,
+// under the header and the alarm line; Expand makes the page full screen (the header folds away, the alarm line stays
+// as the top strip), kept per device in ic.base.pages; under 900 px it is full screen always. Escape and a click on
+// the dim close the page, unless a form in it holds typed words not yet saved.
+const PAGES_KEY = 'ic.base.pages';
+const PAGES = ['#people', '#public', '#transports', '#briefing'];   // in drawing order: the last one open is on top
+let pagesFull = (() => { try { return localStorage.getItem(PAGES_KEY) === 'full'; } catch (e) { return false; } })();
+function openPages() { return PAGES.map((s) => $(s)).filter((el) => el && !el.hidden); }
+function placePages() {
+  const open = openPages().length > 0, full = open && (pagesFull || window.innerWidth <= 900);
+  const root = document.documentElement;
+  root.classList.toggle('page-open', open);
+  root.classList.toggle('page-full', full);
+  root.style.setProperty('--page-top', open ? Math.round($('#bars').getBoundingClientRect().bottom) + 'px' : '0px');   // measured after the header folds or unfolds
+  for (const b of document.querySelectorAll('.pages-size')) { b.textContent = pagesFull ? 'Shrink' : 'Expand'; b.title = pagesFull ? 'Back to a window over the map, for this screen from now on' : 'Full screen, for this screen from now on'; }
+  const mi = $('#btn-pages'); if (mi) mi.textContent = pagesFull ? 'Pages as windows' : 'Pages full screen';
+}
+function setPagesFull(full) { pagesFull = !!full; try { localStorage.setItem(PAGES_KEY, pagesFull ? 'full' : 'window'); } catch (e) { /* storage blocked */ } placePages(); }
+// a form in the page with words typed and not yet saved: Escape and the dim click leave the page alone
+function pageDirty(el) { return [...el.querySelectorAll('.briefing-page form input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]), .briefing-page form textarea')].some((f) => f.value.trim() && f.value !== f.defaultValue); }
+function closePage(el) {
+  if (!el) return;
+  if (el.id === 'briefing') closeOverlay(); else if (el.id === 'people') closePeople(); else if (el.id === 'public') closePublic(); else if (el.id === 'transports') closeTransports();
+}
+for (const s of PAGES) $(s).addEventListener('click', (e) => { if (e.target !== e.currentTarget) return; if (pageDirty(e.currentTarget)) { toast('Save or cancel the form first'); return; } closePage(e.currentTarget); });   // the dim
+window.addEventListener('resize', () => { if (openPages().length) placePages(); });
+placePages();
 
 // ---- transfer of command: a different name in the Incident Commander seat asks whether command is
 // being handed over (ICS-100: a full briefing and notification to all personnel) or just mistyped.
@@ -610,8 +640,8 @@ $('#transfer-dialog').addEventListener('click', (e) => { if (e.target === e.curr
 
 // ---- the People board: everyone on scene by unit, in a page of its own. The find box and the chips
 // live in state.people; the page is redrawn on every change unless a field in it has focus.
-function openPublic() { $('#public').hidden = false; drawPublic(); }   // the PIO's page (v52)
-function closePublic() { $('#public').hidden = true; }
+function openPublic() { $('#public').hidden = false; drawPublic(); placePages(); }   // the PIO's page (v52)
+function closePublic() { $('#public').hidden = true; placePages(); }
 function drawPublic() {
   if (!data.incident || $('#public').hidden) return;
   $('#public-sub').textContent = data.incident.name + ' · ' + hhmm(new Date());
@@ -619,8 +649,8 @@ function drawPublic() {
   if (page.__html !== html) { page.__html = html; page.innerHTML = html; }
 }
 // the transport board (v54): a page of its own, redrawn on every change unless a field in it has focus
-function openTransports() { $('#transports').hidden = false; drawTransports(); }
-function closeTransports() { $('#transports').hidden = true; state.tr.add = false; state.tr.edit = null; }
+function openTransports() { $('#transports').hidden = false; drawTransports(); placePages(); }
+function closeTransports() { $('#transports').hidden = true; state.tr.add = false; state.tr.edit = null; placePages(); }
 function drawTransports() {
   if (!data.incident || $('#transports').hidden) return;
   $('#transports-sub').textContent = data.incident.name + ' · ' + hhmm(new Date());
@@ -629,12 +659,12 @@ function drawTransports() {
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
 }
 function focusTrForm() { setTimeout(() => { const f = $('#transports-page form.tr-form'); if (f) f.label.focus(); }, 30); }
-function openPeople() { $('#people').hidden = false; drawPeople(); loadRoster(); }
+function openPeople() { $('#people').hidden = false; drawPeople(); loadRoster(); placePages(); }
 function loadRoster() {   // the addresses invited on earlier incidents, for the Members tab (v56)
   if (state.people.tab !== 'members' || !data.me() || data.me().role !== 'ops') return;
   data.roster().then((r) => { state.roster = r; drawPeople(); }).catch(() => {});
 }
-function closePeople() { $('#people').hidden = true; state.people.add = false; }
+function closePeople() { $('#people').hidden = true; state.people.add = false; placePages(); }
 function drawPeople() {
   if (!data.incident || $('#people').hidden) return;
   const chips = peopleChipsHtml(data, state);
@@ -1054,6 +1084,7 @@ document.addEventListener('click', async (e) => {
       case 'replay-pick-cancel': closeReplayPick(); break;
       case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
       case 'gear': setGearOpen(!state.gearOpen); break;   // v60
+      case 'pages-size': setPagesFull(!pagesFull); if (state.gearOpen) setGearOpen(false); break;   // v64: Expand or Shrink on a page, or the gear menu's item
       case 'codes': state.codesOpen = !state.codesOpen; state.liveOpen = false; drawCodes(); drawLivePop(); break;   // v60
       case 'ops-show': state.opsShown = !state.opsShown; drawCodes(); break;   // v60
       case 'live': state.liveOpen = !state.liveOpen; state.codesOpen = false; drawLivePop(); drawCodes(); break;   // v60
@@ -1109,7 +1140,7 @@ document.addEventListener('click', async (e) => {
       case 'overlay-view-bounds': fillOverlayBounds(true); break;
       case 'select-unit': if (btn.closest('#people')) closePeople(); select({ type: 'unit', id }); break;
       case 'select-structure': selectFromLog({ type: 'structure', id }); break;
-      case 'select-facility': if (btn.closest('#briefing')) $('#briefing').hidden = true; selectFromLog({ type: 'facility', id }); break;
+      case 'select-facility': if (btn.closest('#briefing')) closeOverlay(); selectFromLog({ type: 'facility', id }); break;
       case 'select-evacuee': {   // a log line about a person: open the place the record says they are, or were
         const ev = data.evacuee(id);
         const place = ev && (ev.facility_id || ev.prev_facility_id);
@@ -1201,7 +1232,7 @@ document.addEventListener('click', async (e) => {
       case 'layers-upload': state.layersUpload = true; drawLayers(); { const f = $('#layers-pop form[data-form="overlay-add"]'); if (f) f.file.focus(); } break;
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
-      case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; state.printFacility = null; break;
+      case 'close-briefing': closeOverlay(); break;
       case 'print-briefing': drawBriefing(); await mapsReady($('#briefing-page')); window.print(); break;
       case 'copy-briefing': await navigator.clipboard.writeText(briefingAsText()); toast('Copied as text'); break;
       case 'start-par': {
@@ -1284,6 +1315,13 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && aroundOn()) { clearAround('cleared'); return; }   // v58
   if (e.key === 'Escape' && (state.gearOpen || state.codesOpen || state.liveOpen)) { setGearOpen(false); state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); return; }   // v60
   if (e.key === 'Escape' && state.layersOpen) { setLayersOpen(false); return; }
+  if (e.key === 'Escape' && openPages().length && !document.querySelector('dialog[open]')) {   // v64: a page as a window; a focused field is left first
+    const t = e.target;
+    if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) { t.blur(); return; }
+    const top = openPages().pop();
+    if (pageDirty(top)) { toast('Save or cancel the form first'); return; }
+    closePage(top); return;
+  }
   if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;
   if (!map || (map.mode !== 'boundary' && map.mode !== 'zone')) return;

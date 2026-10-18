@@ -749,3 +749,24 @@ Item 2 of "What to do first" is clear. Her briefing still says "Wait at staging"
 
 - **The base's front door still says "the account your agency gave you"** under Running the base?; that is Operations' screen and reads right for them, but a volunteer who scrolls past the code box reads it too.
 - **A code typed with a wrong letter** (0 for O) is refused on the door with the rule; the field app's own code box, for a code typed by hand, answers only with the database's "No active incident has the code".
+
+---
+
+## Re-walk after v40
+
+A period that has ended says so, and times in one form: Dana's thirty seconds, the clerk's reports and a crew's briefing, walked on 2026-10-17 at 23:17 in the same mock (whose seeded period is planned to end at 19:00, so it was overdue), the base at 1280 × 800 and the phone at 375 × 812 as Unit 3. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The header | Dana | "OP 1 · 20:07 to 19:00 · overdue 4 h 17 min, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared". | Clear |
+| The IAP | Dana, the clerk | "Operational period 1, 20:07 to 19:00 · the planned end passed 4 h 17 min ago; the next period has not been started" and "Prepared 17 Oct 2026 23:17". The same line heads the 203, the 207, the sitrep, the 211 and the 214. | Clear |
+| The Period sheet | Dana | "Operational period 1 · 20:07 to 19:00 · overdue 4 h 17 min", then in orange "The planned end 19:00 passed 4 h 17 min ago and the period is still open. Start period 2, or move the planned end below.", and Start period 2 drawn as the primary button under Shift change. | Clear |
+| The home panel, a photo, a unit | Marcus, the PIO | "OPENED 17 Oct 2026 20:07", a photo's "TIME 17 Oct 2026 23:05", a unit's "JOINED 17 Oct 2026 20:27": the same form as every other time on the base. | Clear |
+| The phone | Unit 3 | The menu's "PERIOD OP 1 · 20:07 to 19:00 · overdue 4 h 17 min, IC Dana Ruiz"; the briefing's Situation "Cedar Fork Flooding, OP 1, planned end 19:00 has passed." and Shift "This period was to end 19:00, 4 h 17 min ago; stay on until Operations starts the next period, when the next crew is briefed at staging." | Clear |
+
+Items 3 and 4 of "What to do first" are clear.
+
+**Still bites, small:**
+
+- **A planned end before the start** reads "20:07 to 19:00" (the mock's seed starts the period three hours ago and ends it at a fixed 19:00); the sheet lets Operations type any time. The overdue words still make sense; a warning when the end is typed earlier than the start would end it.
+- **"Overdue" is a word Operations may not want on the header** for a period that ran its course and was simply never closed; starting the next period clears it, which is the right habit, and the words say so.

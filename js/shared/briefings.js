@@ -4,7 +4,7 @@
 // representatives the Liaison Officer keeps. No DOM and no network: every function takes the data
 // module's read API (or anything with the same read methods, as the Node test does) and returns
 // plain lines, so the base, the phone and the tests all say the same things.
-import { hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText, WATER_KINDS, rotationText } from './rules.js';
+import { whenText, dateText, periodState, durationText, hhmm, unitLabel, unitWithKind, centroid, distanceM, milesText, nearestFacility, personOn, qualsText, agenciesOn, latLngText, STATUS_LABEL, directionsUrl, placeCounts, bedsText, WATER_KINDS, rotationText } from './rules.js';
 
 // ICS-100: one supervisor to three to seven people, five being best. Past seven the count turns orange.
 export const SPAN_MAX = 7;
@@ -147,7 +147,7 @@ export function nearestMedic(data, { exclude, at } = {}) {
 // ---- your briefing: ICS-100's briefing items for one unit, read in the truck. Every line comes
 // from the incident as it is now. A section may carry an action for the phone (the map, the ask
 // sheet, the hurt card).
-export function fieldBriefing(data, { me, at } = {}) {
+export function fieldBriefing(data, { me, at, now = Date.now() } = {}) {
   const inc = data.incident, p = data.currentPeriod();
   const zones = data.zones(), units = data.units().filter(on), channels = data.channels();
   const mine = me ? zones.filter((z) => z.assigned_to === me.user_id && z.status !== 'cleared') : [];
@@ -157,7 +157,7 @@ export function fieldBriefing(data, { me, at } = {}) {
   const hazards = data.hazards();
   const sr = (p && p.sitrep) || {};
   S.push({ key: 'situation', title: 'Situation', text: [
-    `${inc.name}, ${p ? 'OP ' + p.number + (p.ends_at ? ' until ' + hhmm(p.ends_at) : '') : 'no operational period set'}.`,
+    `${inc.name}, ${p ? 'OP ' + p.number + (periodState(p, now).state === 'overdue' ? ', planned end ' + hhmm(p.ends_at) + ' has passed' : p.ends_at ? ' until ' + hhmm(p.ends_at) : '') : 'no operational period set'}.`,
     sentence(sr.summary),
     `${zones.length} division${zones.length === 1 ? '' : 's'}, ${units.length} unit${units.length === 1 ? '' : 's'}, ${zones.filter((z) => z.status === 'cleared').length} cleared.`,
     hazards.length ? `${hazards.length} hazard${hazards.length === 1 ? '' : 's'} open: ` + hazards.slice(0, 3).map((h) => h.kind.toLowerCase() + (h.note ? ' (' + h.note + ')' : '') + (h.zone_id && data.zone(h.zone_id) ? ' in ' + data.zone(h.zone_id).code : '')).join('; ') + (hazards.length > 3 ? '; and more' : '') + '.' : 'No hazards open.'
@@ -210,7 +210,7 @@ export function fieldBriefing(data, { me, at } = {}) {
   ].filter(Boolean).join(' ') });
   const pod = data.facilities().find((f) => f.kind === 'pod');
   S.push({ key: 'supplies', title: 'Supplies, fuel, more hands', text: `Ask from the inbox: Ask for something. Logistics works it and you see each step.${pod ? ' ' + (pod.name || 'Point of distribution') + (pod.notes ? ': ' + sentence(pod.notes) : '.') : ''}`, action: 'ask' });
-  S.push({ key: 'shift', title: 'Shift', text: `${p && p.ends_at ? 'This period ends ' + hhmm(p.ends_at) + (staging ? '; the next crew is briefed at staging' : '') + '.' : 'No end of period set yet.'} Check out from the menu when you leave: the list asks what you leave behind.` });
+  S.push({ key: 'shift', title: 'Shift', text: `${p && p.ends_at ? (periodState(p, now).state === 'overdue' ? 'This period was to end ' + hhmm(p.ends_at) + ', ' + durationText(periodState(p, now).overMin) + ' ago; stay on until Operations starts the next period' + (staging ? ', when the next crew is briefed at staging' : '') + '.' : 'This period ends ' + hhmm(p.ends_at) + (staging ? '; the next crew is briefed at staging' : '') + '.') : 'No end of period set yet.'} Check out from the menu when you leave: the list asks what you leave behind.` });
   S.push({ key: 'safety', title: 'Safety and PPE', warn: true, lead: p && p.notes ? sentence(p.notes) : 'No safety message written for this period.', text: (hazards.length ? `Hazard${hazards.length === 1 ? '' : 's'} open: ` + hazards.slice(0, 3).map((h) => h.kind.toLowerCase() + (h.note ? ', ' + h.note : '')).join('; ') + '. ' : '') + (p && p.rotation_minutes > 0 ? 'Time in the water: ' + rotationText(p.rotation_minutes) + '; the phone nudges you past it. ' : '') + 'If someone is hurt: see the next card.', action: 'hurt' });
   return S;
 }
@@ -225,12 +225,12 @@ export function deploymentLines(data, now = new Date()) {
   const needed = data.openRequests();
   const ends = p && p.ends_at ? new Date(p.ends_at) : null;
   const channels = data.channels();
-  const dt = (d) => d.toLocaleDateString() + ' ' + hhmm(d);
+  const dt = (d) => whenText(d);
   return [
     ['Incident', `${inc.name}${inc.lead_agency ? ' · lead agency ' + inc.lead_agency : ''}${p && p.ic_name ? ' · IC ' + p.ic_name : ''} · opened ${dt(new Date(inc.created_at))}`],
     ['Check in at', `${where}${staging && staging.notes ? ' · ' + staging.notes : ''} · check in on your phone with the code, then find the staging manager`],
     ['Your assignment', 'Given at check-in by Operations.' + (objectives.length ? ' The period\'s objectives: ' + objectives.slice(0, 3).map((o) => o.number + '. ' + o.text).join('; ') + '.' : '') + (needed.length ? ' Needed now: ' + needed.slice(0, 3).map((r) => (r.quantity > 1 ? r.quantity + ' ' : '') + r.what + (r.zone_id && data.zone(r.zone_id) ? ' for ' + data.zone(r.zone_id).code : '')).join(' · ') + '.' : '')],
-    ['Report by', ends && ends.getTime() > now.getTime() ? `${hhmm(ends)} on ${ends.toLocaleDateString()} for the operational period ${p.number + 1} briefing${staging ? ' at staging' : ''} (OP ${p.number} runs ${hhmm(p.starts_at)} to ${hhmm(ends)})` : 'Now: the incident is under way and units are checked in as they arrive'],
+    ['Report by', ends && ends.getTime() > now.getTime() ? `${hhmm(ends)} on ${dateText(ends)} for the operational period ${p.number + 1} briefing${staging ? ' at staging' : ''} (OP ${p.number} runs ${hhmm(p.starts_at)} to ${hhmm(ends)})` : 'Now: the incident is under way and units are checked in as they arrive'],
     ['Getting there', staging ? `${staging.name || 'Staging area'} at ${latLngText(staging.lat, staging.lng)} · directions open from Nearby on your phone once you have checked in` : (icp ? `${icp.name || 'Command post'} at ${latLngText(icp.lat, icp.lng)}` : (inc.base_name ? 'Report to ' + inc.base_name : 'Operations will say'))],
     ['Radio', channels.length ? channels.map((c) => c.use + ' ' + c.channel).join(' · ') + ' · plain English, no codes' : 'No communications plan set yet; Operations gives you a channel at check-in'],
     ['Bring', p && p.notes ? p.notes : 'not set: the period\'s safety message goes here']

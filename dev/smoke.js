@@ -499,6 +499,19 @@ async function people(check) {
 async function periods(check) {
   const per = M().ids.period, obj = M().ids.objectives;
   check('the header names operational period 1 and the Incident Commander', has('#inc-sub', 'op 1', 'ic dana ruiz'), text('#inc-sub'));
+  { // v40: past its planned end the header says overdue, the reports say the next period has not been started, and the sheet lights Start period; before it, none of that
+    const over = Date.now() > new Date(base.currentPeriod().ends_at).getTime();
+    check('the header says overdue only when the planned end has passed (' + (over ? 'it has' : 'it has not') + ')', has('#inc-sub', 'overdue') === over, text('#inc-sub'));
+    $('[data-action="iap"]').click();
+    await until(() => !$('#briefing').hidden);
+    check('the IAP\'s period line and its Prepared line read in the app\'s own form', (/the planned end passed .* ago; the next period has not been started/.test(text('#briefing-page')) === over) && /prepared \d{1,2} [a-z]{3} \d{4} \d{2}:\d{2}/.test(text('#briefing-page')) && !/\d{1,2}\/\d{1,2}\/\d{4}/.test(text('#briefing-page')), text('#briefing-page').slice(0, 300));
+    $('[data-action="close-briefing"]').click();
+    await until(() => $('#briefing').hidden);
+    $('[data-action="period"]').click();
+    await until(() => has('#panel .title', 'operational period 1'));
+    check('the Period sheet shows the overdue note and lights Start period only then', (!!$('#panel .period-overdue') === over) && ($('#panel [data-action="period-next"]').classList.contains('pri') === over), text('#panel').slice(0, 200));
+    $('#panel [data-action="close-panel"]') && $('#panel [data-action="close-panel"]').click();
+  }
   check('the data has period 1 with three objectives, one done', base.currentPeriod().id === per && base.objectives().length === 3 && !!base.objectives()[2].done_at);
   $('[data-action="period"]').click();
   await until(() => has('#panel .title', 'operational period 1'));

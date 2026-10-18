@@ -142,7 +142,7 @@ t('an ambulance on scene is named with its distance', () => {
 
 t('your briefing has the eight ICS-100 items, every line from the data', () => {
   const d = stub();
-  const S = fieldBriefing(d, { me: d.member(U.u3), at: [30.2674, -97.7384] });
+  const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] });
   assert.deepEqual(S.map((s) => s.key), ['situation', 'job', 'with', 'area', 'radio', 'supplies', 'shift', 'safety']);
   assert.equal(S[0].text, 'Cedar Fork Flooding, OP 1 until 19:00. Cedar Fork crested at 04:30. 5 divisions, 3 units, 1 cleared. 1 hazard open: downed power line (Line across the park entrance) in A-2.');
   assert.equal(S[1].lead, 'Division A-2, Pecan Mobile Home Park.');
@@ -159,17 +159,17 @@ t('your briefing has the eight ICS-100 items, every line from the data', () => {
 
 t('a water crew is told the nearest boat ramp under Work area and the rotation under Safety (v28)', () => {
   const d = stub({ facilities: stub().facilities().concat([{ id: 'f9', kind: 'ramp', name: 'Low-water crossing ramp', lat: 30.2612, lng: -97.7455, notes: '', contact: '', closed_at: null }]), period: { rotation_minutes: 45 } });
-  const S = fieldBriefing(d, { me: d.member(U.u2), at: [30.2614, -97.7420] });
+  const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: d.member(U.u2), at: [30.2614, -97.7420] });
   const area = S.find((x) => x.key === 'area'), safety = S.find((x) => x.key === 'safety');
   assert.ok(/^B-1 on the map, 15 structures, 2 cleared\. Boat ramp: Low-water crossing ramp, [\d.]+ mi\. Staging:/.test(area.text), area.text);
   assert.ok(safety.text.includes('Time in the water: crews out of the water every 45 minutes; the phone nudges you past it.'), safety.text);
-  const engine = fieldBriefing(d, { me: d.member(U.u1), at: [30.2681, -97.7318] }).find((x) => x.key === 'area');
+  const engine = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: d.member(U.u1), at: [30.2681, -97.7318] }).find((x) => x.key === 'area');
   assert.ok(!/Boat ramp/.test(engine.text), engine.text);
 });
 
 t('a unit with no assignment is told to wait at staging', () => {
   const d = stub();
-  const S = fieldBriefing(d, { me: { user_id: 'nobody', unit_name: 'Unit 9', role: 'unit', status: 'available', kind: '' }, at: null });
+  const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: { user_id: 'nobody', unit_name: 'Unit 9', role: 'unit', status: 'available', kind: '' }, at: null });
   assert.equal(S[1].lead, 'No assignment yet.');
   assert.ok(S[1].text.includes('Wait at staging, High school east lot.'));
   assert.ok(S[2].text.startsWith('On Unit 9: nobody listed yet'));
@@ -180,7 +180,7 @@ t('a shelter desk\'s job is the people at its shelter, not staging (v26)', () =>
   const d = stub({ facilities: F });
   d.facility = (id) => F.find((f) => f.id === id) || null;
   d.evacuees = () => [{ id: 'e1', label: 'Okonkwo family', count: 5, needs: [], status: 'here', facility_id: 'f5' }, { id: 'e2', label: 'family of 4', count: 4, needs: ['pets'], status: 'on_the_way', facility_id: 'f5' }];
-  const S = fieldBriefing(d, { me: { user_id: 'desk', unit_name: 'Gym desk', role: 'unit', status: 'available', kind: 'shelter_desk', facility_id: 'f5' }, at: null });
+  const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: { user_id: 'desk', unit_name: 'Gym desk', role: 'unit', status: 'available', kind: 'shelter_desk', facility_id: 'f5' }, at: null });
   assert.equal(S[1].lead, 'People here at High school gym.');
   assert.ok(S[1].text.includes('They\'re here') && S[1].text.endsWith('Now: 5 of 60 beds, 1 record on the way, expected Bus 2, 12 people, 17:30.') && !S[1].text.includes('staging'), S[1].text);
 });
@@ -235,3 +235,11 @@ t('Camp, Helibase and Boat ramp are facility kinds, every kind with its own lett
 });
 
 console.log(`${n} checks passed`);
+
+t('past its planned end the phone\'s briefing says so and tells the crew to stay on (v40)', () => {
+  const d = stub();
+  const late = new Date(2026, 9, 17, 22, 0).getTime();
+  const S = fieldBriefing(d, { now: late, me: d.member(U.u3), at: [30.2674, -97.7384] });
+  assert.ok(S[0].text.startsWith('Cedar Fork Flooding, OP 1, planned end 19:00 has passed.'), S[0].text);
+  assert.ok(S[6].text.startsWith('This period was to end 19:00, 3 h ago; stay on until Operations starts the next period, when the next crew is briefed at staging.'), S[6].text);
+});

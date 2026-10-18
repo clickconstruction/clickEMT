@@ -3,7 +3,7 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, esc } from './ui.js';
-import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
+import { dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -152,9 +152,9 @@ async function showPicker() {
 // Clear now and Keep 30 more days for Operations, then "cleared … by rule".
 function clearLineHtml(r) {
   if (r.status !== 'closed') return '';
-  if (r.personal_cleared_at) return `<div class="pick-sub" data-clear="${r.id}">Personal records cleared ${esc(new Date(r.personal_cleared_at).toLocaleDateString())} by rule · the names, the log and the forms stay</div>`;
+  if (r.personal_cleared_at) return `<div class="pick-sub" data-clear="${r.id}">Personal records cleared ${esc(dateText(r.personal_cleared_at))} by rule · the names, the log and the forms stay</div>`;
   const when = r.clear_personal_at ? new Date(r.clear_personal_at) : null;
-  return `<div class="pick-sub warn" data-clear="${r.id}"><span>Personal records clear by rule ${when ? 'on ' + esc(when.toLocaleDateString()) : 'after the close'}: licences, dates of birth, addresses, licence photos and the names of people sheltered</span>${r.role === 'ops' ? `<button class="btn sm" data-action="clear-personal" data-id="${r.id}">Clear now</button><button class="btn sm" data-action="keep-personal" data-id="${r.id}">Keep 30 more days</button>` : ''}</div>`;
+  return `<div class="pick-sub warn" data-clear="${r.id}"><span>Personal records clear by rule ${when ? 'on ' + esc(dateText(when)) : 'after the close'}: licences, dates of birth, addresses, licence photos and the names of people sheltered</span>${r.role === 'ops' ? `<button class="btn sm" data-action="clear-personal" data-id="${r.id}">Clear now</button><button class="btn sm" data-action="keep-personal" data-id="${r.id}">Keep 30 more days</button>` : ''}</div>`;
 }
 
 $('#new-incident').addEventListener('submit', async (e) => {

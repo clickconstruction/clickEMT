@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
+import { whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -149,7 +149,7 @@ function homeHtml(data, state) {
     <div class="kv">
       <span class="k">Period</span><span>${esc(inc.period || 'not set')}</span>
       <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
-      <span class="k">Opened</span><span>${esc(new Date(inc.created_at).toLocaleString())}</span>
+      <span class="k">Opened</span><span>${esc(whenText(inc.created_at))}</span>
       <span class="k">Zones</span><span>${data.zones().length} · ${data.zones().filter((z) => z.status === 'cleared').length} cleared</span>
     </div>
     <form class="inline-form" data-form="incident-edit">
@@ -157,7 +157,7 @@ function homeHtml(data, state) {
       <div class="row-btns"><button class="btn sm" type="submit">Save</button></div>
     </form>
     ${inc.status === 'closed'
-      ? `<div class="d-row"><span class="badge haz">Closed</span><span class="muted" style="font-size:12.5px;flex:1">${inc.personal_cleared_at ? 'Personal records cleared ' + esc(new Date(inc.personal_cleared_at).toLocaleDateString()) + ' by rule.' : inc.clear_personal_at ? 'Personal records clear by rule on ' + esc(new Date(inc.clear_personal_at).toLocaleDateString()) + '; Clear now and Keep 30 more days are on the incident picker.' : ''}</span><button class="btn sm" data-action="reopen-incident">Reopen incident</button></div>`
+      ? `<div class="d-row"><span class="badge haz">Closed</span><span class="muted" style="font-size:12.5px;flex:1">${inc.personal_cleared_at ? 'Personal records cleared ' + esc(dateText(inc.personal_cleared_at)) + ' by rule.' : inc.clear_personal_at ? 'Personal records clear by rule on ' + esc(dateText(inc.clear_personal_at)) + '; Clear now and Keep 30 more days are on the incident picker.' : ''}</span><button class="btn sm" data-action="reopen-incident">Reopen incident</button></div>`
       : `<div class="d-row"><span class="muted" style="font-size:12.5px;flex:1">Closing ends the incident for every phone and starts the 30 days after which its personal records clear by rule.</span><button class="btn sm" data-action="close-incident">Close incident</button></div>`}`;
 }
 
@@ -252,8 +252,8 @@ export function joinCardSections(data) {
   return [
     { title: 'Deployment briefing', lines: deploymentLines(data, now).map(([k, v]) => k + ': ' + v) },
     { title: 'Who to ask for', lines: [whoToAsk(data)] },
-    { title: 'Check in with your phone', lines: [inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''), p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : '', 'Join code ' + inc.code, 'Scan the code, or open ' + fieldJoinUrl(inc.code).replace(/\?.*$/, '') + ' and type it.', 'Say who you are (name, phone, licence), name your unit, what it is and the people on it, then press Check in. Your briefing opens after check-in; everything you send keeps until there is signal.', 'Anyone with this code can join as a unit. Keep it to the people who should.'].filter(Boolean) },
-    { title: 'Printed', lines: [now.toLocaleDateString() + ' ' + hhmm(now) + ' · the lines above are the incident as it was then'] }
+    { title: 'Check in with your phone', lines: [inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''), p ? periodLine(p) : '', 'Join code ' + inc.code, 'Scan the code, or open ' + fieldJoinUrl(inc.code).replace(/\?.*$/, '') + ' and type it.', 'Say who you are (name, phone, licence), name your unit, what it is and the people on it, then press Check in. Your briefing opens after check-in; everything you send keeps until there is signal.', 'Anyone with this code can join as a unit. Keep it to the people who should.'].filter(Boolean) },
+    { title: 'Printed', lines: [whenText(now) + ' · the lines above are the incident as it was then'] }
   ];
 }
 export function joinCardHtml(data) {
@@ -361,7 +361,7 @@ function photoHtml(data, p) {
     </div>
     <div class="kv">
       <span class="k">Taken by</span><span>${esc(unitLabel(data.member(p.user_id)))}</span>
-      <span class="k">Time</span><span>${esc(new Date(p.taken_at).toLocaleString())}</span>
+      <span class="k">Time</span><span>${esc(whenText(p.taken_at))}</span>
       <span class="k">Zone</span><span>${z ? esc(z.code + ' · ' + z.name) : 'outside any zone'}</span>
       <span class="k">Facing</span><span>${p.heading != null ? compass(p.heading) : 'unknown'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(p.lat, p.lng)) || 'unknown'}</span>
@@ -574,9 +574,9 @@ export function form211Sections(data) {
   const S = [];
   S.push({ title: 'Check-in list, ICS 211', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    periodLine(p),
     commandText(inc, p) || null,
-    'Prepared by Operations, ' + new Date().toLocaleString()
+    'Prepared by Operations, ' + whenText(new Date())
   ].filter(Boolean) });
   const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || '')).filter((m) => m.role === 'unit' || data.unitPeople(m.user_id).length);
   for (const m of members) {
@@ -637,7 +637,7 @@ function facilityHtml(data, f, state) {
       <span class="k">Needs here</span><span>${c.needs.length ? esc(needsTotalsText(c.needs)) : 'none listed'}</span>
       <span class="k">Desk</span><span>${esc(data.units().filter((u) => u.kind === 'shelter_desk' && u.facility_id === f.id && u.status !== 'checked_out').map((u) => unitLabel(u)).join(', ') || 'no shelter desk checked in here yet')}</span>` : ''}
       <span class="k">Position</span><span class="mono">${esc(latLngText(f.lat, f.lng))}</span>
-      <span class="k">Opened</span><span>${esc(new Date(f.created_at).toLocaleString())}</span>
+      <span class="k">Opened</span><span>${esc(whenText(f.created_at))}</span>
     </div>
     <form class="inline-form" data-form="facility-edit" data-id="${f.id}">
       <div class="row-2">
@@ -741,7 +741,7 @@ export function placeListSections(data, f) {
       f.kind === 'shelter' ? `Beds: ${bedsText(c.people, f.beds)}${f.beds != null ? ' taken' : ''} · ${c.here.length} record${c.here.length === 1 ? '' : 's'}` : `${c.people} sent here in ${c.here.length} record${c.here.length === 1 ? '' : 's'}`,
       f.kind === 'shelter' ? `Expected: ${f.expected || 'nothing typed'} · ${c.arrivingPeople} on the way from crews` : null,
       c.needs.length ? 'Needs: ' + needsTotalsText(c.needs) : null,
-      'Printed ' + new Date().toLocaleString() + '. Names are for this incident only, never for public release.'
+      'Printed ' + whenText(new Date()) + '. Names are for this incident only, never for public release.'
     ].filter(Boolean) },
     { title: `${f.kind === 'shelter' ? 'Here now' : 'Sent here'}, newest first`, lines: c.here.length ? c.here.map(line) : ['Nobody signed in'] },
     { title: 'On the way from crews', lines: c.arriving.length ? c.arriving.map((e) => `${evacueeWho(e)}${evFrom(data, e) ? ' · from ' + evFrom(data, e) : ''} · ${evOrigin(data, e)}${e.needs.length ? ' · needs ' + needsText(e.needs) : ''}`) : ['None'] },
@@ -860,7 +860,7 @@ export function hoursHtml(data, state) {
       <button class="btn pri sm" data-action="hours-csv">Export CSV</button>
     </div></div>
     <section><h2>Hours on scene</h2>
-      <p>${esc(inc.name)} · ${period ? 'Operational period ' + period.number + ', ' + hhmm(period.starts_at) + (period.closed_at ? ' to ' + hhmm(period.closed_at) : ', still open') : 'the whole incident so far'} · prepared ${new Date().toLocaleString()}</p>
+      <p>${esc(inc.name)} · ${period ? 'Operational period ' + period.number + ', ' + hhmm(period.starts_at) + (period.closed_at ? ' to ' + hhmm(period.closed_at) : ', still open') : 'the whole incident so far'} · prepared ${whenText(new Date())}</p>
       <p>People hours <strong>${t.peopleHours}</strong> across ${t.people} ${t.people === 1 ? 'person' : 'people'}, ${t.peopleOn} still on scene · unit hours <strong>${t.unitHours}</strong> across ${t.units} unit${t.units === 1 ? '' : 's'}</p>
       <p>By agency: ${t.byAgency.map(([a, h]) => esc(a) + ' ' + h).join(' · ') || 'nobody yet'}</p>
       ${t.inferred ? `<p class="hazline" style="display:block">${t.inferred} row${t.inferred === 1 ? '' : 's'} counted to now, the period's end or the unit's check-out because nobody pressed check out: marked in the note.</p>` : ''}
@@ -938,7 +938,7 @@ function unitHtml(data, m, state) {
       <span class="k">Heading</span><span>${pos && pos.heading != null ? compass(pos.heading) : 'unknown'}</span>
       <span class="k">Last report</span><span>${pos ? esc(ago(pos.at)) + (pos.accuracy ? ' · ±' + Math.round(pos.accuracy) + ' m' : '') : 'never'}</span>
       <span class="k">Photos</span><span>${photos.length}</span>
-      <span class="k">Joined</span><span>${esc(new Date(m.joined_at).toLocaleString())}</span>
+      <span class="k">Joined</span><span>${esc(whenText(m.joined_at))}</span>
     </div>
     <div class="d-row">
       ${pos ? `<button class="btn sm" data-action="pan-to" data-lat="${pos.lat}" data-lng="${pos.lng}">Show on map</button>` : ''}
@@ -1027,6 +1027,7 @@ export function periodHtml(data, state) {
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${p ? 'Operational period ' + p.number : 'No operational period yet'} <span>${p ? esc(periodLabel(p)).replace('OP ' + p.number + ' · ', '') : ''}</span></div>
+    ${p && periodState(p).state === 'overdue' ? `<div class="period-overdue" style="background:var(--tint-orange);color:var(--hazard-ink);border-radius:8px;padding:6px 10px;font-size:12.5px;margin:6px 0">The planned end ${hhmm(p.ends_at)} passed ${esc(durationText(periodState(p).overMin))} ago and the period is still open. Start period ${p.number + 1}, or move the planned end below.</div>` : ''}
     ${p ? periodFormHtml(data, p, false, state) : '<div class="muted" style="font-size:12.5px">An incident runs in operational periods, usually 12 hours, each with its objectives and its command names.</div>'}
     ${commandsHtml(data)}
     ${p ? `
@@ -1038,7 +1039,7 @@ export function periodHtml(data, state) {
       </div>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. What must be true by the end of the period?</div>'}
     <form class="composer" data-form="objective"><div class="composer-row"><input name="text" placeholder="Add an objective" required maxlength="300" autocomplete="off"><button class="btn pri sm" type="submit">Add</button></div></form>` : ''}
     <div class="k">Shift change</div>
-    <div class="d-row"><button class="btn sm" data-action="briefing">Briefing</button>${state.periodNext ? '' : `<button class="btn sm" data-action="period-next">Start period ${(p ? p.number : 0) + 1}</button>`}</div>
+    <div class="d-row"><button class="btn sm" data-action="briefing">Briefing</button>${state.periodNext ? '' : `<button class="btn sm${p && periodState(p).state === 'overdue' ? ' pri' : ''}" data-action="period-next">Start period ${(p ? p.number : 0) + 1}</button>`}</div>
     ${state.periodNext ? periodFormHtml(data, p, true, state) : ''}
     ${earlier.length ? `<div class="k">Earlier periods</div>${earlier.map((x) => `<div class="muted" style="font-size:12.5px">${esc(periodLabel(x))}${x.ic_name ? ' · IC ' + esc(x.ic_name) : ''}</div>`).join('')}` : ''}`;
 }
@@ -1097,8 +1098,8 @@ export function orgSections(data, { chartOnly } = {}) {
   const inc = data.incident, p = data.currentPeriod();
   return [{ title: 'Organization chart, ICS 207', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-    'Drawn from the period\'s seats, the divisions and their supervisors, the units and their people · prepared ' + new Date().toLocaleString()
+    periodLine(p),
+    'Drawn from the period\'s seats, the divisions and their supervisors, the units and their people · prepared ' + whenText(new Date())
   ].concat(chartOnly ? [] : orgLines(data)), figure: orgChartHtml(data) }];
 }
 export function orgHtml(data) { return sectionsHtml(orgSections(data, { chartOnly: true })); }
@@ -1116,12 +1117,12 @@ export function briefingSections(data) {
   const S = [];
   S.push({ title: 'Incident', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    periodLine(p),
     p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Deputy ' + (p.deputy || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set'), 'PIO ' + (p.pio || 'not set'), 'Liaison ' + (p.liaison || 'not set')].join(' · ') : null,
     commandText(inc, p) || null,
     transferLine(data, p),
     agencyRepLines(data, p).length ? 'Agency representatives: ' + agencyRepLines(data, p).join(' · ') : null,
-    'Briefing made ' + new Date().toLocaleString()
+    'Briefing made ' + whenText(new Date())
   ].filter(Boolean) });
   if (p && p.notes) S.push({ title: 'Safety message and notes', lines: [p.notes] });
   S.push({ title: 'Objectives', lines: objectives.length ? objectives.map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ' (open)'}`) : ['None set'] });
@@ -1161,7 +1162,7 @@ export function form204Sections(data, z) {
   const S = [];
   S.push({ title: 'Assignment list, ICS 204', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    periodLine(p),
     (z.branch ? 'Branch ' + z.branch + ' · ' : '') + 'Division ' + z.code + (z.name ? ' · ' + z.name : '') + ' · priority ' + z.priority + (o ? ' · objective ' + o.number + ': ' + o.text : ''),
     'Division supervisor: ' + (z.supervisor || 'not named') + (p && p.ops_chief ? ' · Operations Section Chief: ' + p.ops_chief : ''),
     'Radio channel: ' + (z.channel || 'not set')
@@ -1176,7 +1177,7 @@ export function form204Sections(data, z) {
   const places = data.facilities().filter((f) => ['staging', 'shelter', 'hospital', 'icp'].includes(f.kind));
   S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '')].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
-  S.push({ title: 'Prepared', lines: ['By Operations, ' + new Date().toLocaleString()] });
+  S.push({ title: 'Prepared', lines: ['By Operations, ' + whenText(new Date())] });
   return S;
 }
 
@@ -1197,11 +1198,11 @@ export function sitrepSections(data) {
   const S = [];
   S.push({ title: 'Incident status summary, ICS 209', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+    periodLine(p),
     p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
     commandText(inc, p) || null,
     transferLine(data, p),
-    'Prepared by Operations, ' + new Date().toLocaleString()
+    'Prepared by Operations, ' + whenText(new Date())
   ].filter(Boolean) });
   S.push({ title: 'Situation', lines: [sr.summary || 'Not written yet'] });
   S.push({ title: 'Progress', lines: [
@@ -1237,8 +1238,8 @@ export function iapSections(data) {
   const S = [];
   S.push({ title: 'Incident Action Plan', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-    p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
-    'Prepared ' + new Date().toLocaleString()
+    periodLine(p),
+    'Prepared ' + whenText(new Date())
   ] });
   S.push({ title: 'Objectives, ICS 202', lines: (p ? data.objectives(p.id) : []).length ? data.objectives(p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ''}`) : ['None set'] });
   const cmd = data.currentCommand(), earlier = data.commands().filter((c) => c.ended_at);
@@ -1390,9 +1391,9 @@ export function form214Sections(data) {
   return [
     { title: 'Activity log, ICS 214', lines: [
       inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
-      p ? 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') : 'No operational period set',
+      periodLine(p),
       p && p.ic_name ? 'Incident Commander ' + p.ic_name + (data.commands().length > 1 ? ' · ' + commandLines(data.commands()).join('; ') : '') : null,
-      'Prepared by Operations, ' + new Date().toLocaleString()
+      'Prepared by Operations, ' + whenText(new Date())
     ].filter(Boolean) },
     { title: notable.length ? `${notable.length} notable ${notable.length === 1 ? 'entry' : 'entries'}` : 'Notable entries', lines: notable.length ? notable.map(line) : ['None marked'] },
     { title: `${rows.length} entries, oldest first`, lines: rows.length ? rows.map(line) : ['Nothing yet'] }

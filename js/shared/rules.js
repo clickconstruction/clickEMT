@@ -249,9 +249,30 @@ export function sortZones(zones) {
 }
 
 // "OP 2 · 07:00 to 19:00": how a period is named everywhere.
-export function periodLabel(p) {
+// A day and a time in one form everywhere (v40): "17 Oct 2026 21:58", never the browser's locale with seconds.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function dateText(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+export function whenText(iso) { const d = new Date(iso); return isNaN(d) ? '' : dateText(d) + ' ' + hhmm(d); }
+// The period against the clock (v40): closed, overdue (its planned end has passed and it is still open), or open.
+export function periodState(p, now = Date.now()) {
+  if (!p) return { state: 'none', overMin: 0 };
+  if (p.closed_at) return { state: 'closed', overMin: 0 };
+  const end = p.ends_at ? new Date(p.ends_at).getTime() : null;
+  if (end != null && now > end) return { state: 'overdue', overMin: Math.max(1, Math.floor((now - end) / 60000)) };
+  return { state: 'open', overMin: 0 };
+}
+export function overdueText(p, now) { const s = periodState(p, now); return s.state === 'overdue' ? 'overdue ' + durationText(s.overMin) : ''; }
+export function periodLabel(p, now) {
   if (!p) return '';
-  return 'OP ' + p.number + ' · ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') + (p.closed_at ? ', closed ' + hhmm(p.closed_at) : '');
+  const over = overdueText(p, now);
+  return 'OP ' + p.number + ' · ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') + (p.closed_at ? ', closed ' + hhmm(p.closed_at) : '') + (over ? ' · ' + over : '');
+}
+// "Operational period 1, 18:47 to 19:00", with the overdue words when the planned end has passed: the reports' line
+export function periodLine(p, now) {
+  if (!p) return 'No operational period set';
+  const s = periodState(p, now);
+  return 'Operational period ' + p.number + ', ' + hhmm(p.starts_at) + (p.closed_at ? ' to ' + hhmm(p.closed_at) + ', closed' : p.ends_at ? ' to ' + hhmm(p.ends_at) : '')
+    + (s.state === 'overdue' ? ' · the planned end passed ' + durationText(s.overMin) + ' ago; the next period has not been started' : '');
 }
 
 export function latLngText(lat, lng) {
@@ -492,7 +513,7 @@ export function peopleShelteredLine({ evacuees, facilities, placeWords }) {
 // (ic_periods.rotation_minutes, 0 = off). Past WATER_LOST_ROTATIONS rotations nobody believes the number.
 export const WATER_LOST_ROTATIONS = 3;
 export const WATER_KINDS = ['boat', 'swift_water', 'high_water'];   // the kinds whose home screen offers the clock before it runs
-export function durationText(min) { return min < 60 ? min + ' min' : Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '').trim(); }
+export function durationText(min) { return min < 60 ? min + ' min' : (Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '')).trim(); }
 export function waterMinutes(since, now = Date.now()) { return since ? Math.max(0, Math.round((now - new Date(since).getTime()) / 60000)) : null; }
 export function waterState(since, rotation, now = Date.now()) {
   const min = waterMinutes(since, now);

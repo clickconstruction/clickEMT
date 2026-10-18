@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
+import { whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -194,4 +194,20 @@ t('the situation report\'s line: counts, beds, hospital, expected, no names', ()
   assert.equal(line, 'People sheltered: 8 at High school gym (60 beds), 0 at Church hall, 1 moved to hospital, 16 expected · 2 records with no name yet');
   assert.ok(!/Alvarez|Okonkwo|Nguyen/.test(line));
   assert.equal(peopleShelteredLine({ evacuees: [], facilities: [] }), 'People sheltered: no shelter open and nobody on record');
+});
+
+t('times and dates read in one form, and the period knows when its planned end has passed (v40)', () => {
+  const d = new Date(2026, 9, 17, 21, 58);
+  assert.equal(dateText(d), '17 Oct 2026');
+  assert.equal(whenText(d), '17 Oct 2026 21:58');
+  assert.equal(whenText('not a date'), '');
+  const starts = new Date(2026, 9, 17, 18, 47), ends = new Date(2026, 9, 17, 19, 0);
+  const p = { number: 1, starts_at: starts.toISOString(), ends_at: ends.toISOString(), closed_at: null };
+  assert.deepEqual(periodState(p, new Date(2026, 9, 17, 18, 50).getTime()), { state: 'open', overMin: 0 });
+  assert.deepEqual(periodState(p, new Date(2026, 9, 17, 22, 0).getTime()), { state: 'overdue', overMin: 180 });
+  assert.equal(periodState(Object.assign({}, p, { closed_at: ends.toISOString() }), new Date(2026, 9, 17, 22, 0).getTime()).state, 'closed');
+  assert.equal(periodLabel(p, new Date(2026, 9, 17, 18, 50).getTime()), 'OP 1 · 18:47 to 19:00');
+  assert.equal(periodLabel(p, new Date(2026, 9, 17, 22, 0).getTime()), 'OP 1 · 18:47 to 19:00 · overdue 3 h');
+  assert.equal(periodLine(p, new Date(2026, 9, 17, 22, 5).getTime()), 'Operational period 1, 18:47 to 19:00 · the planned end passed 3 h 5 min ago; the next period has not been started');
+  assert.equal(periodLine(null), 'No operational period set');
 });

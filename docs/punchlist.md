@@ -16,7 +16,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 |---|---|---|---|---|
 | 1 | v38 One head count at a time, and a missing person who is found (shipped 17 October) | small to medium | now | Marcus, Priya, Dana, Ana, Rosa, Moreno, every phone |
 | 2 | v39 The newcomer's door (shipped 17 October) | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
-| 3 | v40 A period that has ended says so, and times and dates in one form | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
+| 3 | v40 A period that has ended says so, and times and dates in one form (shipped 17 October) | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
 | 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
 | 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
 | 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card | small | v42 | the IC, the clerk, Reyes, the administrator |
@@ -143,6 +143,11 @@ helpers; full run green; `VERSION` v40. Commit: `A period that has ended says so
 
 **Start in.** `js/base/ui.js` (`headerText`, `periodFormHtml`, the `prepared` lines), `js/shared/briefings.js`,
 `js/field/main.js` (the menu's period line, the briefing's Shift), `js/base/main.js` (`clearLineHtml`).
+
+**Shipped** 17 October 2026 as `A period that has ended says so, and times in one form (v40)`: `whenText` / `dateText` /
+`periodState` / `periodLabel` / `periodLine` in rules.js (tests in `dev/test-rules.mjs`), the briefings read `periodState`
+(tests in `dev/test-briefings.mjs`), the `periods` smoke suite checks the header, the IAP and the Period sheet either
+side of the planned end. No migration.
 
 ## 4. v41 A hazard that says how urgent it is, and the open hazards where Safety looks
 

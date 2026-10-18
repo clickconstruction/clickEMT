@@ -22,7 +22,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v39**, "The newcomer's door" (after v38, one head count at a time). The service worker reads `v39`.
+- `main` is at **v40**, "A period that has ended says so, and times in one form" (after v39, the newcomer's door). The service worker reads `v40`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0024` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.

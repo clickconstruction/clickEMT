@@ -170,6 +170,20 @@
   .hover-card .big2 { font-size: 20px; font-weight: 700; line-height: 1; }
   .hover-card .big2 small { font-size: 12px; font-weight: 400; color: var(--muted); display: block; margin-top: 2px; }
   .hover-card .two { display: flex; gap: 16px; padding: 8px 0 6px; }
+  .paper { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; font-size: 13px; max-width: 920px; }
+  .paper .pbar { display: flex; gap: 8px; align-items: center; margin: -6px -8px 14px; padding: 0 8px 10px; border-bottom: 1px solid var(--line); }
+  .paper .pbar b { font-size: 15px; } .paper .pbar .sp { flex: 1; }
+  .paper .ph { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px 14px; font-size: 12.5px; margin: 0 0 14px; }
+  .paper .ph .k { margin: 0; align-self: center; }
+  .paper table.tbl { margin: 0 0 4px; }
+  .paper table.tbl th { font-size: 10.5px; white-space: nowrap; }
+  .paper table.tbl td { font-size: 12.5px; padding: 6px 8px 6px 0; }
+  .paper .uh { display: flex; gap: 10px; align-items: baseline; margin: 14px 0 4px; }
+  .paper .uh b { font-size: 13.5px; } .paper .uh .sub { font-size: 12px; }
+  .paper .uh .div { margin-left: auto; font-weight: 600; background: var(--sel-bg); color: var(--accent-text); border-radius: 6px; padding: 1px 8px; font-size: 12px; }
+  .paper td.n { text-align: right; }
+  .paper .tot { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  @media (max-width: 700px) { .paper .tot { grid-template-columns: 1fr; } .paper .ph { grid-template-columns: auto 1fr; } }
 </style>
 </head>
 <body>
@@ -507,7 +521,7 @@
 
 <!-- ============================================================ A CLEANER BASE (v60 candidates) -->
 <section class="feature" id="cleaner">
-  <div class="intro"><h1>A cleaner base</h1>Nine of the things Todd marked on 18 October, walking the base at v59. Panels 1 and 3 to 9 were built as v60 and the units section (2) as v61 (docs/punchlist.md, sections 19 and 20). Four more have pages of their own: <a href="people.html">the People board</a>, <a href="replay.html">Replay</a>, <a href="modals.html">the pages as windows</a>, <a href="imagery.html">aerial photography by its corners</a>. Made-up data; press things.</div>
+  <div class="intro"><h1>A cleaner base</h1>Ten of the things Todd marked on 18 October, walking the base at v59. Panels 1 and 3 to 9 were built as v60 and the units section (2) as v61 (docs/punchlist.md, sections 19 and 20). Four more have pages of their own: <a href="people.html">the People board</a>, <a href="replay.html">Replay</a>, <a href="modals.html">the pages as windows</a>, <a href="imagery.html">aerial photography by its corners</a>. Made-up data; press things.</div>
   <div class="screens">
 
     <div class="screen" style="flex-basis:100%">
@@ -694,6 +708,39 @@
       <div class="cap" style="max-width:340px"><b>9 · A division's hover card.</b> Rest on a row for half a second and a card opens beside it: how many people are tasked to the division against how many are in it now (from the phones' positions and the bands' scans), searched of how many, hazards open, the last report, the objective's words. Orange when fewer are in it than tasked. Hover A-1 and A-2.</div>
     </div>
 
+    <div class="screen" style="flex-basis:100%">
+      <div class="paper">
+        <div class="pbar"><b>Check-in list (ICS 211)</b><span class="sub">Cedar Fork Flooding · OP 1 · 13:40 to 19:00 · 16:54</span><span class="sp"></span><button class="btn sm">Copy as text</button><button class="btn sm">Send by email</button><button class="btn sm">Print</button><button class="btn sm">Close</button></div>
+        <div class="ph">
+          <span class="k">Incident</span><span>Cedar Fork Flooding · base: Cedar Fork High School</span>
+          <span class="k">Period</span><span>Operational period 1, 13:40 to 19:00</span>
+          <span class="k">Lead agency</span><span>Cedar Fork Fire Department</span>
+          <span class="k">Prepared by</span><span>Operations, 18 Oct 2026 16:54</span>
+        </div>
+        <div class="uh"><b>Unit 1, engine</b><span class="sub">Cedar Fork Fire Department · Ana Ramirez, 512 555 0111, licence TX ···3746, verified</span><span class="div">A-1</span></div>
+        <table class="tbl"><thead><tr><th>Name</th><th>Rank</th><th>Qualifications</th><th>Checked in</th><th>On scene</th><th>Band · last seen</th><th>Out</th></tr></thead><tbody>
+          <tr><td><b>Ramirez</b></td><td>Lt.</td><td>Swift water, EMT</td><td>14:00</td><td>2 h 54 min</td><td>001 · entering A-1 15:50</td><td></td></tr>
+          <tr><td><b>Okafor</b></td><td></td><td>Boat, Paramedic</td><td>14:00</td><td>2 h 54 min</td><td>002 · entering A-1 15:50</td><td></td></tr>
+        </tbody></table>
+        <div class="uh"><b>Unit 2, boat crew</b><span class="sub">Travis County Rescue · Minh Nguyen, 512 555 0122, not verified</span><span class="div">B-1</span></div>
+        <table class="tbl"><thead><tr><th>Name</th><th>Rank</th><th>Qualifications</th><th>Checked in</th><th>On scene</th><th>Band · last seen</th><th>Out</th></tr></thead><tbody>
+          <tr><td><b>Nguyen</b></td><td>Capt. · Boat operator</td><td>Swift water, Boat</td><td>14:02</td><td>2 h 52 min</td><td>003 · checking in 14:02</td><td></td></tr>
+          <tr><td><b>Patel</b></td><td></td><td>Rope, EMT</td><td>14:02</td><td>2 h 52 min</td><td>004 · <span class="orange">High school gym 14:30</span></td><td></td></tr>
+        </tbody></table>
+        <div class="uh"><b>Unit 3, swift-water team</b><span class="sub">Cedar Fork Fire Department · Jordan Lee Hale, 512 555 0133, licence TX ···5678, not verified</span><span class="div">A-2</span></div>
+        <table class="tbl"><thead><tr><th>Name</th><th>Rank</th><th>Qualifications</th><th>Checked in</th><th>On scene</th><th>Band · last seen</th><th>Out</th></tr></thead><tbody>
+          <tr><td><b>Hale</b></td><td></td><td>Swift water, EMT</td><td>14:05</td><td>2 h 49 min</td><td class="sub">no band</td><td></td></tr>
+          <tr><td><b>Dominguez</b></td><td></td><td>Paramedic</td><td>14:05</td><td>2 h 49 min</td><td class="sub">no band</td><td></td></tr>
+        </tbody></table>
+        <div class="uh" style="margin-top:18px"><b>Totals</b><span class="sub">6 checked in on 3 units · 6 on scene · 0 checked out</span></div>
+        <div class="tot">
+          <table class="tbl"><thead><tr><th>By agency</th><th class="n">People</th></tr></thead><tbody><tr><td>Cedar Fork Fire Department</td><td class="n">4</td></tr><tr><td>Travis County Rescue</td><td class="n">2</td></tr></tbody></table>
+          <table class="tbl"><thead><tr><th>On scene by qualification</th><th class="n">People</th></tr></thead><tbody><tr><td>Swift water</td><td class="n">3</td></tr><tr><td>EMT</td><td class="n">3</td></tr><tr><td>Boat</td><td class="n">2</td></tr><tr><td>Paramedic</td><td class="n">2</td></tr><tr><td>Rope</td><td class="n">1</td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="cap" style="max-width:920px"><b>10 · The 211 as a table.</b> A form is a table. Each unit gets a one-line header (its kind, agency, the lead's identity line, the division at the right) and a row per person with the columns a clerk scans: name, rank, qualifications, checked in, on scene, band and last seen (orange when old), checked out. Totals are two small tables. Copy as text and Send by email keep today's lines; only the page and the print change. The papers already carry a figure per section, so the 203, 204 and 209 can follow the same way.</div>
+    </div>
+
     <div class="screen">
       <div class="panel wide">
         <h2 class="t">Decided here, and yours to decide</h2>
@@ -710,6 +757,7 @@
         </ul>
         <div class="k">Yours to decide</div>
         <ul class="decisions">
+          <li><b>The 211's table (10)</b> is the page and the print only; the text and the email keep the lines, since a text table does not survive a phone's mail.</li>
           <li><b>How to cut the releases.</b> Small and together as v60: labels (1), the codes behind the pill (3), the live card (4), the drawing buttons (5), Layers flipped (6), the gear (7), the head count (8), the division's hover card (9). On its own: the units section (2), which touches the panel every suite reads. The People board, Replay and the pages as modals follow their own mock-ups.</li>
           <li><b>A quiet phone</b>: the live card marks a unit quiet after how long? Five minutes is drawn.</li>
           <li><b>Where the codes' card closes</b>: a click outside, Escape, or only the pill again.</li>

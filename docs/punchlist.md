@@ -475,6 +475,11 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
   off at the right; the qualification chips and the search sit above both tabs though they filter only People, and a lit
   chip stays lit on Members. The tabs first, the search and chips inside the People tab, Close last at the right. Sent
   to the People board's mock-up page.
+- **A band scanned by a phone that is signed out** lands on the bare sign-in form (Todd, 18 October: "I don't think
+  that is right"). The band is kept through sign-in already (`ic.field.band`); the screen should say so, as the door
+  says "Code CEDAR7 is ready" for a join link (v39): "Band 025 is waiting. Sign in and the scan goes through." And for
+  anyone not on the team, one line: an Incident Map band identifies a person to the incident's team only and tells
+  you nothing on its own; hand it back to the team. Small; goes with the confirmations item.
 - **The Members tab reads as four command posts** (Todd, 18 October: "these other potential operators feel like forward
   operating bases"): every unit's row carries a Make Operations button as loud as Open and Remove. Present the roles as
   two groups, Operations (who opened the incident, who else holds it) and Units, with Make Operations a quieter action

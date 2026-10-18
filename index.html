@@ -324,18 +324,24 @@
 <div id="people" class="briefing people" hidden>
   <div class="briefing-win">
   <div class="briefing-bar">
-    <strong>People</strong>
-    <span class="muted" id="people-sub"></span>
-    <input id="people-q" class="log-search people-q" placeholder="Find a name, role, unit or agency" aria-label="Find a person" autocomplete="off">
-    <span class="chips log-filters" id="people-quals"></span>
+    <span class="seg pp-tabs" role="tablist" aria-label="People or Members"><button type="button" class="on" data-action="people-tab" data-tab="people" aria-pressed="true" title="Everyone on scene by unit: who, how long, where last seen">People</button><button type="button" data-action="people-tab" data-tab="members" aria-pressed="false" title="Who is on the incident, in which role, with what identity; invitations">Members</button></span>
+    <strong class="pp-title" id="people-sub"></strong>
     <span style="flex:1"></span>
-    <button class="btn sm" data-action="print-bands" title="A sheet of 24 wristbands with a QR code each: a number and nothing else. A unit gives one to each person by scanning it; the desk gives one to each family.">Print bands</button>
-    <button class="btn sm" data-action="print-211" title="The check-in list, ICS 211: everyone by unit with when they checked in and out">Print 211</button>
     <button class="btn sm" data-action="hours" title="Hours on scene per person and per unit, for Finance, as a page or a CSV">Hours</button>
+    <button class="btn sm" data-action="print-211" title="The check-in list, ICS 211: everyone by unit with when they checked in and out">Print 211</button>
+    <button class="btn sm" data-action="print-bands" title="A sheet of 24 wristbands with a QR code each: a number and nothing else. A unit gives one to each person by scanning it; the desk gives one to each family.">Print bands</button>
     <button class="btn sm pages-size" data-action="pages-size" title="Full screen, for this screen from now on">Expand</button>
     <button class="btn sm" data-action="close-people">Close</button>
   </div>
-  <div class="briefing-page people-page" id="people-page"></div>
+  <div class="people-body">
+    <div class="pp-head" id="people-head">
+      <input id="people-q" class="log-search people-q" placeholder="Find a name, role, unit or agency" aria-label="Find a person" autocomplete="off">
+      <span class="chips" id="people-quals"></span>
+      <span style="flex:1"></span>
+      <button class="btn sm" data-action="people-add-toggle" id="people-add" title="A person riding with a unit that did not name them at check-in">Add a person</button>
+    </div>
+    <div class="briefing-page people-page" id="people-page"></div>
+  </div>
   </div>
 </div>
 

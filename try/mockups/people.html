@@ -6,13 +6,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="icon" href="/icons/icon-192.png">
-<link rel="stylesheet" href="/css/shared.css">
+<link rel="icon" href="../../icons/icon-192.png">
+<link rel="stylesheet" href="../../css/shared.css">   <!-- relative, so the page also opens as a file -->
 <!-- Click-through mock-ups of the People board's People tab, drawn 18 October at v59 before anything is built: three
      ways of offering the same facts (who, how long on scene, where last seen) and the same six actions (check out,
      move, pair, edit, void the band, remove), in the app's own styles with made-up data, so each can be judged first:
-     is this the best we can do for the person at the command post? Nothing here writes anywhere; each direction
-     keeps its own copy of the data, and Reset puts it back. -->
+     is this the best we can do for the person at the command post? Todd chose C on 18 October; the Decide tab says
+     so and keeps the recommendation that preceded it. A fourth panel (Todd's notes on the walk) draws
+     the board's bar and tabs at 1280 × 800: the tabs first, Close last, the find box and the chips inside the People
+     tab. A fifth (two more notes) redraws the Members tab: two groups, Make Operations as a quiet item that asks
+     with the app's own dialog (v62), identity as one column with three states and the action in place. Nothing here
+     writes anywhere; each panel keeps its own copy of the data, and Reset puts it back. -->
 <style>
   body { min-height: 100%; }
   .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
@@ -139,6 +143,42 @@
   .loglines div { padding: 4px 0; border-top: 1px solid var(--line-soft); font-size: 12.5px; }
   .loglines .mono { font-size: 12px; }
 
+  /* the bar and the tabs: the overlay at 1280 × 800, scaled to the page's width, the page scrolling inside it */
+  .frame-wrap { width: 100%; overflow-x: auto; }
+  .frame { width: 1280px; height: 800px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; font-size: 13px; }
+  .fbar { display: flex; flex-wrap: nowrap; gap: 10px; align-items: center; padding: 10px 24px; background: var(--panel); border-bottom: 1px solid var(--line); flex: none; }
+  .fbar strong { font-size: 14px; white-space: nowrap; }
+  .seg.tabs2 button { padding: 6px 14px; font-size: 13.5px; font-weight: 600; }
+  .fpage-wrap { flex: 1; overflow: auto; }
+  .fpage { max-width: 1100px; margin: 0 auto; padding: 20px 24px 24px; background: var(--panel); min-height: 100%; }
+  .fhead { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .fhead .q { width: 220px; min-height: 30px; border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; font-size: 13px; background: var(--control-bg); color: var(--ink); }
+  .fhead .chips { gap: 4px; }
+  .fhead .chip { min-height: 24px; padding: 2px 8px; font-size: 11.5px; gap: 4px; }
+  .fhead .chip .n { color: var(--muted); font-weight: 400; } .fhead .chip.on .n { color: #fff; opacity: .85; }
+  .mb-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .mb-row { display: grid; grid-template-columns: minmax(140px, 1.3fr) minmax(120px, 1fr) minmax(110px, .9fr) minmax(140px, 1fr) auto; gap: 8px 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); }
+  .mb-row:last-child { border-bottom: 0; }
+  .mb-row .mb-who { font-weight: 600; } .mb-row .mb-who span { font-weight: 400; color: var(--muted); }
+  .mb-row .mb-act { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .badge.st-ops { background: var(--tint-green); color: var(--cleared); }
+  .badge.id-ok { background: var(--tint-green); color: var(--cleared); } .badge.id-part { background: var(--tint-blue); color: var(--active); } .badge.id-none { background: var(--tint-orange); color: var(--hazard-ink); }
+  .pform.inv .row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+  .inv-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px 12px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line-soft); }
+  .inv-row:first-child { border-top: 0; }
+  .inv-row .inv-act { display: flex; gap: 6px; justify-content: flex-end; }
+  /* the Members tab: two groups, the identity column, the row's menu, the dialog over the frame */
+  .frame { position: relative; }
+  .mb-row { grid-template-columns: minmax(170px, 1fr) minmax(240px, 1.5fr) minmax(230px, 1.2fr) auto; }
+  .mb-row .mb-act { position: relative; align-items: center; }
+  .mb-id { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .idc { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .idc.ok { color: var(--cleared); } .idc.warn { color: var(--hazard-ink); }
+  .fdialog { position: absolute; inset: 0; z-index: 30; background: rgba(0, 0, 0, .45); display: flex; align-items: center; justify-content: center; }
+  .fdialog-card { width: 480px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; box-shadow: 0 16px 48px rgba(0, 0, 0, .35); }
+  .fdialog-card h3 { margin: 0 0 8px; font-size: 17px; }
+  .fdialog-card p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; }
+  .fdialog-card .row-btns { margin-top: 12px; }
   table.cmp td:first-child { color: var(--muted); white-space: nowrap; }
   table.cmp td { vertical-align: top; }
   @media (max-width: 1140px) { .cards, .cbody.open .cards { grid-template-columns: 1fr 1fr; } }
@@ -151,13 +191,15 @@
   <div class="tabs" id="tabs">
     <button class="on" data-tab="a">A · Facts first</button>
     <button data-tab="b">B · Tick and act</button>
-    <button data-tab="c">C · Cards and a drawer</button>
+    <button data-tab="c">C · Cards and a drawer · the pick</button>
+    <button data-tab="bar">The bar and the tabs</button>
+    <button data-tab="members">The Members tab</button>
     <button data-tab="decide">Decide</button>
   </div>
   <span class="sp"></span>
   <button class="btn sm" id="theme" title="This device's theme, as the base's header button sets it">Dark</button>
-  <a class="btn sm" href="/try/mockups/">‹ Mock-ups</a>
-  <a class="btn sm" href="/try/">Try it</a>
+  <a class="btn sm" href="./">‹ Mock-ups</a>
+  <a class="btn sm" href="../">Try it</a>
 </div>
 <main>
 
@@ -185,11 +227,33 @@
 
 <!-- ============================================================ C: CARDS AND A DRAWER -->
 <section class="feature" id="c">
-  <div class="intro"><h1>C · Cards and a drawer</h1>A unit is a card, a person is a line on it. Click the line: everything about that person, every action spelled out, and their lines from the 214, in a drawer beside the cards. Made-up data; press the buttons.</div>
+  <div class="intro"><h1>C · Cards and a drawer · the pick</h1>A unit is a card, a person is a line on it. Click the line: everything about that person, every action spelled out, and their lines from the 214, in a drawer beside the cards. Made-up data; press the buttons.</div>
   <div class="screens">
     <div class="screen">
       <div class="board" id="board-c" data-dir="c"></div>
       <div class="cap"><b>For the first-timer at the post, and whoever asks "what happened to Patel?".</b> The cards read like the units on the map; the drawer answers one person fully. What it costs: Check out is a second click, and the cards squeeze to two columns while the drawer is open. <button class="btn link sm" data-reset="c">Reset the data</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ THE BAR AND THE TABS -->
+<section class="feature" id="bar">
+  <div class="intro"><h1>The bar and the tabs</h1>Todd's notes from the walk: at 1280 the bar wrapped (Hours and Close fell to a second row, Print 211 was cut off), and the find box and the chips sat above both tabs though they narrow only People. Here the tabs come first and the narrowing sits inside the tab it narrows, over C's cards and drawer, the pick. Made-up data; press a person, then Members, then People again.</div>
+  <div class="screens">
+    <div class="screen" style="width:100%">
+      <div class="frame-wrap" id="frame-wrap"><div class="frame board" id="board-d" data-dir="d"></div></div>
+      <div class="cap"><b>The overlay at 1280 × 800.</b> The tabs first as the page's switch, the incident's name beside them, Hours, Print 211, Print bands and Close at the right end, one row. The find box and the chips are the People tab's own heading row, under the tabs, and gone on Members; a lit chip is still lit when People comes back, where it means something. The cards and the drawer are direction C's, the pick; with the drawer open the cards fall to two columns inside the same 1100 px, and the drawer stays while the page scrolls under the bar. <button class="btn link sm" data-reset="d">Reset the data</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ THE MEMBERS TAB -->
+<section class="feature" id="members">
+  <div class="intro"><h1>The Members tab</h1>Todd's notes: every unit's row carried Make Operations as loud as Open and Remove, so the tab read as four command posts; and the identity badge ("Licence on file, not verified", green, beside "Assigned") did not say what to do. Here the members are two groups, Make Operations is a quiet item that asks with the app's own dialog, and identity is one column with three states and the action in place. Made-up data; press ··· on Unit 1, then Check on Unit 2.</div>
+  <div class="screens">
+    <div class="screen" style="width:100%">
+      <div class="frame-wrap" id="frame-wrap-e"><div class="frame board" id="board-e" data-dir="e"></div></div>
+      <div class="cap"><b>The Members tab at 1280 × 800.</b> Operations first (who opened it, who else holds it), then the units, with the status word beside the unit's name. Make Operations sits in the row's ··· menu and asks before it acts; the opener's row has nothing to press. Identity reads "ID checked ✓ 13:25", "ID given, not checked · Check" or "No ID · Check in person"; Check opens the licence and the photo on the unit's panel, where Mark verified is today. <button class="btn link sm" data-reset="e">Reset the data</button></div>
     </div>
   </div>
 </section>
@@ -201,7 +265,7 @@
     <div class="screen">
       <div class="panel wide">
         <table class="tbl cmp">
-          <tr><th></th><th>A · Facts first</th><th>B · Tick and act</th><th>C · Cards and a drawer</th></tr>
+          <tr><th></th><th>A · Facts first</th><th>B · Tick and act</th><th>C · Cards and a drawer · the pick</th></tr>
           <tr><td>Who it serves</td><td>Operations at the map; the Safety Officer walking in</td><td>The clerk; the shift change</td><td>The first-timer at the post; "what happened to Patel?"</td></tr>
           <tr><td>Who is overdue, at a glance</td><td>Orange row, the count line</td><td>Orange row; Longest on scene first puts them at the top</td><td>Orange line on the card, the count line</td></tr>
           <tr><td>Check out one person</td><td>1 click</td><td>2: tick, Check out</td><td>2: the line, Check out</td></tr>
@@ -224,20 +288,33 @@
           <li><b>Check out stays a plain button</b> in A and on B's bar: it is the press at the end of a shift, with gloves, and the one that frees a unit.</li>
           <li><b>A move is never a submenu.</b> The ··· menu and the drawer list the units by name, so a move is two clicks.</li>
           <li><b>Remove and Void say "kept on record"</b> where they are pressed, in five words; a removed person stays on the list, greyed, with Put back. The mock skips the confirm the app asks today.</li>
-          <li><b>The bar is unchanged</b>: the find box, the qualification chips, Print bands, Print 211, Hours. The Members tab and Add a person stay where they are.</li>
+          <li><b>The bar's buttons and the find box are kept</b>; what moves is where they sit (the fourth tab, from Todd's notes on the walk).</li>
+          <li><b>The tabs are the page's switch, first in the bar.</b> The find box and the chips belong to the People tab and sit in its own heading row under the tabs, so Members shows neither and a lit chip is never seen where it means nothing.</li>
+          <li><b>Close is last at the right</b>, as on every other page, after Hours, Print 211 and Print bands; the bar is one row at 1280 and does not wrap.</li>
+          <li><b>The title beside the tabs is the incident's name alone</b>: the lit tab names the page and the header has the clock, so neither is written again.</li>
+          <li><b>Members are two groups, Operations and Units.</b> Make Operations and Make a unit are items in the row's ··· menu and ask with the app's own dialog (v62) in Todd's words; the opener's row has no actions; Remove keeps the member, Restore puts them back.</li>
+          <li><b>Identity is one column with three states and the action in place</b>: "ID checked ✓ 13:25" (green), "ID given, not checked" with Check (grey), "No ID" with Check in person (orange). Check opens the licence and the photo on the unit's panel, where Mark verified is; Check in person marks it there and then, as today's Mark verified does for a member with no licence.</li>
+          <li><b>The status word moves beside the unit's name</b> ("Unit 1 · Assigned · A-1"), as the People tab's headers and the home panel's Units write it; the Identity column carries identity alone.</li>
         </ul>
-        <div class="k">Recommended</div>
+        <div class="k">The pick · 18 October</div>
         <ul class="decisions">
-          <li><b>A, with one borrowing from B</b>: a "Check out the unit" on a unit's header for the shift change. A keeps every action on the row where a first-timer looks, at one or two clicks; the three facts read straight down; and it is the smallest build, since the row keeps its actions and the two dropdowns become menu items. B is a second way of working to learn, and its table is best for the one day a season when many people move at once. C reads best and answers "what happened to Patel?", but it costs a third of the width and a click on Check out; its drawer could come to A later as "Details" on the menu.</li>
+          <li><b>C, cards and a drawer</b>, chosen by Todd on the walk at v59. Its two costs are accepted: Check out is the line then the drawer's first button, and the cards fall to two columns while the drawer is open. The bar panel draws it under the new bar with both tabs.</li>
+          <li><b>The recommendation before the pick</b>, kept for the record: A, with B's unit tick. A kept every action on the row at one or two clicks and was the smallest build; C reads best and answers "what happened to Patel?".</li>
         </ul>
-        <div class="k">Yours to decide, on the walk at v59</div>
+        <div class="k">Yours to decide, as C is built</div>
         <ul class="decisions">
-          <li><b>Which direction</b>, or A with B's unit tick.</li>
+          <li><b>Check out the unit</b> on a card's header (B's borrowing), so a whole unit goes in two clicks at shift change.</li>
+          <li><b>Where the drawer sits when the board is narrow</b>: beside the cards as drawn, or over them below about 1000 px.</li>
+          <li><b>In the log</b>: the person's lines found by their name in the 214's text (the only way today), or a person reference added to the seen and status lines in a migration.</li>
           <li><b>The qualifications</b>: small chips under the name as drawn, or words ("swift water, EMT") to quiet the colours.</li>
           <li><b>The confirm on Void and Remove</b>: keep it (a third click) or drop it, since Put back and a new band undo either.</li>
           <li><b>The buddy</b>: keep pairing on the board, or leave it to the phone (a unit pairs its own people) and only show "with Okafor".</li>
           <li><b>The unit header</b>: status, division, agency and the count as drawn, or the division alone.</li>
           <li><b>A person's log lines</b> on the board (C's drawer, or a Details item on A's menu), or left to the log's find box.</li>
+          <li><b>The chips' zeros</b>: keep K9 0, Hazmat 0 and Drone 0, or show only the qualifications someone on scene has.</li>
+          <li><b>A second Operations row</b>: "since 14:30" as drawn, or "made Operations by Marcus Bell 14:30".</li>
+          <li><b>Check</b>: open the unit's panel (as today), or a small card over the Members tab with the licence, the photo and Mark verified.</li>
+          <li><b>Add a person</b> at the right of the heading row, as drawn, or on the count line as today.</li>
         </ul>
       </div>
     </div>
@@ -256,7 +333,7 @@
   // tabs and the theme
   const show = (name) => { for (const s of document.querySelectorAll('section.feature')) s.classList.toggle('on', s.id === name); for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name); try { history.replaceState(null, '', '#' + name); } catch (e) {} };
   $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
-  { const h = location.hash.slice(1); if (['a', 'b', 'c', 'decide'].includes(h)) show(h); }
+  { const h = location.hash.slice(1); if (['a', 'b', 'c', 'bar', 'members', 'decide'].includes(h)) show(h); }
   const isDark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const drawTheme = () => { $('theme').textContent = isDark() ? 'Light' : 'Dark'; };
   $('theme').addEventListener('click', () => { const t = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = t; try { localStorage.setItem('ic.theme', t); } catch (e) {} drawTheme(); });
@@ -296,14 +373,25 @@
       if (p.out) log.push({ at: p.out, who: p.id, text: `${p.name} checked out from ${u.name} · ${dur(mins(p.out) - mins(p.in))} on scene` });
     }
     log.sort((a, b) => mins(a.at) - mins(b.at));
-    return { units, people, log, next: 1 };
+    const members = [
+      { id: 'm0', role: 'ops', opener: true, name: 'Marcus Bell', phone: '512 555 0100', agency: 'Cedar Fork Fire Department', ident: 'checked', idAt: '05:40', unit: '', div: '', status: '', since: '', was: '', removed: null },
+      { id: 'm4', role: 'ops', opener: false, name: 'Theresa Herrera', phone: '512 555 0144', agency: 'Travis County OEM', ident: 'given', idAt: '', unit: '', div: '', status: '', since: '14:30', was: '', removed: null },
+      { id: 'm1', role: 'unit', opener: false, name: 'Ana Ramirez', phone: '512 555 0111', agency: 'Cedar Fork Fire Department', ident: 'checked', idAt: '13:25', unit: 'Unit 1', div: 'A-1', status: 'assigned', since: '', was: '', removed: null },
+      { id: 'm2', role: 'unit', opener: false, name: 'Minh Nguyen', phone: '512 555 0122', agency: 'Travis County Rescue', ident: 'given', idAt: '', unit: 'Unit 2', div: 'B-1', status: 'assigned', since: '', was: '', removed: null },
+      { id: 'm3', role: 'unit', opener: false, name: 'Dana Whitfield', phone: '512 555 0133', agency: 'Travis County SAR', ident: 'none', idAt: '', unit: 'Unit 3', div: 'B-2', status: 'assigned', since: '', was: '', removed: null },
+    ];
+    const invites = [{ email: 'j.ortiz@cedarfork.gov', what: 'Unit', when: 'sent 09:12 by Marcus Bell', state: 'pending' }, { email: 'a.ramirez@cedarfork.gov', what: 'Unit', when: 'accepted 06:31 as Unit 1', state: 'accepted' }];
+    return { units, people, log, members, invites, next: 1 };
   };
-  const S = { a: seed(), b: seed(), c: seed() };
-  const UI = {
+  const S = { a: seed(), b: seed(), c: seed(), d: seed(), e: seed() };
+  const freshUi = (dir) => ({
     a: { q: '', quals: new Set(), menu: null, form: null },
     b: { q: '', quals: new Set(), ticked: new Set(), sort: 'unit', form: null },
     c: { q: '', quals: new Set(), open: null, form: null },
-  };
+    d: { q: '', quals: new Set(), open: null, form: null, tab: 'people', mmenu: null, dialog: null },
+    e: { q: '', quals: new Set(), open: null, form: null, tab: 'members', mmenu: null, dialog: null },
+  }[dir]);
+  const UI = { a: freshUi('a'), b: freshUi('b'), c: freshUi('c'), d: freshUi('d'), e: freshUi('e') };
 
   // ---- the readings, the same in every direction
   const onMins = (p) => (p.out ? mins(p.out) : NOW) - mins(p.in);
@@ -460,9 +548,87 @@
     return `<div class="cbody${ui.open || ui.form ? ' open' : ''}"><div class="cards">${cards}</div>${drawerHtml(s, ui)}</div>`;
   };
 
+  // ---- the fourth panel: the overlay at 1280 × 800, the tabs first in the bar, the narrowing inside the People tab
+  const membersHtml = (s, ui) => {
+    const ms = s.members, live = ms.filter((m) => !m.removed);
+    const ops = live.filter((m) => m.role === 'ops'), units = live.filter((m) => m.role === 'unit'), gone = ms.filter((m) => m.removed);
+    const label = (m) => (m.role === 'unit' ? m.unit : m.name);
+    const identCell = (m) => (m.ident === 'checked' ? `<span class="idc ok">ID checked ✓ ${m.idAt}</span>`
+      : m.ident === 'person' ? `<span class="idc ok">ID checked in person ✓ ${m.idAt}</span>`
+      : m.ident === 'given' ? `<span class="idc">ID given, not checked</span><button class="btn sm" data-mact="check" title="Opens the licence and the photo on the unit's panel, with Mark verified">Check</button>`
+      : `<span class="idc warn">No ID</span><button class="btn sm" data-mact="check-person" title="Checked face to face; marked as today's Mark verified does">Check in person</button>`);
+    const menu = (m) => `<div class="menu" role="menu">${m.role === 'unit' ? '<button role="menuitem" data-mact="ask-ops">Make Operations…</button>' : '<button role="menuitem" data-mact="ask-unit">Make a unit…</button>'}<div class="sep"></div><button role="menuitem" data-mact="remove">Remove <span class="muted">· kept on record</span></button></div>`;
+    const row = (m) => `<div class="mb-row${m.removed ? ' gone' : ''}" data-mid="${m.id}">
+      <span class="mb-who">${m.role === 'unit' ? `${m.unit}${m.status ? ` <span class="badge st-${m.status}">${STATUS[m.status]}</span>` : ''}${m.div ? ` <span class="div">${m.div}</span>` : ''}` : `${esc(m.name)}${m.opener ? '<span> · opened the incident</span>' : m.since ? `<span> · since ${m.since}${m.was ? ', was ' + m.was : ''}</span>` : ''}`}</span>
+      <span class="muted">${m.role === 'unit' ? `${esc(m.name)} · ${m.phone} · ${esc(m.agency)}` : `${m.phone} · ${esc(m.agency)}`}</span>
+      <span class="mb-id">${m.removed ? `<span class="idc">Removed ${m.removed}</span>` : identCell(m)}</span>
+      <span class="mb-act">${m.removed ? '<button class="btn sm" data-mact="restore">Restore</button>' : `${m.role === 'unit' ? `<button class="btn sm" data-say="Opens ${m.unit} on the map, as today">Open</button>` : ''}${m.opener ? '' : `<button class="btn sm more" data-mact="menu" aria-expanded="${ui.mmenu === m.id}" aria-label="More for ${esc(label(m))}" title="${m.role === 'unit' ? 'Make Operations, remove' : 'Make a unit, remove'}">···</button>`}${ui.mmenu === m.id ? menu(m) : ''}`}</span>
+    </div>`;
+    const pending = s.invites.filter((v) => v.state === 'pending'), accepted = s.invites.filter((v) => v.state === 'accepted');
+    const inv = (v) => `<div class="inv-row"><span><b>${esc(v.email)}</b> · ${v.what}</span><span class="muted">${esc(v.when)}</span><span class="inv-act">${v.state === 'pending' ? '<button class="btn sm" data-say="A new link by email; the old one stops working">Resend</button><button class="btn sm" data-say="The link stops working; kept on record">Withdraw</button>' : ''}</span></div>`;
+    return `<div class="pp-top"><span class="pp-count">${live.length} members · ${ops.length} Operations${gone.length ? ' · ' + gone.length + ' removed' : ''}</span></div>
+      <p class="muted" style="font-size:12.5px;margin:0 0 10px">The join code makes a unit, the Operations code makes Operations, an invitation makes either. Removing keeps what they sent; Restore puts them back.</p>
+      <div class="k">Operations · ${ops.length}</div><div class="mb-list">${ops.map(row).join('')}</div>
+      <div class="k">Units · ${units.length}</div><div class="mb-list">${units.map(row).join('') || '<div class="mb-row"><span class="muted">No units yet.</span></div>'}</div>
+      ${gone.length ? `<div class="k">Removed · kept, never deleted</div><div class="mb-list">${gone.map(row).join('')}</div>` : ''}
+      <div class="k">Invite by email</div>
+      <form class="pform inv" data-form="invite">
+        <div class="row-3">
+          <label>Email <input name="email" type="email" required maxlength="120" placeholder="name@agency.gov" autocomplete="off"></label>
+          <label>Role <select name="role"><option>Unit</option><option>Operations</option></select></label>
+          <label>Unit name <input name="unit" maxlength="60" placeholder="Unit 4 (optional)" autocomplete="off"></label>
+        </div>
+        <div class="row-btns"><button class="btn pri sm" type="submit">Send the invitation</button><span class="muted" style="font-size:12.5px;flex:1">One link in one email; it works for seven days, once.</span></div>
+      </form>
+      <div class="k">Invited, not yet in · ${pending.length}</div><div class="inv-list">${pending.map(inv).join('')}</div>
+      <div class="k">Accepted · ${accepted.length}</div><div class="inv-list">${accepted.map(inv).join('')}</div>
+      <div class="k">The roster</div>
+      <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12.5px">14 addresses you invited on earlier incidents, not yet here.</span><button class="btn sm" data-say="One email each, as the role and unit they had last time">Invite the roster · 14</button></div>`;
+  };
+  // the app's own dialog (v62), in Todd's words, over the frame
+  const dialogHtml = (s, d) => {
+    const m = s.members.find((x) => x.id === d.id); if (!m) return '';
+    if (d.kind === 'ops') return `<div class="fdialog-card" role="dialog" aria-labelledby="dlg-t"><h3 id="dlg-t">Make ${m.unit} Operations?</h3>
+      <p>They get the base: the map, drawing and assigning, every identity, the Operations code, roles, the clearing.</p>
+      <p>What changes: their row leaves the units and reads Operations everywhere; their phone stops showing a unit's briefing; the 214 says "${m.unit} is now Operations".</p>
+      <div class="row-btns"><button class="btn sm" data-dlg="cancel">Cancel</button><button class="btn pri sm" data-dlg="go">Make Operations</button></div></div>`;
+    return `<div class="fdialog-card" role="dialog" aria-labelledby="dlg-t"><h3 id="dlg-t">Make ${esc(m.name)} a unit?</h3>
+      <p>They check in on a phone, hold divisions and send reports; the base is Operations' alone.</p>
+      <p>What changes: their row joins the units; the 214 says "${esc(m.name)} is now a unit".</p>
+      <div class="row-btns"><button class="btn sm" data-dlg="cancel">Cancel</button><button class="btn pri sm" data-dlg="go">Make a unit</button></div></div>`;
+  };
+  const renderFrame = (dir) => {
+    const s = S[dir], ui = UI[dir], board = $('board-' + dir);
+    if (!board.querySelector('.fbar')) board.innerHTML = `
+      <div class="fbar">
+        <span class="seg tabs2"><button data-ptab="people">People</button><button data-ptab="members">Members</button></span>
+        <strong>Cedar Fork Flooding</strong>
+        <span style="flex:1"></span>
+        <button class="btn sm" data-say="Hours on scene per person and per unit, as today">Hours</button>
+        <button class="btn sm" data-say="The check-in list, ICS 211, as today">Print 211</button>
+        <button class="btn sm" data-say="A sheet of 24 bands to print, as today">Print bands</button>
+        <button class="btn sm" data-say="Closes the board">Close</button>
+      </div>
+      <div class="fpage-wrap"><div class="fpage">
+        <div class="fhead" data-fhead><input class="q" data-q placeholder="Find a name, role, unit or agency" aria-label="Find a person" autocomplete="off"><span class="chips" data-chips></span><span style="flex:1"></span><button class="btn sm" data-add>Add a person</button></div>
+        <div data-flist></div>
+      </div></div>
+      <div class="fdialog" data-fdialog hidden></div>`;
+    for (const b of board.querySelectorAll('[data-ptab]')) { const on = b.dataset.ptab === ui.tab; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+    board.querySelector('[data-fhead]').hidden = ui.tab !== 'people';
+    board.querySelector('[data-chips]').innerHTML = qualChips(s, ui);
+    board.querySelector('[data-add]').hidden = !!(ui.form && ui.form.mode === 'add');
+    board.querySelector('[data-flist]').innerHTML = ui.tab === 'people' ? `<div class="pp-top"><span class="pp-count">${countLine(s, ui)}</span></div>${bodyC(s, ui)}` : membersHtml(s, ui);
+    const dlg = board.querySelector('[data-fdialog]'); dlg.hidden = !ui.dialog; dlg.innerHTML = ui.dialog ? dialogHtml(s, ui.dialog) : '';
+  };
+  const fitFrame = () => { for (const [w, f] of [['frame-wrap', 'board-d'], ['frame-wrap-e', 'board-e']]) { const wrap = $(w), fr = $(f); if (!wrap.clientWidth) continue; fr.style.zoom = String(Math.min(1, wrap.clientWidth / 1280)); } };
+  window.addEventListener('resize', fitFrame);
+  $('tabs').addEventListener('click', fitFrame);
+
   // ---- drawing: the bar once, the page on every change
   const BODY = { a: bodyA, b: bodyB, c: bodyC };
   const render = (dir) => {
+    if (dir === 'd' || dir === 'e') return renderFrame(dir);
     const s = S[dir], ui = UI[dir], board = $('board-' + dir);
     if (!board.querySelector('.bbar')) board.innerHTML = `
       <div class="bbar"><strong>People</strong><span class="muted">Cedar Fork Flooding</span>
@@ -480,7 +646,8 @@
       <div class="pp-top"><span class="pp-count">${countLine(s, ui)}</span>${seg}${ui.form && ui.form.mode === 'add' ? '' : '<button class="btn sm" data-add>Add a person</button>'}</div>
       ${BODY[dir](s, ui)}`;
   };
-  for (const d of ['a', 'b', 'c']) render(d);
+  for (const d of ['a', 'b', 'c', 'd', 'e']) render(d);
+  fitFrame();
 
   // ---- the actions, the same in every direction
   const unpair = (s, p) => { if (p.buddy) { const b = s.people.find((x) => x.id === p.buddy); if (b && b.buddy === p.id) b.buddy = null; } p.buddy = null; };
@@ -494,7 +661,7 @@
       case 'move': { const to = s.units.find((x) => x.id === arg); if (!to || to.id === p.unit) return; unpair(s, p); p.unit = to.id; log(s, p, `${p.name} moved from ${u.name} to ${to.name} by Operations`); say(`${p.name} moved to ${to.name} · logged`); break; }
       case 'pair': { const b = s.people.find((x) => x.id === arg); if (!b || b.id === p.id) return; unpair(s, p); unpair(s, b); p.buddy = b.id; b.buddy = p.id; say(`${p.name} with ${b.name}`); break; }
       case 'unpair': unpair(s, p); say(`${p.name}: no buddy`); break;
-      case 'edit': ui.form = { mode: 'edit', id: p.id }; if (dir === 'c') ui.open = p.id; break;
+      case 'edit': ui.form = { mode: 'edit', id: p.id }; if (dir !== 'a' && dir !== 'b') ui.open = p.id; break;
       case 'void': { if (!p.band) return; const n = p.band; p.band = null; p.seen = null; p.voided = n; log(s, p, `Band ${n} voided by Operations (${p.name})`); say(`Band ${n} voided · kept on record, never reused`); break; }
       case 'remove': if (p.removed) return; p.removed = hhmm(NOW); p.out = p.out || hhmm(NOW); unpair(s, p); log(s, p, `${p.name} removed from ${u.name} by Operations · kept on record`); say(`${p.name} removed · kept on record; Put back is on the row`); break;
       case 'restore': if (!p.removed) return; p.removed = null; p.out = null; p.in = hhmm(NOW); p.back = true; log(s, p, `${p.name} put back on ${u.name} by Operations`); say(`${p.name} is back on ${u.name}`); break;
@@ -504,14 +671,14 @@
   const focusName = (dir) => { const f = $('board-' + dir).querySelector('form.pform [name="name"]'); if (f) { f.focus(); f.scrollIntoView({ block: 'nearest' }); } };
 
   document.querySelector('main').addEventListener('click', (e) => {
-    const reset = e.target.closest('[data-reset]'); if (reset) { const d = reset.dataset.reset; S[d] = seed(); UI[d] = { a: { q: '', quals: new Set(), menu: null, form: null }, b: { q: '', quals: new Set(), ticked: new Set(), sort: 'unit', form: null }, c: { q: '', quals: new Set(), open: null, form: null } }[d]; $('board-' + d).innerHTML = ''; render(d); toast('The data is back as it was'); return; }
+    const reset = e.target.closest('[data-reset]'); if (reset) { const d = reset.dataset.reset; S[d] = seed(); UI[d] = freshUi(d); $('board-' + d).innerHTML = ''; render(d); if (d === 'd' || d === 'e') fitFrame(); toast('The data is back as it was'); return; }
     const board = e.target.closest('.board'); if (!board) return;
     const dir = board.dataset.dir, s = S[dir], ui = UI[dir];
     const sayEl = e.target.closest('[data-say]'); if (sayEl) { toast(sayEl.dataset.say); return; }
     const qb = e.target.closest('[data-qual]'); if (qb) { const q = qb.dataset.qual; if (ui.quals.has(q)) ui.quals.delete(q); else ui.quals.add(q); render(dir); return; }
-    const tab = e.target.closest('[data-ptab]'); if (tab) { if (tab.dataset.ptab === 'members') toast('The Members tab stays as it is.'); return; }
+    const tab = e.target.closest('[data-ptab]'); if (tab) { if (dir === 'd' || dir === 'e') { ui.tab = tab.dataset.ptab; ui.mmenu = null; render(dir); return; } if (tab.dataset.ptab === 'members') toast('The Members tab stays as it is.'); return; }
     const sort = e.target.closest('[data-sort]'); if (sort) { ui.sort = sort.dataset.sort; render(dir); return; }
-    if (e.target.closest('[data-add]')) { ui.form = { mode: 'add', unit: s.units[0].id }; if (dir === 'c') ui.open = null; if (dir === 'a') ui.menu = null; render(dir); focusName(dir); return; }
+    if (e.target.closest('[data-add]')) { ui.form = { mode: 'add', unit: s.units[0].id }; if (dir !== 'a' && dir !== 'b') ui.open = null; if (dir === 'a') ui.menu = null; render(dir); focusName(dir); return; }
     const addto = e.target.closest('[data-addto]'); if (addto) { ui.form = { mode: 'add', unit: addto.dataset.addto, fixed: true }; ui.open = null; render(dir); focusName(dir); return; }
     const open = e.target.closest('[data-open]'); if (open) { ui.open = ui.open === open.dataset.open ? null : open.dataset.open; ui.form = null; render(dir); return; }
     const bact = e.target.closest('[data-bact]'); if (bact) {
@@ -524,18 +691,40 @@
       toast({ out: `${names} checked out ${hhmm(NOW)} · logged`, in: `${names} back in`, void: `Bands voided for ${names} · kept on record, never reused`, remove: `${names} removed · kept on record; Put back is in the bar`, restore: `${names} put back` }[name] || 'Done');
       ui.ticked.clear(); render(dir); return;
     }
+    if (e.target.hasAttribute('data-fdialog')) { ui.dialog = null; render(dir); return; }   // the backdrop
+    const dlgBtn = e.target.closest('[data-dlg]'); if (dlgBtn) {
+      const d = ui.dialog, m = d && s.members.find((x) => x.id === d.id);
+      if (dlgBtn.dataset.dlg === 'go' && m) {
+        if (d.kind === 'ops') { m.role = 'ops'; m.was = m.unit; m.since = hhmm(NOW); m.unit = ''; m.div = ''; m.status = ''; toast(`${m.was} is now Operations · logged`); }
+        else { m.role = 'unit'; m.unit = m.was || 'Unit 4'; m.was = ''; m.since = ''; m.status = 'available'; toast(`${m.name} is now ${m.unit} · logged`); }
+      }
+      ui.dialog = null; render(dir); return;
+    }
+    const mact = e.target.closest('[data-mact]'); if (mact) {
+      const name = mact.dataset.mact, holder = mact.closest('[data-mid]'), m = holder && s.members.find((x) => x.id === holder.dataset.mid); if (!m) return;
+      if (name === 'menu') { ui.mmenu = ui.mmenu === m.id ? null : m.id; render(dir); return; }
+      ui.mmenu = null;
+      const who = m.role === 'unit' ? m.unit : m.name;
+      if (name === 'check') { m.ident = 'checked'; m.idAt = hhmm(NOW); toast(`${m.name}: ID checked · logged`); }
+      if (name === 'check-person') { m.ident = 'person'; m.idAt = hhmm(NOW); toast(`${m.name}: ID checked in person · logged`); }
+      if (name === 'ask-ops') ui.dialog = { kind: 'ops', id: m.id };
+      if (name === 'ask-unit') ui.dialog = { kind: 'unit', id: m.id };
+      if (name === 'remove') { m.removed = hhmm(NOW); toast(`${who} removed · what they sent stays; Restore is on the row`); }
+      if (name === 'restore') { m.removed = null; toast(`${who} is back on the incident`); }
+      render(dir); return;
+    }
     const a = e.target.closest('[data-act]'); if (a) {
       const name = a.dataset.act;
-      if (name === 'form-cancel') { const wasEdit = ui.form && ui.form.mode === 'edit'; ui.form = null; if (dir === 'c' && !wasEdit) ui.open = null; render(dir); return; }
+      if (name === 'form-cancel') { const wasEdit = ui.form && ui.form.mode === 'edit'; ui.form = null; if (dir !== 'a' && dir !== 'b' && !wasEdit) ui.open = null; render(dir); return; }
       if (name === 'close') { ui.open = null; ui.form = null; render(dir); return; }
       const holder = a.closest('[data-id]'); const p = holder && s.people.find((x) => x.id === holder.dataset.id); if (!p) return;
       if (name === 'menu') { ui.menu = ui.menu === p.id ? null : p.id; render(dir); return; }
       act(dir, name, p, a.dataset.arg); render(dir); if (name === 'edit') focusName(dir); return;
     }
-    if (dir === 'a' && ui.menu && !e.target.closest('.menu')) { ui.menu = null; render(dir); }
+    if ((ui.menu || ui.mmenu) && !e.target.closest('.menu')) { ui.menu = null; ui.mmenu = null; render(dir); }
   });
-  document.addEventListener('click', (e) => { if (UI.a.menu && e.target.isConnected && !e.target.closest('#board-a')) { UI.a.menu = null; render('a'); } });   // a redraw detaches the pressed button; a click outside the board closes the menu
-  document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; if (UI.a.menu) { UI.a.menu = null; render('a'); } if (UI.c.open || UI.c.form) { UI.c.open = null; UI.c.form = null; render('c'); } });
+  document.addEventListener('click', (e) => { for (const d of Object.keys(UI)) { const ui = UI[d]; if ((ui.menu || ui.mmenu) && e.target.isConnected && !e.target.closest('#board-' + d)) { ui.menu = null; ui.mmenu = null; render(d); } } });   // a redraw detaches the pressed button; a click outside the board closes the menu
+  document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; for (const d of Object.keys(UI)) { const ui = UI[d]; if (ui.menu || ui.mmenu || ui.dialog || ui.open || ui.form) { ui.menu = null; ui.mmenu = null; ui.dialog = null; ui.open = null; ui.form = null; render(d); } } });
   document.querySelector('main').addEventListener('change', (e) => {
     const board = e.target.closest('.board'); if (!board) return;
     const dir = board.dataset.dir, s = S[dir], ui = UI[dir], el = e.target;
@@ -553,13 +742,14 @@
   document.querySelector('main').addEventListener('submit', (e) => {
     const form = e.target.closest('form.pform'); if (!form) return; e.preventDefault();
     const board = form.closest('.board'), dir = board.dataset.dir, s = S[dir], ui = UI[dir];
+    if (form.dataset.form === 'invite') { const email = form.email.value.trim() || 'new.member@agency.gov'; s.invites.unshift({ email, what: form.role.value + (form.unit.value.trim() ? ' · ' + form.unit.value.trim() : ''), when: 'sent 16:10 by Marcus Bell', state: 'pending' }); toast('Invitation sent to ' + email + ' · logged'); render(dir); return; }
     const quals = [...form.querySelectorAll('[name="q"]:checked')].map((x) => x.value);
     const name = form.name.value.trim(); if (!name) return;
     if (form.dataset.form === 'add') {
       const unit = form.unit ? form.unit.value : ui.form.unit, u = s.units.find((x) => x.id === unit);
       const p = { id: 'n' + s.next++, unit, name, role: form.role.value.trim(), agency: form.agency.value.trim(), quals, buddy: null, in: hhmm(NOW), out: null, band: null, seen: null, notes: '' };
       s.people.push(p); log(s, p, `${p.name}${quals.length ? ' (' + qualsText(quals) + ')' : ''} checked in with ${u.name}, added by Operations`);
-      toast(`${p.name} added to ${u.name} · logged`); ui.form = null; if (dir === 'c') ui.open = p.id;
+      toast(`${p.name} added to ${u.name} · logged`); ui.form = null; if (dir !== 'a' && dir !== 'b') ui.open = p.id;
     } else {
       const p = s.people.find((x) => x.id === form.dataset.id); if (!p) return;
       const u = unitOf(s, p), changed = [];
@@ -569,7 +759,7 @@
       if (form.notes && (p.notes || '') !== form.notes.value.trim()) { changed.push('notes'); p.notes = form.notes.value.trim(); }
       if (p.quals.join() !== quals.join()) { changed.push('qualifications'); p.quals = quals; }
       if (changed.length) log(s, p, `${p.name}${quals.length ? ' (' + qualsText(quals) + ')' : ''} updated on ${u.name}: ${changed.join(', ')} changed`);
-      toast(changed.length ? `${p.name} saved · ${changed.join(', ')} changed` : 'Nothing changed'); ui.form = null; if (dir === 'c') ui.open = p.id;
+      toast(changed.length ? `${p.name} saved · ${changed.join(', ')} changed` : 'Nothing changed'); ui.form = null; if (dir !== 'a' && dir !== 'b') ui.open = p.id;
     }
     render(dir);
   });

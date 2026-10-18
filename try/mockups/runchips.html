@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: Went to and On which run as chips · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- Click-through mock-up of the two drop-downs on the phone's Address clear sheet (the person rows under
+     "People needing help": Went to, On which run), drawn 18 October 2026 at v62 before anything is built. Four
+     phones at 375 px on one shared state: the row as it is, the row as proposed (place first), the same row with a
+     run chosen, and the row with the run tapped first; then what Save sends, the base's arriving rows with the same
+     chips, and the decisions. The words and the order are rules.js's (PERSON_PLACES, LEFT_CHOICES, openRuns,
+     runsTo, wherePatch); no migration. Made-up data (Ana Ramirez, Unit 3, at 123 Pecan Ln in A-2). Nothing here
+     writes anywhere; Reset puts the rows back. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 13px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .intro { max-width: 780px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 30px 0 10px; }
+  h2.sec .sub { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 8px; }
+  .flowbar { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin: 0 0 16px; font-size: 13px; color: var(--ink-2); }
+  .flowbar .g { display: inline-flex; align-items: center; gap: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: none; color: var(--ink); padding: 5px 11px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 375px; line-height: 1.4; }
+  .cap b { color: var(--ink); }
+  .stepno { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; margin-right: 6px; vertical-align: -3px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .toast[hidden] { display: none; }
+
+  /* the phone: the Address clear sheet, as field.css draws it (bg-2, 12 px gaps, 48 px inputs, 44 px chips) */
+  .phone { width: 375px; min-height: 640px; background: var(--bg-2); border: 10px solid #0b0b0d; border-radius: 36px; padding: 16px 16px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; color: var(--ink); font-size: 14px; overflow: hidden; }
+  .phone h2 { margin: 0; font-size: 22px; font-weight: 600; }
+  .phone p { margin: 0; }
+  .phone .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .phone .input { width: 100%; box-sizing: border-box; border: 1px solid var(--control-border); border-radius: 10px; padding: 10px 12px; font-size: 16px; min-height: 48px; background: var(--control-bg); color: var(--ink); font-family: inherit; min-width: 0; }
+  .phone select.input { appearance: auto; }
+  .phone .chip { font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .phone .chip.on { color: #fff; }
+  .stepper { display: flex; align-items: center; gap: 12px; }
+  .stepper .btn { width: 56px; min-height: 48px; font-size: 22px; padding: 0; }
+  .stepper .num { font-size: 24px; font-weight: 600; width: 36px; text-align: center; }
+  .st-people { display: flex; flex-direction: column; gap: 8px; }
+  .st-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: "who x" "cond cond" "where where" "run run"; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+  .st-row > [data-f="who"] { grid-area: who; } .st-row > [data-f="cond"] { grid-area: cond; } .st-row > .pp-x { grid-area: x; }
+  .st-row > [data-today="where"] { grid-area: where; } .st-row > [data-today="run"] { grid-area: run; }
+  .pp-x { width: 44px; min-height: 44px; padding: 0; font-size: 20px; color: var(--muted); }
+  /* the proposed row: the two labels and the two chip rows take the whole width under who and condition */
+  .st-row.prop { grid-template-areas: "who x" "cond cond" "wk wk" "where where" "rk rk" "run run"; }
+  .st-row.prop > .rk { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 4px; }
+  .st-row.prop > .rk.wk { grid-area: wk; } .st-row.prop > .rk.rk2 { grid-area: rk; }
+  .st-row.prop > .chips.where { grid-area: where; } .st-row.prop > .chips.runs { grid-area: run; }
+  .row-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row-btns .small { font-size: 12.5px; }
+  .cont { color: var(--muted); font-size: 12px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .sheet-btns { margin-top: auto; display: flex; gap: 10px; padding: 8px 0 16px; background: var(--bg-2); }
+  .sheet-btns .btn { flex: 1; min-height: 54px; font-size: 16px; border-radius: 14px; }
+  /* a run card: two lines, the same height as two chips' words, lit like a chip */
+  .rcard { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; border: 1px solid var(--control-border); background: var(--control-bg); border-radius: 14px; padding: 7px 14px; min-height: 54px; box-sizing: border-box; font: inherit; font-size: 14px; line-height: 1.25; text-align: left; color: var(--ink); cursor: pointer; max-width: 100%; }
+  .rcard .l1 { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .rcard .l2 { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .rcard .own { font-size: 10.5px; font-weight: 600; letter-spacing: .04em; border-radius: 6px; padding: 1px 6px; background: var(--sel-bg); color: var(--accent-text); }
+  .rcard.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .rcard.on .l2 { color: rgba(255,255,255,.82); }
+  .rcard.on .own { background: rgba(255,255,255,.22); color: #fff; }
+  .rcard.late .l2 { color: var(--hazard-ink); } .rcard.on.late .l2 { color: #FDE2C4; }
+  .rcard.more { color: var(--accent-text); border-style: dashed; }
+  .rcard.sm { min-height: 40px; padding: 4px 10px; font-size: 12.5px; border-radius: 10px; }
+  .rcard.sm .l2 { font-size: 11px; }
+  .chips.runs { gap: 6px; }
+
+  /* what Save sends */
+  .sends { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 12px; }
+  .sends .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0; font-size: 13px; }
+  .sends .card .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+  .sends .l { display: grid; grid-template-columns: 110px 1fr; gap: 2px 10px; padding: 3px 0; border-top: 1px solid var(--line-soft); }
+  .sends .l:first-of-type { border-top: 0; }
+  .sends .l .f { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .sends .l .why { color: var(--muted); font-size: 12px; }
+  .sends .l .why.warn { color: var(--hazard-ink); }
+
+  /* the base: the shelter card's arriving box, as base.css draws it */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 13px; }
+  .panel.wide { width: 1100px; max-width: 100%; box-sizing: border-box; }
+  .panel h3 { margin: 0 0 8px; font-size: 15px; }
+  .ev-box { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+  .ev-box.arriving { border: 2px solid var(--hazard); background: var(--tint-orange); }
+  .ev-box .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .ev-r { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "who from what" "by by where"; gap: 2px 10px; align-items: center; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+  .ev-r:last-child { border-bottom: 0; }
+  .ev-r > :nth-child(1) { grid-area: who; } .ev-r > :nth-child(2) { grid-area: from; } .ev-r > :nth-child(3) { grid-area: what; } .ev-r > :nth-child(4) { grid-area: by; font-size: 12px; } .ev-r > :nth-child(5) { grid-area: where; justify-self: end; max-width: 100%; }
+  .ev-on { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .ev-on .rcard { color: var(--ink); }
+  .ev-on .rcard.on { color: #fff; }
+  select.sel { border: 1px solid var(--control-border); border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); color: var(--ink); max-width: 220px; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  .panel .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 12px 0 6px; }
+  .panel .k:first-child { margin-top: 0; }
+  @media (max-width: 480px) { .phone, .panel, .panel.wide { width: 100%; } main { padding: 12px; } .sends { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: Went to and On which run as chips</span></div>
+  <div class="tabs">
+    <a href="#phones">The row</a>
+    <a href="#save">What Save sends</a>
+    <a href="#base">The base</a>
+    <a href="#decide">Decide</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>Went to and On which run, as chips</h1>
+  Todd, 18 October: <q>I think we can make this drop-down a little better where it's more intuitive for the user to click, perhaps a series of buttons.</q>
+  Every other field on the Address clear sheet is a chip row; each person row has two drop-downs, and the picker cuts the runs' words off. Drawn at v62, before anything is built. Ana Ramirez, Unit 3, is at 123 Pecan Ln in A-2 with a family of three and a man on oxygen; Van 1 is loading at the corner. Made-up data; press the chips, the rows follow.
+</div>
+
+<!-- ============================================================ THE ROW -->
+<section id="phones">
+  <h2 class="sec">The person row, four ways <span class="sub">one shared state: a tap in any frame shows in the others, in What Save sends and on the base</span></h2>
+  <div class="flowbar">
+    <button class="btn sm" data-act="reset" type="button">Reset</button>
+    <span class="g">Seats on a card <span class="seg" data-seg="seats"><button type="button" data-v="1" class="on">Shown</button><button type="button" data-v="0">Times only</button></span></span>
+    <span class="g">Runs to the gym <span class="seg" data-seg="many"><button type="button" data-v="0" class="on">2</button><button type="button" data-v="1">5</button></span></span>
+    <span class="g">Past three runs <span class="seg" data-seg="fold"><button type="button" data-v="1" class="on">Two and More</button><button type="button" data-v="0">Wrap</button></span></span>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="phone" id="f1"></div>
+      <div class="cap"><span class="stepno">1</span><b>As it is.</b> Two drop-downs per row. Went to lists the places and the three ways of leaving; On which run lists every open run as one long line, the crew's division's first, and the picker cuts it off. The run wins at Save, but the Went to box does not follow it.</div>
+    </div>
+
+    <div class="screen">
+      <div class="phone" id="f2"></div>
+      <div class="cap"><span class="stepno">2</span><b>Proposed, place first.</b> Row 1. Went to is a chip row: the shelters by name, the hospital, With family, Own transport, Not known. Under it, On which run shows only the runs going there (runsTo), the crew's own division's first; Not on a run is first and the default. No run that way, no second row.</div>
+    </div>
+
+    <div class="screen">
+      <div class="phone" id="f3"></div>
+      <div class="cap"><span class="stepno">3</span><b>A run chosen.</b> Row 2, Nguyen, on Van 1. The card is lit like a chip; the times and the seats stay readable. Tapping another place takes him off a run that does not go there.</div>
+    </div>
+
+    <div class="screen">
+      <div class="phone" id="f4"></div>
+      <div class="cap"><span class="stepno">4</span><b>Run first.</b> Row 1 again. On which run lists every open run (openRuns, the crew's division's first); tapping one sets Went to from the run's destination. One tap when the van is at the corner, and the card says where it goes.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ WHAT SAVE SENDS -->
+<section id="save">
+  <h2 class="sec">What Searched, save sends <span class="sub">as today: one evacuee row per person, through the outbox after the structure (saveStructure)</span></h2>
+  <div class="sends" id="sends"></div>
+  <p class="note">The chips write the same two fields the drop-downs do: <span class="mono">transport_id</span> and the place as <span class="mono">wherePatch</span> gives it (a shelter puts them on the way, a hospital is a move). On a run, the record goes where the run goes, as <span class="mono">saveStructure</span> and <span class="mono">ic_evacuee_before</span> already do. Nothing in the outbox, the database or the 214 changes.</p>
+</section>
+
+<!-- ============================================================ THE BASE -->
+<section id="base">
+  <h2 class="sec">The base's arriving rows <span class="sub">the shelter card's "On the way from crews", with the same chips smaller</span></h2>
+  <div class="panel wide">
+    <h3>High school gym · shelter · 21 of 60 beds</h3>
+    <div id="base-box"></div>
+    <p class="note">Today the row's last cell is a drop-down (<span class="mono">runSelectHtml</span>): "Bus 3 · A-1 Riverside Drive · planned". Proposed: the same cards at 40 px, Not on a run first, only the runs coming to this shelter (runsTo, as the select lists now), then Signed in. A click here is the same update (<span class="mono">data.putOnTransport</span>).</p>
+  </div>
+</section>
+
+<!-- ============================================================ DECIDE -->
+<section id="decide">
+  <h2 class="sec">Decided here, and yours to decide</h2>
+  <div class="panel wide">
+    <div class="k">Decided here (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>Chips, not drop-downs.</b> Every other field on the sheet is a chip row; the two selects were the only pickers on the phone, and the only ones whose words got cut off.</li>
+      <li><b>The words and the order are rules.js's.</b> Went to: the shelters, then the hospitals (PERSON_PLACES), each by its name; then With family, Own transport, Not known (LEFT_CHOICES: the word is "Not known", not "Unknown"). The run card is "Bus 3 → High school gym" over the times (transportTimes) and the seats (capacityText); the crew's own division's run first, as openRuns orders them. runsTo would take the same zoneId option, one line.</li>
+      <li><b>Not on a run is the first card and the default.</b> A row with no run going its way has no run row, as today's hasRuns.</li>
+      <li><b>A tap keeps the row true.</b> A run tapped sets Went to from its destination; a place tapped that the run does not go to takes the person off the run. Today the Went to box can say one thing while the run goes elsewhere, and the run wins silently at Save.</li>
+      <li><b>No migration.</b> Save sends transport_id and wherePatch's status and facility_id as today; the desk, the board and the 214 see no difference.</li>
+    </ul>
+    <div class="k">Yours to decide</div>
+    <ul class="decisions">
+      <li><b>Place first (frames 2 and 3) or run first (frame 4).</b> Recommendation: run first. The crew knows the van at the corner before it knows where the van goes; one tap puts the family on it and the card says the destination. Place first hides the ambulance to the hospital while the gym is lit. Its cost is a longer list under every row, which the fold below contains; if that is still too long, list the runs to the place chosen plus the ones leaving from the crew's own division.</li>
+      <li><b>Seats on a card, or only the times.</b> Recommendation: show them ("3 of 8"). Whether the family fits is the one thing the crew cannot see from the corner; the drop-down says it today, and the toggle above shows the card without.</li>
+      <li><b>More than three runs to one place.</b> Wrap them all, or the nearest two and "3 more" (the toggle above). Recommendation: two and More, the crew's division's first, the chosen run always shown; a sheet with gloves should not grow a screen per person.</li>
+      <li><b>The base's rows in the same release.</b> Recommendation: yes. runSelectHtml is one function on one cell and reads the same rules; the shelter card then says the same thing the phone does. A mouse is fine with a select, so it could wait, but then the two views draw one run two ways.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let toastT = null;
+  const toast = (text) => { const t = $('toast'); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); };
+
+  // ---- the data: the crew's division, the places (PERSON_PLACES: shelters, then hospitals), the runs
+  const ZONE = { id: 'a2', code: 'A-2', name: 'Pecan Park' };
+  const FACS = [
+    { id: 'gym', kind: 'shelter', name: 'High school gym' },
+    { id: 'fbh', kind: 'shelter', name: 'First Baptist hall' },
+    { id: 'dsmc', kind: 'hospital', name: 'Dell Seton Medical Center' },
+  ];
+  const fac = (id) => FACS.find((f) => f.id === id);
+  const PLACE_KINDS = ['shelter', 'hospital'];
+  const LEFT = [['with_family', 'With family'], ['own_transport', 'Own transport'], ['unknown', 'Not known']];
+  const BASE_RUNS = [
+    { id: 'van1', label: 'Van 1', from: 'A-2 Pecan Park', fromZone: 'a2', to: 'gym', status: 'loading', leaves: '17:50', times: 'loading since 17:52 · expected 18:15', aboard: 3, capacity: 8 },
+    { id: 'amb2', label: 'Ambulance 2', from: 'A-2 Pecan Park', fromZone: 'a2', to: 'dsmc', status: 'planned', leaves: '18:10', times: 'leaves 18:10 · expected 18:24', aboard: 0, capacity: 2 },
+    { id: 'bus3', label: 'Bus 3', from: 'A-1 Riverside Drive, east', fromZone: 'a1', to: 'gym', status: 'planned', leaves: '18:04', times: 'leaves 18:04 · expected 18:29', aboard: 0, capacity: 40 },
+    { id: 'bus4', label: 'Bus 4', from: 'Staging, east lot', fromZone: null, to: 'fbh', status: 'planned', leaves: '18:20', times: 'leaves 18:20 · expected 18:45', aboard: 12, capacity: 40 },
+  ];
+  const MORE_RUNS = [
+    { id: 'bus5', label: 'Bus 5', from: 'Staging, east lot', fromZone: null, to: 'gym', status: 'planned', leaves: '18:35', times: 'leaves 18:35 · expected 19:00', aboard: 0, capacity: 40 },
+    { id: 'van2', label: 'Van 2', from: 'B-1 Mill Street', fromZone: 'b1', to: 'gym', status: 'planned', leaves: '18:40', times: 'leaves 18:40 · expected 19:05', aboard: 5, capacity: 8 },
+    { id: 'boat1', label: 'Boat run 1', from: 'Low-water crossing ramp', fromZone: null, to: 'gym', status: 'planned', leaves: '18:50', times: 'leaves 18:50 · expected 19:20', aboard: 0, capacity: 6 },
+  ];
+  const START = () => [
+    { who: 'Garza, family of 3', cond: 'wet, cold, a baby', where: 'f:gym', run: '' },
+    { who: 'Nguyen, Tam', cond: 'on oxygen, stable', where: 'f:gym', run: 'van1' },
+  ];
+  const S = { rows: START(), seats: true, many: false, fold: true, more: new Set() };
+
+  // ---- the rules, as rules.js has them (sortTransports, openRuns, runsTo, wherePatch, countIn, needsIn)
+  const RANK = { loading: 0, en_route: 0, planned: 1 };
+  const runs = () => S.many ? BASE_RUNS.concat(MORE_RUNS) : BASE_RUNS;
+  const run = (id) => runs().find((r) => r.id === id) || null;
+  const sortRuns = (list) => list.slice().sort((a, b) => RANK[a.status] - RANK[b.status] || (a.leaves < b.leaves ? -1 : 1)).sort((a, b) => (b.fromZone === ZONE.id) - (a.fromZone === ZONE.id));
+  const openRuns = () => sortRuns(runs().filter((r) => r.status === 'planned' || r.status === 'loading'));
+  const runsTo = (fid) => fid ? openRuns().filter((r) => r.to === fid) : [];
+  const places = () => FACS.filter((f) => PLACE_KINDS.includes(f.kind)).sort((a, b) => PLACE_KINDS.indexOf(a.kind) - PLACE_KINDS.indexOf(b.kind));
+  const facOf = (where) => where && where.startsWith('f:') ? where.slice(2) : null;
+  const wherePatch = (v) => { if (!v || !v.startsWith('f:')) return { status: v || 'unknown', facility_id: null }; const f = fac(v.slice(2)); return { status: f && f.kind === 'shelter' ? 'on_the_way' : 'moved', facility_id: f ? f.id : null }; };
+  const countIn = (t) => { const m = /family of (\d{1,3})\b/i.exec(t) || /\b(\d{1,4})\s*(?:people|persons|adults?|kids|children)\b/i.exec(t); return m ? Number(m[1]) : null; };
+  const NEED_WORDS = [['oxygen', /\boxygen\b|\bo2\b/i], ['insulin', /insulin|diabet/i], ['wheelchair', /wheel\s?chair|walker/i], ['infant', /\binfant|\bbaby\b|\bbabies\b|newborn/i], ['pets', /\bdogs?\b|\bcats?\b|\bpets?\b/i]];
+  const needsIn = (t) => NEED_WORDS.filter(([, re]) => re.test(t)).map(([k]) => k);
+  const NEED_TEXT = { oxygen: 'oxygen', insulin: 'insulin', wheelchair: 'wheelchair', infant: 'infant care', pets: 'pets' };
+  const whereWords = (v) => facOf(v) ? fac(facOf(v)).name : (LEFT.find(([k]) => k === v) || [, 'Not known'])[1].toLowerCase();
+  const seatsText = (r) => r.aboard + ' of ' + r.capacity;
+
+  // ---- what a tap writes: the proposed rule (a run sets the place; a place the run does not go to clears the run)
+  const setWhere = (row, v) => { row.where = v; const r = row.run && run(row.run); if (r && 'f:' + r.to !== v) { row.run = ''; return r; } return null; };
+  const setRun = (row, id) => { row.run = id; const r = id && run(id); if (r) row.where = 'f:' + r.to; };
+
+  // ---- drawing: the sheet around the rows, the row as it is, the row as proposed, a run card
+  const sheetHtml = (rowsHtml, count) => `
+    <h2>Address clear</h2>
+    <p class="muted">${esc(ZONE.code)} · 30.26776, -97.73977. Save marks it searched and counts it for the zone.</p>
+    <div class="k">Address or what it is</div>
+    <input class="input" value="123 Pecan Ln" aria-label="Address" readonly>
+    <div class="k">Occupants</div>
+    <div class="chips"><button type="button" class="chip">Nobody home</button><button type="button" class="chip on">Evacuated</button><button type="button" class="chip">Sheltering in place</button></div>
+    <div class="k">People needing help</div>
+    <div class="stepper"><button type="button" class="btn" aria-label="Fewer">−</button><span class="num">${count}</span><button type="button" class="btn" aria-label="More">+</button></div>
+    <div class="st-people">${rowsHtml}</div>
+    <div class="row-btns"><button type="button" class="btn sm">Add who and where they went</button><span class="muted small">Each row is a person or a family; the shelter desk sees them coming.</span></div>
+    <div class="cont">Water at the structure · Damage · Hazards left there · Notes · Revisit at</div>
+    <div class="sheet-btns"><button type="button" class="btn">Cancel</button><button type="button" class="btn green">Searched, save</button></div>`;
+  const whoInputs = (row, i) => `<input class="input" data-f="who" data-i="${i}" value="${esc(row.who)}" placeholder="Who: a name, or &quot;family of 4&quot;" aria-label="Who"><button type="button" class="btn pp-x" aria-label="Remove this row" title="Remove this row">×</button><input class="input" data-f="cond" data-i="${i}" value="${esc(row.cond)}" placeholder="Condition: on oxygen, stable" aria-label="Condition">`;
+  const todayRow = (i) => { const row = S.rows[i]; return `<div class="st-row" data-i="${i}">${whoInputs(row, i)}
+    <select class="input" data-today="where" aria-label="Went to" title="Went to">${places().map((f) => `<option value="f:${f.id}"${row.where === 'f:' + f.id ? ' selected' : ''}>Went to ${esc(f.name)} (${f.kind})</option>`).join('')}${LEFT.map(([v, l]) => `<option value="${v}"${row.where === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <select class="input" data-today="run" aria-label="On which run" title="On which run: the record rides with it and the desk sees it under the run"><option value=""${row.run ? '' : ' selected'}>Not on a run</option>${openRuns().map((r) => `<option value="${r.id}"${row.run === r.id ? ' selected' : ''}>On ${esc(r.label)} · ${esc(r.from)} → ${esc(fac(r.to).name)} · ${esc(r.times)} · ${seatsText(r)}</option>`).join('')}</select></div>`; };
+  const cardHtml = (r, on, sm) => `<button type="button" class="rcard${on ? ' on' : ''}${sm ? ' sm' : ''}" data-run="${r.id}" title="${esc(r.label + ' · from ' + r.from + ' → ' + fac(r.to).name + ' · ' + r.times + ' · ' + seatsText(r))}"><span class="l1"><b>${esc(r.label)}</b> → ${esc(fac(r.to).name)}${r.fromZone === ZONE.id ? `<span class="own" title="leaves from your division">${esc(ZONE.code)}</span>` : ''}</span><span class="l2">${esc(r.times)}${S.seats ? ' · ' + seatsText(r) : ''}</span></button>`;
+  // the run cards for a row: the list, folded past three to the first two and the chosen one, with "N more"
+  const runCards = (row, list, key, sm) => {
+    const chosen = row.run ? run(row.run) : null;
+    if (chosen && !list.includes(chosen)) list = list.concat([chosen]);   // never hide the run chosen
+    if (!list.length) return '';
+    let shown = list, hidden = 0;
+    if (S.fold && list.length > 3 && !S.more.has(key)) { shown = list.filter((r, k) => k < 2 || r === chosen); hidden = list.length - shown.length; }
+    return `<button type="button" class="rcard${row.run ? '' : ' on'}${sm ? ' sm' : ''}" data-run="">Not on a run</button>${shown.map((r) => cardHtml(r, row.run === r.id, sm)).join('')}${hidden ? `<button type="button" class="rcard more${sm ? ' sm' : ''}" data-more="${key}">${hidden} more</button>` : ''}`;
+  };
+  const propRow = (i, design) => {
+    const row = S.rows[i];
+    const list = design === 'B' ? openRuns() : runsTo(facOf(row.where));
+    const cards = runCards(row, list, design + i, false);
+    return `<div class="st-row prop" data-i="${i}">${whoInputs(row, i)}
+      <div class="rk wk">Went to</div>
+      <div class="chips where">${places().map((f) => `<button type="button" class="chip${row.where === 'f:' + f.id ? ' on' : ''}" data-where="f:${f.id}">${esc(f.name)}</button>`).join('')}${LEFT.map(([v, l]) => `<button type="button" class="chip${row.where === v ? ' on' : ''}" data-where="${v}">${l}</button>`).join('')}</div>
+      ${cards ? `<div class="rk rk2">On which run</div><div class="chips runs">${cards}</div>` : ''}</div>`;
+  };
+  const count = () => S.rows.reduce((n, r) => n + (countIn(r.who) || 1), 0);
+
+  // what Save sends for a row, as saveStructure builds the evacuee row
+  const sendHtml = (row, i) => {
+    const r = row.run ? run(row.run) : null, w = wherePatch(row.where), n = countIn(row.who) || 1, needs = needsIn(row.who + ' ' + row.cond);
+    const dest = r ? wherePatch('f:' + r.to) : w, differs = r && w.facility_id !== dest.facility_id;
+    const line = (f, v, why, warn) => `<div class="l"><span class="f">${f}</span><span>${v}${why ? ` <span class="why${warn ? ' warn' : ''}">${why}</span>` : ''}</span></div>`;
+    return `<div class="card"><div class="k">Row ${i + 1} · outbox kind evacuee, after the structure</div>
+      ${line('label · count', `"${esc(row.who || 'a person with no name yet')}" · ${n}`, 'countIn')}
+      ${line('note · needs', `"${esc(row.cond)}"${needs.length ? ' · ' + needs.map((k) => NEED_TEXT[k]).join(', ') : ' · none'}`, 'needsIn')}
+      ${line('structure_id', 'the house · from_text "123 Pecan Ln"')}
+      ${line('status', `<b>${esc(dest.status)}</b>`, differs ? `the run's destination wins; the Went to box said ${esc(whereWords(row.where))}` : 'wherePatch', differs)}
+      ${line('facility_id', dest.facility_id ? esc(fac(dest.facility_id).name) : 'null')}
+      ${line('transport_id', r ? `<b>${esc(r.label)}</b> → ${esc(fac(r.to).name)}` : 'null', r ? 'the desk sees them under the run' : '')}</div>`;
+  };
+  // the base: the gym's arriving box, the records on their way there
+  const baseHtml = () => {
+    const here = S.rows.map((row, i) => ({ row, i })).filter(({ row }) => { const r = row.run ? run(row.run) : null; return (r ? r.to : facOf(row.where)) === 'gym'; });
+    const people = here.reduce((n, { row }) => n + (countIn(row.who) || 1), 0);
+    return `<div class="ev-box arriving"><div class="k">On the way from crews · ${people} ${people === 1 ? 'person' : 'people'}</div>
+      ${here.length ? here.map(({ row, i }) => { const needs = needsIn(row.who + ' ' + row.cond); return `<div class="ev-r" data-i="${i}"><span><strong>${esc(row.who)}</strong>${row.cond ? ` <span class="muted">· ${esc(row.cond)}</span>` : ''}</span><span class="muted">from 123 Pecan Ln · A-2</span><span>${needs.map((k) => NEED_TEXT[k]).join(', ')}</span><span class="muted">Unit 3 · sent 17:58</span><span class="ev-on">${runCards(row, runsTo('gym'), 'base' + i, true)}<button type="button" class="btn sm" data-act="signin" title="They have arrived: sign them in here (the desk usually does this)">Signed in</button></span></div>`; }).join('') : '<div class="muted">Nobody on the way here: both rows went elsewhere.</div>'}</div>
+      ${S.rows.length - here.length ? `<p class="note">${S.rows.filter((row) => !here.some((h) => h.row === row)).map((row) => { const r = row.run ? run(row.run) : null; const v = r ? 'f:' + r.to : row.where; return esc(row.who) + (facOf(v) ? ' is on ' + esc(fac(facOf(v)).name) + "'s card" : ' left ' + esc(whereWords(v)) + ', on no card'); }).join(' · ')}.</p>` : ''}`;
+  };
+
+  const draw = () => {
+    const n = count();
+    $('f1').innerHTML = sheetHtml(todayRow(0) + todayRow(1), n);
+    $('f2').innerHTML = sheetHtml(propRow(0, 'A'), n);
+    $('f3').innerHTML = sheetHtml(propRow(1, 'A'), n);
+    $('f4').innerHTML = sheetHtml(propRow(0, 'B'), n);
+    $('sends').innerHTML = S.rows.map(sendHtml).join('');
+    $('base-box').innerHTML = baseHtml();
+    for (const seg of document.querySelectorAll('[data-seg]')) for (const b of seg.children) b.classList.toggle('on', b.dataset.v === (S[seg.dataset.seg] ? '1' : '0'));
+  };
+
+  // ---- taps
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const rowEl = b.closest('[data-i]'), row = rowEl ? S.rows[Number(rowEl.dataset.i)] : null;
+    if (b.dataset.act === 'reset') { S.rows = START(); S.more = new Set(); draw(); toast('The two rows are back as they were.'); return; }
+    if (b.dataset.act === 'signin') { toast('Signs them in at the gym (the desk usually does this). Not in the mock.'); return; }
+    const seg = b.closest('[data-seg]');
+    if (seg) { S[seg.dataset.seg] = b.dataset.v === '1'; draw(); return; }
+    if (b.dataset.more) { S.more.add(b.dataset.more); draw(); return; }
+    if (b.classList.contains('pp-x')) { toast('Removes the row, as today. Not in the mock.'); return; }
+    if (row && b.hasAttribute('data-where')) {
+      const off = setWhere(row, b.dataset.where); draw();
+      toast(`${row.who} → ${whereWords(row.where)}${off ? ` · off ${off.label}, it does not go there` : ''}`); return;
+    }
+    if (row && b.hasAttribute('data-run')) {
+      setRun(row, b.dataset.run); draw();
+      const r = row.run && run(row.run);
+      toast(r ? `${row.who} on ${r.label} → ${fac(r.to).name}` : `${row.who}: not on a run · ${whereWords(row.where)}`); return;
+    }
+  });
+  // today's drop-downs: the place box does not touch the run, and the run box does not move the place (the run wins at Save)
+  document.addEventListener('change', (e) => {
+    const sel = e.target.closest('select[data-today]');
+    if (!sel) return;
+    const row = S.rows[Number(sel.closest('[data-i]').dataset.i)];
+    if (sel.dataset.today === 'where') row.where = sel.value; else row.run = sel.value;
+    draw();
+  });
+  document.addEventListener('input', (e) => {
+    const el = e.target.closest('input[data-f]');
+    if (!el) return;
+    const row = S.rows[Number(el.dataset.i)];
+    row[el.dataset.f] = el.value;
+    for (const other of document.querySelectorAll(`input[data-f="${el.dataset.f}"][data-i="${el.dataset.i}"]`)) if (other !== el) other.value = el.value;
+    $('sends').innerHTML = S.rows.map(sendHtml).join('');
+    $('base-box').innerHTML = baseHtml();
+    const num = count(); for (const n of document.querySelectorAll('.stepper .num')) n.textContent = num;
+  });
+
+  // light and dark, as the base's header button does (ic.theme per device)
+  const themeNow = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };
+  $('theme-btn').addEventListener('click', () => { const next = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('ic.theme', next); } catch (e) {} drawTheme(); });
+  drawTheme();
+  draw();
+})();
+</script>
+</body>
+</html>

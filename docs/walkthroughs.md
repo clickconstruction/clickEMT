@@ -1401,3 +1401,28 @@ headless renders of the page, light and dark).
 - **Two dims when a paper opens from a board** (Print 211 from the People board): the 211's window sits over the board's, both dimmed, darker behind the paper. Closing the 211 shows the board again, which is right; the double dim is the only tell.
 - **The header folded away hides the clock** while a page is full screen; the papers carry their own times, the boards none. A clock in the page's bar is the fix if it is missed.
 - **A Pop out for the papers** (punchlist section 23): the second screen at the command post still gets only the log.
+
+## Re-walk after v65
+
+The People board redrawn: Priya finding who is past the hours on scene, Marcus answering "what happened to Patel?",
+the clerk adding a name a unit forgot, the administrator checking identities and making a relief Operations, walked on
+2026-10-18 in the mock at 1280 × 800, light and dark (the pane hidden, so the places and widths read through the
+page's own measurements and the `people` and `members` suites).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The bar | Marcus | People \| Members first, "Cedar Fork Flooding", then Hours · Print 211 · Print bands · Expand · Close on one row with room to spare; the find box and the chips under it, gone on Members and back, still lit, on People. | Clear |
+| The cards | Priya | Three cards of 343 px: Unit 1 · Assigned · A-1 · Cedar Fork Fire Department · engine · 2 on the unit; Ramirez Lt. 2 h 50 min, Band 001 · entering A-1 16:40, Swift water EMT. Patel's "Band 004 · at High school gym 15:20 · 2 h 20 min ago" in orange; Hale "no band". | Clear |
+| The drawer | Marcus | A press on Ramirez: 340 px beside two columns of cards; On scene 2 h 50 min, since 14:50; Last seen entering A-1 16:40, by Unit 1 · band 001; With Okafor; the chips; Check out, Move to…, the buddy, Edit, Void band 001 "Never reused; kept on record.", Remove "Off the roster; kept on record, Put back undoes it."; six lines from the 214. Escape and Close put it away. | Clear |
+| Add a person | the clerk | Add a person on Unit 3's card: the form in the drawer, "Add a person to Unit 3", the name box focused; Add to the unit, and the drawer opens on the new person with their check-in line. From the heading row the same form carries the unit select. | Clear |
+| Remove and Put back | Priya | Remove: the line stays on the card greyed, "removed 17:42" at its right, the count drops, the drawer offers Put back; Put back brings the line back. Nothing deleted. | Clear |
+| The Members tab | the administrator | Operations · 1 (Marcus Bell · opened the incident, nothing to press) and Units · 3, "Unit 1, engine · Assigned · A-1 · Ana Ramirez · 512 555 0111 · Cedar Fork Fire Department · ID checked ✓ 14:55"; Unit 2 "ID given, not checked · Check", and Check opens Unit 2's panel with the licence unfolded and Mark verified. | Clear |
+| Make Operations… | Marcus | ··· on Unit 1 opens the menu; a click outside and Escape close it; Make Operations… asks "Make Unit 1 Operations?" with what they get and what changes, Cancel / Make Operations. | Clear |
+| A half-typed form | Priya | "Half typed" in Add a person: Escape and a click on the dim both say "Save or cancel the form first"; Cancel, then they close. | Clear |
+
+**Still bites, small:**
+
+- **Check on an Operations row** opens that member's panel, which is the unit panel: it says Available, head count unknown, assigned nothing, standing in no zone, before the identity. The identity is there and Mark verified works, but the panel's facts are a unit's. A panel for an Operations member, or Check opening only the identity, is the fix.
+- **The drawer's log lines are a name match**: a surname that is also a given name (Lee) also catches "Jordan Lee Hale checked in". A person reference on the seen and status lines (a migration) would make it exact.
+- **A long agency name** ("Cedar Fork Fire Department · swift-water team · 2 on the unit") wraps to two lines in a card's header at 1280 with the drawer open; the facts are all there, the card is a line taller.
+- **The old row's controls on the unit panel** (People on the unit) are unchanged: Check out and the compact row as before, not the drawer. Fine for the panel, but a second shape of the same person.

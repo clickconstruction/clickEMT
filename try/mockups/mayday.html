@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: what's wrong, what you need · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- A click-through mock-up, drawn 18 October 2026 at v62 before anything is built, of Todd's note on the phone's
+     "Need help now" sheet: "we should be able to add better context, either what kind of help or the nature of the
+     danger". Four phones at 375 px and the base beside them, in the app's own styles with made-up data (Cedar Fork
+     Flooding; Unit 3, Hale and Dominguez, in A-2; Unit 2, Dep. Moreno alone at the bridge post in B-1). One shared
+     state: Send alert and the chips on the two live phones reach the base's bar, the unit panel and the 214.
+     Nothing here writes anywhere. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 14px; }
+  .tabs a:hover { border-color: var(--grey); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.part { margin: 0 0 34px; scroll-margin-top: 70px; }
+  .intro { max-width: 820px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2.sec .sub { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 375px; line-height: 1.4; }
+  .screen > .cap b { color: var(--ink); }
+  .screen.w > .cap { max-width: 760px; }
+  .stepno { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; margin-right: 4px; vertical-align: -4px; }
+  .panel { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; box-sizing: border-box; }
+  .panel.wide { width: 100%; }
+  .k { margin: 12px 0 6px; } .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  .mono { font-size: 12px; }
+  .point { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--sel-bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
+  .point b { color: var(--accent-text); }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .toast[hidden] { display: none; }
+  .flowbar { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .flowbar .clock { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* the phone: the field's sheet, as field.css draws it, inside a frame */
+  .phone { width: 375px; min-height: 700px; background: var(--bg-2); border: 10px solid #0b0b0d; border-radius: 36px; padding: 16px 16px 0; box-shadow: 0 8px 28px rgba(0,0,0,.35); font-size: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; color: var(--ink); position: relative; }
+  .phone.still { opacity: .92; }
+  .phone.still .btn, .phone.still .chip { pointer-events: none; }
+  .phone h2 { margin: 0; font-size: 22px; font-weight: 600; color: var(--danger); }
+  .phone p { margin: 0; font-size: 16px; line-height: 1.35; }
+  .phone .card { background: var(--control-bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .phone .card.acked { border-color: var(--cleared-fill); }
+  .phone .card .k { margin: 0; }
+  .phone .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 15px; }
+  .phone .kv .k { font-size: 11px; align-self: baseline; margin: 0; }
+  .phone .mono { font-size: 15px; }
+  .phone .ask { display: flex; flex-direction: column; gap: 8px; }
+  .phone .ask .k { margin: 2px 0 0; }
+  .phone .ask .k small { font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 12px; margin-left: 4px; }
+  .phone .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .phone .chip { flex: 1 1 calc(50% - 4px); min-height: 52px; justify-content: center; font-size: 16px; font-weight: 600; border-radius: 12px; padding: 8px 10px; cursor: pointer; font-family: inherit; color: var(--ink); white-space: nowrap; }
+  .phone .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .phone .muted.small { font-size: 12.5px; color: var(--muted); }
+  .phone .sheet-btns { margin-top: auto; display: flex; gap: 10px; flex: none; padding: 8px 0 16px; background: var(--bg-2); }   /* sticky to the screen's bottom on the real phone (v42); static in a frame on a long page */
+  .phone .sheet-btns .btn { flex: 1; min-height: 54px; font-size: 16px; border-radius: 14px; cursor: pointer; font-family: inherit; }
+  .phone .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .phone .ribbon { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 14px; font-size: 14px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .phone .ribbon[hidden] { display: none; }
+
+  /* the base */
+  .bars { display: flex; height: 40px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel-2); font-size: 14px; }
+  .bars-quiet { flex: 1 1 0; min-width: 0; display: flex; align-items: center; padding: 0 16px; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-item { flex: 1.5 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 100%; background: var(--danger); color: #fff; font-weight: 600; }
+  .bar-item.ack { background: #7A1C16; }
+  .bar-item + .bar-item { border-left: 1px solid rgba(0,0,0,.25); }
+  .bar-text { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-item .btn { flex: none; background: #fff; color: var(--danger); border-color: #fff; min-height: 32px; padding: 0 10px; font-size: 13px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .bar-item .bar-time { flex: none; font-weight: 400; opacity: .85; }
+  .unit-h { display: flex; gap: 8px; align-items: center; margin: 0 0 4px; }
+  .unit-h .back { color: var(--accent-text); font-size: 12.5px; font-weight: 500; }
+  .unit-h .seg { margin-left: auto; display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+  .unit-h .seg button { border: 0; background: none; color: var(--ink); padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  .unit-h .seg button.on { background: var(--accent); color: #fff; }
+  .panel .title { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  .panel .title span { font-weight: 400; color: var(--ink-2); }
+  .badge { border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; background: var(--soft); color: var(--ink-2); display: inline-block; line-height: 1.5; }
+  .badge.sos { background: var(--danger); color: #fff; }
+  .badge.st-assigned { background: var(--tint-blue); color: var(--active); }
+  .d-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+  .panel .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; margin-top: 8px; }
+  .panel .kv .k { margin: 0; align-self: baseline; }
+  .log { font-size: 13px; }
+  .log-row { display: flex; gap: 10px; padding: 4px 8px; border-left: 3px solid var(--danger); align-items: baseline; }
+  .log-row.ops { border-left-color: var(--grey); }
+  .log-row.new { background: var(--tint-blue); }
+  .log-row .t { color: var(--muted); flex: none; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px; }
+  .log-row .x { flex: 1; min-width: 0; }
+  .log-row .llink { color: var(--accent-text); text-decoration: underline; margin-left: auto; flex: none; font-size: 12px; }
+  .log-sep { font-size: 10.5px; color: var(--muted); padding: 4px 8px 1px; border-top: 1px dashed var(--line); margin-top: 2px; letter-spacing: .04em; }
+
+  /* the data sketch */
+  .cols2 { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px 28px; }
+  .cols2 h3 { font-size: 14px; margin: 14px 0 4px; } .cols2 h3:first-child { margin-top: 0; }
+  .cols2 p, .cols2 li { font-size: 13.5px; line-height: 1.5; margin: 0 0 6px; color: var(--ink-2); }
+  .cols2 ul { padding-left: 18px; margin: 0 0 8px; }
+  .cols2 b { color: var(--ink); }
+  pre.sql { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+  pre.sql .c { color: var(--muted); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); }
+  table.tbl td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; line-height: 1.4; }
+  table.tbl td:first-child { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  @media (max-width: 900px) { .cols2 { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .phone, .panel { width: 100%; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: what's wrong, what you need</span></div>
+  <div class="tabs">
+    <a href="#sheet">The sheet</a>
+    <a href="#base">The base</a>
+    <a href="#data">Data</a>
+    <a href="#decide">Decide</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>Need help now: what's wrong, what you need</h1>
+  Todd, 18 October: <q>on this screen we should be able to add better context, either what kind of help or the nature of the danger.</q>
+  Drawn at v62, before anything is built. Send alert stays one tap, exactly as today. Two rows of big chips above it, optional. The words ride on the alert to the bar and the 214, and the chips stay live after the send, because the first press is a reflex and the detail comes a breath later. Made-up data; press the buttons.
+</div>
+
+<!-- ============================================================ THE SHEET -->
+<section class="part" id="sheet">
+  <h2 class="sec">The sheet, at 375 px <span class="sub">one shared state: Send alert and every chip on the two live phones reach the base below</span></h2>
+  <div class="flowbar">
+    <span>The story is at <span class="clock" id="clock">17:45</span></span>
+    <button class="btn sm" data-act="reset" type="button">Reset to 17:45</button>
+    <span>Unit 2 (Dep. Moreno, alone at the bridge post, B-1) pressed bare at 17:43 for a car in the water. Unit 3 (Hale, Dominguez, A-2) is about to send: a trailer shifted onto Hale.</span>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="phone still" id="f1"></div>
+      <div class="cap"><span class="stepno">1</span><b>Today, as built.</b> The title, two sentences, the "Will be sent" card, Cancel and Send alert. One tap sends unit, zone, position and time. The base's bar reads "EMERGENCY · Unit 3 needs help in A-2", the 214 the same, the base chimes. Nothing says what is wrong.</div>
+    </div>
+
+    <div class="screen">
+      <div class="phone still" id="f2"></div>
+      <div class="cap"><span class="stepno">2</span><b>Proposed, untouched.</b> One shorter sentence. Two rows of chips, 52 px tall, two to a row, nothing lit. Send alert is the same button in the same place: a press with nothing chosen sends today's alert, word for word. The chips cost nothing unless tapped.</div>
+    </div>
+
+    <div class="screen">
+      <div class="phone" id="f3"></div>
+      <div class="cap"><span class="stepno">3</span><b>Unit 3, two chips chosen</b> (live: tap more, or Send alert). Trapped and Injured ride with the alert: the bar reads "… needs help in A-2 · trapped, injured", the 214 the same line with a colon. No typing. The words are in the list's order, never the tap's, so the base reads them the same way every time.</div>
+    </div>
+
+    <div class="screen">
+      <div class="phone" id="f4"></div>
+      <div class="cap"><span class="stepno">4</span><b>Unit 2, after a bare press</b> (live). Help sent keeps the same two rows under the status card, nothing lit. Each tap updates the open alert and writes its own 214 line, "Unit 2 adds: in the water". A second tap on a lit chip takes it back, logged too, because gloves slip. Stand down closes it as today.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ THE BASE -->
+<section class="part" id="base">
+  <h2 class="sec">The base, the same moment <span class="sub">the bar, the unit panel and the 214 follow the phones above; Acknowledge reaches the phone</span></h2>
+  <div class="screens">
+    <div class="screen w" style="width:100%">
+      <div class="bars" id="bars"></div>
+      <div class="cap"><b>The alarm line</b>, one cell per open emergency, cut short on screen and whole on hover. Today's words first, then the chips' words, then the time, so a bare press reads exactly as today and the words survive the cut before the clock does. The buttons stay Acknowledge and Show unit.</div>
+    </div>
+    <div class="screen">
+      <div class="panel" id="unitp"></div>
+      <div class="cap"><b>The unit panel.</b> The red badge carries the words. Nothing chosen reads "needs help" as today.</div>
+    </div>
+    <div class="screen">
+      <div class="panel" id="logp"></div>
+      <div class="cap"><b>The 214</b>, written by the database's trigger, never by the app: the alert with its words after the colon, the acknowledgement, each chip added or taken back after the send, the stand-down. Filed under the field as today's <span class="mono">help</span> lines are.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DATA -->
+<section class="part" id="data">
+  <h2 class="sec">What it is made of <span class="sub">one migration, the next free number (0035 today; 0036 if the credentials build takes 0035 first); a small release</span></h2>
+  <div class="panel wide">
+    <div class="cols2">
+      <div>
+        <h3>The lists live in rules.js</h3>
+        <p><b><span class="mono">ALERT_WRONG</span></b> and <b><span class="mono">ALERT_NEEDS</span></b>: code and label pairs like <span class="mono">URGENCY</span>, in the order the chips are drawn and the words are read. <b><span class="mono">alertWords(a)</span></b> joins them: the wrong words lower case with commas, then " · needs " and the needs, then the PAR's note when there is one ("in the water · needs boat"; "trapped, injured · needs boat, medic"; "Missing: Okafor"). The phone's chips, the bar, the unit panel and the mock read the one function; <span class="mono">dev/test-rules.mjs</span> covers it. In SQL, <b><span class="mono">ic_alert_text(wrong, needs, note)</span></b> says the same words, as <span class="mono">ic_qual_text</span> does for qualifications.</p>
+        <h3>Two columns, not the note</h3>
+        <p><b><span class="mono">ic_alerts.wrong text[]</span></b> and <b><span class="mono">needs text[]</span></b>, empty by default, each checked against its list. The codes travel; the words are read. <span class="mono">note</span> stays what v29 made it, the PAR's "Missing: Okafor", and is read after the chips. Why not the note alone: the line after a send has to say what was <i>added</i>, and a trigger can take the difference of two arrays in one expression; taking it out of a joined string, around a PAR's words, is a parser nobody wants in SQL and in the mock twice. The cheaper build (the words into <span class="mono">note</span>, no new columns) is the first thing in Yours to decide.</p>
+        <h3>The policies are enough</h3>
+        <p>Checked: <span class="mono">ic_alerts_update</span> (0001) lets the unit update its own row and Operations any (<span class="mono">standDown</span> already goes through it). No new policy. One new before trigger, <b><span class="mono">ic_alert_before</span></b>: the chips change only by the alert's own unit, never once <span class="mono">stood_down_at</span> is set; Operations keeps <span class="mono">acknowledged_at</span>. The insert policy is unchanged (<span class="mono">ic_may_write</span> on the queued time, v27).</p>
+        <h3>The trigger writes the line</h3>
+        <p><b><span class="mono">ic_log_alert</span></b> (0021's body, the highest that defines it) gains one branch between the two it has: when <span class="mono">wrong</span> or <span class="mono">needs</span> changed, "Unit 2 adds: in the water · needs boat" from the codes now present and not before, and "Unit 2 takes back: rope" from the ones gone. The insert line reads <span class="mono">ic_alert_text</span> in place of <span class="mono">note</span>, so a bare press still writes "EMERGENCY, Unit 3 needs help in A-2" and the PAR's alert still ends ": Missing: Okafor". One tap is one update, so a line never says both; two taps queued offline arrive in order and write two lines.</p>
+        <h3>The phone, the base, the outbox</h3>
+        <ul>
+          <li><b>The phone</b>: <span class="mono">state.alertWrong</span> / <span class="mono">alertNeeds</span> (sets), cleared by <span class="mono">openHelp</span>; the chips drawn by one function on both sheets; <span class="mono">sendAlert</span> puts the codes on the row and the outbox entry; a tap on Help sent writes the local row and queues kind <span class="mono">alertWords</span> <span class="mono">{id, wrong, needs}</span> → <span class="mono">data.setAlertWords</span>, a plain update like <span class="mono">standDown</span>. A tap while the alert is stood down does nothing (the screen is gone). The PAR's missing report sends its note as today, no chips.</li>
+          <li><b>The base</b>: <span class="mono">maydayHtml</span> appends " · " + <span class="mono">alertWords(a)</span> after the zone; <span class="mono">unitHtml</span>'s badge the same; no second chime for a change of words, the cell's words change in place. The attention line in the briefing reads them too.</li>
+          <li><b>The mock</b>: <span class="mono">DEFAULTS</span> gets the two empty arrays, <span class="mono">afterInsert</span> and <span class="mono">afterUpdate</span> the two lines with the same words, the check on the codes; the seed gets one stood-down alert from the morning with words, so the log shows the form. <span class="mono">SEED_VERSION</span> bumps.</li>
+          <li><b>Rule test</b> <span class="mono">supabase/tests/alertwords.sql</span>, rolled back: a bare insert writes today's line exactly; two chips write the words after the colon; a code outside the list is refused; the unit adds one and the "adds" line lands, takes one back and the "takes back" line lands; another unit's update is refused; Operations cannot change the chips; a change after stand-down is refused; the PAR's note still lands with no chips.</li>
+          <li><b>Smoke suite</b> <span class="mono">mayday</span>, the phone in <span class="mono">phoneFrame</span> as the <span class="mono">walkfix</span> suite does: opens Need help now, counts ten chips, sends bare and reads the bar as today; taps Medic on Help sent, reads "needs medic" on the bar and "Unit 3 adds: medic" in the log; stands down; opens again, taps two, sends, reads the words in the first line and on the unit panel's badge.</li>
+          <li><b>Size</b>: a v41-sized release (hazards with an urgency): one migration, rules.js, both views, the mock, a rule test, a smoke suite. A day or two.</li>
+        </ul>
+      </div>
+      <div>
+<pre class="sql"><span class="c">-- 003N_alert_words.sql (sketch)</span>
+alter table ic_alerts
+  add column wrong text[] not null default '{}',
+  add column needs text[] not null default '{}';
+alter table ic_alerts add constraint ic_alerts_wrong_check
+  check (wrong &lt;@ array['in_water','trapped','injured','cut_off',
+                        'unsafe_structure','missing']);
+alter table ic_alerts add constraint ic_alerts_needs_check
+  check (needs &lt;@ array['boat','medic','rope','hands']);
+
+create function ic_alert_text(p_wrong text[], p_needs text[], p_note text)
+  returns text … <span class="c">-- = alertWords() in rules.js:
+  -- 'trapped, injured · needs boat, medic', then ': ' || note when given</span>
+
+create function ic_alert_before() returns trigger … <span class="c">-- the chips change only
+  -- by new.user_id = auth.uid(), never after stood_down_at; else raise</span>
+
+create or replace function ic_log_alert() … <span class="c">-- 0021's body plus one branch:</span>
+  elsif new.wrong is distinct from old.wrong
+     or new.needs is distinct from old.needs then
+    <span class="c">-- added := codes in new and not in old (both arrays); gone := the reverse
+    -- 'Unit 2 adds: in the water · needs boat' / 'Unit 2 takes back: rope'</span>
+  <span class="c">-- the insert line: … || ' needs help in ' || ic_zone_code(new.zone_id)
+  --   || case when t &lt;&gt; '' then ': ' || t else '' end
+  --   where t = ic_alert_text(new.wrong, new.needs, new.note)</span>
+
+<span class="c">-- rules.js</span>
+export const ALERT_WRONG = [['in_water', 'In the water'], ['trapped', 'Trapped'],
+  ['injured', 'Injured'], ['cut_off', 'Cut off'],
+  ['unsafe_structure', 'Unsafe structure'], ['missing', 'Someone missing']];
+export const ALERT_NEEDS = [['boat', 'Boat'], ['medic', 'Medic'],
+  ['rope', 'Rope'], ['hands', 'More hands']];
+export function alertWords(a) { … }   <span class="c">-- list order, lower case, ' · needs ', the note last</span></pre>
+        <table class="tbl" style="margin-top:14px">
+          <thead><tr><th>Where</th><th>Nothing chosen (today's words)</th><th>With chips</th></tr></thead>
+          <tbody>
+            <tr><td>The bar</td><td>EMERGENCY · Unit 3 needs help in A-2 · sent 17:46</td><td>EMERGENCY · Unit 3 needs help in A-2 · trapped, injured · sent 17:46</td></tr>
+            <tr><td>The 214, insert</td><td>EMERGENCY, Unit 3 needs help in A-2</td><td>EMERGENCY, Unit 3 needs help in A-2: trapped, injured</td></tr>
+            <tr><td>The 214, after</td><td>—</td><td>Unit 3 adds: needs medic · Unit 3 takes back: injured</td></tr>
+            <tr><td>The unit panel</td><td>EMERGENCY · needs help · acknowledged 17:47</td><td>EMERGENCY · trapped, injured · needs medic · acknowledged 17:47</td></tr>
+            <tr><td>A PAR's alert</td><td>EMERGENCY, Unit 1 needs help in A-1: Missing: Okafor</td><td>unchanged: the PAR sends no chips</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DECIDE -->
+<section class="part" id="decide">
+  <h2 class="sec">Decided here, and yours to decide</h2>
+  <div class="panel wide">
+    <div class="k">Decided here (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>Send alert does not change.</b> Same button, same place, one tap, no chip required. The chips sit between the card and the foot, where the thumb is, and the foot stays stuck to the bottom however long the sheet is (v42).</li>
+      <li><b>Two rows, both optional, both multi-select.</b> What's wrong tells Operations what they are walking into; what you need tells them what to send. Either row alone leaves a question: "in the water" with no need could be a body or a swimmer. Ten chips, five rows of two, 52 px each: a glove hits one.</li>
+      <li><b>The lists changed from the first recommendation.</b> "Person in the water" and "Vehicle in water" became one chip, <b>In the water</b>: the car is a detail, the need chip (Boat) says what matters, and the position says where. <b>Lost</b> became <b>Cut off</b>: in a flood a crew is cut off by rising water far more often than lost, and the phone's position already tells the base where a lost crew is. <b>Someone missing</b> is new: a lead whose crew member was swept away presses this button first, not a PAR. What you need stays Boat · Medic · Rope · More hands: a mayday is not a 213RR.</li>
+      <li><b>The chips stay live on Help sent.</b> The first press is a reflex. A tap after the send updates the open alert and writes its own line; a tap on a lit chip takes it back, logged, because gloves slip. The base's cell changes in place with no second chime.</li>
+      <li><b>No free-text box.</b> Typing in the rain with one hand is what the alert exists to avoid. What the chips cannot say goes by radio, or by Message Operations, which has the box and the pin already.</li>
+      <li><b>The words are read in the list's order.</b> "trapped, injured" whoever tapped which first, so the bar reads the same way every time and the smoke suite can read it.</li>
+      <li><b>Codes in two columns; the note stays the PAR's.</b> One migration either way (the after-send line needs a trigger branch), and arrays make the "adds" line one expression. The sentence on the sheet is shorter: "Goes to Operations and every unit, with your position."</li>
+    </ul>
+    <div class="k">Yours to decide</div>
+    <ul class="decisions">
+      <li><b>The cheaper build.</b> The words joined into <span class="mono">note</span>, no new columns: the insert line works today with no SQL, and only the after-send line needs the trigger. The cost is parsing the note to say what was added, and a PAR's "Missing: Okafor" mixed into the same string. Drawn here: the two columns.</li>
+      <li><b>Chips on the sheet, or only after the send?</b> Drawn here: both, the same chips in the same place. The other way keeps the sheet exactly as today and shows the chips only on Help sent: the alert lands a second sooner for everyone, and Dep. Moreno's car in the water takes one more tap after Send. Either way the base's bar carries the words.</li>
+      <li><b>"Injured" or "Hurt".</b> Injured is the radio word and leaves out a heart attack; Hurt is plainer and leaves it out too. "Medical" covers both and is the word nobody says. Drawn here: Injured.</li>
+      <li><b>Does an added "In the water" chime again at the base?</b> Drawn here: no, the cell's words change and the 214 line lands. The other way rings once more for a change of words on an unacknowledged alert only.</li>
+      <li><b>A chip for "Tools" (jacks, cutters, cribbing)?</b> Trapped under a shifted trailer needs them. Drawn here: not yet; four needs keep the row to two lines. Add it when a walk asks for it.</li>
+      <li><b>Operations setting the chips from the base.</b> Drawn here: the unit's alone (the trigger refuses). The other way lets the base add "needs medic" after a radio call, with a line that names Operations.</li>
+    </ul>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+  // the lists as rules.js would hold them (ALERT_WRONG, ALERT_NEEDS); alertWords joins them in list order
+  const WRONG = [['in_water', 'In the water'], ['trapped', 'Trapped'], ['injured', 'Injured'], ['cut_off', 'Cut off'], ['unsafe_structure', 'Unsafe structure'], ['missing', 'Someone missing']];
+  const NEEDS = [['boat', 'Boat'], ['medic', 'Medic'], ['rope', 'Rope'], ['hands', 'More hands']];
+  const label = (list, code) => (list.find((x) => x[0] === code) || [code, code])[1];
+  const wordsOf = (list, codes) => list.filter((x) => codes.has(x[0])).map((x) => x[1].toLowerCase());
+  const alertWords = (a) => {
+    const w = wordsOf(WRONG, a.wrong), n = wordsOf(NEEDS, a.needs);
+    const parts = [];
+    if (w.length) parts.push(w.join(', '));
+    if (n.length) parts.push('needs ' + n.join(', '));
+    const s = parts.join(' · ');
+    return a.note ? (s ? s + ': ' + a.note : a.note) : s;
+  };
+  // what the trigger would write after a change: the codes now present and not before, and the reverse
+  const diffWords = (unit, before, after) => {
+    const added = { wrong: new Set([...after.wrong].filter((c) => !before.wrong.has(c))), needs: new Set([...after.needs].filter((c) => !before.needs.has(c))), note: '' };
+    const gone = { wrong: new Set([...before.wrong].filter((c) => !after.wrong.has(c))), needs: new Set([...before.needs].filter((c) => !after.needs.has(c))), note: '' };
+    const lines = [];
+    if (added.wrong.size || added.needs.size) lines.push(unit + ' adds: ' + alertWords(added));
+    if (gone.wrong.size || gone.needs.size) lines.push(unit + ' takes back: ' + alertWords(gone).replace(/^needs /, ''));
+    return lines;
+  };
+
+  // ---- the story
+  const UNITS = {
+    u3: { name: 'Unit 3', kind: 'search team', crew: 'Hale, Dominguez', zone: 'A-2', zoneName: 'Pecan Mobile Home Park', pos: '30.26776, -97.73977', agency: 'Cedar Fork Fire Department', count: 2 },
+    u2: { name: 'Unit 2', kind: 'volunteer', crew: 'Moreno', zone: 'B-1', zoneName: 'Low-water bridge, FM 1626', pos: '30.26412, -97.74210', agency: 'Travis County Sheriff', count: 1 },
+  };
+  let S;
+  function reset() {
+    S = {
+      clock: 17 * 60 + 45,
+      panelUnit: 'u2',
+      phones: {
+        u3: { screen: 'sheet', wrong: new Set(['trapped', 'injured']), needs: new Set(), alert: null },
+        u2: { screen: 'sent', wrong: new Set(), needs: new Set(), alert: { at: 17 * 60 + 43, acked: 17 * 60 + 44, wrong: new Set(), needs: new Set(), note: '', down: null } },
+      },
+      log: [
+        { at: 17 * 60 + 43, text: 'EMERGENCY, Unit 2 needs help in B-1', who: 'u2', seed: true },
+        { at: 17 * 60 + 44, text: 'Operations acknowledged the emergency from Unit 2', who: 'ops', seed: true },
+      ],
+    };
+    draw();
+  }
+  const tick = () => { S.clock += 1; };
+  const log = (text, who) => { S.log.push({ at: S.clock, text, who }); };
+
+  // ---- the phone's two sheets
+  const factsHtml = (u) => `<div class="card"><div class="k">Will be sent</div><div class="kv">
+      <span class="k">Unit</span><span>${esc(u.name)} · ${esc(u.crew)}</span>
+      <span class="k">Zone</span><span>${esc(u.zone)} · ${esc(u.zoneName)}</span>
+      <span class="k">Position</span><span class="mono">${esc(u.pos)}</span>
+      <span class="k">Time</span><span>${hhmm(S.clock)}</span></div></div>`;
+  const chipsHtml = (uid, p, where) => `
+    <div class="ask">
+      <div class="k">What's wrong${where === 'sent' ? '<small>tap to add</small>' : ''}</div>
+      <div class="chips">${WRONG.map(([c, l]) => `<button class="chip${p.wrong.has(c) ? ' on' : ''}" type="button" data-chip="wrong" data-code="${c}" data-unit="${uid}" aria-pressed="${p.wrong.has(c)}">${esc(l)}</button>`).join('')}</div>
+      <div class="k">What you need</div>
+      <div class="chips">${NEEDS.map(([c, l]) => `<button class="chip${p.needs.has(c) ? ' on' : ''}" type="button" data-chip="needs" data-code="${c}" data-unit="${uid}" aria-pressed="${p.needs.has(c)}">${esc(l)}</button>`).join('')}</div>
+    </div>`;
+  function todayHtml(u) {
+    return `<h2>Need help now</h2>
+      <p>Sends an emergency alert to Operations with your live location and your zone. Every unit on the incident sees it.</p>
+      ${factsHtml(u)}
+      <div class="sheet-btns"><button class="btn" type="button">Cancel</button><button class="btn danger" type="button">Send alert</button></div>`;
+  }
+  function sheetHtml(uid, p) {
+    const u = UNITS[uid];
+    return `<h2>Need help now</h2>
+      <p>Goes to Operations and every unit, with your position.</p>
+      ${factsHtml(u)}
+      ${chipsHtml(uid, p, 'sheet')}
+      <div class="sheet-btns"><button class="btn" type="button" data-act="cancel" data-unit="${uid}">Cancel</button><button class="btn danger" type="button" data-act="send" data-unit="${uid}">Send alert</button></div>`;
+  }
+  function sentHtml(uid, p) {
+    const a = p.alert;
+    return `<h2>Alert sent ${hhmm(a.at)}</h2>
+      <div class="card${a.acked ? ' acked' : ''}">${a.acked
+        ? `<div class="k" style="color:var(--cleared)">Operations acknowledged at ${hhmm(a.acked)}</div><div class="muted small">Stay put if you can. Your location keeps sending.</div>`
+        : `<div class="k">Waiting for Operations</div><div class="muted small">Your location keeps sending every few seconds.</div>`}</div>
+      ${chipsHtml(uid, p, 'sent')}
+      <div class="muted small">Operations sees each tap.</div>
+      <div class="sheet-btns"><button class="btn" type="button" data-act="down" data-unit="${uid}">Stand down, all OK</button></div>`;
+  }
+  function drawPhone(id, uid) {
+    const p = S.phones[uid];
+    const el = $(id);
+    el.innerHTML = p.screen === 'sent' ? sentHtml(uid, p) : sheetHtml(uid, p);
+  }
+
+  // ---- the base
+  const openAlerts = () => Object.entries(S.phones).filter(([, p]) => p.alert && !p.alert.down).map(([uid, p]) => ({ uid, ...p.alert }));
+  function barsHtml() {
+    const open = openAlerts();
+    if (!open.length) return `<div class="bars-quiet">No emergency open · no safety message or PAR waiting on an answer</div>`;
+    return open.map((a) => {
+      const u = UNITS[a.uid];
+      const words = alertWords(a);
+      const text = `EMERGENCY · ${u.name} needs help in ${u.zone}${words ? ' · ' + words : ''} · sent ${hhmm(a.at)}${a.acked ? ' · acknowledged ' + hhmm(a.acked) : ''}`;
+      return `<span class="bar-item${a.acked ? ' ack' : ''}" title="${esc(text)}"><span class="bar-text"><strong>EMERGENCY</strong>${esc(text.slice('EMERGENCY'.length))}</span>${a.acked ? '' : `<button class="btn" type="button" data-act="ack" data-unit="${a.uid}">Acknowledge</button>`}<button class="btn" type="button" data-act="show" data-unit="${a.uid}">Show unit</button></span>`;
+    }).join('');
+  }
+  function unitHtml() {
+    const uid = S.panelUnit, u = UNITS[uid], p = S.phones[uid], a = p.alert && !p.alert.down ? p.alert : null;
+    const words = a ? alertWords(a) : '';
+    return `<div class="unit-h"><span class="back">Back to units</span><span class="seg">${['u2', 'u3'].map((k) => `<button type="button" data-act="panel" data-unit="${k}" class="${S.panelUnit === k ? 'on' : ''}">${UNITS[k].name}</button>`).join('')}</span></div>
+      <div class="title">${esc(u.name)}, ${esc(u.kind)} <span>${esc(u.crew)}</span></div>
+      ${a ? `<div class="d-row"><span class="badge sos">EMERGENCY · ${esc(words || 'needs help')}${a.acked ? ' · acknowledged ' + hhmm(a.acked) : ''}</span></div>` : ''}
+      <div class="d-row"><span class="badge st-assigned">Assigned to ${esc(u.zone)}</span><span class="muted" style="font-size:12px">since ${uid === 'u2' ? '15:10' : '16:20'}</span></div>
+      <div class="kv">
+        <span class="k">Agency</span><span>${esc(u.agency)}</span>
+        <span class="k">Head count</span><span>${u.count}</span>
+        <span class="k">Assigned</span><span>${esc(u.zone)} · ${esc(u.zoneName)}</span>
+        <span class="k">Position</span><span class="mono">${esc(u.pos)}</span>
+        <span class="k">Last report</span><span>${hhmm(S.clock)}${a ? ', position every few seconds' : ''}</span>
+      </div>`;
+  }
+  function logHtml() {
+    const rows = [...S.log].reverse();
+    return `<div class="k">Activity log (ICS 214) · ${S.log.length} lines</div><div class="log">${rows.map((e) => `<div class="log-row${e.who === 'ops' ? ' ops' : ''}${e.seed ? '' : ' new'}"><span class="t">${hhmm(e.at)}</span><span class="x">${esc(e.text)}</span><span class="llink">${e.who === 'ops' ? 'Unit' : UNITS[e.who] ? UNITS[e.who].name : ''}</span></div>`).join('')}<div class="log-sep">17:00 to 17:59</div></div>`;
+  }
+
+  function draw() {
+    $('clock').textContent = hhmm(S.clock);
+    $('f1').innerHTML = todayHtml(UNITS.u3);
+    $('f2').innerHTML = sheetHtml('u3', { wrong: new Set(), needs: new Set() });
+    drawPhone('f3', 'u3');
+    drawPhone('f4', 'u2');
+    $('bars').innerHTML = barsHtml();
+    $('unitp').innerHTML = unitHtml();
+    $('logp').innerHTML = logHtml();
+  }
+
+  // ---- actions
+  let toastT = 0;
+  function toast(s) { const t = $('toast'); t.textContent = s; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
+
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-chip]');
+    if (chip && !chip.closest('.still')) {
+      const uid = chip.dataset.unit, p = S.phones[uid], set = p[chip.dataset.chip], code = chip.dataset.code;
+      const before = { wrong: new Set(p.wrong), needs: new Set(p.needs) };
+      if (set.has(code)) set.delete(code); else set.add(code);
+      if (p.screen === 'sent' && p.alert && !p.alert.down) {
+        // a tap after the send: the open alert's row is updated and the trigger writes the difference
+        tick();
+        p.alert.wrong = new Set(p.wrong); p.alert.needs = new Set(p.needs);
+        for (const line of diffWords(UNITS[uid].name, before, p.alert)) log(line, uid);
+        toast('Sent to Operations');
+      }
+      draw();
+      return;
+    }
+    const btn = e.target.closest('[data-act]');
+    if (!btn || btn.closest('.still')) return;
+    const uid = btn.dataset.unit, p = uid ? S.phones[uid] : null, u = uid ? UNITS[uid] : null;
+    switch (btn.dataset.act) {
+      case 'reset': reset(); toast('Back to 17:45'); return;
+      case 'cancel': p.wrong.clear(); p.needs.clear(); toast('Nothing sent'); break;
+      case 'send': {
+        tick();
+        p.alert = { at: S.clock, acked: null, wrong: new Set(p.wrong), needs: new Set(p.needs), note: '', down: null };
+        const w = alertWords(p.alert);
+        log(`EMERGENCY, ${u.name} needs help in ${u.zone}${w ? ': ' + w : ''}`, uid);
+        p.screen = 'sent';
+        S.panelUnit = uid;
+        toast('Alert sent · the base chimes');
+        break;
+      }
+      case 'ack': tick(); p.alert.acked = S.clock; log(`Operations acknowledged the emergency from ${u.name}`, 'ops'); toast(`${u.name}'s phone reads "Operations acknowledged at ${hhmm(S.clock)}"`); break;
+      case 'show': S.panelUnit = uid; $('unitp').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
+      case 'panel': S.panelUnit = uid; break;
+      case 'down': {
+        tick();
+        p.alert.down = S.clock;
+        log(`${u.name} stood down, all OK`, uid);
+        p.screen = 'sheet'; p.wrong.clear(); p.needs.clear();
+        toast('Stood down · the phone goes home; here it reopens the sheet');
+        break;
+      }
+    }
+    draw();
+  });
+
+  // the theme, stored as the base stores it
+  const themeBtn = $('theme-btn');
+  const drawTheme = () => { themeBtn.textContent = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches) ? 'Light' : 'Dark'; };
+  themeBtn.addEventListener('click', () => {
+    const dark = themeBtn.textContent === 'Dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem('ic.theme', dark ? 'dark' : 'light'); } catch (e) {}
+    drawTheme();
+  });
+  drawTheme();
+  reset();
+})();
+</script>
+</body>
+</html>

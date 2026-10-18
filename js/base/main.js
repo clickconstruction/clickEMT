@@ -26,7 +26,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -666,19 +666,24 @@ function loadRoster() {   // the addresses invited on earlier incidents, for the
   if (state.people.tab !== 'members' || !data.me() || data.me().role !== 'ops') return;
   data.roster().then((r) => { state.roster = r; drawPeople(); }).catch(() => {});
 }
-function closePeople() { $('#people').hidden = true; state.people.add = false; placePages(); }
+function closePeople() { $('#people').hidden = true; Object.assign(state.people, { add: false, addFixed: false, edit: null, open: null, menu: null }); placePages(); }
 function drawPeople() {
   if (!data.incident || $('#people').hidden) return;
+  const ps = state.people, members = ps.tab === 'members', ops = !!data.me() && data.me().role === 'ops';
+  for (const b of document.querySelectorAll('#people .pp-tabs [data-action="people-tab"]')) { const on = (b.dataset.tab === 'members') === members; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+  $('#people-sub').textContent = data.incident.name;
+  $('#people-head').hidden = members;   // the find box, the chips and Add a person narrow the People tab alone (v65); drawn once, so the box keeps focus
   const chips = peopleChipsHtml(data, state);
   const bar = $('#people-quals');
   if (bar.__html !== chips) { bar.__html = chips; bar.innerHTML = chips; }
-  $('#people-sub').textContent = data.incident.name + ' · ' + hhmm(new Date());
-  if ($('#people-q').value !== state.people.q) $('#people-q').value = state.people.q;
+  if ($('#people-q').value !== ps.q) $('#people-q').value = ps.q;
+  $('#people-add').hidden = !ops || ps.add;
   const page = $('#people-page');
   const html = peopleBoardHtml(data, state);
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
 }
+function focusPersonForm(kind) { const f = $(`#people-page form[data-form="${kind}"]`); if (f && f.name) f.name.focus(); }
 $('#people-q').addEventListener('input', (e) => { state.people.q = e.target.value; drawPeople(); });
 
 // ---- find a person (v26): where anyone sheltered, moved or on the way is now and since when, from the
@@ -1050,6 +1055,7 @@ document.addEventListener('click', async (e) => {
   if (state.gearOpen && !e.target.closest('.gear-wrap')) setGearOpen(false);   // v60: the menu and the cards close on a click outside
   if (state.codesOpen && !e.target.closest('#codes-pop') && !e.target.closest('#inc-code')) { state.codesOpen = false; drawCodes(); }
   if (state.liveOpen && !e.target.closest('#live-pop') && !e.target.closest('#live-pill')) { state.liveOpen = false; drawLivePop(); }
+  if (state.people.menu && e.target.isConnected && !e.target.closest('.mb-act')) { state.people.menu = null; drawPeople(); }   // v65: the Members row's ··· menu; a target the redraw detached is not a click outside
   if (state.find.top && !e.target.closest('.find-top')) closeFind();
   else if (state.find.top && e.target.closest('#find-pop [data-action="select-facility"], #find-pop [data-action="select-unit"]')) setTimeout(closeFind, 0);
   const btn = e.target.closest('[data-action]');
@@ -1069,16 +1075,20 @@ document.addEventListener('click', async (e) => {
       case 'copy-code': await navigator.clipboard.writeText(data.incident.code); toast('Join code copied'); break;
       case 'copy-ops-code': await navigator.clipboard.writeText(data.opsCode() || ''); toast('Operations code copied. Give it by radio or phone, never on paper'); break;
       case 'new-ops-code': if (!data.opsCode() || await askConfirm({ title: 'Replace the Operations code?', text: 'Whoever has the old one can no longer join with it. Those already on the incident stay.', ok: 'Replace it' })) { await data.newOpsCode(); toast('New Operations code; the old one no longer joins'); queueDraw(); } break;
-      case 'people-tab': state.people.tab = btn.dataset.tab === 'members' ? 'members' : 'people'; drawPeople(); loadRoster(); break;
+      case 'people-tab': state.people.tab = btn.dataset.tab === 'members' ? 'members' : 'people'; state.people.menu = null; drawPeople(); loadRoster(); break;
+      case 'member-menu': state.people.menu = state.people.menu === id ? null : id; drawPeople(); break;   // v65: the row's ··· menu, kept open across live redraws
+      case 'member-check': state.identOpen = id; closePeople(); select({ type: 'unit', id }); break;   // v65: the licence and the photo on the unit's panel, with Mark verified
       case 'member-role': {
         const m = data.member(id);
         if (!m) break;
+        state.people.menu = null; drawPeople();   // the row's menu closes as its item is pressed (v65)
         if (btn.dataset.role === 'unit') {
-          const p = data.profileOf(id);
-          const name = await askName('Unit name for ' + ((p && p.full_name) || 'this member'), m.unit_name && m.unit_name !== 'Operations' ? m.unit_name : '');
+          const p = data.profileOf(id), who = (p && p.full_name) || unitLabelOf(m);
+          if (!await askConfirm({ title: `Make ${esc(who)} a unit?`, text: `<p><b>They check in</b> on a phone, hold divisions and send reports; the base is Operations' alone.</p><p><b>What changes:</b> their row joins the units; the 214 says "${esc(who)} is now a unit".</p>`, ok: 'Make a unit' })) break;
+          const name = await askName('Unit name for ' + who, m.unit_name && m.unit_name !== 'Operations' ? m.unit_name : '');
           if (name == null) break;
           await data.setRole(id, 'unit', name.trim() || null);
-          toast(((p && p.full_name) || 'The member') + ' is now a unit' + (name.trim() ? ', ' + name.trim() : ''));
+          toast(who + ' is now a unit' + (name.trim() ? ', ' + name.trim() : ''));
         } else {
           if (!await askConfirm({ title: `Make ${esc(unitLabelOf(m))} Operations?`, text: `<p><b>They get</b> the base: the map, drawing and assigning, every identity, the Operations code, roles, the clearing.</p><p><b>What changes:</b> their row leaves the units and reads Operations everywhere; their phone stops showing a unit's briefing; the 214 says "${esc(unitLabelOf(m))} is now Operations".</p>`, ok: 'Make Operations' })) break;
           await data.setRole(id, 'ops');
@@ -1089,6 +1099,7 @@ document.addEventListener('click', async (e) => {
       }
       case 'member-remove': {
         const m = data.member(id);
+        state.people.menu = null; drawPeople();
         if (m && await askConfirm({ title: `Remove ${esc(unitLabelOf(m))} from the incident?`, text: 'Everything they sent stays on record. Their phone shows they were removed. You can put them back from the Members tab.', ok: 'Remove', danger: true })) { await data.removeMember(id); toast(unitLabelOf(m) + ' removed from the incident'); drawPeople(); }
         break;
       }
@@ -1185,12 +1196,15 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'people-qual': { const q = btn.dataset.q; if (state.people.quals.has(q)) state.people.quals.delete(q); else state.people.quals.add(q); drawPeople(); break; }
-      case 'people-add-toggle': state.people.add = !state.people.add; drawPeople(); if (state.people.add) { const f = $('#people-page form[data-form="person-add"]'); if (f) f.name.focus(); } break;
+      case 'people-add-toggle': state.people.add = !state.people.add; state.people.addFixed = false; if (state.people.add) { state.people.edit = null; state.people.open = null; } drawPeople(); if (state.people.add) focusPersonForm('person-add'); break;   // the form opens in the drawer (v65)
+      case 'people-add-to': Object.assign(state.people, { add: true, addFixed: true, addUnit: id, edit: null, open: null }); drawPeople(); focusPersonForm('person-add'); break;   // v65: Add a person at a card's foot, the unit fixed
+      case 'person-open': state.people.open = state.people.open === id ? null : id; state.people.add = false; state.people.addFixed = false; state.people.edit = null; drawPeople(); break;   // v65: the drawer beside the cards
+      case 'person-close': state.people.open = null; state.people.edit = null; drawPeople(); break;
       case 'person-out': await data.checkOutPerson(id); break;
       case 'person-in': await data.checkInPerson(id); break;
       case 'person-remove': { const p = data.person(id); if (p && await askConfirm({ title: `Take ${esc(p.name)} off the roster?`, text: 'The record is kept and can be put back.', ok: 'Take off' })) { await data.archivePerson(id); toast(p.name + ' removed'); } break; }
       case 'person-restore': await data.updatePerson(id, { archived_at: null }); break;
-      case 'person-edit': state.people.edit = id; state.people.add = false; drawPeople(); { const f = $('#people-page form[data-form="person-edit"]'); if (f) f.name.focus(); } break;
+      case 'person-edit': state.people.edit = id; state.people.open = id; state.people.add = false; state.people.addFixed = false; drawPeople(); focusPersonForm('person-edit'); break;
       case 'person-edit-cancel': state.people.edit = null; drawPeople(); break;
       case 'overlay-hide': setOverlayHidden(id, true); queueDraw(); break;
       case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
@@ -1356,7 +1370,7 @@ document.addEventListener('change', async (e) => {
     if (sel.dataset.select === 'zone-objective') { await data.updateZone(sel.dataset.id, { objective_id: sel.value || null }); sel.blur(); queueDraw(); }
     if (sel.dataset.range === 'overlay-opacity') { await data.updateOverlay(sel.dataset.id, { opacity: Number(sel.value) }); sel.blur(); queueDraw(); }
     if (sel.dataset.select === 'hours-period') { state.hoursPeriod = sel.value; drawBriefing(); }
-    if (sel.dataset.select === 'person-unit') { const p = data.person(sel.dataset.id); await data.updatePerson(sel.dataset.id, { user_id: sel.value }); sel.blur(); if (p) toast(p.name + ' moved to ' + unitLabelOf(data.member(sel.value))); queueDraw(); }
+    if (sel.dataset.select === 'person-unit' && sel.value) { const p = data.person(sel.dataset.id); await data.updatePerson(sel.dataset.id, { user_id: sel.value }); sel.blur(); if (p) toast(p.name + ' moved to ' + unitLabelOf(data.member(sel.value))); queueDraw(); }
     if (sel.dataset.select === 'ev-where') {
       const ev = data.evacuee(sel.dataset.id);
       if (ev) { const done = await data.updateEvacuee(ev.id, wherePatch(sel.value, { facilityOf: (fid) => data.facility(fid), current: ev })); toast(evacueeWho(done) + ': ' + evacueeWhere(done, (fid) => data.facility(fid))); }
@@ -1385,6 +1399,13 @@ document.addEventListener('keydown', (e) => {
     if (!typing && (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight')) { state.placing.ctl.nudge(k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0); e.preventDefault(); return; }
   }
   if (e.key === 'Escape' && state.layersOpen) { setLayersOpen(false); return; }
+  if (e.key === 'Escape' && !$('#people').hidden && !document.querySelector('dialog[open]') && (state.people.menu || state.people.open || state.people.add || state.people.edit)) {   // v65: the board's menu, then its drawer, before the page
+    const t = e.target;
+    if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) { t.blur(); return; }
+    if (state.people.menu) { state.people.menu = null; drawPeople(); return; }
+    if (pageDirty($('#people'))) { toast('Save or cancel the form first'); return; }
+    Object.assign(state.people, { open: null, edit: null, add: false, addFixed: false }); drawPeople(); return;
+  }
   if (e.key === 'Escape' && openPages().length && !document.querySelector('dialog[open]')) {   // v64: a page as a window; a focused field is left first
     const t = e.target;
     if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) { t.blur(); return; }
@@ -1511,8 +1532,9 @@ document.addEventListener('submit', async (e) => {
       const name = form.name.value.trim();
       if (!name) return;
       const quals = [...form.querySelectorAll('input[name="q"]:checked')].map((i) => i.value);
-      await data.addPerson(crypto.randomUUID(), { userId: form.unit.value, name, role: form.role.value.trim(), agency: form.agency.value.trim(), qualifications: quals });
-      state.people.add = false; state.people.addUnit = form.unit.value;
+      const pid = crypto.randomUUID();
+      await data.addPerson(pid, { userId: form.unit.value, name, role: form.role.value.trim(), agency: form.agency.value.trim(), qualifications: quals });
+      Object.assign(state.people, { add: false, addFixed: false, addUnit: form.unit.value, open: pid });   // the drawer opens on the new person (v65)
       toast(name + ' added to ' + unitLabelOf(data.member(form.unit.value)));
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();   // the page redraws only while no field in it has focus
       drawPeople();

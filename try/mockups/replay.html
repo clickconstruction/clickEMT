@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: the Replay bar, a time to pick and a speed in words · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- A click-through mock-up of two changes to the base's Replay bar (index.html #replay, js/base/main.js openReplay /
+     drawReplay), drawn 18 October 2026 at v59 before anything is built, from two of Todd's notes on the walk: the
+     range menu should let you pick a date and a time, and make plain where the records begin so nobody clicks into
+     nothingness; and the speed menu (10× / 60× / 600×) is not understood at first glance. Drawn in the app's own
+     styles with made-up data: Cedar Fork Flooding opened at 06:12 today, the first position came at 06:40, period 2
+     started at 08:00, it is 10:05 now. Nothing here writes anywhere. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .intro { max-width: 760px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .screens { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 760px; line-height: 1.4; }
+  .screen > .cap b { color: var(--ink); }
+  .panel { width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .panel.wide { width: 760px; }
+  h2.t { font-size: 18px; margin: 0 0 4px; }
+  .k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+  .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .decisions { margin: 0; padding-left: 18px; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  .chip { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); margin: 2px 4px 2px 0; cursor: pointer; }
+  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .orange { color: var(--hazard-ink); }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; }
+  .toast[hidden] { display: none; }
+
+  /* the stage: the foot of the map column at 1280 (the side panel takes 340), with the bar under a strip of map */
+  .stage-wrap { max-width: 100%; overflow-x: auto; }
+  .stage { width: 940px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+  .mapish { position: relative; height: 112px; background: var(--photo-bg); background-image: linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px); background-size: 48px 48px; filter: var(--map-dim); }
+  .mapish svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mapish .rtrail { stroke: var(--accent); stroke-width: 2.5; stroke-opacity: .55; stroke-dasharray: 2 5; stroke-linecap: round; fill: none; }
+  .ghost { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2.5px solid var(--accent); box-sizing: border-box; transform: translate(-50%, -50%); }
+  .ghost b { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: var(--accent-text); white-space: nowrap; text-shadow: 0 0 3px var(--halo), 0 0 3px var(--halo); }
+  .ghost[hidden] { display: none; }
+  .mapish .zone { position: absolute; border: 2px solid var(--active); background: color-mix(in srgb, var(--active) 14%, transparent); border-radius: 3px; font-size: 11px; font-weight: 700; color: var(--active); padding: 2px 5px; }
+
+  /* the bar, as css/base.css draws .replay, with the app's small buttons and selects */
+  .replay { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--tint-blue); }
+  .replay .replay-time { font-size: 14px; font-weight: 600; min-width: 48px; }
+  .replay .hint { font-size: 12.5px; color: var(--muted); flex-basis: 100%; order: 10; }
+  select.sel { border: 1px solid var(--control-border); border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); color: var(--ink); max-width: 100%; }
+  .replay input[type=range].plain { flex: 1; min-width: 160px; accent-color: var(--accent); }
+
+  /* proposed: the slider sits in a track that can show the run-up before the first position */
+  .rp-slider { flex: 1; min-width: 160px; position: relative; height: 28px; display: flex; align-items: center; }
+  .rp-slider { --p: 0%; }
+  .rp-slider input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; margin: 0; background: transparent; position: relative; z-index: 3; }
+  .rp-slider input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: transparent; }
+  .rp-slider input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: transparent; }
+  .rp-track { position: absolute; left: 0; right: 0; top: 11px; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p), var(--control-border) var(--p)); z-index: 1; }
+  .rp-slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; margin-top: -6px; box-shadow: 0 1px 3px rgba(0,0,0,.3); cursor: pointer; }
+  .rp-slider input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; cursor: pointer; }
+  .rp-gap { position: absolute; left: 0; top: 11px; height: 6px; border-radius: 3px 0 0 3px; pointer-events: none; z-index: 2; }
+  .rp-slider input[type=range]:disabled::-webkit-slider-thumb { display: none; }
+  .rp-gap.hatch { background: repeating-linear-gradient(135deg, var(--muted) 0 2px, var(--tint-blue) 2px 6px); }
+  .rp-gap.dim { background: var(--tint-blue); opacity: .85; border-right: 2px solid var(--muted); }
+  .rp-gap::after { content: attr(data-at); position: absolute; right: -2px; top: 9px; transform: translateX(50%); font-size: 10.5px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  .rp-gap.wide::after { content: attr(data-at); right: auto; left: 0; transform: none; }
+  .rp-gap[hidden] { display: none; }
+  .rp-time { display: inline-flex; align-items: baseline; gap: 8px; }
+  .rp-time.none .replay-time { color: var(--muted); }
+  .rp-none { font-size: 12.5px; color: var(--hazard-ink); font-weight: 600; white-space: nowrap; }
+  .rp-none[hidden] { display: none; }
+  .rp-pick { flex-basis: 100%; order: 5; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+  .rp-pick[hidden] { display: none; }
+  .rp-pick b { font-size: 13px; }
+  .rp-pick input { border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); color: var(--ink); font-family: inherit; }
+  .rp-pick .why { font-size: 12.5px; color: var(--muted); flex: 1; min-width: 200px; }
+  .rp-pick .why.bad { color: var(--hazard-ink); font-weight: 600; }
+
+  /* the speed wordings tried, each drawn as an open menu */
+  .menus { display: flex; gap: 18px; flex-wrap: wrap; }
+  .menu { width: 230px; }
+  .menu .k { margin-top: 0; }
+  .menu ul { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 6px 18px rgba(0,0,0,.18); font-size: 13px; }
+  .menu li { padding: 6px 10px; border-radius: 5px; }
+  .menu li.on { background: var(--accent); color: #fff; }
+  .menu li.on .sub { color: rgba(255,255,255,.8); }
+  .menu .pick { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .menu.chosen .pick { color: var(--accent-text); font-weight: 600; }
+  .states { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up · the Replay bar</span></div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" title="Light or dark, this device (ic.theme)">Dark</button>
+  <a class="btn sm" href="/try/mockups/">‹ All mock-ups</a>
+  <a class="btn sm" href="/try/">Try it</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+<div class="intro"><h1>The Replay bar: a time to pick, a speed in words</h1>Two notes from the walk: the range menu should take a date and a time and make plain where the records begin, so nobody clicks into nothingness; and the speed menu is not understood at a glance. Made-up data: the incident opened 06:12 today, the first position came 06:40, period 2 started 08:00, it is 10:05 now. Press the menus and drag the slider.</div>
+
+<div class="screens">
+
+  <!-- ============================================================ AS IT IS -->
+  <div class="screen">
+    <div class="stage-wrap"><div class="stage">
+      <div class="mapish">
+        <svg viewBox="0 0 940 112" preserveAspectRatio="none"><path class="rtrail" d="M 300 70 C 340 60, 380 64, 430 48"/><path class="rtrail" d="M 560 30 C 600 34, 640 50, 700 58"/></svg>
+        <span class="zone" style="left:250px;top:14px;width:240px;height:80px">A-1</span>
+        <span class="zone" style="left:540px;top:8px;width:260px;height:90px">B-1</span>
+        <span class="ghost" style="left:430px;top:48px"><b>Unit 1</b></span>
+        <span class="ghost" style="left:700px;top:58px"><b>Unit 2</b></span>
+        <span class="ghost" style="left:160px;top:72px"><b>Unit 3</b></span>
+      </div>
+      <div class="replay">
+        <button class="btn sm pri">Play</button>
+        <input type="range" class="plain" min="0" max="1000" value="780" aria-label="Moment to show">
+        <span class="mono replay-time">09:14</span>
+        <select class="sel" aria-label="How far back to replay"><option>Last hour</option><option selected>This period</option><option>Whole incident</option></select>
+        <select class="sel" aria-label="Replay speed"><option>10×</option><option selected>60×</option><option>600×</option></select>
+        <span class="hint">3 units on the map · 09:10 B-1 assigned to Unit 2</span>
+        <button class="btn sm">Close</button>
+      </div>
+    </div></div>
+    <div class="cap"><b>As it is (v59).</b> Play, the slider, the moment, how far back, a speed as a number, and the log line under. Nothing says where the slider's left end is or where the positions begin, and 60× has to be worked out.</div>
+  </div>
+
+  <!-- ============================================================ AS PROPOSED (live) -->
+  <div class="screen">
+    <div class="states" id="gap-states">The run-up before the first position: <button class="chip on" data-gap="hatch">Hatched</button><button class="chip" data-gap="dim">Dimmed</button><button class="chip" data-gap="cut">Cut off</button></div>
+    <div class="stage-wrap"><div class="stage">
+      <div class="mapish">
+        <svg viewBox="0 0 940 112" preserveAspectRatio="none"><path class="rtrail" id="trail-1" d="M 300 70 C 340 60, 380 64, 430 48"/><path class="rtrail" id="trail-2" d="M 560 30 C 600 34, 640 50, 700 58"/></svg>
+        <span class="zone" style="left:250px;top:14px;width:240px;height:80px">A-1</span>
+        <span class="zone" style="left:540px;top:8px;width:260px;height:90px">B-1</span>
+        <span class="ghost" id="g-1" style="left:430px;top:48px"><b>Unit 1</b></span>
+        <span class="ghost" id="g-2" style="left:700px;top:58px"><b>Unit 2</b></span>
+        <span class="ghost" id="g-3" style="left:160px;top:72px"><b>Unit 3</b></span>
+      </div>
+      <div class="replay" id="rp">
+        <button class="btn sm pri" id="rp-play">Play</button>
+        <div class="rp-slider" id="rp-sliderwrap">
+          <div class="rp-track"></div>
+          <input type="range" id="rp-range" min="0" max="1000" value="0" aria-label="Moment to show">
+          <div class="rp-gap hatch" id="rp-gap" data-at="06:40" title="No positions before 06:40"></div>
+        </div>
+        <span class="rp-time" id="rp-timewrap"><span class="mono replay-time" id="rp-time">09:14</span><span class="rp-none" id="rp-none" hidden>no positions yet</span></span>
+        <select class="sel" id="rp-win" aria-label="How far back to replay">
+          <option value="hour">Last hour</option>
+          <option value="period">This period · from 08:00</option>
+          <option value="all" selected>Whole incident · from 06:40</option>
+          <option value="pick">Pick a time…</option>
+        </select>
+        <select class="sel" id="rp-speed" aria-label="Replay speed">
+          <option value="10" title="10×">Slow · 10 s a second</option>
+          <option value="60" selected title="60×">Normal · a minute a second</option>
+          <option value="600" title="600×">Fast · 10 min a second</option>
+        </select>
+        <div class="rp-pick" id="rp-pick" hidden>
+          <b>Pick a time</b>
+          <input type="date" id="rp-date" value="2026-10-18" min="2026-10-18" max="2026-10-18" aria-label="Date">
+          <input type="time" id="rp-clock" value="09:14" aria-label="Time">
+          <button class="btn sm pri" id="rp-go">Go</button>
+          <button class="btn sm" id="rp-cancel">Cancel</button>
+          <span class="why" id="rp-why">Positions run from 06:40 today to now, 10:05.</span>
+        </div>
+        <span class="hint" id="rp-hint">3 units on the map · 09:10 B-1 assigned to Unit 2</span>
+        <button class="btn sm">Close</button>
+      </div>
+    </div></div>
+    <div class="cap"><b>As proposed.</b> Each range says where its positions begin. The slider's run-up, the period's or the incident's first minutes before any phone reported, is hatched and dated; drag into it and the time says so. Pick a time… opens a small sheet in the bar, bounded by the first position and now, and says so in one sentence. The speed is a word and what a second of play shows. Play runs for real at the chosen speed.</div>
+  </div>
+
+  <!-- ============================================================ BEFORE THE FIRST POSITION (static) -->
+  <div class="screen">
+    <div class="stage-wrap"><div class="stage">
+      <div class="replay">
+        <button class="btn sm pri">Play</button>
+        <div class="rp-slider" style="--p:3.4%">
+          <div class="rp-track"></div>
+          <input type="range" min="0" max="1000" value="34" aria-label="Moment to show" readonly>
+          <div class="rp-gap hatch" style="width:12%" data-at="06:40"></div>
+        </div>
+        <span class="rp-time none"><span class="mono replay-time">06:20</span><span class="rp-none">no positions yet</span></span>
+        <select class="sel"><option>Whole incident · from 06:40</option></select>
+        <select class="sel"><option>Normal · a minute a second</option></select>
+        <span class="hint">Positions start 06:40 · 06:18 Boundary drawn</span>
+        <button class="btn sm">Close</button>
+      </div>
+    </div></div>
+    <div class="cap"><b>The moment before the first position.</b> The time goes grey with "no positions yet" beside it; the line under says when they start and what the log said then. The boundary and the first division were drawn before any unit arrived: that is still worth replaying, so the slider reaches it instead of hiding it.</div>
+  </div>
+
+  <!-- ============================================================ PICK A TIME, REFUSED (static) -->
+  <div class="screen">
+    <div class="stage-wrap"><div class="stage">
+      <div class="replay">
+        <button class="btn sm pri">Play</button>
+        <div class="rp-slider" style="--p:78%">
+          <div class="rp-track"></div>
+          <input type="range" min="0" max="1000" value="780" aria-label="Moment to show" readonly>
+          <div class="rp-gap hatch" style="width:12%" data-at="06:40"></div>
+        </div>
+        <span class="rp-time"><span class="mono replay-time">09:14</span></span>
+        <select class="sel"><option>Pick a time…</option></select>
+        <select class="sel"><option>Normal · a minute a second</option></select>
+        <div class="rp-pick">
+          <b>Pick a time</b>
+          <input type="date" value="2026-10-18" aria-label="Date">
+          <input type="time" value="06:00" aria-label="Time">
+          <button class="btn sm pri" disabled>Go</button>
+          <button class="btn sm">Cancel</button>
+          <span class="why bad">06:00 is before the first position, 06:40.</span>
+        </div>
+        <span class="hint">3 units on the map · 09:10 B-1 assigned to Unit 2</span>
+        <button class="btn sm">Close</button>
+      </div>
+    </div></div>
+    <div class="cap"><b>Pick a time, refused.</b> The sheet opens with "Positions run from 06:40 today to now, 10:05." Typed outside that, the sentence turns orange and says which edge was crossed; Go stays off. A moment after now reads "has not happened yet", whatever the period's plan says.</div>
+  </div>
+
+  <!-- ============================================================ NO POSITIONS AT ALL (static) -->
+  <div class="screen">
+    <div class="stage-wrap"><div class="stage">
+      <div class="replay">
+        <button class="btn sm pri" disabled>Play</button>
+        <div class="rp-slider">
+          <div class="rp-track"></div>
+          <input type="range" min="0" max="1000" value="0" aria-label="Moment to show" disabled>
+          <div class="rp-gap hatch wide" style="width:100%;border-radius:3px" data-at="no positions yet"></div>
+        </div>
+        <span class="rp-time none"><span class="mono replay-time">--:--</span></span>
+        <select class="sel"><option>Whole incident · no positions yet</option></select>
+        <select class="sel"><option>Normal · a minute a second</option></select>
+        <span class="hint">Nothing to replay yet: the first phone to check in starts the record.</span>
+        <button class="btn sm">Close</button>
+      </div>
+    </div></div>
+    <div class="cap"><b>An incident with no positions.</b> The whole track is run-up, Play and Pick a time… are off, and one sentence says what starts the record.</div>
+  </div>
+
+  <!-- ============================================================ THE SPEED WORDS TRIED -->
+  <div class="screen">
+    <div class="menus">
+      <div class="menu chosen">
+        <div class="k">A · drawn above</div>
+        <ul><li>Slow · 10 s a second</li><li class="on">Normal · a minute a second</li><li>Fast · 10 min a second</li></ul>
+        <p class="pick">Picked. The word is what the hand reaches for; the rest says what a second of play shows.</p>
+      </div>
+      <div class="menu">
+        <div class="k">B · the numbers kept</div>
+        <ul><li>10× · 10 seconds a second</li><li class="on">60× · a minute a second</li><li>600× · 10 minutes a second</li></ul>
+        <p class="pick">The × was the complaint; it earns nothing here. Kept as the option's hover title.</p>
+      </div>
+      <div class="menu">
+        <div class="k">C · how long an hour takes</div>
+        <ul><li>Slow · an hour in 6 min</li><li class="on">Normal · an hour a minute</li><li>Fast · an hour in 6 s</li></ul>
+        <p class="pick">Answers "how long will this take" but needs arithmetic for a two-hour period.</p>
+      </div>
+    </div>
+    <div class="cap"><b>The speed menu, three wordings.</b> Each as it would open. A reads best at a glance: three words you already know, in order, and no arithmetic.</div>
+  </div>
+
+  <!-- ============================================================ DECISIONS -->
+  <div class="screen">
+    <div class="panel wide">
+      <h2 class="t">Decided here, and yours to decide</h2>
+      <div class="k">Decided here (say if any is wrong)</div>
+      <ul class="decisions">
+        <li><b>Each range says where its positions begin</b> ("This period · from 08:00", "Whole incident · from 06:40"); Last hour stays bare. The slider still spans the whole range, so the log before the first phone is reachable, with the run-up hatched and dated.</li>
+        <li><b>Out of range in two places</b>: "no positions yet" beside the greyed time, and the line under says "Positions start 06:40" before the log line. The bar stays two rows.</li>
+        <li><b>Pick a time… is an option of the range menu</b>, not a button, so the bar keeps one row of controls; the sheet opens under it, inside the bar, with a date and a time as two boxes.</li>
+        <li><b>A picked moment outside the range widens it</b> to the whole incident and lands the slider there; inside, the range stays. The menu goes back to naming the range.</li>
+        <li><b>Slow / Normal / Fast</b> with what a second of play shows; the × goes into the hover title.</li>
+      </ul>
+      <div class="k">For the build</div>
+      <ul class="decisions">
+        <li><b>The first position comes from the database</b>: the earliest <span class="mono">ic_tracks</span> row of the incident, read once when the bar opens (the members' select policy on <span class="mono">ic_tracks</span> already allows it, so one ordered <span class="mono">select at … limit 1</span> in data.js, or a small <span class="mono">ic_replay_first</span> function). With no row, the incident's opening stands in and the bar shows the no-positions state. The mock mirrors it from its own <span class="mono">ic_tracks</span>.</li>
+        <li><b>Never the future.</b> The pick is bounded by now, not by the period's planned end (19:00 here): a moment past now is refused as "has not happened yet". <span class="mono">replayRange</span> already stops an open period at now.</li>
+        <li><b>The slider gets a custom track</b> (the hatch cannot sit on a native one); the thumb and track read <span class="mono">--accent</span> and <span class="mono">--control-border</span>, the hatch <span class="mono">--muted</span> over <span class="mono">--tint-blue</span>, so dark mode needs nothing extra.</li>
+      </ul>
+      <div class="k">Yours to decide</div>
+      <ul class="decisions">
+        <li><b>Hatched, dimmed or cut off</b> (the chips over the live bar). Hatched is drawn: it keeps the pre-arrival log reachable and looks like what it is. Cut off is simplest and can never be clicked into, at the cost of those minutes.</li>
+        <li><b>Pick a time… in the menu, or click the time.</b> Clicking 09:14 to type a moment is one step shorter and keeps the menu to three ranges, but is not discoverable; the menu option is drawn.</li>
+        <li><b>The wording of the speeds</b>: A is drawn, B and C are on the page.</li>
+        <li><b>Past periods in the menu</b> ("Period 1 · 06:12 to 08:00") once an incident has several: not drawn.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script type="module">
+import { toggleTheme, currentTheme } from '/js/shared/theme.js';
+const $ = (id) => document.getElementById(id);
+const toast = (t) => { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); };
+
+// the theme button, as the base's header has it
+const drawTheme = () => { $('theme-btn').textContent = currentTheme() === 'dark' ? 'Light' : 'Dark'; };
+$('theme-btn').addEventListener('click', () => { toggleTheme(); drawTheme(); });
+drawTheme();
+
+// ---- the made-up day, in minutes since midnight
+const mins = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const hhmm = (n) => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(Math.floor(n % 60)).padStart(2, '0');
+const OPENED = mins('06:12'), FIRST = mins('06:40'), PERIOD = mins('08:00'), NOW = mins('10:05');
+const UNITS = [[1, FIRST], [2, mins('08:31')], [3, mins('09:05')]];   // when each phone first reported
+const EVENTS = [   // newest first, as data.events() is
+  ['10:02', 'Photo from Unit 2 in B-1'], ['09:48', 'Hazard in B-1 (act on now): tree down, road blocked'], ['09:30', 'PAR started by Operations'],
+  ['09:10', 'B-1 assigned to Unit 2'], ['08:55', 'B-1 drawn'], ['08:31', 'Unit 2 checked in, boat crew'], ['08:00', 'Operational period 2 started'],
+  ['07:40', 'A-1 primary search complete by Unit 1'], ['07:12', 'Photo from Unit 1 in A-1'], ['06:52', 'A-1 assigned to Unit 1'], ['06:31', 'Unit 1 checked in'],
+  ['06:25', 'A-1 drawn'], ['06:18', 'Boundary drawn'], ['06:12', 'Incident opened by Dana Ruiz'],
+].map(([at, text]) => [mins(at), text]);
+const st = { win: 'all', t: mins('09:14'), gap: 'hatch', speed: 60, playing: false };
+let timer = null;
+
+const range = (win) => {
+  const [from, to] = win === 'hour' ? [NOW - 60, NOW] : win === 'period' ? [PERIOD, NOW] : [OPENED, NOW];
+  return st.gap === 'cut' ? [Math.max(from, FIRST), to] : [from, to];
+};
+const draw = () => {
+  const [from, to] = range(st.win);
+  st.t = Math.min(to, Math.max(from, st.t));
+  const v = Math.round((st.t - from) / (to - from) * 1000);
+  $('rp-range').value = String(v);
+  $('rp-sliderwrap').style.setProperty('--p', (v / 10).toFixed(1) + '%');
+  const gapW = (FIRST - from) / (to - from);
+  const gap = $('rp-gap');
+  gap.hidden = gapW <= 0;
+  gap.style.width = (gapW * 100).toFixed(2) + '%';
+  gap.className = 'rp-gap ' + (st.gap === 'dim' ? 'dim' : 'hatch');
+  $('rp-time').textContent = hhmm(st.t);
+  const none = st.t < FIRST;
+  $('rp-timewrap').classList.toggle('none', none);
+  $('rp-none').hidden = !none;
+  const seen = UNITS.filter(([, at]) => at <= st.t).length;
+  for (const [n, at] of UNITS) $('g-' + n).hidden = at > st.t;
+  $('trail-1').style.display = st.t >= mins('07:00') ? '' : 'none';
+  $('trail-2').style.display = st.t >= mins('09:00') ? '' : 'none';
+  const e = EVENTS.find(([at]) => at <= st.t);
+  const log = e ? ` · ${hhmm(e[0])} ${e[1]}` : '';
+  $('rp-hint').textContent = none ? `Positions start ${hhmm(FIRST)}${log}` : `${seen} unit${seen === 1 ? '' : 's'} on the map${log}`;
+  $('rp-play').textContent = st.playing ? 'Pause' : (st.t >= to ? 'Replay' : 'Play');
+  if ($('rp-pick').hidden) $('rp-win').value = st.win;
+};
+const stop = () => { if (timer) clearInterval(timer); timer = null; st.playing = false; };
+$('rp-play').addEventListener('click', () => {
+  if (st.playing) { stop(); draw(); return; }
+  const [from, to] = range(st.win);
+  if (st.t >= to) st.t = from;
+  st.playing = true;
+  let last = Date.now();
+  timer = setInterval(() => {   // a second of play covers st.speed seconds of the day
+    const now = Date.now();
+    st.t += (now - last) / 1000 * st.speed / 60;
+    last = now;
+    if (st.t >= to) { st.t = to; stop(); }
+    draw();
+  }, 100);
+  draw();
+});
+$('rp-range').addEventListener('input', (e) => { stop(); const [from, to] = range(st.win); st.t = from + (to - from) * Number(e.target.value) / 1000; draw(); });
+$('rp-speed').addEventListener('change', (e) => { st.speed = Number(e.target.value); toast(e.target.selectedOptions[0].textContent + ' (' + st.speed + '×)'); });
+
+// the range menu: three ranges, and Pick a time… which opens the sheet inside the bar
+const openPick = () => { $('rp-pick').hidden = false; $('rp-clock').value = hhmm(st.t); checkPick(); };
+const closePick = () => { $('rp-pick').hidden = true; $('rp-win').value = st.win; };
+$('rp-win').addEventListener('change', (e) => {
+  stop();
+  const chosen = e.target.value;
+  if (chosen === 'pick') { openPick(); return; }
+  st.win = chosen;
+  closePick();
+  const [from] = range(st.win);
+  if (st.t < from) st.t = Math.max(from, FIRST);   // start where there is something to see, as openReplay does
+  draw();
+});
+const picked = () => { const v = $('rp-clock').value; return v ? mins(v) : null; };
+const checkPick = () => {
+  const t = picked(), why = $('rp-why');
+  let bad = '';
+  if (t == null) bad = 'Type a time.';
+  else if (t < FIRST) bad = `${hhmm(t)} is before the first position, ${hhmm(FIRST)}.`;
+  else if (t > NOW) bad = `${hhmm(t)} has not happened yet.`;
+  why.textContent = bad || `Positions run from ${hhmm(FIRST)} today to now, ${hhmm(NOW)}.`;
+  why.classList.toggle('bad', !!bad);
+  $('rp-go').disabled = !!bad;
+};
+$('rp-clock').addEventListener('input', checkPick);
+$('rp-date').addEventListener('input', checkPick);
+$('rp-go').addEventListener('click', () => {
+  const t = picked();
+  if (t == null || t < FIRST || t > NOW) return;
+  const [from, to] = range(st.win);
+  if (t < from || t > to) { st.win = 'all'; toast('Outside this period: showing the whole incident at ' + hhmm(t)); }
+  st.t = t;
+  closePick();
+  draw();
+});
+$('rp-cancel').addEventListener('click', closePick);
+$('gap-states').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-gap]');
+  if (!b) return;
+  for (const x of $('gap-states').querySelectorAll('.chip')) x.classList.toggle('on', x === b);
+  st.gap = b.dataset.gap;
+  draw();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('rp-pick').hidden) closePick(); });
+draw();
+</script>
+</body>
+</html>

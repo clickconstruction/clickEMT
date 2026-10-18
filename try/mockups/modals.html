@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: the pages as windows · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<link rel="stylesheet" href="/css/base.css">
+<!-- Click-through mock-up, drawn 18 October 2026 at v59 before anything is built: the base's pages (Briefing, Org chart,
+     People, Public, Transports, Sitrep, IAP and the printed forms) as a window over the dimmed base, with Expand to full
+     screen, in place of the overlay that covers the whole window today. The base is drawn at 1280 × 800 in the app's own
+     stylesheets (shared.css and base.css), scaled to fit, with made-up data. Nothing here writes anywhere but this
+     device's localStorage (ic.mock.pages, the remembered state; ic.theme, the theme). -->
+<style>
+  body { min-height: 100%; }
+  .mtop { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .mtop .brand { font-weight: 700; }
+  .mtop .brand span { color: var(--muted); font-weight: 400; }
+  .mtop .sp { flex: 1; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .intro { max-width: 760px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 440px; line-height: 1.4; }
+  .screen > .cap b { color: var(--ink); }
+  .mcard { width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .mcard.wide { width: 760px; }
+  h2.t { font-size: 18px; margin: 0 0 4px; }
+  .mcard .k { margin: 12px 0 6px; } .mcard .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row.between { justify-content: space-between; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  input.input, select.input { width: 100%; border: 1px solid var(--control-border); border-radius: 8px; padding: 9px 10px; font-size: 15px; background: var(--control-bg); color: var(--ink); margin: 0 0 8px; }
+  label.f { display: block; font-size: 12px; color: var(--muted); margin: 6px 0 2px; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: none; color: var(--ink); padding: 4px 11px; font-size: 12.5px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .decisions { padding-left: 18px; margin: 0; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  .rec { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; margin: 0 0 14px; line-height: 1.45; }
+  .toast[hidden] { display: none; }
+  @media (max-width: 480px) { .mcard, .mcard.wide { width: 100%; } main { padding: 12px; } }
+
+  /* the state chips above the stage */
+  .states { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 4px; }
+  .states .gap { width: 14px; }
+  .st-chip { border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; cursor: pointer; }
+  .st-chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .st-chip.alarm.on { background: var(--danger); border-color: var(--danger); }
+
+  /* the stage: the base at 1280 × 800 in its own stylesheets, scaled to the page's width */
+  .stage-wrap { position: relative; width: 100%; --s: 1; }
+  .stage { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform: scale(var(--s)); transform-origin: 0 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
+  .stage .top h1 { margin: 0; }
+  .stage .body { position: relative; }
+  .stage .map { position: relative; overflow: hidden; }
+  .stage .map svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage .map .ground { filter: var(--map-dim); }
+  .stage .map text { font: 600 12px 'IBM Plex Sans', system-ui, sans-serif; fill: var(--map-ink); }
+  .stage .map text.lbl { font-size: 11px; fill: #fff; }
+  .stage .map text.fm { font-size: 10px; font-weight: 700; fill: #fff; }
+  .stage .map text.attr { font-size: 9px; font-weight: 400; fill: var(--muted); }
+  .stage .home-qr { width: 96px; height: 96px; background: repeating-conic-gradient(var(--ink) 0 25%, var(--control-bg) 0 50%) 0 0 / 12px 12px; border: 4px solid var(--control-bg); border-radius: 6px; }
+  .stage .big-code { font-size: 26px; letter-spacing: .14em; font-weight: 600; }
+
+  /* the page layer: the dim over the body, the window within it; full screen folds the header away */
+  .pg { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.38); }
+  .pg-win { position: absolute; top: 20px; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(var(--w), calc(100% - 48px)); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,.4); overflow: auto; }
+  .pg-win.paper { --w: 870px; }
+  .pg-win.board { --w: 1150px; }
+  .app.expanded .top { display: none; }
+  .app.expanded .pg { background: none; }
+  .app.expanded .pg-win { top: 0; bottom: 0; left: 0; transform: none; width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+  .pg-win .briefing-bar { z-index: 2; }
+  .pg-win .briefing-bar > strong { white-space: nowrap; }   /* one row in a window: the title whole, the sub-line cut short */
+  .pg-win .briefing-bar > .muted { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pg-win .briefing-page .warn { color: var(--hazard-ink); background: var(--tint-orange); border-radius: 6px; padding: 3px 8px; }
+  .pg-win .briefing-page .warn::before { content: '! '; font-weight: 700; }
+  .pg-win .pp-row .sel { min-height: 28px; font-size: 12px; max-width: 120px; }
+
+  /* the phone frame: the base's narrow layout, the board full screen under the alarm line */
+  .phone { width: 375px; min-height: 600px; background: var(--bg); border: 10px solid #0b0b0d; border-radius: 36px; padding: 0; box-shadow: 0 8px 28px rgba(0,0,0,.35); font-size: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  .phone .bars { border-radius: 26px 26px 0 0; }
+  .phone .briefing-bar { padding: 8px 12px; gap: 6px; flex-wrap: wrap; }
+  .phone .briefing-page { padding: 12px; min-height: 0; flex: 1; }
+  .phone .pp-row { grid-template-columns: 1fr 1fr; padding: 7px 8px; }
+  .phone .pp-act { grid-column: 1 / -1; justify-content: flex-start; }
+  .phone .pp-grp-h { padding: 8px; }
+  .phone .pp-top { flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="mtop">
+  <div class="brand">Incident Map <span>· mock-up · the pages as windows</span></div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button" title="Light or dark, for this screen">Dark</button>
+  <a class="btn sm" href="/try/mockups/">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro"><h1>The pages as windows</h1>Briefing, Org chart, People, Public, Transports, Sitrep, IAP and the printed forms each cover the whole window today, map and alarm line included. Drawn here: each opens as a window over the dimmed base, with Expand to full screen and the choice remembered. Two pages that differ in kind, the Briefing (a paper) and the People board (a live board). The base is at 1280 × 800 in its own stylesheets; made-up data; press things.</div>
+
+<div class="screens">
+
+  <!-- ============================================================ THE STAGE -->
+  <div class="screen" style="flex-basis:100%">
+    <div class="states" id="states">
+      <button type="button" class="st-chip on" data-st="closed">Nothing open</button>
+      <button type="button" class="st-chip" data-st="paper-win">Briefing · window</button>
+      <button type="button" class="st-chip" data-st="paper-full">Briefing · full screen</button>
+      <button type="button" class="st-chip" data-st="board-win">People · window</button>
+      <button type="button" class="st-chip" data-st="board-full">People · full screen</button>
+      <span class="gap"></span>
+      <button type="button" class="st-chip alarm" id="alarm-chip" aria-pressed="false">Unit 2 presses Need help now</button>
+    </div>
+    <div class="stage-wrap" id="stage-wrap">
+    <div class="stage" id="stage">
+      <div class="app" id="m-app">
+        <header class="top">
+          <div class="top-main">
+            <h1>Cedar Fork Flooding</h1>
+            <span class="muted">Operational period 1, 11:46 to 19:00 · IC Dana Ruiz · 3 units, 6 people · 6 divisions, 1 cleared · 31 of 74 structures · 2 hazards open</span>
+          </div>
+          <div class="find-top"><input class="log-search find-q" type="search" placeholder="Find a person" aria-label="Find a person"></div>
+          <span class="top-btns">
+            <button class="btn sm" data-m="toast" data-say="The Period sheet opens in the side panel, as today">Period</button>
+            <button class="btn sm" data-m="open" data-kind="paper" data-title="Shift-change briefing">Briefing</button>
+            <button class="btn sm" data-m="open" data-kind="paper" data-title="Organization chart, ICS 207" data-sub="drawn with the Briefing's lines">Org chart</button>
+            <button class="btn sm" data-m="open" data-kind="board" data-title="People">People</button>
+            <button class="btn sm" data-m="open" data-kind="board" data-title="Public information" data-sub="drawn as the People board">Public</button>
+            <button class="btn sm" data-m="open" data-kind="board" data-title="Transports" data-sub="drawn as the People board">Transports</button>
+            <button class="btn sm" data-m="open" data-kind="paper" data-title="Situation report, ICS 209" data-sub="drawn with the Briefing's lines">Sitrep</button>
+            <button class="btn sm" data-m="open" data-kind="paper" data-title="Incident Action Plan" data-sub="drawn with the Briefing's lines">IAP</button>
+            <button class="btn sm" data-m="toast" data-say="Replay stays on the map, as today">Replay</button>
+            <button class="btn sm" data-m="theme" id="m-theme">Dark</button>
+            <button class="btn sm" data-m="toast" data-say="The Settings sheet is drawn under the stage">Settings</button>
+            <button class="btn sm" data-m="toast" data-say="Not in this mock-up">Switch incident</button>
+            <button class="btn sm" data-m="toast" data-say="Not in this mock-up">Sign out</button>
+          </span>
+          <span class="top-pills">
+            <span class="pill mono" title="Join code for field phones">CEDAR7</span>
+            <span class="pill quiet" id="live-pill" title="Live"><span class="dot on"></span><span id="live-text">live</span></span>
+            <button type="button" class="pill mono clock" title="Local time; click for UTC">16:06 CDT</button>
+          </span>
+        </header>
+        <div class="bars" id="m-bars" aria-live="polite">
+          <div id="mayday" class="mayday" hidden>
+            <span class="bar-item" title="EMERGENCY · Unit 2 needs help in B-1 · sent 16:08"><span class="bar-text"><strong>EMERGENCY</strong> · Unit 2 needs help in B-1 · sent 16:08</span><button class="btn sm" data-m="toast" data-say="Acknowledged, as today">Acknowledge</button><button class="btn sm" data-m="toast" data-say="Selects Unit 2 on the map, as today">Show unit</button></span>
+          </div>
+          <div id="bars-quiet" class="bars-quiet">No emergency open · no safety message or PAR waiting on an answer</div>
+        </div>
+        <div class="body">
+          <div class="mapcol">
+            <div class="tools">
+              <button class="btn sm">Draw boundary</button>
+              <button class="btn sm">Draw division</button>
+              <span class="hint">Click a division, a unit or a photo pin to open it.</span>
+              <button class="btn sm layer-btn">Layers</button>
+            </div>
+            <div class="map" aria-label="Incident map">
+              <svg viewBox="0 0 940 380" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <g class="ground">
+                  <rect width="940" height="380" fill="#E9EFE0"></rect>
+                  <path d="M0 250 C 180 230, 260 300, 420 270 S 700 180, 940 230 L 940 262 C 700 212, 560 300, 420 302 S 180 262, 0 282 Z" fill="#B9D4E6"></path>
+                  <g stroke="#fff" stroke-width="5" fill="none"><path d="M0 120 H 940"></path><path d="M0 330 H 940"></path><path d="M160 0 V 380"></path><path d="M420 0 V 380"></path><path d="M700 0 V 380"></path><path d="M560 120 L 640 330"></path></g>
+                  <g stroke="#DDD6C4" stroke-width="2.5" fill="none"><path d="M0 60 H 940"></path><path d="M280 0 V 380"></path><path d="M820 0 V 380"></path></g>
+                </g>
+                <path d="M40 30 L 900 24 L 920 350 L 60 356 Z" fill="none" stroke="var(--map-ink)" stroke-width="2" stroke-dasharray="8 6"></path>
+                <polygon points="60,70 270,66 272,236 64,240" fill="rgba(47,111,179,.3)" stroke="var(--active)" stroke-width="2"></polygon>
+                <polygon points="290,66 410,64 412,236 292,236" fill="rgba(47,111,179,.3)" stroke="var(--active)" stroke-width="2"></polygon>
+                <polygon points="430,64 690,58 692,240 432,240" fill="rgba(47,111,179,.3)" stroke="var(--active)" stroke-width="2"></polygon>
+                <polygon points="710,58 900,52 906,236 712,240" fill="rgba(216,214,206,.45)" stroke="#7A776F" stroke-width="2" stroke-dasharray="5 4"></polygon>
+                <polygon points="64,300 410,296 412,346 66,350" fill="rgba(143,207,167,.6)" stroke="#3D8B5F" stroke-width="2"></polygon>
+                <polygon points="430,296 906,290 910,344 432,346" fill="rgba(46,139,87,.4)" stroke="var(--cleared)" stroke-width="2"></polygon>
+                <g><rect x="140" y="140" width="52" height="22" rx="11" fill="var(--control-bg)" stroke="var(--control-border)"></rect><circle cx="152" cy="151" r="8" fill="var(--p1)"></circle><text class="lbl" x="149" y="155">1</text><text x="166" y="155">A-1</text></g>
+                <g><rect x="326" y="140" width="52" height="22" rx="11" fill="var(--control-bg)" stroke="var(--control-border)"></rect><circle cx="338" cy="151" r="8" fill="var(--p2)"></circle><text class="lbl" x="335" y="155">2</text><text x="352" y="155">A-2</text></g>
+                <g><rect x="535" y="140" width="52" height="22" rx="11" fill="var(--control-bg)" stroke="var(--control-border)"></rect><circle cx="547" cy="151" r="8" fill="var(--p1)"></circle><text class="lbl" x="544" y="155">1</text><text x="561" y="155">B-1</text></g>
+                <g><rect x="782" y="136" width="52" height="22" rx="11" fill="var(--control-bg)" stroke="var(--control-border)"></rect><circle cx="794" cy="147" r="8" fill="var(--p2)"></circle><text class="lbl" x="791" y="151">2</text><text x="808" y="151">B-2</text></g>
+                <g><rect x="212" y="312" width="52" height="22" rx="11" fill="var(--control-bg)" stroke="var(--control-border)"></rect><circle cx="224" cy="323" r="8" fill="var(--p3)"></circle><text class="lbl" x="221" y="327">3</text><text x="238" y="327">C-1</text></g>
+                <g><rect x="642" y="306" width="52" height="22" rx="11" fill="var(--control-bg)" stroke="var(--control-border)"></rect><circle cx="654" cy="317" r="8" fill="var(--p3)"></circle><text class="lbl" x="651" y="321">3</text><text x="668" y="321">C-2</text></g>
+                <g><circle cx="110" cy="200" r="5" fill="#3FA06A" stroke="#fff" stroke-width="1.5"></circle><circle cx="128" cy="206" r="5" fill="#3FA06A" stroke="#fff" stroke-width="1.5"></circle><circle cx="96" cy="222" r="5" fill="#3FA06A" stroke="#fff" stroke-width="1.5"></circle><circle cx="470" cy="200" r="5" fill="#3FA06A" stroke="#fff" stroke-width="1.5"></circle><circle cx="492" cy="210" r="5" fill="#3FA06A" stroke="#fff" stroke-width="1.5"></circle></g>
+                <g><path d="M230 190 L 262 176 L 258 206 Z" fill="rgba(31,78,121,.35)"></path><circle cx="230" cy="190" r="7" fill="var(--accent)" stroke="#fff" stroke-width="2"></circle></g>
+                <g><path d="M372 112 L 384 92 L 396 112 Z" fill="var(--hazard)" stroke="#fff" stroke-width="1.5"></path><text class="fm" x="381" y="110" style="fill:#1B1B18">!</text></g>
+                <g><rect x="596" y="86" width="26" height="26" rx="6" fill="#B3261E" stroke="#fff" stroke-width="2"></rect><text class="fm" x="606" y="104">H</text></g>
+                <g><rect x="60" y="20" width="26" height="26" rx="6" fill="#6B5DBF" stroke="#fff" stroke-width="2"></rect><text class="fm" x="69" y="38">S</text></g>
+                <g><rect x="330" y="20" width="26" height="26" rx="6" fill="#2F7A52" stroke="#fff" stroke-width="2"></rect><text class="fm" x="337" y="38">Sh</text></g>
+                <g><circle cx="200" cy="110" r="11" fill="var(--ink)" stroke="#fff" stroke-width="2.5"></circle><text class="lbl" x="196" y="114">1</text></g>
+                <g><circle cx="500" cy="262" r="11" fill="var(--ink)" stroke="#fff" stroke-width="2.5"></circle><text class="lbl" x="496" y="266">2</text></g>
+                <g><circle cx="350" cy="190" r="11" fill="var(--ink)" stroke="#fff" stroke-width="2.5"></circle><text class="lbl" x="346" y="194">3</text></g>
+                <text class="attr" x="770" y="374">© OpenStreetMap contributors</text>
+              </svg>
+            </div>
+            <div class="legend">
+              <button class="legend-btn"><span class="sw open"></span>Not started<span class="n">1</span></button>
+              <button class="legend-btn"><span class="sw active"></span>In progress<span class="n">3</span></button>
+              <button class="legend-btn"><span class="sw primary"></span>Primary search done<span class="n">1</span></button>
+              <button class="legend-btn"><span class="sw cleared"></span>Cleared<span class="n">1</span></button>
+              <span><span class="sdot cleared" style="width:9px;height:9px;border-color:#fff"></span>Structure searched</span>
+              <span><span class="fmark fmark-staging inline">S</span>Facility</span>
+              <span><span class="sw haz"></span>Hazard reported</span>
+              <span><span class="sw bnd"></span>Incident boundary</span>
+              <span><span class="pb p1">1</span>Priority</span>
+            </div>
+            <div class="log">
+              <div class="log-h">
+                <button class="log-toggle"><span class="chev" aria-hidden="true">▾</span>Activity log · ICS 214</button>
+                <span class="log-latest"></span>
+                <span class="log-tools">
+                  <span class="chips log-filters"><span class="chip on">All</span><span class="chip">Field <span class="n">41</span></span><span class="chip">Operations <span class="n">17</span></span><span class="chip">Notable <span class="n">3</span></span></span>
+                  <input class="log-search" placeholder="Find in the log" aria-label="Find in the log">
+                  <button class="btn sm" data-m="open" data-kind="paper" data-title="Activity log, ICS 214" data-sub="drawn with the Briefing's lines">Print 214</button>
+                  <button class="btn sm" data-m="toast" data-say="The log alone in its own window, as today; it never opens a page itself">Pop out</button>
+                </span>
+              </div>
+              <div id="log">
+                <div class="log-sep">16:00</div>
+                <div class="log-row log-photo"><span class="t">16:04</span><span>Photo from Unit 1 in A-1, facing E 095°</span><span class="llink">A-1</span></div>
+                <div class="log-row log-clear"><span class="t">16:01</span><span>Unit 3 searched 12 Pecan Ln in A-2: 2 people needing help, sheltering</span><span class="llink">A-2</span></div>
+                <div class="log-row log-hazard"><span class="t">15:52</span><span>Hazard in A-2 (act on now): downed power line, live, sparking · Unit 3</span><span class="llink">A-2</span></div>
+                <div class="log-row log-status"><span class="t">15:25</span><span>Unit 2 assigned to B-1</span><span class="llink">Unit 2</span></div>
+                <div class="log-sep">15:00</div>
+                <div class="log-row log-ops"><span class="t">15:20</span><span>Division B-1 drawn, priority 1</span><span class="llink">B-1</span></div>
+                <div class="log-row log-par"><span class="t">14:26</span><span>PAR 14:23: all 6 accounted for</span><span class="llink">PAR</span></div>
+                <div class="log-row log-msg"><span class="t">14:10</span><span>Unit 2 to Operations (act on now): a second boat for the low crossing</span><span class="llink">Unit 2</span></div>
+              </div>
+              <form class="note-form"><input placeholder="Add a note to the log"><button class="btn sm" type="button">Add</button></form>
+            </div>
+          </div>
+          <aside class="side" aria-label="Divisions and details">
+            <div class="side-h">Divisions by priority</div>
+            <div class="zlist">
+              <button class="zr"><span class="pb p1">1</span><span class="zr-main"><span class="zr-top"><span class="zr-id">A-1</span><span class="zr-name">Riverside Drive</span></span><span class="zr-sub">In progress · Unit 1 · 9 of 24</span></span><span class="sdot active"></span></button>
+              <button class="zr"><span class="pb p1">1</span><span class="zr-main"><span class="zr-top"><span class="zr-id">B-1</span><span class="zr-name">Mill Street bridge</span></span><span class="zr-sub">In progress · Unit 2 · 4 of 10</span></span><span class="sdot active"></span></button>
+              <button class="zr"><span class="pb p2">2</span><span class="zr-main"><span class="zr-top"><span class="zr-id">A-2</span><span class="zr-name">Pecan Lane</span></span><span class="zr-sub">In progress · Unit 3 · 6 of 12</span></span><span class="sdot active"></span></button>
+              <button class="zr"><span class="pb p2">2</span><span class="zr-main"><span class="zr-top"><span class="zr-id">B-2</span><span class="zr-name">Low-water crossing</span></span><span class="zr-sub">Not started · no unit · 0 of 16</span></span><span class="sdot open"></span></button>
+              <button class="zr"><span class="pb p3">3</span><span class="zr-main"><span class="zr-top"><span class="zr-id">C-1</span><span class="zr-name">Oak Hollow</span></span><span class="zr-sub">Primary search done · 8 of 8</span></span><span class="sdot primary"></span></button>
+              <button class="zr"><span class="pb p3">3</span><span class="zr-main"><span class="zr-top"><span class="zr-id">C-2</span><span class="zr-name">Church Street</span></span><span class="zr-sub">Cleared 13:58 · 4 of 4</span></span><span class="sdot cleared"></span></button>
+            </div>
+            <div class="panel">
+              <div class="d-row"><span class="k" style="width:auto;flex:1">Units · 3 units · 6 people</span><button class="btn sm" data-m="open" data-kind="board" data-title="People">People board</button></div>
+              <div>
+                <div class="ur"><span class="udot2"></span><span class="ur-main"><span class="ur-name">Unit 1 <span class="ur-kind">· engine</span></span><span class="ur-sub">Ramirez, Okafor · 2 · in A-1 · 2 min ago · E 095°</span></span><span class="badge st-assigned">Assigned</span></div>
+                <div class="ur"><span class="udot2"></span><span class="ur-main"><span class="ur-name">Unit 2 <span class="ur-kind">· boat crew</span></span><span class="ur-sub">Nguyen, Patel · 2 · in B-1 · 2 min ago · NW 300°</span></span><span class="badge st-assigned">Assigned</span></div>
+                <div class="ur"><span class="udot2"></span><span class="ur-main"><span class="ur-name">Unit 3 <span class="ur-kind">· swift-water team</span></span><span class="ur-sub">Hale, Dominguez · 2 · in A-2 · 2 min ago · S 180°</span></span><span class="badge st-assigned">Assigned</span></div>
+              </div>
+              <div class="d-row"><span class="k" style="width:auto;flex:1">Head count (PAR)</span><button class="btn sm">Start PAR</button></div>
+              <div class="muted" style="font-size:12.5px">14:23 to everyone · all 6 accounted for by 14:26</div>
+              <div class="k">Join code for field phones</div>
+              <div class="row" style="align-items:flex-start">
+                <div class="home-qr" aria-hidden="true"></div>
+                <div style="flex:1;min-width:0"><div class="mono big-code">CEDAR7</div><div class="muted" style="font-size:12.5px;margin:4px 0 8px">Units scan this, or type it with their unit name.</div><div class="row"><button class="btn sm">Copy</button><button class="btn sm" data-m="open" data-kind="paper" data-title="Join card" data-sub="drawn with the Briefing's lines">Print a join card</button></div></div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- the page layer: a window over the dim, or the whole body when expanded -->
+          <div class="pg" id="pg" hidden>
+            <div class="pg-win paper" id="pg-paper" role="dialog" aria-label="Shift-change briefing" hidden>
+              <div class="briefing-bar">
+                <strong id="paper-title">Shift-change briefing</strong>
+                <span class="muted" id="paper-sub">Cedar Fork Flooding · Operational period 1, 11:46 to 19:00 · 16:06</span>
+                <span style="flex:1"></span>
+                <button class="btn sm" data-m="toast" data-say="As today">Copy as text</button>
+                <a class="btn sm" href="#" data-m="toast" data-say="As today: opens your mail app with the text in the body">Send by email</a>
+                <button class="btn sm" data-m="toast" data-say="Prints the sheet alone, as today: the dim and the bar are left off">Print</button>
+                <button class="btn sm" data-m="expand" title="Full screen; the base remembers it on this device">Expand</button>
+                <button class="btn sm" data-m="close">Close</button>
+              </div>
+              <div class="briefing-page">
+                <section><h2>Incident</h2>
+                  <p>Cedar Fork Flooding · Cedar Fork, Travis County · opened 18 Oct 2026 06:10</p>
+                  <p>Operational period 1, 11:46 to 19:00</p>
+                  <p>Incident Commander: Dana Ruiz, Cedar Fork Fire Department · Deputy: not set · Operations: Marcus Bell · Safety: Priya Natarajan</p>
+                  <p>Lead agency: Cedar Fork Fire Department · on scene: Cedar Fork Fire Department, Travis County Rescue</p>
+                </section>
+                <section><h2>Safety message and notes</h2>
+                  <p>Fast water at the low crossing. Nobody in the water without a rotation; 45 minutes, then out.</p>
+                </section>
+                <section><h2>Objectives</h2>
+                  <p>1. Primary search of every division north of the creek by 19:00 (open)</p>
+                  <p>2. Shelter open at the high school gym, 60 beds (done 13:40)</p>
+                  <p>3. Every resident of Riverside Drive accounted for (open)</p>
+                </section>
+                <section><h2>Divisions</h2>
+                  <p>6 divisions: 1 cleared, 1 primary search done, 3 in progress, 1 not started</p>
+                  <p>31 of 74 structures on record searched, 4 people needing help</p>
+                  <p class="sub">A-1 Riverside Drive · priority 1 · in progress · Unit 1 · 9 of 24</p>
+                  <p class="sub">B-1 Mill Street bridge · priority 1 · in progress · Unit 2 · 4 of 10</p>
+                  <p class="sub">A-2 Pecan Lane · priority 2 · in progress · Unit 3 · 6 of 12</p>
+                  <p class="sub">B-2 Low-water crossing · priority 2 · not started · no unit · 0 of 16</p>
+                  <p class="sub">C-1 Oak Hollow · priority 3 · primary search done · 8 of 8</p>
+                  <p class="sub">C-2 Church Street · priority 3 · cleared 13:58 · 4 of 4</p>
+                </section>
+                <section><h2>Resources</h2>
+                  <p>6 people in the field on 3 units</p>
+                  <p class="sub">Unit 1, engine · Cedar Fork Fire Department · Ramirez (Lt.), Okafor · in A-1</p>
+                  <p class="sub">Unit 2, boat crew · Travis County Rescue · Nguyen (Capt.), Patel · in B-1</p>
+                  <p class="sub">Unit 3, swift-water team · Cedar Fork Fire Department · Hale, Dominguez · in A-2</p>
+                </section>
+                <section><h2>Hazards still open</h2>
+                  <p class="warn">Downed power line, live, sparking · A-2 · reported 15:52 by Unit 3 · act on now, not acknowledged</p>
+                  <p>Tree down, road blocked · B-1 · reported 14:30 by Unit 2</p>
+                </section>
+                <section><h2>Facilities</h2>
+                  <p>Command post: Cedar Fork fire station · 100 Main St</p>
+                  <p>Staging: Pecan Park · 12 units of parking</p>
+                  <p>Shelter: High school gym · 21 of 60 beds, 12 on the way · 512 555 0144</p>
+                  <p>Hospital: Dell Seton Medical Center · 512 555 0100</p>
+                </section>
+                <section><h2>Communications (ICS 205)</h2>
+                  <p>Command: TAC 1</p>
+                  <p>Operations: TAC 2 · divisions A and B</p>
+                  <p>Emergency traffic: TAC 9</p>
+                </section>
+                <section><h2>Needs attention</h2>
+                  <p class="warn">B-2 has no unit</p>
+                  <p class="warn">Hazard in A-2 not acknowledged: downed power line</p>
+                  <p>Operations is at 1 : 3</p>
+                </section>
+                <section><h2>In the water</h2>
+                  <p>Unit 2 in the water since 15:40 · 26 min of 45</p>
+                </section>
+                <section><h2>Log of this period, newest first</h2>
+                  <p>16:04  Photo from Unit 1 in A-1, facing E 095°</p>
+                  <p>16:01  Unit 3 searched 12 Pecan Ln in A-2: 2 people needing help, sheltering</p>
+                  <p>15:52  Hazard in A-2 (act on now): downed power line, live, sparking · Unit 3</p>
+                  <p>15:25  Unit 2 assigned to B-1</p>
+                  <p>15:20  Division B-1 drawn, priority 1</p>
+                  <p>14:26  PAR 14:23: all 6 accounted for</p>
+                  <p>14:10  Unit 2 to Operations (act on now): a second boat for the low crossing</p>
+                  <p>13:58  C-2 cleared by Unit 2</p>
+                  <p>13:40  Objective 2 done: shelter open at the high school gym</p>
+                </section>
+              </div>
+            </div>
+
+            <div class="pg-win board" id="pg-board" role="dialog" aria-label="People" hidden>
+              <div class="briefing-bar">
+                <strong id="board-title">People</strong>
+                <span class="muted" id="board-sub">Cedar Fork Flooding</span>
+                <input class="log-search people-q" placeholder="Find a name, role, unit or agency" aria-label="Find a person">
+                <span class="chips log-filters"><span class="chip">Swift water <span class="n">3</span></span><span class="chip">Boat <span class="n">2</span></span><span class="chip">EMT <span class="n">2</span></span><span class="chip">Paramedic <span class="n">1</span></span><span class="chip">Rope <span class="n">1</span></span><span class="chip">Drone <span class="n">1</span></span></span>
+                <span style="flex:1"></span>
+                <button class="btn sm" data-m="toast" data-say="As today">Print bands</button>
+                <button class="btn sm" data-m="toast" data-say="As today: the 211 opens in the same window">Print 211</button>
+                <button class="btn sm" data-m="toast" data-say="As today">Hours</button>
+                <button class="btn sm" data-m="expand" title="Full screen; the base remembers it on this device">Expand</button>
+                <button class="btn sm" data-m="close">Close</button>
+              </div>
+              <div class="briefing-page people-page">
+                <div class="pp-tabs chips"><button class="chip on" type="button">People</button><button class="chip" type="button">Members</button></div>
+                <div class="pp-top"><span class="pp-count">6 on scene on 3 units · 1 checked out · <span class="pp-over">1 past 12 h on scene</span></span><button class="btn sm" type="button">Add a person</button></div>
+                <div class="pp-grp">
+                  <button class="pp-grp-h" type="button"><span class="ur-name">Unit 1, engine</span><span class="badge st-assigned">Assigned</span><span class="muted">Cedar Fork Fire Department · in A-1 · 2 on the unit</span></button>
+                  <div class="pp-list">
+                    <div class="pp-row"><span class="pp-who"><span class="pp-name">Ramirez</span><span class="muted"> Lt.</span></span><span class="pp-quals"><span class="badge q q-swift_water">Swift water</span><span class="badge q q-emt">EMT</span></span><span class="pp-state">On scene 9 h 40 min, since 06:26<span class="pp-seen">Band 013 · entering A-1, 07:05</span></span><span class="pp-act"><button class="btn sm" type="button">Void band</button><select class="sel"><option>Unit 1, engine</option></select><select class="sel"><option>Okafor</option></select><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                    <div class="pp-row"><span class="pp-who"><span class="pp-name">Okafor</span><span class="muted"> Paramedic</span></span><span class="pp-quals"><span class="badge q q-paramedic">Paramedic</span></span><span class="pp-state">On scene 9 h 40 min, since 06:26<span class="pp-seen">Band 014 · entering A-1, 07:05</span></span><span class="pp-act"><button class="btn sm" type="button">Void band</button><select class="sel"><option>Unit 1, engine</option></select><select class="sel"><option>Ramirez</option></select><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                  </div>
+                </div>
+                <div class="pp-grp">
+                  <button class="pp-grp-h" type="button"><span class="ur-name">Unit 2, boat crew</span><span class="badge st-assigned">Assigned</span><span class="muted">Travis County Rescue · in B-1 · 2 on the unit</span></button>
+                  <div class="pp-list">
+                    <div class="pp-row"><span class="pp-who"><span class="pp-name">Nguyen</span><span class="muted"> Capt.</span></span><span class="pp-quals"><span class="badge q q-boat">Boat</span><span class="badge q q-swift_water">Swift water</span></span><span class="pp-state">On scene 8 h 10 min, since 07:56<span class="pp-seen">Band 021 · boarding Boat run 3, 15:40</span></span><span class="pp-act"><button class="btn sm" type="button">Void band</button><select class="sel"><option>Unit 2, boat crew</option></select><select class="sel"><option>Patel</option></select><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                    <div class="pp-row over"><span class="pp-who"><span class="pp-name">Patel</span><span class="pp-agency muted">Austin Fire Department</span></span><span class="pp-quals"><span class="badge q q-boat">Boat</span></span><span class="pp-state">On scene 12 h 20 min, since 03:46 · past 12 h<span class="pp-seen stale">Band 022 · at the shelter door, 13:20 (2 h 46 min ago)</span></span><span class="pp-act"><button class="btn sm" type="button">Void band</button><select class="sel"><option>Unit 2, boat crew</option></select><select class="sel"><option>Nguyen</option></select><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                  </div>
+                </div>
+                <div class="pp-grp">
+                  <button class="pp-grp-h" type="button"><span class="ur-name">Unit 3, swift-water team</span><span class="badge st-assigned">Assigned</span><span class="muted">Cedar Fork Fire Department · in A-2 · 2 on the unit</span></button>
+                  <div class="pp-list">
+                    <div class="pp-row"><span class="pp-who"><span class="pp-name">Hale</span></span><span class="pp-quals"><span class="badge q q-swift_water">Swift water</span><span class="badge q q-rope">Rope</span></span><span class="pp-state">On scene 9 h 32 min, since 06:34<span class="pp-seen">Band 031 · checking in with Unit 3, 06:34</span></span><span class="pp-act"><button class="btn sm" type="button">Void band</button><select class="sel"><option>Unit 3, swift-water team</option></select><select class="sel"><option>Dominguez</option></select><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                    <div class="pp-row"><span class="pp-who"><span class="pp-name">Dominguez</span><span class="pp-agency muted">Drone pilot, not to enter the water</span></span><span class="pp-quals"><span class="badge q q-emt">EMT</span><span class="badge q q-drone">Drone</span></span><span class="pp-state">On scene 9 h 32 min, since 06:34<span class="pp-seen muted">no band</span></span><span class="pp-act"><select class="sel"><option>Unit 3, swift-water team</option></select><select class="sel"><option>Hale</option></select><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                  </div>
+                </div>
+                <div class="pp-grp">
+                  <button class="pp-grp-h" type="button"><span class="ur-name">Unit 5, ambulance</span><span class="badge st-checked_out">Checked out</span><span class="muted">Travis County EMS · 0 on the unit, 1 checked out</span></button>
+                  <div class="pp-list">
+                    <div class="pp-row out"><span class="pp-who"><span class="pp-name">Brooks</span></span><span class="pp-quals"><span class="badge q q-paramedic">Paramedic</span></span><span class="pp-state">Checked out 14:10 · 6 h 20 min on scene<span class="pp-seen muted">no band</span></span><span class="pp-act"><select class="sel"><option>Unit 5, ambulance</option></select><select class="sel"><option>No buddy</option></select><button class="btn sm" type="button">Back in</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Remove</button></span></div>
+                  </div>
+                </div>
+                <p class="muted" style="font-size:12.5px">No names on record for Unit 4 (3 counted). Name them for the PAR: a PAR by name says who is missing, not just how many.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div class="cap" style="max-width:900px" id="stage-cap"></div>
+  </div>
+
+  <!-- ============================================================ WHERE IT IS REMEMBERED -->
+  <div class="screen">
+    <div class="mcard">
+      <div class="row between"><h2 class="t">Incident settings</h2><span class="sub">Cedar Fork Flooding</span></div>
+      <label class="f">Google Maps browser key</label><input class="input" placeholder="AIza…">
+      <label class="f">Personal records clear by rule</label><select class="input"><option>30 days after the close</option></select>
+      <label class="f">Default rotation in the water, minutes (0 = off)</label><input class="input" value="45">
+      <label class="f">EOC email address</label><input class="input" placeholder="eoc@county.gov">
+      <div class="k">This device</div>
+      <div class="row between" style="margin-bottom:8px"><span class="sub">Pages open</span><span class="seg" id="set-seg"><button type="button" data-full="0">As a window</button><button type="button" data-full="1">Full screen</button></span></div>
+      <div class="row between"><span class="sub">Light or dark is on the header.</span><button class="btn sm" type="button">Show me around</button></div>
+    </div>
+    <div class="cap"><b>Where it is remembered.</b> Expand or Shrink on any page sets it; Settings → This device shows it, beside Show me around. Per device, in localStorage (<span class="mono">ic.base.pages</span>), like the theme. The two controls here and on the stage are the one setting.</div>
+  </div>
+
+  <!-- ============================================================ A NARROW SCREEN -->
+  <div class="screen">
+    <div class="phone">
+      <div class="bars"><div class="bars-quiet">No emergency open · no safety message or PAR waiting</div></div>
+      <div class="briefing-bar">
+        <strong>People</strong><span class="muted">6 on scene</span>
+        <span style="flex:1"></span>
+        <button class="btn sm" type="button">Print 211</button><button class="btn sm" type="button">Close</button>
+        <input class="log-search people-q" style="width:100%" placeholder="Find a name, role, unit or agency" aria-label="Find a person">
+      </div>
+      <div class="briefing-page people-page">
+        <div class="pp-top"><span class="pp-count">6 on scene on 3 units</span></div>
+        <div class="pp-grp">
+          <button class="pp-grp-h" type="button"><span class="ur-name">Unit 1, engine</span><span class="badge st-assigned">Assigned</span><span class="muted">in A-1 · 2</span></button>
+          <div class="pp-list">
+            <div class="pp-row"><span class="pp-who"><span class="pp-name">Ramirez</span><span class="muted"> Lt.</span></span><span class="pp-quals"><span class="badge q q-swift_water">Swift water</span><span class="badge q q-emt">EMT</span></span><span class="pp-state">On scene 9 h 40 min</span><span class="pp-act"><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button></span></div>
+            <div class="pp-row"><span class="pp-who"><span class="pp-name">Okafor</span></span><span class="pp-quals"><span class="badge q q-paramedic">Paramedic</span></span><span class="pp-state">On scene 9 h 40 min</span><span class="pp-act"><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button></span></div>
+          </div>
+        </div>
+        <div class="pp-grp">
+          <button class="pp-grp-h" type="button"><span class="ur-name">Unit 2, boat crew</span><span class="badge st-assigned">Assigned</span><span class="muted">in B-1 · 2</span></button>
+          <div class="pp-list">
+            <div class="pp-row"><span class="pp-who"><span class="pp-name">Nguyen</span><span class="muted"> Capt.</span></span><span class="pp-quals"><span class="badge q q-boat">Boat</span></span><span class="pp-state">On scene 8 h 10 min</span><span class="pp-act"><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button></span></div>
+            <div class="pp-row over"><span class="pp-who"><span class="pp-name">Patel</span></span><span class="pp-quals"><span class="badge q q-boat">Boat</span></span><span class="pp-state">On scene 12 h 20 min · past 12 h</span><span class="pp-act"><button class="btn sm" type="button">Check out</button><button class="btn sm" type="button">Edit</button></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cap" style="max-width:375px"><b>Under 900 px: full screen, always.</b> The base's narrow layout stacks the map and the panel; a window with margins would waste the screen. Expand is hidden and the setting is ignored. The alarm line still comes first.</div>
+  </div>
+
+  <!-- ============================================================ DECISIONS -->
+  <div class="screen">
+    <div class="mcard wide">
+      <h2 class="t">Decided here, and yours to decide</h2>
+      <div class="k">Recommended</div>
+      <p class="rec">Every page opens as a window under the alarm line, as wide as the page needs, over the dimmed map. Expand makes it full screen and the base remembers that on this device. The alarm line is never covered, in either state. Printing, the pop-out and the papers' words do not change. One rule for all seven pages and the printed forms.</p>
+      <div class="k">Decided here (say if any is wrong)</div>
+      <ul class="decisions">
+        <li><b>All seven move together</b>, and the 204, 211, 214, join card and band sheet with them. One setting, <span class="mono">ic.base.pages</span>, per device like the theme. The papers do not stay full screen: an 820 px sheet in a window looks like paper on the desk, and the boards lose nothing at 1280 (the People board stops at 1100 px today).</li>
+        <li><b>The window is as wide as the page needs</b>: 870 px for a paper, 1150 px for a board, never wider than the screen less 24 px a side, 20 px above and below. On a wide screen the map shows around it.</li>
+        <li><b>The alarm line is never covered.</b> As a window, the page sits under the header and the alarm line, which stay live. Full screen folds the header away and keeps the alarm line as the top strip. An emergency turns it red in front of whatever is open, and the base rings as today. Press the red chip above to see both states.</li>
+        <li><b>Printing is unchanged.</b> The window is the same <span class="mono">#briefing</span>; print CSS already makes it static and hides everything else. The dim and the window's edges go with two lines in <span class="mono">@media print</span>.</li>
+        <li><b>Escape closes, and so does a click on the dim</b>, as the division's card does. A form in the page with typed words is the exception: then Escape leaves the field and the click does nothing until Save or Cancel.</li>
+        <li><b>Under 900 px, full screen always</b>; Expand is hidden and the setting ignored.</li>
+        <li><b>The pop-out log is unchanged.</b> It never opens a page itself; a line's link asks the main window, which opens the page in the remembered state.</li>
+        <li><b>Expand sits beside Close</b>, the two window controls together at the bar's right end; the page's own buttons stay before them.</li>
+      </ul>
+      <div class="k">Yours to decide</div>
+      <ul class="decisions">
+        <li><b>The words.</b> Expand / Shrink is drawn. Full screen / Window says the state instead of the move; ⤢ alone is shorter but a new sign to learn.</li>
+        <li><b>Whether the header stays in full screen.</b> Drawn folded away, as it is covered today. Kept, full screen gains only the dim and 40 px of height over the window.</li>
+        <li><b>A Pop out for the papers.</b> The Briefing or the IAP alone in a window of its own, like the log, for the second screen at the command post. Not drawn; a natural next step once the pages are windows.</li>
+        <li><b>How dark the dim is.</b> 38% black is drawn; the division's card uses 45%.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module">
+import { toggleTheme, currentTheme } from '/js/shared/theme.js';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const KEY = 'ic.mock.pages';   // the mock's own key; the base would use ic.base.pages
+
+const S = { page: null, kind: null, full: false, alarm: false };
+try { S.full = localStorage.getItem(KEY) === 'full'; } catch (e) { /* storage blocked */ }
+
+const app = $('#m-app'), pg = $('#pg'), paper = $('#pg-paper'), board = $('#pg-board');
+const CAP = {
+  closed: '<b>The base, nothing open.</b> The header’s seven page buttons, Print 214 and the join card all open the same way. Press Briefing or People, or a chip above.',
+  'paper-win': '<b>The Briefing as a window.</b> The sheet floats over the dimmed map; the header and the alarm line stay live. Expand is beside Close. Escape or a click on the dim closes it.',
+  'paper-full': '<b>The Briefing, full screen.</b> The header folds away; the alarm line stays at the top. The base remembers the choice on this device.',
+  'board-win': '<b>The People board as a window.</b> 1150 px wide: the board stops at 1100 today, so at 1280 it loses no width, only a few rows of height. Scroll inside it.',
+  'board-full': '<b>The People board, full screen.</b> The rows come back. Still under the alarm line.',
+};
+const ALARM_CAP = ' <b>An emergency arrived:</b> red in front, in both states, and the base rings.';
+
+let toastT = 0;
+function toast(words) { const t = $('#toast'); t.textContent = words; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
+
+function stateName() { return S.page ? `${S.kind}-${S.full ? 'full' : 'win'}` : 'closed'; }
+function render() {
+  const open = !!S.page;
+  pg.hidden = !open;
+  paper.hidden = !(open && S.kind === 'paper');
+  board.hidden = !(open && S.kind === 'board');
+  app.classList.toggle('expanded', open && S.full);
+  $$('[data-m="expand"]').forEach((b) => { b.textContent = S.full ? 'Shrink' : 'Expand'; b.title = S.full ? 'Back to a window' : 'Full screen; the base remembers it on this device'; });
+  $$('#set-seg button').forEach((b) => b.classList.toggle('on', (b.dataset.full === '1') === S.full));
+  const st = stateName();
+  $$('#states [data-st]').forEach((b) => b.classList.toggle('on', b.dataset.st === st));
+  $('#mayday').hidden = !S.alarm;
+  $('#bars-quiet').hidden = S.alarm;
+  const ac = $('#alarm-chip'); ac.classList.toggle('on', S.alarm); ac.setAttribute('aria-pressed', String(S.alarm));
+  $('#stage-cap').innerHTML = CAP[st] + (S.alarm ? ALARM_CAP : '');
+  const dark = (document.documentElement.dataset.theme || currentTheme()) === 'dark';
+  $$('#theme-btn, #m-theme').forEach((b) => { b.textContent = dark ? 'Light' : 'Dark'; });
+}
+function setFull(full) { S.full = !!full; try { localStorage.setItem(KEY, S.full ? 'full' : 'window'); } catch (e) { /* storage blocked */ } render(); }
+function openPage(kind, title, sub) {
+  S.page = title || kind; S.kind = kind;
+  if (kind === 'paper') { $('#paper-title').textContent = title || 'Shift-change briefing'; $('#paper-sub').textContent = sub || 'Cedar Fork Flooding · Operational period 1, 11:46 to 19:00 · 16:06'; paper.setAttribute('aria-label', title || 'Shift-change briefing'); }
+  else { $('#board-title').textContent = title || 'People'; $('#board-sub').textContent = sub || 'Cedar Fork Flooding'; board.setAttribute('aria-label', title || 'People'); }
+  render();
+  const win = kind === 'paper' ? paper : board; win.scrollTop = 0;
+}
+function closePage() { S.page = null; S.kind = null; render(); }
+
+// the stage's buttons
+$('#stage').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-m]');
+  if (!b) return;
+  if (b.tagName === 'A') e.preventDefault();
+  switch (b.dataset.m) {
+    case 'open': openPage(b.dataset.kind, b.dataset.title, b.dataset.sub); break;
+    case 'close': closePage(); break;
+    case 'expand': setFull(!S.full); break;
+    case 'theme': toggleTheme(); render(); break;
+    case 'toast': toast(b.dataset.say || 'As today'); break;
+  }
+});
+// a click on the dim closes, as the division's card does
+pg.addEventListener('click', (e) => { if (e.target === pg) closePage(); });
+// Escape closes; in a field it leaves the field first
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !S.page) return;
+  const a = document.activeElement;
+  if (a && pg.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { a.blur(); return; }
+  closePage();
+});
+// the state chips
+$('#states').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-st]');
+  if (!b) return;
+  const st = b.dataset.st;
+  if (st === 'closed') { closePage(); return; }
+  const [kind, size] = st.split('-');
+  S.full = size === 'full'; try { localStorage.setItem(KEY, S.full ? 'full' : 'window'); } catch (err) { /* storage blocked */ }
+  openPage(kind, kind === 'paper' ? 'Shift-change briefing' : 'People');
+});
+$('#alarm-chip').addEventListener('click', () => { S.alarm = !S.alarm; render(); });
+$('#set-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-full]'); if (b) setFull(b.dataset.full === '1'); });
+$('#theme-btn').addEventListener('click', () => { toggleTheme(); render(); });
+
+// the stage at 1280 × 800, scaled to the page's width
+function fit() {
+  const wrap = $('#stage-wrap');
+  const s = Math.min(1, wrap.clientWidth / 1280);
+  wrap.style.setProperty('--s', s);
+  wrap.style.height = Math.round(800 * s) + 'px';
+}
+window.addEventListener('resize', fit);
+fit();
+// a state in the address, so a link opens the mock-up at it: #paper-win, #paper-full, #board-win, #board-full; add .alarm for the emergency
+function applyHash() {
+  const h = location.hash.slice(1).split('.');
+  const [hk, hs] = h[0].split('-');
+  if (hk === 'paper' || hk === 'board') { S.full = hs === 'full'; openPage(hk, hk === 'paper' ? 'Shift-change briefing' : 'People'); }
+  else if (h[0] === 'closed') closePage();
+  if (h.includes('alarm')) S.alarm = true;
+  if (h.includes('dark') || h.includes('light')) document.documentElement.dataset.theme = h.includes('dark') ? 'dark' : 'light';   // this load only; the header button stores the choice
+  render();
+}
+window.addEventListener('hashchange', applyHash);
+applyHash();
+</script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: aerial photography by its corners · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+  try { var q = new URLSearchParams(location.search).get('theme'); if (q === 'light' || q === 'dark') document.documentElement.dataset.theme = q; } catch (e) {}</script>
+<!-- ?theme=dark or ?theme=light on the address forces the theme for this load (the mock only); the device's ic.theme is left alone -->
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="">
+<link rel="stylesheet" href="/css/shared.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin=""></script>
+<!-- Click-through mock-up, drawn 18 October 2026 at v59 before anything is built: a picture placed on the map by
+     dragging it and its corners, in place of typing four edges (js/base/ui.js overlayFormHtml). The map is the real
+     Leaflet 1.9.4 with OpenStreetMap under it, as the base; the sample photo is Esri's imagery of the same streets
+     turned twelve degrees and warmed on a canvas, so it reads as a photo from an aircraft and a rectangle never quite
+     fits it. Two kinds of handle are drawn, with what each costs. Nothing here writes anywhere. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .intro { max-width: 760px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro blockquote { margin: 10px 0 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--muted); font-size: 14px; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin: 0 0 28px; }
+  .screen { display: flex; flex-direction: column; gap: 8px; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 440px; line-height: 1.4; }
+  .screen > .cap b { color: var(--ink); }
+  .panel { width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; box-sizing: border-box; }
+  .panel.wide { width: 100%; max-width: 1200px; }
+  .panel.mid { width: 720px; }
+  h2.t { font-size: 18px; margin: 0 0 4px; }
+  .k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+  .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row.between { justify-content: space-between; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
+  input.input { width: 100%; border: 1px solid var(--control-border); border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--control-bg); color: var(--ink); margin: 0 0 8px; box-sizing: border-box; font: inherit; }
+  label.f { display: block; font-size: 12px; color: var(--muted); margin: 6px 0 2px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg, #222); color: var(--toast-ink, #fff); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; }
+  .toast[hidden] { display: none; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: none; color: var(--ink); padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .decisions { margin: 0; padding-left: 20px; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.tbl td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; line-height: 1.4; }
+  table.tbl tbody th { font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--ink); width: 110px; padding-top: 8px; border-bottom: 1px solid var(--line-soft); }
+  table.tbl td.same { color: var(--ink-2); }
+  .mono { font-size: 12px; }
+  /* the Layers panel, as the base draws it under the tools bar */
+  .lay-opt { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+  .radio { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--control-border); display: inline-block; flex: none; box-sizing: border-box; }
+  .radio.on { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+  .ovl { padding: 8px 0; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 4px; }
+  .ovl:first-child { border-top: 0; }
+  .ovl label.show { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; }
+  .ovl label.show input { margin: 0; accent-color: var(--accent); width: 16px; height: 16px; }
+  .ovl .nm { font-weight: 500; }
+  .ovl .ctl { display: flex; align-items: center; gap: 8px; }
+  .ovl .ctl input[type=range] { flex: 1; accent-color: var(--accent); min-width: 80px; }
+  .plink { border: 0; background: none; color: var(--accent-text); text-decoration: underline; font: inherit; font-size: 12.5px; cursor: pointer; padding: 0; }
+  .addrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 0; }
+  .logline { display: grid; grid-template-columns: 44px 1fr; gap: 0 8px; padding: 6px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
+  .logline:first-child { border-top: 0; }
+  .logline .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .logline .who { color: var(--muted); font-size: 12px; grid-column: 2; }
+  /* the mock's own bar: not part of the app */
+  .mockbar { display: flex; gap: 10px 18px; align-items: center; flex-wrap: wrap; padding: 8px 12px; margin: 0 0 10px; border: 1px dashed var(--control-border); border-radius: 10px; font-size: 13px; color: var(--muted); }
+  .mockbar .sp { flex: 1; }
+  .mockbar b { color: var(--ink); font-weight: 600; }
+  .mockbar .nowrap { white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
+  /* the base's map column at 1280 (940 wide), with a stand-in for the side panel */
+  .stage-wrap { width: 100%; overflow-x: auto; margin: 0 0 8px; }
+  .base { width: 1200px; display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+  .mapcol { width: 940px; flex: none; display: flex; flex-direction: column; }
+  .tools-m { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .tools-m .hint { flex: 1; min-width: 0; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .map-wrap { position: relative; }
+  #stage-map { height: 600px; background: var(--panel-2); position: relative; z-index: 0; outline: none; }
+  .leaflet-container { font-family: inherit; }
+  .legend-m { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 12px; font-size: 12px; color: var(--ink-2); border-top: 1px solid var(--line); align-items: center; }
+  .legend-m span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
+  .sw.open { border: 1.5px dashed var(--open); } .sw.active { background: var(--active-fill); opacity: .8; } .sw.cleared { background: var(--cleared-fill); opacity: .8; } .sw.bnd { border: 2px dashed var(--map-ink); height: 8px; }
+  .side-ghost { width: 260px; flex: none; border-left: 1px solid var(--line); padding: 12px 14px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; }
+  .side-ghost b { color: var(--ink); }
+  .side-ghost .bar { height: 10px; border-radius: 5px; background: var(--soft); }
+  /* the polygons, through the tokens so dark works */
+  .leaflet-overlay-pane path.bnd { stroke: var(--map-ink); stroke-width: 2.5; stroke-dasharray: 8 6; fill: none; }
+  .leaflet-overlay-pane path.zone { stroke-width: 2; fill-opacity: .2; }
+  .leaflet-overlay-pane path.zone.active { stroke: var(--active); fill: var(--active-fill); }
+  .leaflet-overlay-pane path.zone.cleared { stroke: var(--cleared); fill: var(--cleared-fill); }
+  .leaflet-overlay-pane path.zone.open { stroke: var(--open); fill: var(--open); fill-opacity: .1; stroke-dasharray: 5 4; }
+  .zlabel { width: 0 !important; height: 0 !important; display: flex; align-items: center; justify-content: center; overflow: visible; }
+  .zlabel span { white-space: nowrap; font-weight: 700; font-size: 12px; color: var(--map-ink); text-shadow: 0 0 3px var(--halo), 0 0 3px var(--halo), 0 0 4px var(--halo); }
+  /* the picture: one element laid over four points by a matrix3d, the stamp and a vignette on it */
+  .ph { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; outline: 1.5px solid rgba(255,255,255,.75); cursor: default; touch-action: none; will-change: transform; }
+  .ph[hidden] { display: none; }
+  .ph canvas, .ph img { display: block; width: 100%; height: 100%; pointer-events: none; }
+  .ph .stamp { position: absolute; left: 14px; bottom: 10px; color: #fff; font-weight: 600; font-size: 22px; letter-spacing: .02em; text-shadow: 0 1px 3px rgba(0,0,0,.85); pointer-events: none; }
+  .ph::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 120px rgba(0,0,0,.35); pointer-events: none; }
+  .ph.placing { outline: 2px solid var(--accent); cursor: move; }
+  /* the handles: markers, so they follow the map */
+  .hdl { background: #fff; border: 2px solid var(--accent); border-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,.45); box-sizing: border-box; }
+  .hdl.edge { border-radius: 999px; }
+  .lvl-b .hdl.corner { cursor: grab; border-radius: 50%; }
+  .hdl.turn { border-radius: 50%; cursor: grab; background: var(--accent); border-color: #fff; }
+  .hdl.turn::after { content: "⟳"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -52%); color: #fff; font-size: 13px; line-height: 1; }
+  .lvl-a .hdl.c0, .lvl-a .hdl.c2 { cursor: nwse-resize; } .lvl-a .hdl.c1, .lvl-a .hdl.c3 { cursor: nesw-resize; }
+  .hdl.e0, .hdl.e2 { cursor: ns-resize; } .hdl.e1, .hdl.e3 { cursor: ew-resize; }
+  /* the placing card, over the map's corner */
+  .place-card { position: absolute; right: 12px; top: 12px; z-index: 500; width: 272px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.3); padding: 12px 14px; font-size: 13px; box-sizing: border-box; }
+  .place-card[hidden] { display: none; }
+  .place-card .pc-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin: 0 0 4px; }
+  .place-card .pc-top b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .place-card input.input { margin-bottom: 4px; padding: 7px 9px; font-size: 13.5px; }
+  .place-card input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 6px; }
+  .place-card .hint { margin: 4px 0 10px; color: var(--muted); line-height: 1.4; }
+  .place-card .btns { display: flex; gap: 6px; }
+  .place-card .btns .btn.pri { flex: 1; }
+  .phone { width: 375px; background: var(--bg); border: 10px solid #0b0b0d; border-radius: 36px; padding: 14px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.35); font-size: 14px; box-sizing: border-box; }
+  .mini { height: 250px; border-radius: 10px; overflow: hidden; position: relative; z-index: 0; background: var(--panel-2); }
+  .rec { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; line-height: 1.5; }
+  @media (max-width: 480px) { .panel, .panel.mid, .phone { width: 100%; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up · aerial photography by its corners</span></div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme" type="button">Dark</button>
+  <a class="btn sm" href="/try/mockups/">‹ Other mock-ups</a>
+  <a class="btn sm" href="/try/">Try it</a>
+</div>
+<main>
+
+<div class="intro"><h1>Aerial photography by its corners</h1>Today a picture goes on the map by typing four edges. Drawn here: choose the file, it lands on the map, drag it until the roads line up, save. Two kinds of handle, with what each costs. Made-up data; drag things.
+  <blockquote>“The upload aerial photography tool feels clunky. A user should be able to set corners to stretch and narrow the aerial photography to make it all fit.” — Todd, 18 October, walking the base at v59.</blockquote>
+</div>
+
+<div class="screens">
+  <div class="screen">
+    <div class="panel" id="layers-panel">
+      <div class="row between"><h2 class="t">Layers</h2><button class="btn sm" type="button">Close</button></div>
+      <div class="k">Map underneath</div>
+      <div class="lay-opt"><span class="radio on"></span>Streets <span class="sub">· OpenStreetMap</span></div>
+      <div class="lay-opt"><span class="radio"></span>Satellite <span class="sub">· Esri</span></div>
+      <div class="lay-opt"><span class="radio"></span>Google Maps, streets</div>
+      <div class="k">Pictures over it</div>
+      <div id="ovl-list"><div class="sub" style="padding:4px 0">None yet.</div></div>
+      <div id="ovl-gone" class="sub" hidden></div>
+      <div class="addrow">
+        <button class="btn pri sm" type="button" id="add-sample">Add a picture</button>
+        <span class="sub">mock: the sample, or</span><button class="plink" type="button" id="add-file">a file of your own</button>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp" hidden>
+      </div>
+      <p class="note">It lands on the map; drag it into place. Hiding is for this screen, opacity for everyone.</p>
+    </div>
+    <div class="cap"><b>1 · The Layers panel.</b> One button where the four edges were. Press it. After Save the row is here, with Adjust. The home panel's Map imagery section gets the same list and button.</div>
+  </div>
+  <div class="screen">
+    <div class="panel">
+      <h2 class="t">Today</h2>
+      <div class="sub" style="line-height:1.5">Picture · Name · Taken at · South edge, latitude · West edge, longitude · North edge, latitude · East edge, longitude · Opacity · Use the map's view · Put it on the map.</div>
+      <p class="note">Nine things to fill before the picture is seen at all, and the map's view is the only help. A picture is never the shape of the view.</p>
+    </div>
+    <div class="cap"><b>What it replaces.</b> The form in the Layers panel and on the home panel (<span class="mono">overlayFormHtml</span>).</div>
+  </div>
+</div>
+
+<div class="mockbar">
+  <span><b>Handles</b></span>
+  <span class="seg" id="lvl"><button type="button" data-lvl="a">a · Rectangle</button><button type="button" data-lvl="b" class="on">b · Four corners</button></span>
+  <span id="lvl-cost"></span>
+  <span class="sp"></span>
+  <span class="nowrap">Mock only: <button class="btn sm" type="button" id="snap" disabled>Put the sample where it belongs</button></span>
+</div>
+<div class="stage-wrap">
+  <div class="base">
+    <div class="mapcol">
+      <div class="tools-m"><button class="btn sm" type="button">Draw boundary</button><button class="btn sm" type="button">Draw division</button><span class="hint" id="tool-hint">Click a division, a unit or a photo pin to open it.</span><button class="btn sm on" type="button">Layers</button></div>
+      <div class="map-wrap">
+        <div id="stage-map" class="lvl-b" tabindex="0" aria-label="Incident map"></div>
+        <div class="place-card" id="card" hidden>
+          <div class="pc-top"><b id="pc-file">cap-0640.jpg</b><span class="sub" id="pc-size"></span></div>
+          <label class="f">Name<input class="input" id="pc-name" maxlength="120"></label>
+          <label class="f">Taken at<input class="input" id="pc-taken" type="datetime-local"></label>
+          <label class="f">Opacity · <span id="pc-op-v">50%</span><input type="range" id="pc-op" min="10" max="100" value="50"></label>
+          <p class="hint" id="pc-hint"></p>
+          <div class="btns"><button class="btn pri sm" type="button" id="pc-save">Save</button><button class="btn sm" type="button" id="pc-undo" disabled>Undo</button><button class="btn sm" type="button" id="pc-cancel">Cancel</button></div>
+        </div>
+      </div>
+      <div class="legend-m"><span><span class="sw open"></span>Not started</span><span><span class="sw active"></span>In progress</span><span><span class="sw cleared"></span>Cleared</span><span><span class="sw bnd"></span>Incident boundary</span></div>
+    </div>
+    <div class="side-ghost"><b>Cedar Fork Flooding</b><span>Operations · period 1</span><div class="bar" style="width:70%"></div><div class="bar" style="width:55%"></div><span style="margin-top:8px"><b>Units</b> · 3</span><div class="bar" style="width:80%"></div><div class="bar" style="width:62%"></div><div class="bar" style="width:74%"></div><span style="margin-top:8px"><b>Divisions</b> · 6</span><div class="bar" style="width:66%"></div><div class="bar" style="width:72%"></div><div class="bar" style="width:58%"></div><span style="margin-top:auto">The side panel, unchanged.</span></div>
+  </div>
+</div>
+<div class="screens"><div class="screen" style="max-width:100%"><div class="cap" style="max-width:760px"><b>2 · On the map at once</b>, over the view, half strength, its own shape. Drag the picture, a corner, an edge; the map still pans and zooms under it. The sample was shot from an aircraft and sits twelve degrees off north: with a rectangle the roads never all line up, with four corners they do. Switch the handles above, or let the mock put it where it belongs.</div></div></div>
+
+<div class="screens">
+  <div class="screen">
+    <div class="panel">
+      <div class="k">Activity log</div>
+      <div id="log-list"><div class="sub" style="padding:4px 0">Nothing yet.</div></div>
+    </div>
+    <div class="cap"><b>3 · The 214 line</b>, written by the trigger as today: added, updated, removed, put back. Nothing new to log.</div>
+  </div>
+  <div class="screen">
+    <div class="phone">
+      <div class="row between" style="padding:2px 2px 8px"><b>Cedar Fork Flooding</b><span class="sub">Unit 3 · A-2</span></div>
+      <div id="mini" class="mini"></div>
+      <div class="card" style="margin:10px 0 0"><b>A-2 · Pecan Mobile Home Park</b><div class="sub">In progress · 6 of 18 · channel 3</div></div>
+    </div>
+    <div class="cap" style="max-width:375px"><b>The phone's mini map</b> draws the saved picture from the same row, at the saved opacity. Hidden on the base stays shown here: hiding is per device.</div>
+  </div>
+</div>
+
+<div class="screens">
+  <div class="screen" style="flex:1 1 640px">
+    <div class="panel wide" id="costs">
+      <h2 class="t">Two kinds of handle, and what each costs</h2>
+      <table class="tbl">
+        <thead><tr><th></th><th>a · Rectangle</th><th>b · Four corners</th></tr></thead>
+        <tbody>
+          <tr><th>Fits</th><td>A north-up picture: a drone mosaic, a satellite crop, a county orthophoto, a scanned plan.</td><td>Any picture of flat ground: a photo out of an aircraft window, a mosaic flown on a heading, a plan photographed on a table.</td></tr>
+          <tr><th>Storage</th><td>Today's <span class="mono">bounds</span>. No migration.</td><td>A <span class="mono">corners</span> column, four lat, lng pairs, with a migration and its rule test. <span class="mono">bounds</span> is written as the corners' box, so everything that reads it stays right.</td></tr>
+          <tr><th>Drawing, base</th><td>Leaflet's image overlay, as today; <span class="mono">setBounds</span> while placing.</td><td>A new layer in <span class="mono">js/shared/layers.js</span>: the picture under a matrix3d from the four corners, redrawn on zoom and animated by hand, since Leaflet has none. About eighty lines.</td></tr>
+          <tr><th>The phone</th><td>Nothing.</td><td>The mini map takes the same layer from layers.js: one line.</td></tr>
+          <tr><th>The paper</th><td>The 204 map carries no imagery today; nothing changes.</td><td>The same. A warped picture on the printed map is a later question.</td></tr>
+          <tr><th>The form</th><td class="same" colspan="2">The same in both: Add a picture, then the card on the map: Name, Taken at, Opacity, Save. The four edges and Use the map's view go (<span class="mono">overlayFormHtml</span> in ui.js, <span class="mono">fillOverlayBounds</span> in main.js). The handles are a placing mode in <span class="mono">js/base/map.js</span>, like drawing a division.</td></tr>
+          <tr><th>The mock</th><td>Nothing.</td><td>The seed's row gains corners; the check mirrors the migration.</td></tr>
+          <tr><th>Build</th><td>About a day: the card, the handles, the live preview, Adjust.</td><td>Two to three days: the same, plus the layer, the migration, its test, the mock.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="screen" style="flex:1 1 320px">
+    <div class="panel" style="width:100%">
+      <h2 class="t">Build first</h2>
+      <div class="rec"><b>b · Four corners.</b> The pictures the app names, Civil Air Patrol photos, are shot from a window and never fit a rectangle; a day on rectangle handles would be thrown away. The card and the handles are the same in both. What (b) adds is one column, a migration and about eighty lines both views share, and <span class="mono">bounds</span> still holds the corners' box.</div>
+      <p class="note">If the pictures you expect are north-up exports (a drone mosaic, a satellite crop), (a) is enough and a day.</p>
+    </div>
+  </div>
+</div>
+
+<div class="screens">
+  <div class="screen" style="width:100%">
+    <div class="panel wide" id="decided">
+      <h2 class="t">Decided here, and yours to decide</h2>
+      <div class="k">Decided here (say if any is wrong)</div>
+      <ul class="decisions">
+        <li><b>Choose the file and it is on the map.</b> No coordinates typed, ever.</li>
+        <li><b>It lands over the view</b> at half strength, 70 % of the width, its own shape.</li>
+        <li><b>The map still pans and zooms while placing.</b> The handles are markers, so they follow.</li>
+        <li><b>Drag the picture to move it, a corner to stretch or narrow it.</b> In (b) a round handle above it turns it, shape kept; in (a) the edges move one edge each.</li>
+        <li><b>Name and Taken at on the card</b>, filled from the file (its name; its date, the camera's when it has one), both changeable. The slider's value is what is saved; it starts at 50 so the roads show through.</li>
+        <li><b>Save writes the row as today</b> (<span class="mono">data.addOverlay</span>); the trigger writes the line. Adjust on a row reopens the handles and logs “updated”.</li>
+        <li><b>Undo steps back one drag</b> (⌘Z). Cancel takes the picture off; Escape is Cancel. Arrows nudge a pixel, Shift ten.</li>
+        <li><b>Under the divisions</b>, as today, so their outlines stay readable over it.</li>
+        <li><b>The base places; the phone shows.</b></li>
+      </ul>
+      <div class="k">Yours to decide</div>
+      <ul class="decisions">
+        <li><b>Which first:</b> (b) as above, or (a) if the pictures are north-up.</li>
+        <li><b>A picture with no GPS in it</b> lands over the view either way. A JPEG with a GPS point could land centred on it (an EXIF read, about forty lines, no library). Worth it now?</li>
+        <li><b>A second picture over the first:</b> newest on top. While placing, dim the others, hide them, or leave them?</li>
+        <li><b>The phone too?</b> A drone crew with a tablet could place in the field: thumb-sized handles and the outbox. Later, or never.</li>
+        <li><b>Turning:</b> a handle is drawn. A slider on the card instead?</li>
+        <li><b>The paper:</b> should the 204 map carry the picture once one is on the map? A rectangle can; a warp cannot on SVG.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const toast = (t) => { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2800); };
+  const p2 = (n) => String(n).padStart(2, '0');
+  const hhmm = (d) => p2(d.getHours()) + ':' + p2(d.getMinutes());
+  const dtLocal = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+
+  // the theme: per device, as the app's (ic.theme)
+  const theme = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const drawTheme = () => { $('theme').textContent = theme() === 'dark' ? 'Light' : 'Dark'; };
+  $('theme').addEventListener('click', () => { const t = theme() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = t; try { localStorage.setItem('ic.theme', t); } catch (e) { /* storage blocked */ } drawTheme(); });
+  drawTheme();
+
+  // ---- geometry: the unit square onto four points, as a 3 × 3 projective matrix (Heckbert), then CSS
+  function squareToQuad(p) {
+    const [x0, y0] = p[0], [x1, y1] = p[1], [x2, y2] = p[2], [x3, y3] = p[3];
+    const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3;
+    const dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3;
+    if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) return [x1 - x0, x3 - x0, x0, y1 - y0, y3 - y0, y0, 0, 0, 1];
+    const det = dx1 * dy2 - dx2 * dy1;
+    const g = (dx3 * dy2 - dx2 * dy3) / det, h = (dx1 * dy3 - dx3 * dy1) / det;
+    return [x1 - x0 + g * x1, x3 - x0 + h * x3, x0, y1 - y0 + g * y1, y3 - y0 + h * y3, y0, g, h, 1];
+  }
+  // the transform that lays a w × h element over four points: top-left, top-right, bottom-right, bottom-left
+  function matrixFor(pts, w, h) {
+    const [a, b, c, d, e, f, g, hh, i] = squareToQuad(pts);
+    return `matrix3d(${a / w},${d / w},0,${g / w},${b / h},${e / h},0,${hh / h},0,0,1,0,${c},${f},0,${i})`;
+  }
+  const convex = (p) => { let s = 0; for (let i = 0; i < 4; i++) { const a = p[i], b = p[(i + 1) % 4], c = p[(i + 2) % 4]; const z = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]); if (!z) return false; if (!s) s = Math.sign(z); else if (Math.sign(z) !== s) return false; } return true; };
+  const box = (c) => ({ south: Math.min(...c.map((p) => p[0])), north: Math.max(...c.map((p) => p[0])), west: Math.min(...c.map((p) => p[1])), east: Math.max(...c.map((p) => p[1])) });
+  const fromBox = (b) => [[b.north, b.west], [b.north, b.east], [b.south, b.east], [b.south, b.west]];
+  const boundsText = (c) => { const b = box(c), f = (v) => v.toFixed(4); return `${f(b.south)}, ${f(b.west)} to ${f(b.north)}, ${f(b.east)}`; };
+  const copy = (c) => c.map((p) => [p[0], p[1]]);
+
+  // ---- the seed: Cedar Fork Flooding's boundary and divisions, as dev/mock-supabase.js draws them
+  const BOUNDARY = [[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]];
+  const ZONES = [
+    { code: 'A-1', status: 'active', ring: [[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]] },
+    { code: 'A-2', status: 'active', ring: [[30.2660, -97.7410], [30.2662, -97.7355], [30.2690, -97.7352], [30.2691, -97.7405]] },
+    { code: 'A-3', status: 'cleared', ring: [[30.2695, -97.7420], [30.2696, -97.7380], [30.2722, -97.7382], [30.2720, -97.7422]] },
+    { code: 'B-1', status: 'active', ring: [[30.2600, -97.7440], [30.2602, -97.7395], [30.2632, -97.7398], [30.2630, -97.7443]] },
+    { code: 'B-2', status: 'open', ring: [[30.2578, -97.7500], [30.2582, -97.7450], [30.2616, -97.7452], [30.2612, -97.7502]] },
+    { code: 'B-3', status: 'open', ring: [[30.2568, -97.7380], [30.2572, -97.7320], [30.2606, -97.7322], [30.2602, -97.7384]] }
+  ];
+  const osm = (m) => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', className: 'tiles-dim' }).addTo(m);
+  function drawZones(m, labels) {
+    L.polygon(BOUNDARY, { className: 'bnd', interactive: false, fill: false }).addTo(m);
+    for (const z of ZONES) {
+      L.polygon(z.ring, { className: 'zone ' + z.status, interactive: false, fill: true }).addTo(m);
+      if (labels) L.marker(L.polygon(z.ring).getBounds().getCenter(), { icon: L.divIcon({ className: 'zlabel', html: '<span>' + z.code + '</span>', iconSize: [0, 0] }), interactive: false, keyboard: false }).addTo(m);
+    }
+  }
+
+  // ---- the sample photo: Esri's imagery of these streets, turned 12° and warmed on a canvas, so it reads as a
+  // photo from an aircraft. Its true corners are known, so the mock can put it where it belongs.
+  const CRS = L.CRS.EPSG3857, Z = 16;
+  const SAMPLE = { w: 1000, h: 660, deg: 12, center: L.latLng(30.2642, -97.7398) };
+  const turned = (u, v) => { const C = CRS.latLngToPoint(SAMPLE.center, Z), t = SAMPLE.deg * Math.PI / 180, x = u - SAMPLE.w / 2, y = v - SAMPLE.h / 2; return L.point(C.x + x * Math.cos(t) - y * Math.sin(t), C.y + x * Math.sin(t) + y * Math.cos(t)); };
+  const PICTURE = [[0, 0], [SAMPLE.w, 0], [SAMPLE.w, SAMPLE.h], [0, SAMPLE.h]];
+  const trueCorners = () => PICTURE.map(([u, v]) => { const ll = CRS.pointToLatLng(turned(u, v), Z); return [ll.lat, ll.lng]; });
+  function sampleSource() {
+    const c = document.createElement('canvas'); c.width = SAMPLE.w; c.height = SAMPLE.h;
+    const g = c.getContext('2d');
+    g.fillStyle = '#6f6d57'; g.fillRect(0, 0, c.width, c.height);   // ground, in case a tile never comes
+    const C = CRS.latLngToPoint(SAMPLE.center, Z), t = SAMPLE.deg * Math.PI / 180;
+    const pts = PICTURE.map(([u, v]) => turned(u, v));
+    const x0 = Math.floor(Math.min(...pts.map((p) => p.x)) / 256), x1 = Math.floor(Math.max(...pts.map((p) => p.x)) / 256);
+    const y0 = Math.floor(Math.min(...pts.map((p) => p.y)) / 256), y1 = Math.floor(Math.max(...pts.map((p) => p.y)) / 256);
+    const jobs = [];
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) jobs.push(new Promise((res) => {
+      const im = new Image();
+      im.onload = () => { g.save(); g.filter = 'sepia(.35) saturate(.85) contrast(1.08) brightness(.96)'; g.translate(SAMPLE.w / 2, SAMPLE.h / 2); g.rotate(-t); g.translate(-C.x, -C.y); g.drawImage(im, tx * 256, ty * 256, 256, 256); g.restore(); res(true); };
+      im.onerror = () => res(false);
+      im.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${Z}/${ty}/${tx}`;
+    }));
+    return { kind: 'sample', canvas: c, w: SAMPLE.w, h: SAMPLE.h, file: 'cap-0640.jpg', name: 'Aerial 06:40, Civil Air Patrol', taken: '2026-10-18T06:40', ready: Promise.all(jobs) };
+  }
+  // what goes inside a picture element: the sample's canvas (a copy, so two maps can show it) or the file's image
+  function makeContent(src, live) {
+    const frag = document.createDocumentFragment();
+    if (src.kind === 'sample') {
+      let c = src.canvas;
+      if (!live) { c = document.createElement('canvas'); c.width = src.w; c.height = src.h; c.getContext('2d').drawImage(src.canvas, 0, 0); }
+      frag.appendChild(c);
+      const s = document.createElement('span'); s.className = 'stamp'; s.textContent = 'CAP · 18 Oct 06:40'; frag.appendChild(s);
+    } else { const im = document.createElement('img'); im.src = src.url; im.alt = ''; frag.appendChild(im); }
+    return frag;
+  }
+
+  // ---- a picture over four points on a Leaflet map, in its own pane; redrawn on zoom, animated with the zoom
+  function photoLayer(map, paneName, z) {
+    const pane = map.getPane(paneName) || map.createPane(paneName); pane.style.zIndex = z;
+    const el = document.createElement('div'); el.className = 'ph leaflet-zoom-animated'; el.hidden = true; pane.appendChild(el);
+    let corners = null, w = 1, h = 1;
+    const draw = (project) => { if (!corners) return; el.style.transform = matrixFor(corners.map((c) => { const p = project(L.latLng(c[0], c[1])); return [p.x, p.y]; }), w, h); };
+    const redraw = () => draw((ll) => map.latLngToLayerPoint(ll));
+    map.on('zoom viewreset', redraw);
+    map.on('zoomanim', (e) => draw((ll) => map._latLngToNewLayerPoint(ll, e.zoom, e.center)));
+    return {
+      el,
+      content(node, cw, ch) { el.replaceChildren(node); w = cw; h = ch; el.style.width = cw + 'px'; el.style.height = ch + 'px'; redraw(); },
+      set(c) { corners = c ? copy(c) : null; el.hidden = !corners; redraw(); },
+      opacity(v) { el.style.opacity = v; },
+      show(on) { el.hidden = !on || !corners; },
+      pixels: () => corners.map((c) => { const p = map.latLngToLayerPoint(L.latLng(c[0], c[1])); return [p.x, p.y]; })
+    };
+  }
+
+  // ---- the base's map
+  const stage = L.map('stage-map', { zoomControl: true });
+  osm(stage); drawZones(stage, true);
+  stage.fitBounds(L.latLngBounds(BOUNDARY), { padding: [16, 16] });
+  const mini = L.map('mini', { zoomControl: false, attributionControl: false });
+  osm(mini); drawZones(mini, false);
+  mini.setView([30.2652, -97.7395], 14);
+
+  const S = { level: 'b', corners: null, hist: [], src: null, editing: null, saved: [], n: 0 };
+  const placing = photoLayer(stage, 'placing', 260);
+  placing.el.classList.add('placing');
+  L.DomEvent.disableClickPropagation(placing.el);
+  L.DomEvent.on(placing.el, 'pointerdown', L.DomEvent.stopPropagation);
+
+  // the handles: four corners, and in (a) four edges, as draggable markers
+  const hdl = (cls, i) => L.marker([0, 0], { icon: L.divIcon({ className: 'hdl ' + cls + ' ' + cls[0] + i, iconSize: cls === 'corner' ? [16, 16] : [12, 12] }), draggable: true, keyboard: false, zIndexOffset: 2000 });
+  const corners = [0, 1, 2, 3].map((i) => hdl('corner', i)), edges = [0, 1, 2, 3].map((i) => hdl('edge', i));
+  const turn = L.marker([0, 0], { icon: L.divIcon({ className: 'hdl turn', iconSize: [20, 20] }), draggable: true, keyboard: false, zIndexOffset: 2100, title: 'Drag to turn the picture' });
+  const TURN_PX = 34;   // the Turn handle sits this far outside the top edge
+  const pxCentre = (px) => [px.reduce((a, q) => a + q[0], 0) / 4, px.reduce((a, q) => a + q[1], 0) / 4];
+  const turnPoint = () => { const px = placing.pixels(), a = px[0], b = px[1], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], c = pxCentre(px), v = [m[0] - c[0], m[1] - c[1]], n = Math.hypot(v[0], v[1]) || 1; return L.point(m[0] + v[0] / n * TURN_PX, m[1] + v[1] / n * TURN_PX); };
+  const EPS = 0.0002;
+  function placeHandles(skip) {
+    if (!S.corners) { for (const m of corners.concat(edges, [turn])) m.remove(); return; }
+    const c = S.corners;
+    corners.forEach((m, i) => { if (!m._map) m.addTo(stage); if (skip !== m) m.setLatLng(c[i]); });
+    if (S.level === 'b') { if (!turn._map) turn.addTo(stage); if (skip !== turn) turn.setLatLng(stage.layerPointToLatLng(turnPoint())); } else turn.remove();
+    edges.forEach((m, i) => {
+      if (S.level !== 'a') { m.remove(); return; }
+      if (!m._map) m.addTo(stage);
+      const a = c[i], b = c[(i + 1) % 4];
+      if (skip !== m) m.setLatLng([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+    });
+  }
+  const setCorners = (c, skip) => { S.corners = copy(c); placing.set(S.corners); placeHandles(skip); };
+  const remember = () => { S.hist.push(copy(S.corners)); if (S.hist.length > 60) S.hist.shift(); $('pc-undo').disabled = false; };
+  corners.forEach((m, i) => {
+    let start = null;
+    m.on('dragstart', () => { remember(); start = { px: placing.pixels() }; });
+    m.on('drag', () => {
+      const ll = m.getLatLng(), c = copy(S.corners);
+      if (S.level === 'a') {
+        const o = c[(i + 2) % 4];   // the opposite corner stays
+        const b = { south: Math.min(o[0], ll.lat), north: Math.max(o[0], ll.lat), west: Math.min(o[1], ll.lng), east: Math.max(o[1], ll.lng) };
+        if (b.north - b.south < EPS || b.east - b.west < EPS) return;
+        setCorners(fromBox(b), m);
+      } else {
+        c[i] = [ll.lat, ll.lng];
+        if (!convex(c.map((q) => { const p = stage.latLngToLayerPoint(L.latLng(q[0], q[1])); return [p.x, p.y]; }))) return;
+        setCorners(c, m);
+      }
+    });
+    m.on('dragend', () => { placeHandles(); drawCard(); });
+  });
+  // the Turn handle: the picture turns about its centre, shape kept
+  { let start = null;
+    turn.on('dragstart', () => { remember(); const px = placing.pixels(), c = pxCentre(px), t = turnPoint(); start = { px, c, a0: Math.atan2(t.y - c[1], t.x - c[0]) }; });
+    turn.on('drag', () => {
+      const p = stage.latLngToLayerPoint(turn.getLatLng()), a = Math.atan2(p.y - start.c[1], p.x - start.c[0]) - start.a0;
+      const px = start.px.map((q) => { const x = q[0] - start.c[0], y = q[1] - start.c[1]; return [start.c[0] + x * Math.cos(a) - y * Math.sin(a), start.c[1] + x * Math.sin(a) + y * Math.cos(a)]; });
+      setCorners(px.map((q) => { const g = stage.layerPointToLatLng(L.point(q[0], q[1])); return [g.lat, g.lng]; }), turn);
+    });
+    turn.on('dragend', () => { placeHandles(); drawCard(); });
+  }
+  edges.forEach((m, i) => {
+    m.on('dragstart', () => remember());
+    m.on('drag', () => {
+      const ll = m.getLatLng(), b = box(S.corners);
+      if (i === 0) b.north = Math.max(ll.lat, b.south + EPS); else if (i === 2) b.south = Math.min(ll.lat, b.north - EPS);
+      else if (i === 1) b.east = Math.max(ll.lng, b.west + EPS); else b.west = Math.min(ll.lng, b.east - EPS);
+      setCorners(fromBox(b), m);
+    });
+    m.on('dragend', () => { placeHandles(); drawCard(); });
+    // an edge moves only its own way
+    m.on('add', () => { const d = m.dragging && m.dragging._draggable; if (d && !d._locked) { d._locked = true; d.on('predrag', () => { if (i === 0 || i === 2) d._newPos.x = d._startPos.x; else d._newPos.y = d._startPos.y; }); } });
+  });
+  // the picture itself: drag to move
+  placing.el.addEventListener('pointerdown', (e) => {
+    if (!S.corners || e.button !== 0) return;
+    e.preventDefault(); placing.el.setPointerCapture(e.pointerId); remember();
+    const x0 = e.clientX, y0 = e.clientY, px = placing.pixels();
+    const move = (ev) => { const dx = ev.clientX - x0, dy = ev.clientY - y0; setCorners(px.map((q) => { const g = stage.layerPointToLatLng(L.point(q[0] + dx, q[1] + dy)); return [g.lat, g.lng]; })); };
+    const up = () => { placing.el.removeEventListener('pointermove', move); placing.el.removeEventListener('pointerup', up); placing.el.removeEventListener('pointercancel', up); drawCard(); };
+    placing.el.addEventListener('pointermove', move); placing.el.addEventListener('pointerup', up); placing.el.addEventListener('pointercancel', up);
+  });
+
+  // ---- placing: in, the card, out
+  function landing(w, h) {
+    const size = stage.getSize(); let pw = size.x * 0.7, ph = pw * h / w;
+    if (ph > size.y * 0.7) { ph = size.y * 0.7; pw = ph * w / h; }
+    const cx = size.x / 2, cy = size.y / 2;
+    return [[cx - pw / 2, cy - ph / 2], [cx + pw / 2, cy - ph / 2], [cx + pw / 2, cy + ph / 2], [cx - pw / 2, cy + ph / 2]].map(([x, y]) => { const g = stage.containerPointToLatLng(L.point(x, y)); return [g.lat, g.lng]; });
+  }
+  function startPlacing(src, c, opts) {
+    S.src = src; S.editing = opts.editing || null; S.hist = []; $('pc-undo').disabled = true;
+    placing.content(makeContent(src, true), src.w, src.h);
+    $('pc-file').textContent = src.file; $('pc-size').textContent = src.w + ' × ' + src.h;
+    $('pc-name').value = opts.name != null ? opts.name : src.name; $('pc-taken').value = opts.taken != null ? opts.taken : src.taken;
+    $('pc-op').value = opts.opacity != null ? Math.round(opts.opacity * 100) : 50; drawOpacity();
+    setCorners(c); $('card').hidden = false; drawCard();
+    stage.keyboard.disable(); $('tool-hint').textContent = 'Placing a picture: drag it until the roads line up, then Save.';
+    $('snap').disabled = src.kind !== 'sample';
+    toast(opts.editing ? 'Drag it; Save keeps the change.' : 'On the map. Drag it until the roads line up.');
+  }
+  function endPlacing() {
+    S.corners = null; S.src = null; S.editing = null; S.hist = []; placing.set(null); placeHandles(); $('card').hidden = true;
+    stage.keyboard.enable(); $('tool-hint').textContent = 'Click a division, a unit or a photo pin to open it.'; $('snap').disabled = true;
+  }
+  const drawOpacity = () => { $('pc-op-v').textContent = $('pc-op').value + '%'; placing.opacity($('pc-op').value / 100); };
+  $('pc-op').addEventListener('input', drawOpacity);
+  function drawCard() { $('pc-hint').textContent = S.level === 'a' ? 'Drag the picture to move it, a corner or an edge to stretch it. Zoom in to line the roads up. Arrows nudge.' : 'Drag the picture to move it, a corner to stretch it, the round handle to turn it. Zoom in to line the roads up. Arrows nudge.'; }
+  function undo() { if (!S.hist.length) return; setCorners(S.hist.pop()); $('pc-undo').disabled = !S.hist.length; }
+  $('pc-undo').addEventListener('click', undo);
+  $('pc-cancel').addEventListener('click', () => cancel());
+  function cancel() { const rec = S.editing && S.saved.find((r) => r.id === S.editing); endPlacing(); if (rec) rec.stage.show(!rec.hidden); toast(rec ? 'Left as it was.' : 'Taken off.'); }
+  function nudge(dx, dy) { remember(); setCorners(placing.pixels().map((q) => { const g = stage.layerPointToLatLng(L.point(q[0] + dx, q[1] + dy)); return [g.lat, g.lng]; })); }
+  document.addEventListener('keydown', (e) => {
+    if (!S.corners || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    const d = e.shiftKey ? 10 : 1;
+    if (e.key === 'ArrowUp') { nudge(0, -d); e.preventDefault(); } else if (e.key === 'ArrowDown') { nudge(0, d); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { nudge(-d, 0); e.preventDefault(); } else if (e.key === 'ArrowRight') { nudge(d, 0); e.preventDefault(); }
+    else if ((e.metaKey || e.ctrlKey) && e.key === 'z') { undo(); e.preventDefault(); } else if (e.key === 'Escape') cancel();
+  });
+
+  // ---- the levels: (a) a rectangle, (b) four free corners
+  function setLevel(l) {
+    S.level = l;
+    for (const b of $('lvl').children) b.classList.toggle('on', b.dataset.lvl === l);
+    $('stage-map').classList.toggle('lvl-a', l === 'a'); $('stage-map').classList.toggle('lvl-b', l === 'b');
+    $('lvl-cost').textContent = l === 'a' ? "today's bounds, no migration; north-up pictures only" : 'a column, a migration, one layer both views share; any picture';
+    if (S.corners && l === 'a') setCorners(fromBox(box(S.corners))); else placeHandles();
+    drawCard();
+  }
+  $('lvl').addEventListener('click', (e) => { const b = e.target.closest('[data-lvl]'); if (b) setLevel(b.dataset.lvl); });
+  $('snap').addEventListener('click', () => { if (!S.src || S.src.kind !== 'sample') return; remember(); const t = trueCorners(); setCorners(S.level === 'a' ? fromBox(box(t)) : t); toast(S.level === 'a' ? 'The best rectangle: the middle fits, the edges do not.' : 'Every corner where it belongs.'); });
+
+  // ---- in: the sample, or a file of your own
+  const sample = sampleSource();
+  sample.ready.then(() => { for (const r of S.saved) if (r.src === sample) { r.stage.content(makeContent(sample), sample.w, sample.h); r.mini.content(makeContent(sample), sample.w, sample.h); } });
+  $('add-sample').addEventListener('click', () => { if (S.corners) { toast('Save or cancel the one you are placing first.'); return; } startPlacing(sample, landing(sample.w, sample.h), {}); });
+  $('add-file').addEventListener('click', () => $('file').click());
+  $('file').addEventListener('change', () => {
+    const f = $('file').files && $('file').files[0]; if (!f) return;
+    if (S.corners) { toast('Save or cancel the one you are placing first.'); return; }
+    const url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1000 / im.naturalWidth), w = Math.round(im.naturalWidth * k), h = Math.round(im.naturalHeight * k);
+      const src = { kind: 'file', url, w, h, file: f.name, name: f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '), taken: dtLocal(new Date(f.lastModified)) };
+      startPlacing(src, landing(w, h), {});
+    };
+    im.onerror = () => toast('That is not a picture the browser can show.');
+    im.src = url; $('file').value = '';
+  });
+
+  // ---- out: Save writes the row; the panel, the log and the phone read it
+  function log(text) {
+    const list = $('log-list'); if (list.firstElementChild && list.firstElementChild.classList.contains('sub')) list.innerHTML = '';
+    const d = document.createElement('div'); d.className = 'logline'; d.innerHTML = `<span class="t">${hhmm(new Date())}</span><span></span><span class="who">Operations</span>`; d.children[1].textContent = text; list.prepend(d);
+  }
+  const what = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
+  $('pc-save').addEventListener('click', () => {
+    const name = $('pc-name').value.trim(), taken = $('pc-taken').value, opacity = $('pc-op').value / 100, c = copy(S.corners), src = S.src;
+    let rec = S.editing && S.saved.find((r) => r.id === S.editing);
+    if (rec) {
+      const changed = rec.name !== name || JSON.stringify(rec.corners) !== JSON.stringify(c);
+      Object.assign(rec, { name, taken, opacity, corners: c, level: S.level });
+      rec.stage.set(c); rec.stage.opacity(opacity); rec.stage.show(!rec.hidden); rec.mini.set(c); rec.mini.opacity(opacity);
+      if (changed) log(what(rec) + ' updated');
+      toast('Saved for everyone.');
+    } else {
+      rec = { id: 'o' + (++S.n), name, taken, opacity, corners: c, level: S.level, src, hidden: false, gone: false, added: new Date(), stage: photoLayer(stage, 'imagery', 250), mini: photoLayer(mini, 'imagery', 250) };
+      rec.stage.content(makeContent(src), src.w, src.h); rec.stage.set(c); rec.stage.opacity(opacity);
+      rec.mini.content(makeContent(src), src.w, src.h); rec.mini.set(c); rec.mini.opacity(opacity);
+      S.saved.push(rec); log(what(rec) + ' added to the map');
+      toast('On the map for everyone.');
+    }
+    endPlacing(); drawPanel();
+  });
+  function drawPanel() {
+    const live = S.saved.filter((r) => !r.gone), gone = S.saved.filter((r) => r.gone);
+    const takenText = (r) => r.taken ? 'taken ' + hhmm(new Date(r.taken)) + ' · ' : '';
+    $('ovl-list').innerHTML = live.length ? live.map((r) => `<div class="ovl">
+        <label class="show"><input type="checkbox" data-hide="${r.id}" ${r.hidden ? '' : 'checked'}><span class="nm"></span><span class="sub">${takenText(r)}added ${hhmm(r.added)}</span></label>
+        <div class="sub mono">${boundsText(r.corners)}</div>
+        <div class="ctl"><span class="sub">Opacity</span><input type="range" min="0" max="100" data-op="${r.id}" value="${Math.round(r.opacity * 100)}" aria-label="Opacity"><button class="btn sm" type="button" data-adjust="${r.id}" title="Drag it again">Adjust</button><button class="btn sm" type="button" data-remove="${r.id}" title="Off the map for everyone; it is kept">Remove</button></div>
+      </div>`).join('') : '<div class="sub" style="padding:4px 0">None yet.</div>';
+    live.forEach((r, i) => { $('ovl-list').querySelectorAll('.nm')[i].textContent = r.name || 'Imagery'; });
+    $('ovl-gone').hidden = !gone.length;
+    $('ovl-gone').innerHTML = gone.length ? gone.length + ' removed: ' + gone.map((r) => `<span></span> <button class="plink" type="button" data-restore="${r.id}">put back</button>`).join(', ') : '';
+    gone.forEach((r, i) => { $('ovl-gone').querySelectorAll('span')[i].textContent = r.name || 'imagery'; });
+  }
+  const rec = (id) => S.saved.find((r) => r.id === id);
+  $('ovl-list').addEventListener('input', (e) => { const r = e.target.dataset.op && rec(e.target.dataset.op); if (r) { r.opacity = e.target.value / 100; r.stage.opacity(r.opacity); r.mini.opacity(r.opacity); } });
+  $('ovl-list').addEventListener('change', (e) => { const r = e.target.dataset.hide && rec(e.target.dataset.hide); if (r) { r.hidden = !e.target.checked; r.stage.show(!r.hidden); toast(r.hidden ? 'Hidden on this screen. The phones still see it.' : 'Shown again.'); } });
+  $('ovl-list').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.remove) { const r = rec(b.dataset.remove); r.gone = true; r.stage.show(false); r.mini.show(false); log(what(r) + ' removed from the map'); drawPanel(); toast('Off the map for everyone; it is kept.'); }
+    if (b.dataset.adjust) { if (S.corners) { toast('Save or cancel the one you are placing first.'); return; } const r = rec(b.dataset.adjust); r.stage.show(false); setLevel(r.level); startPlacing(r.src, r.corners, { editing: r.id, name: r.name, taken: r.taken, opacity: r.opacity }); }
+  });
+  $('ovl-gone').addEventListener('click', (e) => { const b = e.target.closest('[data-restore]'); if (!b) return; const r = rec(b.dataset.restore); r.gone = false; r.stage.show(!r.hidden); r.mini.show(true); log(what(r) + ' put back on the map'); drawPanel(); toast('Put back.'); });
+
+  setLevel('b');
+  if (new URLSearchParams(location.search).has('sample')) $('add-sample').click();   // mock only: land with the sample on the map
+})();
+</script>
+</body>
+</html>

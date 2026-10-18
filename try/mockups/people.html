@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-ups: the People tab, three ways · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- Click-through mock-ups of the People board's People tab, drawn 18 October at v59 before anything is built: three
+     ways of offering the same facts (who, how long on scene, where last seen) and the same six actions (check out,
+     move, pair, edit, void the band, remove), in the app's own styles with made-up data, so each can be judged first:
+     is this the best we can do for the person at the command post? Nothing here writes anywhere; each direction
+     keeps its own copy of the data, and Reset puts it back. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); cursor: pointer; }
+  .tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.feature { display: none; }
+  section.feature.on { display: block; }
+  .intro { max-width: 760px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 1100px; line-height: 1.4; }
+  .screen > .cap b { color: var(--ink); }
+  .panel { width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .panel.wide { width: 1100px; max-width: 100%; }
+  h2.t { font-size: 18px; margin: 0 0 4px; }
+  .k { margin: 12px 0 6px; } .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .small { font-size: 12px; }
+  .orange { color: var(--hazard-ink); font-weight: 600; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.tbl td { padding: 7px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; }
+  .toast[hidden] { display: none; }
+
+  /* the board, as the overlay draws it: the bar, then the page */
+  .board { width: 1100px; max-width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); font-size: 13px; position: relative; }
+  .bbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); border-radius: 12px 12px 0 0; }
+  .bbar .q { width: 220px; min-height: 30px; border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; font-size: 13px; background: var(--control-bg); color: var(--ink); }
+  .bbar .chips { gap: 4px; }
+  .bbar .chip { min-height: 24px; padding: 2px 8px; font-size: 11.5px; gap: 4px; }
+  .bbar .chip .n { color: var(--muted); font-weight: 400; } .bbar .chip.on .n { color: #fff; opacity: .85; }
+  .bpage { padding: 16px 20px 20px; }
+  .pp-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .pp-tabs .chip { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+  .pp-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pp-count { flex: 1; font-size: 13.5px; color: var(--ink-2); }
+  select.sel { border: 1px solid var(--control-border); border-radius: 6px; padding: 5px 6px; font-size: 13px; min-height: 32px; background: var(--control-bg); color: var(--ink); max-width: 100%; }
+  .badge.q { font-size: 11px; padding: 1px 7px; background: var(--tint-blue); color: var(--active); font-weight: 500; }
+  .badge.q-swift_water, .badge.q-boat { background: var(--tint-blue); color: var(--active); }
+  .badge.q-emt, .badge.q-paramedic { background: var(--tint-red); color: var(--danger); }
+  .badge.q-rope, .badge.q-k9 { background: var(--tint-green); color: var(--cleared); }
+  .badge.q-hazmat { background: var(--tint-orange); color: var(--hazard-ink); }
+  .badge.q-drone { background: var(--soft); color: var(--ink-2); }
+  .quals { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+  .badge.st-assigned { background: var(--tint-blue); color: var(--active); }
+  .badge.st-available { background: var(--tint-green); color: var(--cleared); }
+  .div { font-weight: 600; background: var(--sel-bg); color: var(--accent-text); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; white-space: nowrap; }
+  .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .fact small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 400; }
+  .fact.orange small.ago { color: inherit; font-weight: 600; }
+  .ulink { font-weight: 700; } .ulink:hover { text-decoration: underline; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: none; color: var(--ink); padding: 4px 11px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  /* the add and edit form, as today */
+  .pform { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); margin-bottom: 14px; }
+  .pform label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+  .pform input, .pform select { border: 1px solid var(--control-border); border-radius: 6px; padding: 6px 8px; font-size: 14px; min-height: 36px; background: var(--control-bg); color: var(--ink); }
+  .pform .chips { gap: 6px; }
+  .pform label.chip { min-height: 32px; padding: 4px 10px; font-size: 13px; flex-direction: row; gap: 6px; color: var(--ink); }
+
+  /* A: facts first, one menu per row */
+  .colh, .prow { display: grid; grid-template-columns: minmax(220px, 1.6fr) minmax(150px, 1fr) minmax(220px, 1.4fr) 160px; gap: 6px 12px; align-items: center; padding: 7px 12px; }
+  .colh { padding: 0 12px 6px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .grp { margin-bottom: 12px; border: 1px solid var(--line); border-radius: 10px; overflow: visible; }
+  .grp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel-2); border-bottom: 1px solid var(--line); border-radius: 10px 10px 0 0; }
+  .prow { border-bottom: 1px solid var(--line-soft); }
+  .prow:last-child { border-bottom: 0; }
+  .prow.over { background: var(--tint-orange); }
+  .prow.out { color: var(--muted); }
+  .prow.gone { opacity: .55; }
+  .prow .act { display: flex; gap: 4px; justify-content: flex-end; align-items: center; position: relative; }
+  .btn.more { padding: 0 8px; font-weight: 700; letter-spacing: 1px; min-width: 32px; }
+  .btn.more[aria-expanded="true"] { background: var(--sel-bg); border-color: var(--accent); }
+  .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 230px; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); display: flex; flex-direction: column; color: var(--ink); }
+  .menu button { display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 6px; font-size: 13px; white-space: nowrap; }
+  .menu button:hover { background: var(--hover); }
+  .menu .sep { border-top: 1px solid var(--line-soft); margin: 4px 0; }
+
+  /* B: tick and act */
+  .actbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; padding: 6px 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+  .actbar.on { background: var(--sel-bg); border-color: var(--accent); }
+  .actbar .btn.sm { min-height: 30px; }
+  table.tbl tr.urow td { background: var(--panel-2); }
+  table.tbl tr.sel td { box-shadow: inset 3px 0 0 var(--accent); }
+  table.tbl tr.over td { background: var(--tint-orange); }
+  table.tbl tr.out td { color: var(--muted); }
+  table.tbl tr.gone td { opacity: .55; }
+  table.tbl input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+  table.tbl th.tick, table.tbl td.tick { width: 30px; padding-right: 0; }
+
+  /* C: cards and a drawer */
+  .cbody { display: flex; gap: 16px; align-items: flex-start; }
+  .cards { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+  .cbody.open .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ucard { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+  .uc-h { padding: 8px 12px; background: var(--panel-2); border-bottom: 1px solid var(--line); }
+  .crow { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; width: 100%; padding: 7px 12px; border-bottom: 1px solid var(--line-soft); align-items: center; }
+  .crow:hover { background: var(--hover); }
+  .crow.sel { background: var(--sel-bg); }
+  .crow.over { background: var(--tint-orange); }
+  .crow.out { color: var(--muted); }
+  .crow.gone { opacity: .55; }
+  .crow .cr-r { text-align: right; white-space: nowrap; }
+  .crow .cr-r .quals { justify-content: flex-end; }
+  .ucard .addto { margin: 4px 6px; align-self: flex-start; }
+  .drawer { width: 340px; flex: none; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 12px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.18); position: sticky; top: 70px; }
+  .dr-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .dr-acts { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .dr-acts .btn { justify-content: flex-start; min-height: 36px; }
+  .dr-acts .small { margin: -3px 0 3px 2px; }
+  .drawer .pform { margin: 0; padding: 0; border: 0; background: none; }
+  .drawer .row-2 { grid-template-columns: 1fr; }
+  .loglines div { padding: 4px 0; border-top: 1px solid var(--line-soft); font-size: 12.5px; }
+  .loglines .mono { font-size: 12px; }
+
+  table.cmp td:first-child { color: var(--muted); white-space: nowrap; }
+  table.cmp td { vertical-align: top; }
+  @media (max-width: 1140px) { .cards, .cbody.open .cards { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 760px) { .colh { display: none; } .prow { grid-template-columns: 1fr 1fr; } .prow .act { grid-column: 1 / -1; justify-content: flex-start; } .cards, .cbody.open .cards { grid-template-columns: 1fr; } .cbody { flex-direction: column; } .drawer { width: 100%; position: static; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-ups · the People tab</span></div>
+  <div class="tabs" id="tabs">
+    <button class="on" data-tab="a">A · Facts first</button>
+    <button data-tab="b">B · Tick and act</button>
+    <button data-tab="c">C · Cards and a drawer</button>
+    <button data-tab="decide">Decide</button>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme" title="This device's theme, as the base's header button sets it">Dark</button>
+  <a class="btn sm" href="/try/mockups/">‹ Mock-ups</a>
+  <a class="btn sm" href="/try/">Try it</a>
+</div>
+<main>
+
+<!-- ============================================================ A: FACTS FIRST -->
+<section class="feature on" id="a">
+  <div class="intro"><h1>A · Facts first, one menu per row</h1>The row says who, how long on scene and where they were last seen. Check out stays on the row; everything else is under <b>···</b>. Made-up data; press the buttons.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="board" id="board-a" data-dir="a"></div>
+      <div class="cap"><b>For Operations at the map and the Safety Officer walking in.</b> Three columns read straight down: a person past the period's hours or not scanned in two hours is orange, nothing else is. What it costs: five actions sit behind a mark a newcomer has to try once (hover says what it holds). <button class="btn link sm" data-reset="a">Reset the data</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ B: TICK AND ACT -->
+<section class="feature" id="b">
+  <div class="intro"><h1>B · Tick and act</h1>One quiet table. Tick a name, or a whole unit, and the actions appear above it for all of them. "Longest on scene first" puts the overdue at the top. Made-up data; press the buttons.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="board" id="board-b" data-dir="b"></div>
+      <div class="cap"><b>For the clerk and the shift change.</b> Checking out a unit of six is two clicks; moving three people to a new unit is four. What it costs: nothing on the row says what can be done until something is ticked, and a wrong tick acts on the wrong people (nothing is lost: Back in and Put back undo it). <button class="btn link sm" data-reset="b">Reset the data</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ C: CARDS AND A DRAWER -->
+<section class="feature" id="c">
+  <div class="intro"><h1>C · Cards and a drawer</h1>A unit is a card, a person is a line on it. Click the line: everything about that person, every action spelled out, and their lines from the 214, in a drawer beside the cards. Made-up data; press the buttons.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="board" id="board-c" data-dir="c"></div>
+      <div class="cap"><b>For the first-timer at the post, and whoever asks "what happened to Patel?".</b> The cards read like the units on the map; the drawer answers one person fully. What it costs: Check out is a second click, and the cards squeeze to two columns while the drawer is open. <button class="btn link sm" data-reset="c">Reset the data</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DECIDE -->
+<section class="feature" id="decide">
+  <div class="intro"><h1>Decide</h1>The same people, the same six actions, three ways of offering them. What each gives and costs, then what was decided here and what is yours.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="panel wide">
+        <table class="tbl cmp">
+          <tr><th></th><th>A · Facts first</th><th>B · Tick and act</th><th>C · Cards and a drawer</th></tr>
+          <tr><td>Who it serves</td><td>Operations at the map; the Safety Officer walking in</td><td>The clerk; the shift change</td><td>The first-timer at the post; "what happened to Patel?"</td></tr>
+          <tr><td>Who is overdue, at a glance</td><td>Orange row, the count line</td><td>Orange row; Longest on scene first puts them at the top</td><td>Orange line on the card, the count line</td></tr>
+          <tr><td>Check out one person</td><td>1 click</td><td>2: tick, Check out</td><td>2: the line, Check out</td></tr>
+          <tr><td>Check out a whole unit</td><td>1 a person</td><td>2: tick the unit, Check out</td><td>2 a person</td></tr>
+          <tr><td>Move, pair, edit, void, remove</td><td>2: ···, the item</td><td>2: tick, the button</td><td>2: the line, the button</td></tr>
+          <tr><td>Move three people to a unit</td><td>6</td><td>4</td><td>6</td></tr>
+          <tr><td>A person's own log lines</td><td>not here (the log's find box)</td><td>not here</td><td>in the drawer</td></tr>
+          <tr><td>What it costs</td><td>Five actions behind a mark a newcomer must try once</td><td>The row says nothing about what can be done; a wrong tick acts on the wrong people</td><td>Two columns of cards while the drawer is open; Check out a click further</td></tr>
+          <tr><td>To build</td><td>One popover per row, kept open across live redraws (<code>state.people.menu</code>, like <code>state.people.edit</code>); the row keeps every <code>data-action</code> it has</td><td>A selection kept across redraws; one update a person, so one log line each</td><td>The drawer, and a person's lines from the log: a seen or status line carries no person reference, so it is a text match on the name</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="screen">
+      <div class="panel wide">
+        <h2 class="t">Decided here, and yours to decide</h2>
+        <div class="k">Decided here (say if any is wrong)</div>
+        <ul class="decisions">
+          <li><b>The same three facts in the same order</b> in all three: name (rank, qualifications), on scene, last seen. The band's number is part of "last seen", not a column of its own.</li>
+          <li><b>Orange is "look at this"</b>: past the period's hours on scene, or a band not scanned in two hours. Red stays for MISSING.</li>
+          <li><b>Check out stays a plain button</b> in A and on B's bar: it is the press at the end of a shift, with gloves, and the one that frees a unit.</li>
+          <li><b>A move is never a submenu.</b> The ··· menu and the drawer list the units by name, so a move is two clicks.</li>
+          <li><b>Remove and Void say "kept on record"</b> where they are pressed, in five words; a removed person stays on the list, greyed, with Put back. The mock skips the confirm the app asks today.</li>
+          <li><b>The bar is unchanged</b>: the find box, the qualification chips, Print bands, Print 211, Hours. The Members tab and Add a person stay where they are.</li>
+        </ul>
+        <div class="k">Recommended</div>
+        <ul class="decisions">
+          <li><b>A, with one borrowing from B</b>: a "Check out the unit" on a unit's header for the shift change. A keeps every action on the row where a first-timer looks, at one or two clicks; the three facts read straight down; and it is the smallest build, since the row keeps its actions and the two dropdowns become menu items. B is a second way of working to learn, and its table is best for the one day a season when many people move at once. C reads best and answers "what happened to Patel?", but it costs a third of the width and a click on Check out; its drawer could come to A later as "Details" on the menu.</li>
+        </ul>
+        <div class="k">Yours to decide, on the walk at v59</div>
+        <ul class="decisions">
+          <li><b>Which direction</b>, or A with B's unit tick.</li>
+          <li><b>The qualifications</b>: small chips under the name as drawn, or words ("swift water, EMT") to quiet the colours.</li>
+          <li><b>The confirm on Void and Remove</b>: keep it (a third click) or drop it, since Put back and a new band undo either.</li>
+          <li><b>The buddy</b>: keep pairing on the board, or leave it to the phone (a unit pairs its own people) and only show "with Okafor".</li>
+          <li><b>The unit header</b>: status, division, agency and the count as drawn, or the division alone.</li>
+          <li><b>A person's log lines</b> on the board (C's drawer, or a Details item on A's menu), or left to the log's find box.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const toast = (t) => { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2800); };
+
+  // tabs and the theme
+  const show = (name) => { for (const s of document.querySelectorAll('section.feature')) s.classList.toggle('on', s.id === name); for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name); try { history.replaceState(null, '', '#' + name); } catch (e) {} };
+  $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
+  { const h = location.hash.slice(1); if (['a', 'b', 'c', 'decide'].includes(h)) show(h); }
+  const isDark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const drawTheme = () => { $('theme').textContent = isDark() ? 'Light' : 'Dark'; };
+  $('theme').addEventListener('click', () => { const t = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = t; try { localStorage.setItem('ic.theme', t); } catch (e) {} drawTheme(); });
+  drawTheme();
+
+  // ---- the made-up data: Cedar Fork Flooding at 16:10, the period's threshold 12 h on scene
+  const NOW = 16 * 60 + 10, SCENE_H = 12;
+  const QUALS = [['swift_water', 'Swift water'], ['boat', 'Boat'], ['rope', 'Rope'], ['emt', 'EMT'], ['paramedic', 'Paramedic'], ['k9', 'K9'], ['hazmat', 'Hazmat'], ['drone', 'Drone']];
+  const QT = { swift_water: 'swift water', boat: 'boat', rope: 'rope', emt: 'EMT', paramedic: 'paramedic', k9: 'K9', hazmat: 'hazmat', drone: 'drone' };
+  const STATUS = { assigned: 'Assigned', available: 'Available' };
+  const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  const dur = (m) => (m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' min' : m + ' min');
+  const agoText = (m) => (m >= 60 ? Math.round(m / 60) + ' h ago' : m + ' min ago');
+  const qualsText = (qs) => QUALS.filter(([q]) => qs.includes(q)).map(([q]) => QT[q]).join(', ');
+  const seed = () => {
+    const units = [
+      { id: 'u1', name: 'Unit 1', kind: 'engine', status: 'assigned', agency: 'Cedar Fork Fire Department', div: 'A-1' },
+      { id: 'u2', name: 'Unit 2', kind: 'boat crew', status: 'assigned', agency: 'Travis County Rescue', div: 'B-1' },
+      { id: 'u3', name: 'Unit 3', kind: 'volunteers', status: 'assigned', agency: 'Travis County SAR', div: 'B-2' },
+    ];
+    const people = [
+      { id: 'p1', unit: 'u1', name: 'Ramirez', role: 'Lt.', agency: '', quals: ['swift_water', 'emt'], buddy: 'p2', in: '13:13', out: null, band: '001', seen: { what: 'entering A-1', at: '15:03', by: 'Unit 1' }, notes: '' },
+      { id: 'p2', unit: 'u1', name: 'Okafor', role: '', agency: '', quals: ['paramedic', 'boat'], buddy: 'p1', in: '13:13', out: null, band: '002', seen: { what: 'entering A-1', at: '15:03', by: 'Unit 1' }, notes: '' },
+      { id: 'p7', unit: 'u1', name: 'Herrera', role: 'FF', agency: '', quals: ['emt'], buddy: null, in: '09:05', out: '14:10', band: null, seen: null, notes: '' },
+      { id: 'p3', unit: 'u2', name: 'Nguyen', role: 'Capt.', agency: '', quals: ['boat', 'swift_water'], buddy: 'p4', in: '03:20', out: null, band: '005', seen: { what: 'boarding the boat', at: '15:48', by: 'Unit 2' }, notes: 'Boat operator' },
+      { id: 'p4', unit: 'u2', name: 'Patel', role: '', agency: '', quals: ['emt', 'rope'], buddy: 'p3', in: '07:40', out: null, band: '006', seen: { what: 'at the gym door', at: '07:52', by: 'the gym desk' }, notes: '' },
+      { id: 'p5', unit: 'u3', name: 'Vela', role: '', agency: 'Austin Fire Department', quals: ['rope'], buddy: null, in: '14:05', out: null, band: null, seen: null, notes: '' },
+      { id: 'p6', unit: 'u3', name: 'Brooks', role: '', agency: '', quals: ['k9'], buddy: null, in: '14:05', out: null, band: '011', seen: { what: 'entering B-2', at: '15:40', by: 'Unit 3' }, notes: 'With K9 Juno' },
+    ];
+    const log = [];
+    for (const p of people) {
+      const u = units.find((x) => x.id === p.unit);
+      log.push({ at: p.in, who: p.id, text: `${p.name}${p.quals.length ? ' (' + qualsText(p.quals) + ')' : ''} checked in with ${u.name}` });
+      if (p.band) log.push({ at: p.in, who: p.id, text: `${p.name} seen checking in with ${u.name}, band ${p.band}` });
+      if (p.seen) log.push({ at: p.seen.at, who: p.id, text: `${p.name} (${u.name}) seen ${p.seen.what}, by ${p.seen.by}` });
+      if (p.out) log.push({ at: p.out, who: p.id, text: `${p.name} checked out from ${u.name} · ${dur(mins(p.out) - mins(p.in))} on scene` });
+    }
+    log.sort((a, b) => mins(a.at) - mins(b.at));
+    return { units, people, log, next: 1 };
+  };
+  const S = { a: seed(), b: seed(), c: seed() };
+  const UI = {
+    a: { q: '', quals: new Set(), menu: null, form: null },
+    b: { q: '', quals: new Set(), ticked: new Set(), sort: 'unit', form: null },
+    c: { q: '', quals: new Set(), open: null, form: null },
+  };
+
+  // ---- the readings, the same in every direction
+  const onMins = (p) => (p.out ? mins(p.out) : NOW) - mins(p.in);
+  const over = (p) => !p.out && !p.removed && onMins(p) >= SCENE_H * 60;
+  const seenAgo = (p) => (p.seen ? NOW - mins(p.seen.at) : null);
+  const stale = (p) => !!p.band && !!p.seen && !p.out && !p.removed && seenAgo(p) > 120;
+  const unitOf = (s, p) => s.units.find((u) => u.id === p.unit);
+  const onPeople = (s) => s.people.filter((p) => !p.out && !p.removed);
+  const matches = (s, ui, p) => {
+    const u = unitOf(s, p), q = ui.q.trim().toLowerCase();
+    if (q && ![p.name, p.role, p.agency || u.agency, u.name, u.div].some((x) => (x || '').toLowerCase().includes(q))) return false;
+    for (const want of ui.quals) if (!p.quals.includes(want)) return false;
+    return true;
+  };
+  const countLine = (s, ui) => {
+    const all = s.people.filter((p) => !p.removed), on = onPeople(s);
+    const shown = s.people.filter((p) => matches(s, ui, p));
+    if (ui.q.trim() || ui.quals.size) return `${shown.length} of ${all.length} people${ui.quals.size ? ' with ' + [...ui.quals].map((q) => QT[q]).join(' and ') : ''}${ui.q.trim() ? ' matching "' + esc(ui.q.trim()) + '"' : ''}`;
+    const units = new Set(on.map((p) => p.unit)).size, out = all.filter((p) => p.out).length, ov = on.filter(over).length;
+    return `${on.length} on scene on ${units} units${out ? ' · ' + out + ' checked out' : ''}${ov ? ` · <span class="orange">${ov} past ${SCENE_H} h on scene</span>` : ''}`;
+  };
+  const qualChips = (s, ui) => QUALS.map(([q, l]) => `<button class="chip${ui.quals.has(q) ? ' on' : ''}" data-qual="${q}" aria-pressed="${ui.quals.has(q)}">${l} <span class="n">${onPeople(s).filter((p) => p.quals.includes(q)).length}</span></button>`).join('');
+  const qualBadges = (p) => (p.quals.length ? `<span class="quals">${QUALS.filter(([q]) => p.quals.includes(q)).map(([q, l]) => `<span class="badge q q-${q}">${l}</span>`).join('')}</span>` : '');
+  const whoHtml = (s, p) => {
+    const u = unitOf(s, p), b = p.buddy ? s.people.find((x) => x.id === p.buddy) : null;
+    return `<span class="who"><span><b>${esc(p.name)}</b>${p.role ? ` <span class="muted">${esc(p.role)}</span>` : ''}${p.agency && p.agency !== u.agency ? ` <span class="muted">· ${esc(p.agency)}</span>` : ''}${b && !b.removed && !b.out ? ` <span class="muted">· with ${esc(b.name)}</span>` : ''}</span>${qualBadges(p)}${p.notes ? `<span class="muted small">${esc(p.notes)}</span>` : ''}</span>`;
+  };
+  const onText = (p) => (p.removed ? `Removed ${p.removed}` : p.out ? `Checked out ${p.out}<small>${dur(onMins(p))} on scene</small>` : `${dur(onMins(p))}${over(p) ? ' · past ' + SCENE_H + ' h' : ''}<small>since ${p.in}${p.back ? ' · back in' : ''}</small>`);
+  const seenText = (p) => (!p.band ? `<span class="muted">no band${p.voided ? ' · ' + p.voided + ' voided' : ''}</span>` : !p.seen ? `Band ${p.band}<small>not scanned yet</small>` : `Band ${p.band} · ${esc(p.seen.what)} ${p.seen.at}${stale(p) ? `<small class="ago">${agoText(seenAgo(p))}</small>` : ''}`);
+  const seenShort = (p) => (!p.band ? 'no band' : !p.seen ? `Band ${p.band} · not scanned yet` : `Band ${p.band} · ${esc(p.seen.what)} ${p.seen.at}${stale(p) ? ' · ' + agoText(seenAgo(p)) : ''}`);
+  const unitHead = (s, u) => {
+    const mine = s.people.filter((p) => p.unit === u.id && !p.removed), on = mine.filter((p) => !p.out).length;
+    return `<button class="ulink" data-say="Opens ${u.name} on the map, as today">${u.name}</button><span class="badge st-${u.status}">${STATUS[u.status]}</span>${u.div ? `<span class="div">${u.div}</span>` : ''}<span class="muted">${esc(u.agency)} · ${on} on the unit${mine.length > on ? ', ' + (mine.length - on) + ' checked out' : ''}</span>`;
+  };
+
+  // the add and edit form, as today (above the list in A and B, in the drawer in C)
+  const formHtml = (s, f) => {
+    const p = f.mode === 'edit' ? s.people.find((x) => x.id === f.id) : null, u = p ? unitOf(s, p) : s.units.find((x) => x.id === f.unit) || s.units[0];
+    return `
+    <form class="pform" data-form="${f.mode}"${p ? ` data-id="${p.id}"` : ''}>
+      <div class="k">${p ? `Edit ${esc(p.name)} · ${u.name}` : f.fixed ? `Add a person to ${u.name}` : 'Add a person'}</div>
+      <div class="row-2">
+        ${p || f.fixed ? '' : `<label>Unit <select name="unit">${s.units.map((x) => `<option value="${x.id}"${x.id === u.id ? ' selected' : ''}>${x.name}${x.div ? ' · ' + x.div : ''}</option>`).join('')}</select></label>`}
+        <label>Name <input name="name" required maxlength="80" placeholder="Surname, or the full name" autocomplete="off" value="${esc(p ? p.name : '')}"></label>
+        ${p ? `<label>Notes <input name="notes" maxlength="200" placeholder="Anything the next shift should know" value="${esc(p.notes || '')}"></label>` : ''}
+      </div>
+      <div class="row-2">
+        <label>Rank or role <input name="role" maxlength="60" placeholder="Lt., Paramedic, Boat operator" value="${esc(p ? p.role : '')}"></label>
+        <label>Agency <input name="agency" maxlength="120" placeholder="The unit's, unless different" value="${esc(p && p.agency ? p.agency : '')}"></label>
+      </div>
+      <div class="chips">${QUALS.map(([q, l]) => `<label class="chip"><input type="checkbox" name="q" value="${q}"${p && p.quals.includes(q) ? ' checked' : ''}> ${l}</label>`).join('')}</div>
+      <div class="row-btns"><button class="btn sm" type="button" data-act="form-cancel">Cancel</button><button class="btn pri sm" type="submit">${p ? 'Save' : 'Add to the unit'}</button></div>
+    </form>`;
+  };
+
+  // ---- A: facts first, one menu per row
+  const menuHtml = (s, p) => {
+    const others = s.units.filter((x) => x.id !== p.unit), mates = s.people.filter((x) => x.unit === p.unit && x.id !== p.id && !x.out && !x.removed);
+    return `<div class="menu" role="menu">
+      ${others.map((x) => `<button role="menuitem" data-act="move" data-arg="${x.id}">Move to ${x.name}${x.div ? ` <span class="muted">· ${x.div}</span>` : ''}</button>`).join('')}
+      ${mates.filter((x) => x.id !== p.buddy).map((x) => `<button role="menuitem" data-act="pair" data-arg="${x.id}">Pair with ${esc(x.name)}</button>`).join('')}${p.buddy ? '<button role="menuitem" data-act="unpair">No buddy</button>' : ''}
+      <div class="sep"></div>
+      <button role="menuitem" data-act="edit">Edit</button>
+      ${p.band ? `<button role="menuitem" data-act="void">Void band ${p.band} <span class="muted">· never reused</span></button>` : ''}
+      <button role="menuitem" data-act="remove">Remove <span class="muted">· kept on record</span></button>
+    </div>`;
+  };
+  const rowA = (s, ui, p) => {
+    const cls = ['prow', over(p) ? 'over' : '', p.out ? 'out' : '', p.removed ? 'gone' : ''].filter(Boolean).join(' ');
+    return `<div class="${cls}" data-id="${p.id}">
+      ${whoHtml(s, p)}
+      <span class="fact${over(p) ? ' orange' : ''}">${onText(p)}</span>
+      <span class="fact${stale(p) ? ' orange' : ''}">${seenText(p)}</span>
+      <span class="act">${p.removed ? '<button class="btn sm" data-act="restore">Put back</button>' : p.out ? '<button class="btn sm" data-act="in">Back in</button>' : '<button class="btn sm" data-act="out">Check out</button>'}${p.removed ? '' : `<button class="btn sm more" data-act="menu" aria-label="More for ${esc(p.name)}" aria-expanded="${ui.menu === p.id}" title="Move, pair, edit, void the band, remove">···</button>`}${ui.menu === p.id ? menuHtml(s, p) : ''}</span>
+    </div>`;
+  };
+  const bodyA = (s, ui) => {
+    const shown = s.people.filter((p) => matches(s, ui, p));
+    const groups = s.units.map((u) => { const rows = shown.filter((p) => p.unit === u.id); if (!rows.length) return ''; return `<div class="grp"><div class="grp-h">${unitHead(s, u)}</div>${rows.map((p) => rowA(s, ui, p)).join('')}</div>`; }).join('');
+    return `${ui.form ? formHtml(s, ui.form) : ''}<div class="colh"><span>Name</span><span>On scene</span><span>Last seen</span><span></span></div>${groups || '<p class="muted">Nobody matches. Clear the chips or the find box.</p>'}`;
+  };
+
+  // ---- B: tick and act
+  const bodyB = (s, ui) => {
+    const shown = s.people.filter((p) => matches(s, ui, p)), t = ui.ticked;
+    for (const id of [...t]) if (!shown.some((p) => p.id === id)) t.delete(id);
+    const ps = [...t].map((id) => s.people.find((p) => p.id === id));
+    const bar = ps.length ? (() => {
+      const sameUnit = new Set(ps.map((p) => p.unit)).size === 1, allOn = ps.every((p) => !p.out && !p.removed), bands = ps.filter((p) => p.band).length;
+      return `<div class="actbar on"><b>${ps.length} ticked</b><span class="muted">${esc(ps.map((p) => p.name).join(', '))}</span><span style="flex:1"></span>
+        ${ps.some((p) => p.removed) ? '<button class="btn sm" data-bact="restore">Put back</button>' : `
+        ${ps.every((p) => p.out) ? '<button class="btn sm" data-bact="in">Back in</button>' : '<button class="btn sm" data-bact="out">Check out</button>'}
+        <select class="sel" data-bact-sel="move" aria-label="Move to another unit"><option value="">Move to…</option>${s.units.map((u) => `<option value="${u.id}">${u.name}${u.div ? ' · ' + u.div : ''}</option>`).join('')}</select>
+        ${ps.length === 2 && sameUnit && allOn ? '<button class="btn sm" data-bact="pair">Pair them</button>' : ''}
+        ${ps.length === 1 ? '<button class="btn sm" data-bact="edit">Edit</button>' : ''}
+        ${bands ? `<button class="btn sm" data-bact="void" title="Never reused; kept on record">Void band${bands > 1 ? 's' : ''}</button>` : ''}
+        <button class="btn sm" data-bact="remove" title="Off the roster; kept on record, Put back undoes it">Remove</button>`}
+        <button class="btn link sm" data-bact="clear">Clear</button></div>`;
+    })() : '<div class="actbar"><span class="muted">Tick a name, or a unit, to act on it.</span></div>';
+    const row = (p) => { const u = unitOf(s, p); return `<tr class="${[over(p) ? 'over' : '', p.out ? 'out' : '', p.removed ? 'gone' : '', t.has(p.id) ? 'sel' : ''].filter(Boolean).join(' ')}" data-id="${p.id}">
+      <td class="tick"><input type="checkbox" data-tick="${p.id}"${t.has(p.id) ? ' checked' : ''} aria-label="Tick ${esc(p.name)}"></td>
+      <td>${whoHtml(s, p)}</td>
+      <td>${u.name}${u.div ? ` <span class="div">${u.div}</span>` : ''}</td>
+      <td class="fact${over(p) ? ' orange' : ''}">${onText(p)}</td>
+      <td class="fact${stale(p) ? ' orange' : ''}">${seenText(p)}</td></tr>`; };
+    const rank = (p) => (p.removed ? 2 : p.out ? 1 : 0);
+    const body = ui.sort === 'on'
+      ? shown.slice().sort((a, b) => rank(a) - rank(b) || onMins(b) - onMins(a)).map(row).join('')
+      : s.units.map((u) => { const rows = shown.filter((p) => p.unit === u.id); if (!rows.length) return ''; const ids = rows.filter((p) => !p.removed).map((p) => p.id); const all = ids.length > 0 && ids.every((id) => t.has(id));
+          return `<tr class="urow"><td class="tick"><input type="checkbox" data-tick-unit="${u.id}"${all ? ' checked' : ''} aria-label="Tick everyone on ${u.name}"></td><td colspan="4"><span class="row">${unitHead(s, u)}</span></td></tr>` + rows.map(row).join(''); }).join('');
+    const allIds = shown.filter((p) => !p.removed).map((p) => p.id);
+    return `${ui.form ? formHtml(s, ui.form) : ''}${bar}<table class="tbl"><thead><tr><th class="tick"><input type="checkbox" data-tick-all${allIds.length && allIds.every((id) => t.has(id)) ? ' checked' : ''} aria-label="Tick everyone"></th><th>Name</th><th>Unit</th><th>On scene</th><th>Last seen</th></tr></thead><tbody>${body || '<tr><td colspan="5" class="muted">Nobody matches. Clear the chips or the find box.</td></tr>'}</tbody></table>`;
+  };
+
+  // ---- C: cards and a drawer
+  const drawerHtml = (s, ui) => {
+    if (ui.form) return `<aside class="drawer">${formHtml(s, ui.form)}</aside>`;
+    const p = s.people.find((x) => x.id === ui.open); if (!p) return '';
+    const u = unitOf(s, p), b = p.buddy ? s.people.find((x) => x.id === p.buddy) : null;
+    const others = s.units.filter((x) => x.id !== p.unit), mates = s.people.filter((x) => x.unit === p.unit && x.id !== p.id && !x.out && !x.removed);
+    const lines = s.log.filter((l) => l.who === p.id).slice(-6).reverse();
+    return `<aside class="drawer" data-id="${p.id}">
+      <div class="dr-h"><div><b style="font-size:16px">${esc(p.name)}</b>${p.role ? ` <span class="muted">${esc(p.role)}</span>` : ''}<div class="muted small">${u.name}${u.div ? ' · ' + u.div : ''} · ${esc(p.agency || u.agency)}</div></div><button class="btn sm" data-act="close">Close</button></div>
+      <div class="kv">
+        <span class="k">On scene</span><span class="${over(p) ? 'orange' : ''}">${p.removed ? 'Removed ' + p.removed : p.out ? `Checked out ${p.out} · ${dur(onMins(p))} on scene` : `${dur(onMins(p))}, since ${p.in}${over(p) ? ' · past ' + SCENE_H + ' h' : ''}${p.back ? ' · back in' : ''}`}</span>
+        <span class="k">Last seen</span><span class="${stale(p) ? 'orange' : ''}">${p.band ? (p.seen ? `${esc(p.seen.what)} ${p.seen.at}${stale(p) ? ' · ' + agoText(seenAgo(p)) : ''}, by ${esc(p.seen.by)} · band ${p.band}` : `not scanned yet · band ${p.band}`) : 'no band' + (p.voided ? ' · ' + p.voided + ' voided' : '')}</span>
+        <span class="k">With</span><span>${b && !b.removed && !b.out ? esc(b.name) : '<span class="muted">nobody</span>'}</span>
+        <span class="k">Qualified</span><span>${qualBadges(p) || '<span class="muted">nothing listed</span>'}</span>
+        ${p.notes ? `<span class="k">Notes</span><span>${esc(p.notes)}</span>` : ''}
+      </div>
+      <div class="dr-acts">
+        ${p.removed ? '<button class="btn" data-act="restore">Put back</button>' : `
+        ${p.out ? '<button class="btn" data-act="in">Back in</button>' : '<button class="btn" data-act="out">Check out</button>'}
+        <select class="sel" data-act-sel="move" aria-label="Move to another unit"><option value="">Move to…</option>${others.map((x) => `<option value="${x.id}">${x.name}${x.div ? ' · ' + x.div : ''}</option>`).join('')}</select>
+        <select class="sel" data-act-sel="pair" aria-label="Pair with"><option value="">Pair with…</option>${mates.map((x) => `<option value="${x.id}"${p.buddy === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}${p.buddy ? '<option value="-">No buddy</option>' : ''}</select>
+        <button class="btn" data-act="edit">Edit</button>
+        ${p.band ? `<button class="btn" data-act="void">Void band ${p.band}</button><span class="muted small">Never reused; kept on record.</span>` : ''}
+        <button class="btn" data-act="remove">Remove</button><span class="muted small">Off the roster; kept on record, Put back undoes it.</span>`}
+      </div>
+      <div class="k" style="margin-top:14px">In the log</div>
+      <div class="loglines">${lines.map((l) => `<div><span class="mono muted">${l.at}</span> ${esc(l.text)}</div>`).join('') || '<div class="muted">Nothing yet.</div>'}</div>
+    </aside>`;
+  };
+  const bodyC = (s, ui) => {
+    const shown = s.people.filter((p) => matches(s, ui, p));
+    const cards = s.units.map((u) => {
+      const rows = shown.filter((p) => p.unit === u.id), mine = s.people.filter((p) => p.unit === u.id && !p.removed), on = mine.filter((p) => !p.out).length;
+      return `<div class="ucard"><div class="uc-h"><div class="row"><b>${u.name}</b><span class="badge st-${u.status}">${STATUS[u.status]}</span>${u.div ? `<span class="div">${u.div}</span>` : ''}</div><div class="muted small">${esc(u.agency)} · ${u.kind} · ${on} on the unit${mine.length > on ? ', ' + (mine.length - on) + ' checked out' : ''}</div></div>
+        ${rows.map((p) => `<button class="crow${over(p) ? ' over' : ''}${p.out ? ' out' : ''}${p.removed ? ' gone' : ''}${ui.open === p.id ? ' sel' : ''}" data-open="${p.id}" title="Everything about ${esc(p.name)}, and what you can do">
+          <span><b>${esc(p.name)}</b>${p.role ? ` <span class="muted">${esc(p.role)}</span>` : ''}</span><span class="cr-r${over(p) ? ' orange' : ''}">${p.removed ? 'removed' : p.out ? 'out ' + p.out : dur(onMins(p))}</span>
+          <span class="small${stale(p) ? ' orange' : ' muted'}">${seenShort(p)}</span><span class="cr-r">${qualBadges(p)}</span></button>`).join('') || '<p class="muted small" style="margin:8px 12px">Nobody matches here.</p>'}
+        <button class="btn link sm addto" data-addto="${u.id}">Add a person</button></div>`;
+    }).join('');
+    return `<div class="cbody${ui.open || ui.form ? ' open' : ''}"><div class="cards">${cards}</div>${drawerHtml(s, ui)}</div>`;
+  };
+
+  // ---- drawing: the bar once, the page on every change
+  const BODY = { a: bodyA, b: bodyB, c: bodyC };
+  const render = (dir) => {
+    const s = S[dir], ui = UI[dir], board = $('board-' + dir);
+    if (!board.querySelector('.bbar')) board.innerHTML = `
+      <div class="bbar"><strong>People</strong><span class="muted">Cedar Fork Flooding</span>
+        <input class="q" data-q placeholder="Find a name, role, unit or agency" aria-label="Find a person" autocomplete="off">
+        <span class="chips" data-chips></span><span style="flex:1"></span>
+        <button class="btn sm" data-say="A sheet of 24 bands to print, as today">Print bands</button>
+        <button class="btn sm" data-say="The check-in list, ICS 211, as today">Print 211</button>
+        <button class="btn sm" data-say="Hours on scene per person and per unit, as today">Hours</button>
+        <button class="btn sm" data-say="Closes the board">Close</button></div>
+      <div class="bpage"></div>`;
+    board.querySelector('[data-chips]').innerHTML = qualChips(s, ui);
+    const seg = dir === 'b' ? `<span class="seg"><button class="${ui.sort === 'unit' ? 'on' : ''}" data-sort="unit">By unit</button><button class="${ui.sort === 'on' ? 'on' : ''}" data-sort="on">Longest on scene first</button></span>` : '';
+    board.querySelector('.bpage').innerHTML = `
+      <div class="pp-tabs"><button class="chip on" data-ptab="people" aria-pressed="true">People</button><button class="chip" data-ptab="members" aria-pressed="false">Members</button></div>
+      <div class="pp-top"><span class="pp-count">${countLine(s, ui)}</span>${seg}${ui.form && ui.form.mode === 'add' ? '' : '<button class="btn sm" data-add>Add a person</button>'}</div>
+      ${BODY[dir](s, ui)}`;
+  };
+  for (const d of ['a', 'b', 'c']) render(d);
+
+  // ---- the actions, the same in every direction
+  const unpair = (s, p) => { if (p.buddy) { const b = s.people.find((x) => x.id === p.buddy); if (b && b.buddy === p.id) b.buddy = null; } p.buddy = null; };
+  const log = (s, p, text) => s.log.push({ at: hhmm(NOW), who: p.id, text });
+  const act = (dir, name, p, arg, quiet) => {
+    const s = S[dir], ui = UI[dir], u = unitOf(s, p);
+    const say = (t) => { if (!quiet) toast(t); };
+    switch (name) {
+      case 'out': if (p.out || p.removed) return; p.out = hhmm(NOW); unpair(s, p); log(s, p, `${p.name} checked out from ${u.name} · ${dur(onMins(p))} on scene`); say(`${p.name} checked out ${hhmm(NOW)} · logged`); break;
+      case 'in': if (!p.out) return; p.out = null; p.in = hhmm(NOW); p.back = true; log(s, p, `${p.name} back in with ${u.name}`); say(`${p.name} is back in with ${u.name}`); break;
+      case 'move': { const to = s.units.find((x) => x.id === arg); if (!to || to.id === p.unit) return; unpair(s, p); p.unit = to.id; log(s, p, `${p.name} moved from ${u.name} to ${to.name} by Operations`); say(`${p.name} moved to ${to.name} · logged`); break; }
+      case 'pair': { const b = s.people.find((x) => x.id === arg); if (!b || b.id === p.id) return; unpair(s, p); unpair(s, b); p.buddy = b.id; b.buddy = p.id; say(`${p.name} with ${b.name}`); break; }
+      case 'unpair': unpair(s, p); say(`${p.name}: no buddy`); break;
+      case 'edit': ui.form = { mode: 'edit', id: p.id }; if (dir === 'c') ui.open = p.id; break;
+      case 'void': { if (!p.band) return; const n = p.band; p.band = null; p.seen = null; p.voided = n; log(s, p, `Band ${n} voided by Operations (${p.name})`); say(`Band ${n} voided · kept on record, never reused`); break; }
+      case 'remove': if (p.removed) return; p.removed = hhmm(NOW); p.out = p.out || hhmm(NOW); unpair(s, p); log(s, p, `${p.name} removed from ${u.name} by Operations · kept on record`); say(`${p.name} removed · kept on record; Put back is on the row`); break;
+      case 'restore': if (!p.removed) return; p.removed = null; p.out = null; p.in = hhmm(NOW); p.back = true; log(s, p, `${p.name} put back on ${u.name} by Operations`); say(`${p.name} is back on ${u.name}`); break;
+    }
+    if (dir === 'a') ui.menu = null;
+  };
+  const focusName = (dir) => { const f = $('board-' + dir).querySelector('form.pform [name="name"]'); if (f) { f.focus(); f.scrollIntoView({ block: 'nearest' }); } };
+
+  document.querySelector('main').addEventListener('click', (e) => {
+    const reset = e.target.closest('[data-reset]'); if (reset) { const d = reset.dataset.reset; S[d] = seed(); UI[d] = { a: { q: '', quals: new Set(), menu: null, form: null }, b: { q: '', quals: new Set(), ticked: new Set(), sort: 'unit', form: null }, c: { q: '', quals: new Set(), open: null, form: null } }[d]; $('board-' + d).innerHTML = ''; render(d); toast('The data is back as it was'); return; }
+    const board = e.target.closest('.board'); if (!board) return;
+    const dir = board.dataset.dir, s = S[dir], ui = UI[dir];
+    const sayEl = e.target.closest('[data-say]'); if (sayEl) { toast(sayEl.dataset.say); return; }
+    const qb = e.target.closest('[data-qual]'); if (qb) { const q = qb.dataset.qual; if (ui.quals.has(q)) ui.quals.delete(q); else ui.quals.add(q); render(dir); return; }
+    const tab = e.target.closest('[data-ptab]'); if (tab) { if (tab.dataset.ptab === 'members') toast('The Members tab stays as it is.'); return; }
+    const sort = e.target.closest('[data-sort]'); if (sort) { ui.sort = sort.dataset.sort; render(dir); return; }
+    if (e.target.closest('[data-add]')) { ui.form = { mode: 'add', unit: s.units[0].id }; if (dir === 'c') ui.open = null; if (dir === 'a') ui.menu = null; render(dir); focusName(dir); return; }
+    const addto = e.target.closest('[data-addto]'); if (addto) { ui.form = { mode: 'add', unit: addto.dataset.addto, fixed: true }; ui.open = null; render(dir); focusName(dir); return; }
+    const open = e.target.closest('[data-open]'); if (open) { ui.open = ui.open === open.dataset.open ? null : open.dataset.open; ui.form = null; render(dir); return; }
+    const bact = e.target.closest('[data-bact]'); if (bact) {
+      const ps = [...ui.ticked].map((id) => s.people.find((p) => p.id === id)).filter(Boolean), name = bact.dataset.bact;
+      if (name === 'clear') { ui.ticked.clear(); render(dir); return; }
+      if (name === 'edit') { act(dir, 'edit', ps[0]); render(dir); focusName(dir); return; }
+      if (name === 'pair') { act(dir, 'pair', ps[0], ps[1].id); ui.ticked.clear(); render(dir); return; }
+      for (const p of ps) act(dir, name, p, null, true);
+      const names = ps.map((p) => p.name).join(', ');
+      toast({ out: `${names} checked out ${hhmm(NOW)} · logged`, in: `${names} back in`, void: `Bands voided for ${names} · kept on record, never reused`, remove: `${names} removed · kept on record; Put back is in the bar`, restore: `${names} put back` }[name] || 'Done');
+      ui.ticked.clear(); render(dir); return;
+    }
+    const a = e.target.closest('[data-act]'); if (a) {
+      const name = a.dataset.act;
+      if (name === 'form-cancel') { const wasEdit = ui.form && ui.form.mode === 'edit'; ui.form = null; if (dir === 'c' && !wasEdit) ui.open = null; render(dir); return; }
+      if (name === 'close') { ui.open = null; ui.form = null; render(dir); return; }
+      const holder = a.closest('[data-id]'); const p = holder && s.people.find((x) => x.id === holder.dataset.id); if (!p) return;
+      if (name === 'menu') { ui.menu = ui.menu === p.id ? null : p.id; render(dir); return; }
+      act(dir, name, p, a.dataset.arg); render(dir); if (name === 'edit') focusName(dir); return;
+    }
+    if (dir === 'a' && ui.menu && !e.target.closest('.menu')) { ui.menu = null; render(dir); }
+  });
+  document.addEventListener('click', (e) => { if (UI.a.menu && e.target.isConnected && !e.target.closest('#board-a')) { UI.a.menu = null; render('a'); } });   // a redraw detaches the pressed button; a click outside the board closes the menu
+  document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; if (UI.a.menu) { UI.a.menu = null; render('a'); } if (UI.c.open || UI.c.form) { UI.c.open = null; UI.c.form = null; render('c'); } });
+  document.querySelector('main').addEventListener('change', (e) => {
+    const board = e.target.closest('.board'); if (!board) return;
+    const dir = board.dataset.dir, s = S[dir], ui = UI[dir], el = e.target;
+    if (el.dataset.tick) { if (el.checked) ui.ticked.add(el.dataset.tick); else ui.ticked.delete(el.dataset.tick); render(dir); return; }
+    if (el.dataset.tickUnit) { for (const p of s.people) if (p.unit === el.dataset.tickUnit && !p.removed && matches(s, ui, p)) { if (el.checked) ui.ticked.add(p.id); else ui.ticked.delete(p.id); } render(dir); return; }
+    if (el.hasAttribute('data-tick-all')) { for (const p of s.people) if (!p.removed && matches(s, ui, p)) { if (el.checked) ui.ticked.add(p.id); else ui.ticked.delete(p.id); } render(dir); return; }
+    if (el.dataset.bactSel === 'move' && el.value) { const ps = [...ui.ticked].map((id) => s.people.find((p) => p.id === id)).filter(Boolean); for (const p of ps) act(dir, 'move', p, el.value, true); toast(`${ps.map((p) => p.name).join(', ')} moved to ${s.units.find((u) => u.id === el.value).name} · logged`); ui.ticked.clear(); render(dir); return; }
+    if (el.dataset.actSel) { const holder = el.closest('[data-id]'); const p = holder && s.people.find((x) => x.id === holder.dataset.id); if (!p || !el.value) return; if (el.dataset.actSel === 'pair' && el.value === '-') act(dir, 'unpair', p); else act(dir, el.dataset.actSel, p, el.value); render(dir); }
+  });
+  document.querySelector('main').addEventListener('input', (e) => {
+    if (!e.target.hasAttribute('data-q')) return;
+    const board = e.target.closest('.board'), dir = board.dataset.dir; UI[dir].q = e.target.value;
+    render(dir);
+  });
+  document.querySelector('main').addEventListener('submit', (e) => {
+    const form = e.target.closest('form.pform'); if (!form) return; e.preventDefault();
+    const board = form.closest('.board'), dir = board.dataset.dir, s = S[dir], ui = UI[dir];
+    const quals = [...form.querySelectorAll('[name="q"]:checked')].map((x) => x.value);
+    const name = form.name.value.trim(); if (!name) return;
+    if (form.dataset.form === 'add') {
+      const unit = form.unit ? form.unit.value : ui.form.unit, u = s.units.find((x) => x.id === unit);
+      const p = { id: 'n' + s.next++, unit, name, role: form.role.value.trim(), agency: form.agency.value.trim(), quals, buddy: null, in: hhmm(NOW), out: null, band: null, seen: null, notes: '' };
+      s.people.push(p); log(s, p, `${p.name}${quals.length ? ' (' + qualsText(quals) + ')' : ''} checked in with ${u.name}, added by Operations`);
+      toast(`${p.name} added to ${u.name} · logged`); ui.form = null; if (dir === 'c') ui.open = p.id;
+    } else {
+      const p = s.people.find((x) => x.id === form.dataset.id); if (!p) return;
+      const u = unitOf(s, p), changed = [];
+      if (p.name !== name) { changed.push('name'); p.name = name; }
+      if (p.role !== form.role.value.trim()) { changed.push('rank'); p.role = form.role.value.trim(); }
+      if ((p.agency || '') !== form.agency.value.trim()) { changed.push('agency'); p.agency = form.agency.value.trim(); }
+      if (form.notes && (p.notes || '') !== form.notes.value.trim()) { changed.push('notes'); p.notes = form.notes.value.trim(); }
+      if (p.quals.join() !== quals.join()) { changed.push('qualifications'); p.quals = quals; }
+      if (changed.length) log(s, p, `${p.name}${quals.length ? ' (' + qualsText(quals) + ')' : ''} updated on ${u.name}: ${changed.join(', ')} changed`);
+      toast(changed.length ? `${p.name} saved · ${changed.join(', ')} changed` : 'Nothing changed'); ui.form = null; if (dir === 'c') ui.open = p.id;
+    }
+    render(dir);
+  });
+})();
+</script>
+</body>
+</html>

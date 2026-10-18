@@ -1,16 +1,18 @@
 # Punchlist
 
-The open work on clickEMT. Everything from the walk at v37 shipped as v38 to v48 (sections 1 to 10 below, each with its
-Shipped note); the open work now is **section 11**, from the walk at v48 on 18 October 2026. Written 17 October 2026,
-after v37 (`c89a929`, the public demo, the front door, new versions, the 404 page). Each numbered release below is written to be picked up cold: why it matters, what to build,
-what was already decided, and how to know it is done. Read [handoff.md](handoff.md) first for how to run, test and
-ship.
+The work on clickEMT, release by release. Everything here has shipped: the walk at v37's list as v38 to v48 (sections 1
+to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
+people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note. **Nothing ranked is open** (18 October
+2026, v56): the next step is a fresh walk at v56, and section 15 lists the candidates already known for it. Written
+17 October 2026, after v37 (`c89a929`), brought up to date at v56. Each numbered release below is written to be picked
+up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
+[handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v38**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0023**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v57**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0034**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -25,7 +27,11 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 8 | Later: since you last looked (shipped 18 October, v45); on scene too long (shipped 18 October, v47) | medium | v44 | the IC, Marcus's relief, Priya |
 | 9 | Decisions only Grace can make (answered 18 October; built as v46 The decisions) | small to medium | v45 | Ana, Reyes, Priya, the clerk, the resident |
 | 10 | v48 Small items from the re-walks (shipped 18 October) | small | v47 | Rosa, the newcomer, Reyes, Priya, Moreno, the resident, the IC, Finance |
-| 11 | The walk at v48: the unit panel's order, the check-in count, a Public page, small words (open) | small | v48 | Marcus, the newcomer, Moreno, Reyes, the PIO, Priya |
+| 11 | The walk at v48: the unit panel's order, the check-in count, a Public page, small words (shipped 18 October as v50 to v53) | small | v48 | Marcus, the newcomer, Moreno, Reyes, the PIO, Priya |
+| 12 | v54 A transport board (shipped 18 October) | medium | v53 | Marcus, the desk, the crews, a driver |
+| 13 | v55 People and tags, phase 1: QR bands (shipped 18 October) | medium to large | v54 | everyone: Ana, Rosa, the desk, Marcus, Priya |
+| 14 | v56 Invite by email, the app's first server code (shipped 18 October) | medium | v55 | Ana, the administrator, Marcus |
+| 15 | Known candidates for the walk at v56 (open, not ranked) | small to medium | v56 | see the section |
 
 ---
 
@@ -338,8 +344,9 @@ The eight Still bites from the re-walks after v38 to v47, swept together.
 
 From "Walk at v48: best we can do" in [walkthroughs.md](walkthroughs.md) (18 October 2026, commit 84a18c4): all twelve
 personas plus the newcomer at the check-in table, each job asked "is this the best we can do?", with the eleven releases
-since v37 read with fresh eyes. Nothing was LOST or SLOWED; three PUZZLED items and some small words are left. Take them
-as one small release, v49, by the routine in [handoff.md](handoff.md). Not started: the user reads the walk first.
+since v37 read with fresh eyes. Nothing was LOST or SLOWED; three PUZZLED items and some small words were left. Written
+as one small release, v49; v49 went to the front door's redesign instead, and the four items shipped one release each
+as v50 to v53 (their Shipped notes below).
 
 1. **The unit panel: where it is first, identity folded** (Marcus, and every unit's privacy). *Why.* Unit 1's panel
    puts IDENTITY in full (verified, name, phone, licence tail and expiry, date of birth, home address, Withdraw
@@ -438,6 +445,39 @@ season's roster to invite in one press. The app's first server code.
    function's email from the pane (it was deployed and answers; the mock stands in for it in the suite).
    *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
    `invite` (18).*
+
+## 15. Known candidates for the walk at v56 (open, not ranked)
+
+Nothing here is decided. These are the "Still bites" items of the re-walks after v50 to v56 in
+[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v56 starts from them.
+Walk first, then rank, as before.
+
+- **Verify the first real invitation email** (Marcus, Ana). The Edge Function is deployed but no email has been sent
+  from the live site. Send one to yourself; a refusal shows as "could not be sent: …" on the Members tab and in the 214.
+- **The PAR by scan is one scan per press** (Ana, Rosa; v55). Scan them in opens the camera once per band; a crew of
+  six is six presses. A sheet that keeps the camera open and ticks names as bands pass would be the next cut.
+- **Runs nobody updates under load** (Marcus, the desk; v54). A bus that left without Leaving pressed reads "loading
+  since" and goes late on its own clock, which at least says so. The risk the plan named.
+- **A pickup is not a point on the map** (the crews; v54). From is a facility, a division or a few words.
+- **The desk cannot put a walk-in on a run** (the desk; v54). On which run is on the house record and the base's
+  arriving rows only.
+- **The base cannot give a sheltered person a band** (Operations; v55). Only the desk and the crew that made the
+  record can, by the plan's choice; a Band box on the base's rows if the desks ask for it.
+- **Boarding needs a run loading from here** (the crews; v55). The Boarding chip names the first run planned or loading
+  from the crew's division, or "a run" when there is none.
+- **The Public page is a list, not a gallery** (the PIO; v52). The pictures are a press away on each photo's panel.
+- **Details on the unit panel is a press per unit** (Marcus verifying identities; v50). The fold does not carry across
+  units, which is the point for privacy.
+- **A checked-out membership still lists under "Incidents you are already in"** (Reyes; v53). One tap reopens it and
+  the check-in brings the people back.
+- **A unit's invitation opened on a laptop** lands on the base as a unit (v56). The link sends units to the field app.
+- **Seen by the walkers, not product:** the mock's seeded period reads "22:48 to 19:00" (its start three hours before
+  the clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty seconds to give a new phone a
+  fix; the `layers` smoke suite's overlay upload sometimes times out late in a full run (handoff.md, "Where things
+  stand").
+- **Waiting on Grace:** the front door's pilot contact (Get in touch points at the GitHub issues), the pilot agreement's
+  open comment, and the plan doc's section 7 questions (handoff.md says where each is).
+- **Tags phase 2, trackers**, waits on the hardware.
 
 ## Done before this list
 

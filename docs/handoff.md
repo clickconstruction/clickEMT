@@ -1,7 +1,8 @@
 # Handoff
 
 For whoever picks up clickEMT next. This says where things stand, how to get it running, how a change is shipped,
-and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026.
+and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026, brought
+up to date on 18 October 2026 at v56.
 
 ## What it is
 
@@ -33,19 +34,36 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 - **One known flake in the full smoke run** (18 October, v50 to v53): the `layers` suite's overlay upload sometimes does not
   arrive within its wait late in a full run ("Cannot read properties of undefined (reading 'name')" at the saved overlay);
   it passes alone, with the `log` suite before it, and with either half of the run before it, so it is an effect of the whole
-  sequence, not of the code. Rerun it alone before it counts, as the routine says; the cause is still to find.
+  sequence, not of the code. Rerun it alone before it counts, as the routine says; the cause is still to find. It did not
+  come up in the full runs at v54, v55 or v56.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
-- **Open work:** the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do") ranked what still
-  bites; [punchlist.md](punchlist.md) is that list. Releases v38 to v47 shipped on 17 and 18 October (v46 built Grace's four
-  decisions, v47 the last item, on scene too long, v48 the small items from the re-walks); nothing on that list is left.
-  The walk at v48's four items shipped as v50 to v53. v54 built the transport board, v55 tags phase 1 (the QR bands)
-  and v56 invitations by email, the three pieces in the plan "Invite by email, a transport board, and people and tags"
-  (punchlist sections 12 to 14). v56 is the app's first server code: the Edge Function `invite`
-  (`supabase/functions/invite/`), deployed with `supabase functions deploy invite --project-ref cjwybuhogxyayjnuxpem
-  --use-api`; its secrets are the project's (`RESEND_*`, the Supabase keys) plus `APP_URL`. The shared project's auth
-  had sign-ups turned off for a few hours on 18 October (the charity app's change); they were turned on again the same
-  day, so Create account works as before (email confirmation still required). Trackers (tags phase 2) wait on the hardware.
+- **What has shipped:** the walk at v37's list as v38 to v48, the walk at v48's four items as v50 to v53, and the three
+  pieces of the plan "Invite by email, a transport board, and people and tags" as v54 (the transport board), v55 (QR
+  bands, tags phase 1) and v56 (invitations by email). v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+- **Nothing ranked is open.** The next step, by Grace's routine, is a fresh walk at v56: every persona, every job,
+  "is this the best we can do?", then a ranked list. The candidates already known are in punchlist section 15 (the
+  "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on
+  the hardware Grace chooses.
+- **Not yet seen working for real:** the first real invitation email. The Edge Function `invite` is deployed and
+  refuses a call with no session, and the smoke suite drives the whole flow against the mock's stand-in, but no email
+  has been sent from the live site. Send one to yourself from the Members tab: if the mail sender refuses, the row
+  says "could not be sent: …" on the tab and in the 214.
+- **Waiting on Grace, outside the code:** the contact for "Pilot it with your agency" on the front door (Get in touch
+  points at the GitHub issues until there is an email); the pilot agreement draft, a Claude Doc on claude.ai with an
+  open comment in section 6 (a free pilot, and the 30-day clearing); and the questions in section 7 of the plan doc,
+  asked before the three pieces were built and still unanswered there. Both docs are private to Grace's account; ask
+  her to share them.
+- **The server code:** v56 added the app's first, the Edge Function `invite` (`supabase/functions/invite/`), deployed
+  with `supabase functions deploy invite --project-ref cjwybuhogxyayjnuxpem --use-api` (the Supabase CLI's saved login;
+  no Docker). Its secrets are the project's (`RESEND_API_KEY`, `RESEND_DEFAULT_FROM`, the Supabase keys) plus
+  `APP_URL` (`https://clickemt.com`), set for this app.
+- **Settings changed on the shared project** (18 October, for v56): the auth redirect allow list gained
+  `https://clickemt.com/**`, `http://localhost:8766/**` and `http://localhost:8782/**` (without them Supabase sends an
+  invitation's link to the site URL, which is the charity app's), and sign-ups were turned back on after the charity
+  app had turned them off for a few hours (email confirmation is still required). The project's other auth settings,
+  its email hook (`auth-email`) and its other functions belong to the charity app; leave them alone.
 
 ## Read these first
 
@@ -74,12 +92,16 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 - **Nothing public by default.** A photo reaches the Public Information Officer only when Operations clears it;
   identity records are seen by the person and Operations only; evacuee names never leave the incident.
 - **The Supabase project is shared** with a separate charity app. Everything of this app carries the `ic_` prefix;
-  touch nothing else in that project.
+  touch nothing else in that project. Its auth settings (sign-ups, the redirect allow list, the email hook) are
+  project-wide: a change there reaches the charity app too, so change them only when this app needs it and write the
+  change down in "Where things stand" above.
 - **`config.js` holds only public values** (the publishable key). Never put a secret key in it.
 
 ## Getting it running
 
-You need Python 3 and Node (v20 works). There is no build step and nothing to `npm install`.
+You need Python 3 and Node (v20 works). There is no build step and nothing to `npm install`. For anything that
+touches the real database or the Edge Function you also need the Supabase CLI, logged in once (`supabase login`) with
+an account that has access to the project (see Database access).
 
 ```bash
 git clone https://github.com/clickconstruction/clickEMT.git
@@ -110,10 +132,14 @@ For the phone, use a narrow window or the browser's device mode at 375 px wide. 
   const { run } = await import('/dev/smoke.js'); await run()
   ```
 
-  It drives both views and takes two to three minutes; `run({ only: ['evacuees'] })` runs one suite. The window must
-  stay visible (the base redraws on animation frames, which a hidden tab never gets), and at narrow widths the base
-  switches to its phone layout and some checks fail. Reload the page before a second run. Until punchlist item 5 is
-  done, one QR check fails on any port other than 8766.
+  It drives both views through 37 suites and takes four to five minutes; `run({ only: ['evacuees'] })` runs one
+  suite. The window must stay visible (the base redraws on animation frames, which a hidden tab never gets), and at
+  narrow widths the base switches to its phone layout and some checks fail. Reload the page before a second run. Any
+  port works (the join and band suites read the address they are served from). In an embedded browser with a short
+  script timeout, start it detached and read the result when it is done:
+  `window.__smokeResult = null; import('/dev/smoke.js').then((m) => m.run()).then((r) => { window.__smokeResult = r; })`.
+  An embedded browser usually refuses the camera: the suites scan bands and codes by typing the number, as a phone
+  whose camera refuses does.
 - **SQL rule tests**, against the real database: `python3 dev/sbq.py supabase/tests/<file>.sql`. Each runs in one
   transaction that rolls back, so nothing is left behind, and returns rows that should all say `ok: true`.
 
@@ -134,7 +160,10 @@ The routine for every release (CLAUDE.md, "Every release"):
 3. Bump `VERSION` in `sw.js` (the service worker is cache-first, so phones keep the old app until it changes) and add
    any new JS or CSS file to its `SHELL` list.
 4. Run `npm run check`, `npm test`, the full smoke run and the rule tests.
-5. Apply the migration to the database before pushing, because the apps read new columns on start.
+5. Apply the migration to the database before pushing, because the apps read new columns on start. If
+   `supabase/functions/` changed, deploy the function too (the command is under "Where things stand"); the smoke suite
+   runs against the mock's stand-in for it (`client.functions.invoke` in `dev/mock-supabase.js`), so keep the two
+   saying the same thing.
 6. Update README.md (a feature line) and CLAUDE.md (a gotcha line) when something works differently.
 7. Commit on `main`, titled after the feature with the version in parentheses, matching `sw.js`: `Shelter and
    evacuee records: who was moved where (v26)`. Test-only changes start with `smoke:` or `dev:`, docs with `docs:`.
@@ -153,18 +182,29 @@ without them.
 - "The big six": v26 to v28 (evacuees, members, retention, time in the water, settings, the public set).
 - "ICS-100 gaps": what v24 added from the ICS-100 course.
 - "Planning, Logistics and Finance": v23.
-- "People and tags": a proposal not yet built, for tracking people with tags and trackers; the reason boat crews'
-  per-person "last seen" is deferred.
+- "People and tags": the first proposal for tracking people with tags and trackers. Phase 1, the QR bands, was built
+  as v55; phase 2, trackers, waits on the hardware.
+- "Invite by email, a transport board, and people and tags" (a Claude Doc, 18 October): the plan for v54 to v56,
+  each piece with its design, its data, its decisions and "done when", and section 7's questions, still open. The
+  click-through mock-ups it was judged on are in the repository at `try/mockups/` (published at
+  https://clickemt.com/try/mockups/); they are kept as the design record now that all three are built.
+- The pilot agreement (a Claude Doc, 18 October): the draft an agency signs to pilot the app, with one comment open.
 
 ## Layout
 
-- `index.html`, `js/base/`: the base. `main.js` wires events, `ui.js` draws the panels and the printed forms,
+- `index.html`: the base, and when signed out the front door (the join code box first, then the landing).
+  `404.html` asks for the join code too, at any address that is not a page.
+- `js/base/`: the base. `main.js` wires events, `ui.js` draws the panels and the printed forms,
   `map.js` the Leaflet map, `print-map.js` the maps on printed 204s, `photo-export.js` the public photo zip.
 - `field/index.html`, `js/field/`: the phone. `main.js` is the app, `camera.js` photos, `sensors.js` GPS and compass,
   `scan.js` QR and licence barcodes.
 - `js/shared/`: `rules.js`, `data.js`, `queue.js` (the outbox), `briefings.js`, `hours.js`, `layers.js`, `qr.js`,
-  `licence.js`, `theme.js`.
-- `supabase/migrations/`, `supabase/tests/`: the database and its rule tests.
+  `licence.js`, `theme.js`, `update.js` (new versions: the reload on the front door, the chip when signed in).
+- `try/`: the public demo on the mock's stand-in (`?demo`): the role cards and tours (`tours.js`), the full-screen
+  base and phone (`try/base/`, `try/phone/`) and the mock-ups of v54 to v56 (`try/mockups/`).
+- `supabase/migrations/`, `supabase/tests/`: the database and its rule tests. `supabase/functions/`: the Edge
+  Function `invite`, the app's only server code.
+- `docs/guides/`: a guide per persona, read raw by the demo; `images/front/`: the front door's screenshots.
 - `dev/`: the mock, the smoke suite, the Node tests, the dev server and `sbq.py`.
 - `vendor/`: the QR code maker and readers, the licence barcode reader and supabase-js, with their licences in
   `vendor/LICENSES.md`. Leaflet loads from cdnjs.

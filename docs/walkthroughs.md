@@ -790,3 +790,24 @@ Items 5 and 6 of "What to do first" are clear. The toast now sits under the head
 - **The bar's words repeat themselves** when the crew's note restates the kind ("Person or car in the water, Car in the water at the low crossing"); the kind could be dropped from the bar when the note starts with the same words.
 - **Acknowledge is the base's word, not the crew's**: the phone says "Operations will acknowledge" but shows nothing when they do. A line on the phone's home ("Operations saw your hazard at 23:31") would close the loop.
 - **Before nightfall and the other three words** do nothing yet on the base beyond the badge; only Act on now reaches the bar, by design.
+
+---
+
+## Re-walk after v42
+
+The phone's sheets: Ana's Address clear, Moreno's briefing and home screen, and Marcus's assignment, walked on 2026-10-17 after migration 0026 in the same mock, the phone at 375 × 812 (as the seeded Unit 3, then as a new one-person unit, SO 14) and the base at 1280 × 800 as Operations. The Browser pane was hidden, so the walk read the screens' text and measured the buttons; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Address clear | Ana | The house record is 1,019 px tall on an 812 px screen, and "Cancel · Searched, save" sat at 734 to 812 px from the top, on screen, before and after scrolling the sheet. One tap, type, one tap. | Clear |
+| A one-person post's briefing | Moreno | "YOUR JOB No assignment yet. Operations assigns divisions from the base. Stay where Operations put you; if you have nowhere yet, staging is High school east lot." and "WHO YOU WORK WITH On SO 14: you alone. Next door: Unit 3 in A-2 …". | Clear |
+| A one-person post's home | Moreno | "YOUR ASSIGNMENT No assignment yet · Operations assigns divisions from the base. Stay where Operations put you. From here you can take a photo, report a hazard, message Operations or call for help. You are standing in A-2, Unit 3's division." with Take photo, Report hazard, Message Operations and Need help now; Address clear and Zone clear put away. | Clear |
+| Assign and accept | Marcus, Moreno | Operations pressed SO 14 under B-2's Assigned to: the row and the panel read "Assigned, not accepted · SO 14 · 0 of 9". The phone: "NEW ASSIGNMENT FROM OPERATIONS · B-2 … · Accept". Accept: the card gone, the division card "YOUR ZONE B-2 … In progress", the search buttons back; the base's row "In progress · SO 14 · 0 of 9" and the 214 "SO 14 accepted the assignment to B-2". *The first press of Accept on the walk failed with "id is not defined": a slip in the new handler, fixed before the release and now pressed by the `newcomer` suite.* | Clear |
+
+Items 7, 8 and 9 of "What to do first" are clear.
+
+**Still bites, small:**
+
+- **The desk's "you alone"** reads oddly for a desk with helpers it never named; the count is theirs to give.
+- **A unit standing in another unit's division** still reads that division's name on its card ("You are standing in A-2, Unit 3's division"), by design now, so a crew driving through knows whose ground it is on.
+- **Accept is not required**: a unit that never presses it but sends a photo from the division reads "In progress" all the same, which is the point; one that neither presses nor reports stays "not accepted" for ever, which Operations can read as a prompt to call them.

@@ -21,7 +21,6 @@ import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFr
 const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
 try { localStorage.removeItem('ic.field.agency'); } catch (e) { /* the old key was per phone */ }
 const JOIN_KEY = 'ic.field.join';   // a code that arrived in the address (?join=), kept through sign-in
-const SEEN_ZONE = 'ic.field.seen.';
 const BRIEFED = 'ic.field.briefed.';   // the check-in the unit was briefed for (its joined_at), per incident
 const POSITION_EVERY_MS = 10000;
 const POSITION_MIN_M = 8;
@@ -90,7 +89,8 @@ const outbox = new Outbox({
   person: (p, _b, at) => data.addPerson(p.id, { ...p, checkedInAt: at }),
   evacuee: (p, _b, at) => (p.update ? data.updateEvacuee(p.id, p.patch) : data.addEvacuee(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
   personPatch: (p) => data.updatePerson(p.id, p.patch),
-  found: (p) => data.markFound(p.messageId, p.userId, { personId: p.personId, name: p.name })
+  found: (p) => data.markFound(p.messageId, p.userId, { personId: p.personId, name: p.name }),
+  accept: (p) => data.updateMember(p.userId, { accepted_zone_id: p.zoneId })
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -770,9 +770,8 @@ function drawAll() {
 
   const zone = myZone();
   const assigned = data.myZones().filter((z) => z.status !== 'cleared')[0] || null;
-  const seenKey = SEEN_ZONE + data.incident.id;
   const banner = $('#banner');
-  if (assigned && localStorage.getItem(seenKey) !== assigned.id) {
+  if (assigned && !data.zoneAccepted(assigned)) {   // until the unit accepts or reports from it (v42)
     setHtml(banner, `<div class="banner"><div class="k">New assignment from Operations</div><div style="font-size:16px;font-weight:600">${esc(assigned.code)} · ${esc(assigned.name)} · priority ${assigned.priority}${assigned.structures ? ' · ' + assigned.structures + ' structures' : ''}</div><button class="btn" data-action="accept" data-id="${assigned.id}">Accept</button></div>`);
   } else setHtml(banner, '');
 
@@ -780,7 +779,7 @@ function drawAll() {
   if (state.justCleared && (!zone || zone.id === state.justCleared.id)) {
     const jc = state.justCleared;
     setCard(acard, 'card done-card', `<div class="big">${esc(jc.code)} ${jc.pass === 'secondary' ? 'marked clear' : 'primary search complete'}</div><div class="muted">Sent ${hhmm(jc.at)}. Operations sees the zone in green${jc.pass === 'secondary' ? '' : ', lighter until the secondary search'}. Waiting for your next assignment.</div>`);
-  } else if (zone) {
+  } else if (zone && (zone.assigned_to === data.user.id || assigned)) {
     const isAssigned = zone.assigned_to === data.user.id;
     setCard(acard, 'card', `
       <div class="k">${isAssigned ? 'Your zone' : 'You are standing in'}</div>
@@ -792,8 +791,12 @@ function drawAll() {
       ${zone.channel || zone.supervisor ? `<div class="muted" style="font-size:12.5px">${zone.channel ? 'Radio ' + esc(zone.channel) : ''}${zone.channel && zone.supervisor ? ' · ' : ''}${zone.supervisor ? 'Supervisor ' + esc(zone.supervisor) : ''}</div>` : ''}
       ${zone.objective_id && data.objective(zone.objective_id) ? `<div class="muted" style="font-size:12.5px">Objective ${data.objective(zone.objective_id).number}: ${esc(data.objective(zone.objective_id).text)}</div>` : ''}`);
   } else {
-    setCard(acard, 'card', `<div class="k">Your zone</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns zones from the base map. You can still send photos and hazards from where you stand.</div>`);
+    // a unit with no division of its own (v42): not another unit's card and search buttons
+    setCard(acard, 'card', `<div class="k">Your assignment</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns divisions from the base. Stay where Operations put you. From here you can take a photo, report a hazard, message Operations or call for help.${zone ? ' You are standing in ' + esc(zone.code) + (zone.assigned_to ? ', ' + esc(unitLabel(data.member(zone.assigned_to))) + '\'s division' : '') + '.' : ''}</div>`);
   }
+  const noDivision = !assigned && !state.justCleared;
+  for (const a of ['addr-clear', 'zone-clear']) { const b = $(`.actions [data-action="${a}"]`); if (b) b.hidden = noDivision; }
+  { const c = $('#act-compose'); if (c) c.hidden = !noDivision; }
 
   // a shelter desk is not a search crew: its home is People here, not the zone and the search buttons
   const desk = isDesk();
@@ -1488,7 +1491,7 @@ document.addEventListener('click', async (e) => {
       case 'scan-cancel': closeScan(); break;
       case 'show-code': openShowCode(); break;
       case 'layer': await setMiniLayer(btn.dataset.value); break;
-      case 'accept': localStorage.setItem(SEEN_ZONE + data.incident.id, btn.dataset.id); state.justCleared = null; queueDraw(); toast('Assignment accepted'); break;
+      case 'accept': { const me = data.me(), zid = btn.dataset.id; if (me && zid) { data.local('ic_members', Object.assign({}, me, { accepted_zone_id: zid })); await outbox.add('accept', { userId: me.user_id, zoneId: zid }); } state.justCleared = null; queueDraw(); toast('Assignment accepted'); break; }   // the base learns of it (v42)
       case 'camera': await takePhoto(); break;
       case 'note': state.noteI = Number(btn.dataset.i); drawPhotoFacts(); break;
       case 'send-photo': await sendPhoto(); break;

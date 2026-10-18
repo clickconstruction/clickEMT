@@ -167,12 +167,14 @@ t('a water crew is told the nearest boat ramp under Work area and the rotation u
   assert.ok(!/Boat ramp/.test(engine.text), engine.text);
 });
 
-t('a unit with no assignment is told to wait at staging', () => {
+t('a unit with no assignment is told to stay where Operations put it, with staging as the fallback (v42)', () => {
   const d = stub();
   const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: { user_id: 'nobody', unit_name: 'Unit 9', role: 'unit', status: 'available', kind: '' }, at: null });
   assert.equal(S[1].lead, 'No assignment yet.');
-  assert.ok(S[1].text.includes('Wait at staging, High school east lot.'));
+  assert.equal(S[1].text, 'Operations assigns divisions from the base. Stay where Operations put you; if you have nowhere yet, staging is High school east lot.');
   assert.ok(S[2].text.startsWith('On Unit 9: nobody listed yet'));
+  const one = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: { user_id: 'nobody', unit_name: 'SO 14', role: 'unit', status: 'available', kind: 'other', crew_count: 1 }, at: null });
+  assert.ok(one[2].text.startsWith('On SO 14: you alone.'), one[2].text);
 });
 
 t('a shelter desk\'s job is the people at its shelter, not staging (v26)', () => {
@@ -183,6 +185,7 @@ t('a shelter desk\'s job is the people at its shelter, not staging (v26)', () =>
   const S = fieldBriefing(d, { now: new Date(at(0)).getTime(), me: { user_id: 'desk', unit_name: 'Gym desk', role: 'unit', status: 'available', kind: 'shelter_desk', facility_id: 'f5' }, at: null });
   assert.equal(S[1].lead, 'People here at High school gym.');
   assert.ok(S[1].text.includes('They\'re here') && S[1].text.endsWith('Now: 5 of 60 beds, 1 record on the way, expected Bus 2, 12 people, 17:30.') && !S[1].text.includes('staging'), S[1].text);
+  assert.ok(S[3].text.startsWith('High school gym It is on the map.') || S[3].text.startsWith('High school gym · '), S[3].text);   // the desk's work area is its shelter (v42)
 });
 
 t('the deployment lines on the join card: incident, where to check in, assignment, when, how to get there, radio, bring', () => {

@@ -61,6 +61,7 @@ t('zones sort by priority then code, and status text reads well', () => {
   assert.deepEqual(sortZones(zones).map((z) => z.code), ['A-1', 'A-2', 'B-1']);
   assert.equal(zoneStatusText({ status: 'open', structures: 12, cleared: 0, hazard: false }), 'Not started · 12 structures');
   assert.equal(zoneStatusText({ status: 'active', structures: 14, cleared: 9, hazard: true }, 'Unit 3'), 'In progress · Unit 3 · 9 of 14 · hazard');
+  assert.equal(zoneStatusText({ status: 'active', structures: 9, cleared: 0, hazard: false }, 'Brush 12', false), 'Assigned, not accepted · Brush 12 · 0 of 9');   // v42
   assert.equal(pct({ structures: 14, cleared: 7 }), 50);
   assert.equal(pct({ structures: 0, cleared: 0 }), 0);
 });

@@ -182,22 +182,23 @@ export function fieldBriefing(data, { me, at, now = Date.now() } = {}) {
     ].filter(Boolean).join(' ') });
   } else {
     const staging = data.facilities().find((f) => f.kind === 'staging');
-    S.push({ key: 'job', title: 'Your job', lead: 'No assignment yet.', text: `Operations assigns divisions from the base. ${staging ? 'Wait at staging, ' + (staging.name || 'the staging area') + '.' : 'Stay available.'}` });
+    S.push({ key: 'job', title: 'Your job', lead: 'No assignment yet.', text: `Operations assigns divisions from the base. Stay where Operations put you${staging ? '; if you have nowhere yet, staging is ' + (staging.name || 'the staging area') : ''}.` });   // a post, a desk or a lone volunteer is not told to wait at staging (v42)
   }
   const crew = me ? unitPeopleOn(data, me) : [];
   const others = units.filter((u) => !me || u.user_id !== me.user_id).map((u) => ({ u, z: zones.find((z) => z.assigned_to === u.user_id && z.status === 'active') || null })).filter((x) => x.z)
     .map((x) => ({ ...x, d: here ? distanceM(centroid(x.z.polygon), here) : 0 })).sort((a, b) => a.d - b.d).slice(0, 4);
   const icp = data.facilities().find((f) => f.kind === 'icp');
   S.push({ key: 'with', title: 'Who you work with', text: [
-    crew.length ? `On ${unitLabel(me)}: ${crew.map((x) => x.name + (qualsText(x.qualifications) ? ' (' + qualsText(x.qualifications) + ')' : '')).join(', ')}.` : (me ? `On ${unitLabel(me)}: nobody listed yet; add your people from the menu.` : ''),
+    crew.length ? `On ${unitLabel(me)}: ${crew.map((x) => x.name + (qualsText(x.qualifications) ? ' (' + qualsText(x.qualifications) + ')' : '')).join(', ')}.` : (me ? (me.crew_count === 1 ? `On ${unitLabel(me)}: you alone.` : me.crew_count > 1 ? `On ${unitLabel(me)}: ${me.crew_count} people, no names yet; add them from the menu.` : `On ${unitLabel(me)}: nobody listed yet; add your people from the menu.`) : ''),
     others.length ? `Next door: ${others.map((x) => unitLabel(x.u) + ' in ' + x.z.code).join(', ')}.` : 'No other unit assigned yet.',
     `Operations: ${p && p.ops_chief ? p.ops_chief : 'not named'}${icp ? ' at ' + (icp.name || 'the command post') : ''}.`
   ].filter(Boolean).join(' ') });
+  const deskF = me && me.kind === 'shelter_desk' ? ((me.facility_id && data.facility ? data.facility(me.facility_id) : null) || data.facilities().find((x) => x.kind === 'shelter') || null) : null;   // a desk's work area is its shelter (v42)
   const stagingNear = at ? nearestFacility(data.facilities(), 'staging', at[0], at[1]) : null;
   const staging = stagingNear ? stagingNear.facility : data.facilities().find((f) => f.kind === 'staging');
   const rampNear = at && me && WATER_KINDS.includes(me.kind) ? nearestFacility(data.facilities(), 'ramp', at[0], at[1]) : null;   // a boat crew is told where to put in (v28)
   S.push({ key: 'area', title: 'Work area', text: [
-    zone ? `${zone.code} on the map${zone.structures ? ', ' + zone.structures + ' structures, ' + zone.cleared + ' cleared' : ''}.` : (at ? 'Where you stand is on the map.' : 'The map shows the divisions.'),
+    zone ? `${zone.code} on the map${zone.structures ? ', ' + zone.structures + ' structures, ' + zone.cleared + ' cleared' : ''}.` : (deskF ? `${deskF.name || 'The shelter'}${deskF.notes ? ' · ' + sentence(deskF.notes) : ''} It is on the map.` : at ? 'Where you stand is on the map.' : 'The map shows the divisions.'),
     rampNear ? `Boat ramp: ${rampNear.facility.name || 'boat ramp'}, ${milesText(rampNear.distance)}.` : (me && WATER_KINDS.includes(me.kind) ? 'No boat ramp on the map yet; ask Operations where to put in.' : ''),
     staging ? `Staging: ${staging.name || 'staging area'}${stagingNear ? ', ' + milesText(stagingNear.distance) : ''}.` : ''
   ].filter(Boolean).join(' '), action: 'map' });

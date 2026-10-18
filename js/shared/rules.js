@@ -159,10 +159,18 @@ export function pct(zone) {
   return zone.structures ? Math.round(zone.cleared / zone.structures * 100) : 0;
 }
 
-export function zoneStatusText(zone, assignedLabel) {
+// accepted (v42): the unit pressed Accept, or sent a report from the division since its status last changed
+export function zoneAccepted(zone, member, reports) {
+  if (!zone || !member) return false;
+  if (member.accepted_zone_id === zone.id) return true;
+  const since = member.status_at || '';
+  return (reports || []).some((r) => r.zone_id === zone.id && r.user_id === member.user_id && (!since || (r.at || '') > since));
+}
+export function zoneStatusText(zone, assignedLabel, accepted = true) {
   let t;
   if (zone.status === 'cleared') t = 'Cleared' + (zone.cleared_at ? ' at ' + hhmm(zone.cleared_at) : '') + ' · ' + zone.structures + ' of ' + zone.structures;
   else if (zone.status === 'primary') t = 'Primary search done' + (zone.primary_done_at ? ' at ' + hhmm(zone.primary_done_at) : '') + ' · ' + zone.cleared + ' of ' + zone.structures + ' · secondary pending';
+  else if (zone.status === 'active' && !accepted) t = 'Assigned, not accepted · ' + (assignedLabel || 'assigned') + ' · ' + zone.cleared + ' of ' + zone.structures;
   else if (zone.status === 'active') t = 'In progress · ' + (assignedLabel || 'assigned') + ' · ' + zone.cleared + ' of ' + zone.structures;
   else t = 'Not started · ' + zone.structures + ' structures';
   if (zone.hazard) t += ' · hazard';

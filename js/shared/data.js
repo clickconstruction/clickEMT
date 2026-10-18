@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
 const BUCKET = 'ic-photos';
@@ -639,6 +639,16 @@ export class Data {
     return data;
   }
   urgentHazards() { return this.hazards().filter(hazardUrgent); }
+  // has the assigned unit accepted this division, or reported from it since (v42)
+  zoneAccepted(zone) {
+    const m = zone && zone.assigned_to ? this.member(zone.assigned_to) : null;
+    if (!m) return false;
+    const reports = [...this.store.photos.values()].map((p) => ({ zone_id: p.zone_id, user_id: p.user_id, at: p.taken_at }))
+      .concat([...this.store.structures.values()].map((s) => ({ zone_id: s.zone_id, user_id: s.created_by || s.user_id, at: s.created_at })))
+      .concat([...this.store.hazards.values()].map((h) => ({ zone_id: h.zone_id, user_id: h.user_id, at: h.created_at })));
+    return zoneAccepted(zone, m, reports);
+  }
+  async acceptZone(zoneId) { return this.updateMe({ accepted_zone_id: zoneId }); }
   async resolveHazard(id) {
     const { data, error } = await this.sb.from('ic_hazards').update({ resolved_at: new Date().toISOString() }).eq('id', id).select().single();
     if (error) throw error;

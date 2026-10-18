@@ -18,7 +18,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 2 | v39 The newcomer's door (shipped 17 October) | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
 | 3 | v40 A period that has ended says so, and times and dates in one form (shipped 17 October) | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
 | 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks (shipped 17 October) | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
-| 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
+| 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division (shipped 17 October) | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
 | 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card | small | v42 | the IC, the clerk, Reyes, the administrator |
 | 7 | v44 Small words and buttons | small | any time | one or two personas each |
 | 8 | Later: since you last looked; on scene too long | medium | v44 | the IC, Marcus's relief, Priya |
@@ -224,6 +224,11 @@ division (v42)`. Re-walk Ana's Address clear, Moreno's briefing and the desk's b
 
 **Start in.** `css/field.css` (`.sheet`, the foot), `js/field/main.js` (`drawHome`, the assignment card),
 `js/shared/briefings.js` (`fieldBriefing`), `js/shared/rules.js` (`zoneStatusText`), `js/base/ui.js` (the row words).
+
+**Shipped** 17 October 2026 as `The phone's sheets: Save on screen, Assigned before In progress, a briefing for a unit with
+no division (v42)`, migration `0026_accept.sql`, rule test `supabase/tests/accept.sql` (4 of 4), the `baseActions` and
+`newcomer` smoke suites extended. One difference: Take photo stays on the home screen of a unit with no division (a
+photo from where it stands is always useful); Address clear and Zone clear are put away.
 
 ## 6. v43 Paper that leaves the base
 

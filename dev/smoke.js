@@ -103,7 +103,7 @@ async function baseActions(check) {
   await until(() => has('#panel .title', 'b-2'));
   $(`#panel [data-action="assign"][data-user="${USERS().unit2}"]`).click();
   await until(() => base.zone(b2).assigned_to === USERS().unit2 && eventText(base, 'B-2 assigned to Unit 2'));
-  check('assigning Unit 2 to B-2 makes it active and logs it', base.zone(b2).status === 'active' && $(`#zones .zr[data-id="${b2}"] .sdot`).classList.contains('active') && has(`#zones .zr[data-id="${b2}"]`, 'in progress · unit 2'), text(`#zones .zr[data-id="${b2}"]`));
+  check('assigning Unit 2 to B-2 makes it active and logs it', base.zone(b2).status === 'active' && $(`#zones .zr[data-id="${b2}"] .sdot`).classList.contains('active') && has(`#zones .zr[data-id="${b2}"]`, 'assigned, not accepted · unit 2'), text(`#zones .zr[data-id="${b2}"]`));   // v42: not In progress until the unit accepts or reports
   check('the field client sees the assignment too', await until(() => field.zone(b2).assigned_to === USERS().unit2));
   $(`#panel [data-action="assign"][data-user="${USERS().unit2}"]`).click();
   await until(() => base.zone(b2).assigned_to === null && eventText(base, 'B-2 released from Unit 2'));
@@ -1571,6 +1571,21 @@ async function newcomer(check) {
       f.unit.value = 'Volunteer 4'; f.agency.value = 'Cedar Fork volunteers'; f.count.value = '1'; P.$('#join [data-kind="volunteer"]').click();
       f.requestSubmit();
       await until(() => base.members().some((m) => m.unit_name === 'Volunteer 4'), 70000);
+      await until(() => P.shown('#s-home') && /no assignment yet/.test(P.text('#assignment')), 15000);
+      check('a unit with no division sees No assignment yet, not another unit\'s card: Address clear and Zone clear are put away and Message Operations is offered (v42)', /no assignment yet/.test(P.text('#assignment')) && /stay where operations put you/.test(P.text('#assignment')) && P.$('.actions [data-action="addr-clear"]').hidden && P.$('.actions [data-action="zone-clear"]').hidden && !P.$('#act-compose').hidden && !P.$('.actions [data-action="hazard"]').hidden, P.text('#assignment'));
+      // the base assigns a division: "Assigned, not accepted" until the phone's Accept, which the 214 records (v42)
+      const vol = base.members().find((m) => m.unit_name === 'Volunteer 4');
+      await base.updateZone(ZONE('B-2'), { assigned_to: vol.user_id, status: 'active' });   // as the base's Assigned to press does
+      check('assigned from the base, the division reads Assigned, not accepted, and the phone shows the Accept card', await until(() => has(`#zones .zr[data-id="${ZONE('B-2')}"]`, 'assigned, not accepted · volunteer 4')) && await until(() => P.$('#banner [data-action="accept"]'), 15000), text(`#zones .zr[data-id="${ZONE('B-2')}"]`));
+      P.$('#banner [data-action="accept"]').click();
+      check('Accept on the phone makes it In progress on the base and writes the line', await until(() => base.member(vol.user_id).accepted_zone_id === ZONE('B-2'), 70000) && await until(() => has(`#zones .zr[data-id="${ZONE('B-2')}"]`, 'in progress · volunteer 4')) && await until(() => eventText(base, 'Volunteer 4 accepted the assignment to B-2'), 8000) && await until(() => !P.$('#banner [data-action="accept"]') && !P.$('.actions [data-action="addr-clear"]').hidden), logTexts()[0]);
+      await base.updateZone(ZONE('B-2'), { assigned_to: null, status: 'open' });
+      await until(() => !P.$('.actions [data-action="addr-clear"]') || P.$('.actions [data-action="addr-clear"]').hidden, 15000);
+      await P.act('addr-clear');
+      await until(() => P.shown('#s-structure'), 5000);
+      { const sh = P.$('#s-structure'), fb = P.$('#s-structure .sheet-btns').getBoundingClientRect(), H = P.frame.contentWindow.innerHeight;
+        check('the house record\'s Searched, save stays on screen however long the sheet is (v42)', sh.scrollHeight > sh.clientHeight && fb.bottom <= H + 1 && fb.top >= 0, `buttons ${Math.round(fb.top)}-${Math.round(fb.bottom)} of ${H}, sheet ${sh.scrollHeight} in ${sh.clientHeight}`); }
+      await P.act('home');
       check('the base sees the volunteer under Volunteers, and the check-in line says so', await until(() => eventText(base, 'Volunteer 4, volunteer checked in as Kim Tran, 512 555 0190, identity not given with 1 person'), 8000) && base.members().find((m) => m.unit_name === 'Volunteer 4').kind === 'volunteer' && await until(() => has('#panel', 'volunteers', 'volunteer 4')), text('#panel').slice(0, 400));
       // v41: the hazard sheet chooses nothing for the crew, offers the urgency words and the new kinds, and a toast never sits over its buttons
       await P.act('hazard');

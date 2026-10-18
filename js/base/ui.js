@@ -23,7 +23,7 @@ export function zonesHtml(data, state) {
       <span class="pb p${z.priority}">${z.priority}</span>
       <span class="zr-main">
         <span class="zr-top"><span class="zr-id">${esc(z.code)}</span><span class="zr-name">${esc(z.name)}</span></span>
-        <span class="zr-sub">${esc(zoneStatusText(z, assignedLabel(data, z)))}${z.objective_id && data.objective(z.objective_id) ? ' · objective ' + data.objective(z.objective_id).number : ''}</span>
+        <span class="zr-sub">${esc(zoneStatusText(z, assignedLabel(data, z), data.zoneAccepted(z)))}${z.objective_id && data.objective(z.objective_id) ? ' · objective ' + data.objective(z.objective_id).number : ''}</span>
       </span>
       <span class="sdot ${z.status}"></span>
     </button>`).join('');
@@ -299,7 +299,7 @@ function zoneHtml(data, z, state) {
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">Division ${esc(z.code)} <span>${esc(z.name)}</span></div>
-    <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>${z.channel ? `<span class="badge">Radio ${esc(z.channel)}</span>` : ''}${z.supervisor ? `<span class="muted" style="font-size:12px">Supervisor ${esc(z.supervisor)}</span>` : ''}${z.branch ? `<span class="muted" style="font-size:12px">Branch ${esc(z.branch)}</span>` : ''}</div>
+    <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z), data.zoneAccepted(z)))}</span>${z.channel ? `<span class="badge">Radio ${esc(z.channel)}</span>` : ''}${z.supervisor ? `<span class="muted" style="font-size:12px">Supervisor ${esc(z.supervisor)}</span>` : ''}${z.branch ? `<span class="muted" style="font-size:12px">Branch ${esc(z.branch)}</span>` : ''}</div>
     ${hazards.map((h) => `<div class="hazline">Hazard · ${esc(h.kind)}${h.note ? ' · ' + esc(h.note) : ''} · ${esc(unitLabel(data.member(h.user_id)))} at ${hhmm(h.created_at)}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>`).join('')}
     <div class="d-row"><span class="k">Priority</span>
       ${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}">Priority ${p}</button>`).join('')}
@@ -396,7 +396,7 @@ export function zoneModalHtml(data, z) {
   return `
     <div class="zm-head">
       <div class="zm-name"><div class="k">Division</div><div class="zm-title">${esc(z.code)} <span>${esc(z.name)}</span></div>
-        <div class="d-row" style="margin-top:6px"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z)))}</span>${z.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div></div>
+        <div class="d-row" style="margin-top:6px"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z), data.zoneAccepted(z)))}</span>${z.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div></div>
       <div class="zm-rank"><div class="k">Rank</div><div class="zm-big">${rank}<span class="zm-of">of ${zones.length}</span></div><div class="muted zm-note">by priority, then code</div></div>
       <div class="zm-rank"><div class="k">Priority</div><div class="zm-big"><span class="pb p${z.priority} zm-pb">${z.priority}</span></div>
         <div class="zm-pri">${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}" aria-label="Priority ${p}">${p}</button>`).join('')}</div></div>
@@ -1132,7 +1132,7 @@ export function briefingSections(data) {
   const help = structs.reduce((n, s) => n + (s.people_needing_help || 0), 0);
   S.push({ title: 'Divisions', lines: [`${zones.length} divisions: ${cleared} cleared, ${primary} primary search done, ${active} in progress, ${open} not started`, `${structs.filter((s) => s.status === 'searched').length} of ${structs.length} structures on record searched${help ? ', ' + help + ' people needing help' : ''}`].concat(zones.map((z) => {
     const o = z.objective_id ? data.objective(z.objective_id) : null;
-    return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '')}${o ? ' · objective ' + o.number : ''}`;
+    return `${z.code} ${z.name ? z.name + ' ' : ''}· priority ${z.priority} · ${zoneStatusText(z, z.assigned_to ? unitLabel(data.member(z.assigned_to)) : '', data.zoneAccepted(z))}${o ? ' · objective ' + o.number : ''}`;
   })) });
   S.push({ title: 'Resources', lines: [`${data.peopleInField()} people in the field on ${data.activeUnits().length} units`].concat(agenciesOn(data.activeUnits()).map(agencyLine), units.flatMap((m) => {
     const zone = zones.find((z) => z.assigned_to === m.user_id && z.status === 'active');
@@ -1177,7 +1177,7 @@ export function form204Sections(data, z) {
   S.push({ title: 'Medical, ICS 206 · if someone is hurt', lines: hurtText(data, { unit, at: centroid(z.polygon) }).map((l, i) => (l.startsWith('! ') ? '! ' : '') + (i + 1) + '. ' + l.replace(/^! /, '')) });
   const places = data.facilities().filter((f) => ['staging', 'shelter', 'hospital', 'icp'].includes(f.kind));
   S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });
-  S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '')].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
+  S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '', data.zoneAccepted(z))].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
   S.push({ title: 'Prepared', lines: ['By Operations, ' + whenText(new Date())] });
   return S;
 }
@@ -1277,7 +1277,7 @@ export function iapSections(data) {
     ].concat(unit ? personLines(data, unit) : [], [
       'Work assignment: ' + (z.work_assignment || 'not written yet'),
       'Special instructions: ' + (z.instructions || 'none'),
-      'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : ''),
+      'Status: ' + zoneStatusText(z, unit ? unitLabel(unit) : '', data.zoneAccepted(z)),
       'If someone is hurt: ' + hurtText(data, { unit, at: centroid(z.polygon) }).map((l) => l.replace(/^! /, '')).slice(0, 3).join(' ')
     ]), figure: divisionMapHtml(data, z) });
   }

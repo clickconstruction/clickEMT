@@ -1,3 +1,4 @@
+import { qualsText } from './rules.js';
 // Hours on scene for Finance: every person and every unit from check-in to check-out, cut at the
 // edges of a period. Nobody types a time; a row says when a number had to be inferred. No DOM,
 // so Node tests it and both views can show it.
@@ -30,7 +31,7 @@ export function hoursRows({ people, members, period, now = Date.now() }) {
     else { end = to; note = closed ? 'counted to the period\'s end' : 'on scene'; }
     end = Math.min(end, to);
     if (end <= start) continue;   // not on scene in this window
-    rows.push({ kind: 'person', name: p.name, unit: m ? (m.unit_name || '') : '', agency: p.agency || (m ? m.agency : '') || '', role: [p.role, ...(p.qualifications || [])].filter(Boolean).join(', '), in: new Date(start).toISOString(), out: p.checked_out_at || unitOut(m) ? new Date(end).toISOString() : null, hours: round2((end - start) / H), note, inferred: !p.checked_out_at });
+    rows.push({ kind: 'person', name: p.name, unit: m ? (m.unit_name || '') : '', agency: p.agency || (m ? m.agency : '') || '', role: [p.role, qualsText(p.qualifications || [])].filter(Boolean).join(', '), in: new Date(start).toISOString(), out: p.checked_out_at || unitOut(m) ? new Date(end).toISOString() : null, hours: round2((end - start) / H), note, inferred: !p.checked_out_at });
   }
   for (const m of members) {
     if (m.role !== 'unit') continue;

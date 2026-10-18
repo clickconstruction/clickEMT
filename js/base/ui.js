@@ -917,7 +917,6 @@ function unitHtml(data, m, state) {
     ${m.removed_at ? `<div class="d-row"><span class="badge haz">Removed from the incident ${hhmm(m.removed_at)} by Operations</span>${data.me() && data.me().role === 'ops' ? `<button class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : ''}<button class="btn sm" data-action="people" data-tab="members">Members</button></div>` : ''}
     ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
-    ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
     ${m.kind === 'shelter_desk' ? deskPlaceHtml(data, m) : ''}
     ${identityHtml(data, m)}
     ${demobHtml(m)}
@@ -941,6 +940,7 @@ function unitHtml(data, m, state) {
       <span class="k">Photos</span><span>${photos.length}</span>
       <span class="k">Joined</span><span>${esc(whenText(m.joined_at))}</span>
     </div>
+    ${m.role === 'unit' ? `<div class="d-row"><span class="k">Kind · what Operations asks for and Logistics fills</span><span class="chips kind-chips">${UNIT_KINDS.map(([k, label]) => `<button class="chip${m.kind === k ? ' on' : ''}" data-action="set-kind" data-id="${m.user_id}" data-kind="${m.kind === k ? '' : k}" aria-pressed="${m.kind === k}">${esc(label)}</button>`).join('')}</span></div>` : ''}
     <div class="d-row">
       ${pos ? `<button class="btn sm" data-action="pan-to" data-lat="${pos.lat}" data-lng="${pos.lng}">Show on map</button>` : ''}
       ${alert && !alert.acknowledged_at ? `<button class="btn sm danger" data-action="ack-alert" data-id="${alert.id}">Acknowledge</button>` : ''}
@@ -1081,7 +1081,7 @@ export function orgChartHtml(data) {
   const general = t.general.map((g) => `<div class="org-box general${g.over ? ' over' : ''}${g.name ? '' : ' empty'}"><div class="org-seat-row"><span class="org-seat">${esc(g.seat)}</span>${g.key === 'ops' ? span(g.count, g.over, 'Operations over its branches and divisions') : ''}</div><div class="org-name">${esc(g.name || 'not set')}</div><div class="muted">${esc(g.note)}</div></div>`).join('');
   const branches = t.branches.map((b) => `<div class="org-branch${b.over ? ' over' : ''}"><div class="org-branch-h"><strong>Branch ${esc(b.name)}</strong>${span(b.count, b.over, 'the branch over its divisions')}</div><div class="org-grid">${b.divisions.map(division).join('')}</div></div>`).join('');
   return `<div class="org">
-    ${t.warnings.length ? `<div class="org-warn">${t.warnings.map((w) => `<div><strong>Span of control:</strong> ${esc(w)}. ICS-100 recommends one supervisor to five, three to seven at most. ${/^Operations/.test(w) ? 'Group the divisions into branches (a word on each division), or seat a deputy.' + esc(deputyAdvice(t)) : /^Branch/.test(w) ? 'Split the branch, or seat a deputy.' + esc(deputyAdvice(t)) : 'Split the unit, or name a second supervisor.'}</div>`).join('')}</div>` : ''}
+    ${t.warnings.length ? `<div class="org-warn">${t.warnings.map((w) => `<div><strong>Span of control:</strong> ${esc(w)}. ICS-100 recommends one supervisor to five, three to seven at most. ${/^Operations/.test(w) ? 'Group the divisions into branches (a word on each division), or seat a deputy.' + esc(deputyAdvice(t)).replace('add a deputy', '<button class="link" data-action="org-period">add a deputy</button>') : /^Branch/.test(w) ? 'Split the branch, or seat a deputy.' + esc(deputyAdvice(t)).replace('add a deputy', '<button class="link" data-action="org-period">add a deputy</button>') : 'Split the unit, or name a second supervisor.'}</div>`).join('')}</div>` : ''}
     <div class="org-col">
       ${box('Incident Commander', t.ic.name, `<div class="org-sub">${esc(t.ic.agency || '')}${t.ic.unified ? (t.ic.agency ? ' · ' : '') + 'unified command with ' + esc(t.ic.unified) : ''}</div>`, 'ic')}
       <div class="org-line"></div>

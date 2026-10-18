@@ -150,11 +150,24 @@ async function showPicker() {
 // A closed incident's personal records (licences, dates of birth, addresses, licence photos, the
 // names of people sheltered) clear by rule 30 days after the close; the card shows the date, with
 // Clear now and Keep 30 more days for Operations, then "cleared … by rule".
+// A small sheet of the app's own in place of the browser's prompt() (v44): resolves with the words, or null on Cancel.
+function askName(title, value) {
+  const dlg = $('#name-dialog'), form = $('#name-form'), input = $('#name-input');
+  $('#name-title').textContent = title; input.value = value || '';
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.removeEventListener('close', onClose); form.removeEventListener('submit', onSubmit); if (dlg.open) dlg.close(); resolve(v); };
+    const onSubmit = (e) => { e.preventDefault(); done(input.value.trim() || null); };
+    const onClose = () => done(null);
+    form.addEventListener('submit', onSubmit); dlg.addEventListener('close', onClose);
+    dlg.querySelector('[data-action="name-cancel"]').onclick = () => done(null);
+    dlg.showModal(); input.focus(); input.select();
+  });
+}
 function clearLineHtml(r) {
   if (r.status !== 'closed') return '';
   if (r.personal_cleared_at) return `<div class="pick-sub" data-clear="${r.id}">Personal records cleared ${esc(dateText(r.personal_cleared_at))} by rule · the names, the log and the forms stay</div>`;
   const when = r.clear_personal_at ? new Date(r.clear_personal_at) : null;
-  return `<div class="pick-sub warn" data-clear="${r.id}"><span>Personal records clear by rule ${when ? 'on ' + esc(dateText(when)) : 'after the close'}: licences, dates of birth, addresses, licence photos and the names of people sheltered</span>${r.role === 'ops' ? `<button class="btn sm" data-action="clear-personal" data-id="${r.id}">Clear now</button><button class="btn sm" data-action="keep-personal" data-id="${r.id}">Keep 30 more days</button>` : ''}</div>`;
+  return `<div class="pick-sub warn" data-clear="${r.id}"><span>Personal records clear by rule ${when ? 'on ' + esc(dateText(when)) : 'after the close'}: licences, dates of birth, addresses, licence photos and the names of people sheltered</span>${r.role === 'ops' ? `<button class="btn sm" data-action="reopen-pick" data-id="${r.id}" title="Reopen the incident: phones can check in again and the clearing clock stops">Reopen</button><button class="btn sm" data-action="clear-personal" data-id="${r.id}">Clear now</button><button class="btn sm" data-action="keep-personal" data-id="${r.id}">Keep 30 more days</button>` : ''}</div>`;
 }
 
 $('#new-incident').addEventListener('submit', async (e) => {
@@ -764,7 +777,7 @@ document.addEventListener('click', async (e) => {
         if (!m) break;
         if (btn.dataset.role === 'unit') {
           const p = data.profileOf(id);
-          const name = prompt('Unit name for ' + ((p && p.full_name) || 'this member') + ' (what the field calls them):', m.unit_name && m.unit_name !== 'Operations' ? m.unit_name : '');
+          const name = await askName('Unit name for ' + ((p && p.full_name) || 'this member'), m.unit_name && m.unit_name !== 'Operations' ? m.unit_name : '');
           if (name == null) break;
           await data.setRole(id, 'unit', name.trim() || null);
           toast(((p && p.full_name) || 'The member') + ' is now a unit' + (name.trim() ? ', ' + name.trim() : ''));
@@ -798,6 +811,7 @@ document.addEventListener('click', async (e) => {
         break;
       }
       case 'reopen-incident': await data.updateIncident({ status: 'active' }); toast('Incident reopened; the clearing clock stopped'); break;
+      case 'reopen-pick': await data.reopenIncident(id); toast('Incident reopened; the clearing clock stopped'); await showPicker(); break;   // from the picker's closed row (v44)
       case 'verify-profile': await data.verifyProfile(id, true); toast('Marked verified'); break;
       case 'unverify-profile': await data.verifyProfile(id, false); toast('Verification withdrawn'); break;
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
@@ -907,6 +921,7 @@ document.addEventListener('click', async (e) => {
       case 'pan-to': map.panTo(Number(btn.dataset.lat), Number(btn.dataset.lng)); break;
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
+      case 'org-period': $('[data-action="close-briefing"]').click(); $('[data-action="period"]').click(); break;   // the 207 warning's link (v44)
       case 'mark-found': await data.markFound(btn.dataset.message, btn.dataset.user, { personId: btn.dataset.person || null, name: btn.dataset.name || null }); toast((btn.dataset.name || 'The missing person') + ' marked found'); break;
       case 'ack-message': await data.ackMessage(id, btn.dataset.reply || 'Copy'); break;
       case 'set-status': {

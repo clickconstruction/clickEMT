@@ -558,3 +558,6 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .haz-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 2px; font-size: 12.5px; }
 .haz-foot .muted { flex: 1; }
 .safety .bar-item.hazard { color: var(--hazard-ink); font-weight: 600; }
+
+/* the app's own name sheet in place of prompt() (v44): the division card's dialog style */
+#name-dialog .inline-form { min-width: 320px; }

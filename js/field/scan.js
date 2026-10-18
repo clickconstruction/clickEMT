@@ -43,9 +43,10 @@ async function zxingReader(format) {
 
 // format: 'qr_code' (default) or 'pdf417'
 export async function startScan(video, onText, { format = 'qr_code' } = {}) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This phone cannot open the camera here. Type the code instead.');
+  const instead = format === 'pdf417' ? 'Type the licence number instead.' : 'Type the code instead.';   // a licence has no code (v44)
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This phone cannot open the camera here. ' + instead);
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).catch((err) => {
-    throw new Error(err && err.name === 'NotAllowedError' ? 'Camera permission was refused. Type the code instead.' : 'The camera could not be opened. Type the code instead.');
+    throw new Error((err && err.name === 'NotAllowedError' ? 'Camera permission was refused. ' : 'The camera could not be opened. ') + instead);
   });
   video.srcObject = stream;
   video.setAttribute('playsinline', '');

@@ -2036,6 +2036,8 @@ async function members(check) {
     check('the Members tab lists everyone with role, agency and identity state', has('#people-page', '5 members · 2 operations', 'operations · marcus bell', 'opened the incident', 'unit 1, engine · ana ramirez', 'verified', 'unit 2, boat crew · minh nguyen', 'licence on file, not verified', 'operations · relief chief'), text('#people-page').slice(0, 600));
     check('the opener has no Make a unit and no Remove; the others do', !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-role"]`) && !$(`#people-page .mb-row[data-member="${U.ops}"] [data-action="member-remove"]`) && !!$(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="unit"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-role"][data-role="ops"]`) && !!$(`#people-page .mb-row[data-member="${U.unit1}"] [data-action="member-remove"]`));
     $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="unit"]`).click();
+    await until(() => $('#name-dialog').open);   // the app's own sheet, not prompt() (v44)
+    $('#name-input').value = 'Unit 9'; $('#name-form').requestSubmit();
     check('Make a unit asks for the unit name, changes the role and logs it by name', await until(() => base.member(relief.user.id).role === 'unit' && base.member(relief.user.id).unit_name === 'Unit 9') && await until(() => eventText(base, 'Relief Chief is now a unit, Unit 9')), logTexts()[0]);
     await until(() => $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`));
     $(`#people-page .mb-row[data-member="${relief.user.id}"] [data-action="member-role"][data-role="ops"]`).click();
@@ -2173,7 +2175,7 @@ async function safetyset(check) {
     check('the phone frame opened as Unit 3', !!P.ready);
     if (P.ready) {
       await field.setKind(U.unit3, 'swift_water');
-      check('a swift-water crew\'s home screen offers In the water before the clock runs', await until(() => P.shown('#water-row') && /not in the water/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 6000), P.text('#water-row'));
+      check('a swift-water crew\'s home screen offers In the water before the clock runs', await until(() => P.shown('#water-row') && /in the water/.test(P.text('#water-row')) && !/in the water \d/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 6000), P.text('#water-row'));
       P.$('#water-row [data-action="water-toggle"]').click();
       check('one tap: the row flips at once, and the base sees it in the water, logged (a hidden frame\'s outbox is slow to send)', await until(() => /in the water \d+ min · rotation 30 min/.test(P.text('#water-row')), 8000) && await until(() => base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 in the water'), 8000), P.text('#water-row'));
       await base.setInWater(U.unit3, new Date(Date.now() - 35 * 60000).toISOString());
@@ -2183,7 +2185,7 @@ async function safetyset(check) {
       await base.setInWater(U.unit3, new Date(Date.now() - 65 * 60000).toISOString());
       check('the next rotation asks again', await until(() => /swap the crew/.test(P.text('#water-row')), 8000), P.text('#water-row'));
       P.$('#water-row [data-action="water-toggle"]').click();
-      check('one tap out, with the minutes', await until(() => /not in the water/.test(P.text('#water-row')), 8000) && await until(() => !base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 out of the water after 65 min'), 8000), logTexts()[0]);
+      check('one tap out, with the minutes', await until(() => !/in the water \d/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 8000) && await until(() => !base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 out of the water after 65 min'), 8000), logTexts()[0]);
       check('the Agency box\'s placeholder is a plain example now', (P.$('#join-form input[name="agency"]') || {}).placeholder === 'e.g. Red Cross, county sheriff', (P.$('#join-form input[name="agency"]') || {}).placeholder);
       P.frame.remove(); P = null;
     }

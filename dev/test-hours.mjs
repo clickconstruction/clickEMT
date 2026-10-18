@@ -41,6 +41,6 @@ t('the whole incident when no period is given, and the CSV shape', () => {
   assert.ok(rows.some((r) => r.name === 'Gone' && r.hours === 1.5), 'before the period but inside the incident');
   const csv = hoursCsv(rows.slice(0, 1), 'Cedar Fork', 'OP 1');
   assert.equal(csv.split('\r\n')[0], 'incident,period,row,name,unit,agency,role,checked_in_utc,checked_out_utc,hours,note');
-  assert.match(csv.split('\r\n')[1], /^"Cedar Fork","OP 1","person","Ramirez","Unit 1","Cedar Fork FD","Lt., swift_water","2026-10-17 07:40","","10.83","on scene"$/);
+  assert.match(csv.split('\r\n')[1], /^"Cedar Fork","OP 1","person","Ramirez","Unit 1","Cedar Fork FD","Lt., swift water","2026-10-17 07:40","","10.83","on scene"$/);
 });
 console.log(n + ' checks passed');

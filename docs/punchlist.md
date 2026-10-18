@@ -20,7 +20,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks (shipped 17 October) | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
 | 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division (shipped 17 October) | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
 | 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card (shipped 17 October) | small | v42 | the IC, the clerk, Reyes, the administrator |
-| 7 | v44 Small words and buttons | small | any time | one or two personas each |
+| 7 | v44 Small words and buttons (shipped 18 October) | small | any time | one or two personas each |
 | 8 | Later: since you last looked; on scene too long | medium | v44 | the IC, Marcus's relief, Priya |
 | 9 | Decisions only Grace can make | — | — | — |
 
@@ -273,6 +273,11 @@ Each is a few lines; take them together.
 - The 207 warning's "add a deputy" links to the Period sheet (v31's Still bites).
 - The water row folds to one small button on a dry assignment once the unit has never used it (Rosa).
 - Take photo with no camera says "This phone gave no camera" instead of nothing (Ana; the pane only).
+
+**Shipped** 18 October 2026 as `Small words and buttons (v44)`: all of the above but the last (a file input gives no
+word when the phone has no camera; only the Browser pane lacks one), with the check-out's default tick, the picker's
+Reopen, the name sheet (`askName`), the 207 link, the desk's chips, the folded water row and Nearby's ramp line checked
+by the suites they touch.
 
 ## 8. Later
 

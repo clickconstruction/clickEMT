@@ -339,6 +339,12 @@ export class Data {
   async setChannels(channels) { return this.updateIncident({ channels }); }
   // the agency in charge (ICS 203); a period names the others under unified command
   async setLeadAgency(leadAgency) { return this.updateIncident({ lead_agency: (leadAgency || '').trim() }); }
+  // reopen a closed incident from the picker (v44): Operations' own update, the row need not be open here
+  async reopenIncident(id) {
+    const { data, error } = await this.sb.from('ic_incidents').update({ status: 'active' }).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
   async updateIncident(patch) {
     const { data, error } = await this.sb.from('ic_incidents').update(patch).eq('id', this.store.incident.id).select().single();
     if (error) throw error;

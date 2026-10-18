@@ -830,3 +830,28 @@ Item 10 of "What to do first" is clear.
 
 - **A facility has no street address field**, so Getting there gives its notes and the coordinates "for a satnav"; an address line on the facility card would read better on paper.
 - **Send by email is only as good as the mail app's URL limit**; a report over a few thousand characters may arrive cut short. A true send needs a server, which the app does not have.
+
+---
+
+## Re-walk after v44
+
+Small words and buttons, walked on 2026-10-18 in the same mock, the base at 1280 × 800 as Operations and the phone at 375 × 812 as Rosa (the seeded Unit 2) and as a new shelter desk. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The unit panel | Marcus | Unit 1's panel: the status line, Identity, then the facts (Agency, Head count, Assigned, Standing in, Position, Heading, Last report, Photos, Joined) and only then the Kind chips; the answer to the radio is a screen higher than before. | Clear |
+| A closed incident on the picker | The administrator | "closed · Personal records clear by rule on 16 Nov 2026 … · Reopen · Clear now · Keep 30 more days"; Reopen brought the row back to "active" without opening the incident first. | Clear |
+| Make a unit | The administrator | A sheet of the app's own, "Unit name for …" with one box and Save, in place of the browser's prompt (pressed by the `members` suite; the seed has nobody to demote by hand). | Clear |
+| The deputy on the phone | Rosa | The menu: "DEPUTY IC Chief Al Barnes" under Command; the briefing's Who you work with ends "Deputy Incident Commander: Chief Al Barnes." once the seat is filled. | Clear |
+| The boat ramp | Rosa | Nearby's fourth row: "BR · No boat ramp on the map yet · ask Operations where to put in", instead of silence. | Clear |
+| The water row | Rosa | One button, "In the water", until she goes in. | Clear |
+| A street in Find a person | The desk | "Pecan" lists the three records from Pecan Ln and offers "Ask Operations to look · sends "Looking for someone from Pecan" with your desk's number". | Clear |
+| The desk's quick chips | The desk | Message Operations offers Nearly full, Need cots and blankets, Need a nurse, Bus has arrived. | Clear |
+| Hours, the licence scan, the check-out, the 207 link | The clerk, Reyes, the IC | Checked by the suites: the Hours table reads "Lt., swift water"; the licence scanner's refusal says "type the licence number"; "Nobody hurt" starts ticked; the 207 warning's "add a deputy" opens the Period sheet. | Clear |
+
+Item 11 of "What to do first" is clear, all but one line: a phone with no camera still says nothing when Take photo is pressed (a file input gives no word; only the Browser pane lacks a camera).
+
+**Still bites, small:**
+
+- **"Bus has arrived" on the desk's chips** is a guess at the words a desk sends most; the desk will say.
+- **The deputy on the phone is two lines**, in the menu and the briefing; the home screen's header does not carry it, by design (the IC's name is not there either).

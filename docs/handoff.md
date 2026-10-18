@@ -22,7 +22,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v43**, "Paper that leaves the base" (after v42, the phone's sheets). The service worker reads `v43`.
+- `main` is at **v44**, "Small words and buttons" (after v43, paper that leaves the base). The service worker reads `v44`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0027` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.

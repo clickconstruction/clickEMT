@@ -212,7 +212,8 @@
     </span>
   </header>
 
-  <div id="bars" class="bars" aria-live="polite">
+  <dialog id="name-dialog" class="zdialog"><form method="dialog" id="name-form" class="inline-form"><h3 id="name-title" style="margin:0 0 8px">Unit name</h3><label>What the field calls them <input name="name" id="name-input" maxlength="60" autocomplete="off"></label><div class="row-btns"><button class="btn sm" type="button" data-action="name-cancel">Cancel</button><button class="btn pri sm" type="submit">Save</button></div></form></dialog>
+<div id="bars" class="bars" aria-live="polite">
     <div id="mayday" class="mayday" hidden></div>
     <div id="safety" class="safety" hidden></div>
     <div id="bars-quiet" class="bars-quiet">No emergency open · no safety message or PAR waiting on an answer</div>

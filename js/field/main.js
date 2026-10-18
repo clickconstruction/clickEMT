@@ -31,6 +31,7 @@ const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, cl
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
+const QUICK_DESK = ['Nearly full', 'Need cots and blankets', 'Need a nurse', 'Bus has arrived'];   // a shelter desk's (v44)
 const REPLIES = ['Copy', 'Will do', 'Cannot'];
 let mini = null, miniLayers = null, miniZoneId = null, miniBase = null;
 const miniOverlays = new Map();   // overlay id → { layer, stamp }
@@ -384,7 +385,7 @@ function drawCompose() {
   $('#compose-urgency').innerHTML = URGENCY.map(([v, label]) => `<button class="chip${state.composeU === v ? ' on' : ''}" data-action="cmp-u" data-value="${v}">${esc(label)}</button>`).join('');
   const typed = $('#compose-text').value.trim() !== '';
   $('#compose-chips').hidden = typed;
-  $('#compose-chips').innerHTML = QUICK.map((c) => `<button class="chip" data-action="cmp" data-text="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#compose-chips').innerHTML = (isDesk() ? QUICK_DESK : QUICK).map((c) => `<button class="chip" data-action="cmp" data-text="${esc(c)}">${esc(c)}</button>`).join('');
   const loc = state.composeLoc;
   $('#compose-loc').textContent = loc ? 'Remove location' : 'Attach my location';
   $('#compose-loc-text').textContent = loc ? latLngText(loc.lat, loc.lng) : '';
@@ -546,7 +547,7 @@ async function toggleWater() {
 function waterRowHtml(me) {
   const st = me.in_water_since ? waterState(me.in_water_since, data.rotationMinutes()) : null;
   if (!st && !WATER_KINDS.includes(me.kind)) return '';
-  if (!st) return `<div class="water-row"><span>Not in the water</span><button class="btn sm" data-action="water-toggle">In the water</button></div>`;
+  if (!st) return `<div class="water-row fold"><button class="btn sm" data-action="water-toggle" title="Starts the clock; the base sees the time">In the water</button></div>`;   // folded to one button until the crew goes in (v44)
   const nudge = st.overdue && state.waterNudged !== st.rotations;
   return `<div class="water-row${st.overdue ? ' over' : ''}"><span>${st.lost ? 'In the water, probably left running: ' + durationText(st.min) : 'In the water ' + durationText(st.min)}${st.rotation ? ' · rotation ' + st.rotation + ' min' : ''}${nudge ? ' · past the rotation: swap the crew' : ''}</span>${nudge ? `<button class="btn sm" data-action="water-later">Later</button>` : ''}<button class="btn sm pri" data-action="water-toggle">Out of the water</button></div>`;
 }
@@ -615,7 +616,7 @@ function openCheckout() {
   const me = data.me();
   if (!me) return;
   const zone = data.myZones().find((z) => z.status === 'active');
-  state.coTicks = { people: true, zone: !zone, reported: true, hours: true };
+  state.coTicks = { people: true, zone: !zone, reported: true, hours: true, unhurt: true };   // unticking is the exception Finance needs (v44)
   $('#checkout-note').value = '';
   screen('checkout');
   drawCheckout();
@@ -888,8 +889,9 @@ function drawNearby() {
     if (!f) continue;
     rows.push(`<div class="near"><span class="fmark fmark-${esc(f.kind)} inline">${esc(facilityKind(f.kind)[2])}</span><span class="near-main"><span class="near-name">${esc(f.name || facilityKind(f.kind)[1])}</span><span class="muted">${esc(facilityKind(f.kind)[1])}${n ? ' · ' + milesText(n.distance) : ''}${f.contact ? ' · ' + esc(f.contact) : ''}</span></span><a class="btn sm" href="${directionsUrl(f.lat, f.lng)}" target="_blank" rel="noopener">Directions</a></div>`);
   }
-  // the hurt card rides on the Nearest card: the medic on the unit, or the nearest one
   const me = data.me();
+  if (me && WATER_KINDS.includes(me.kind) && !data.facilities().some((f) => f.kind === 'ramp' && !f.closed_at)) rows.push(`<div class="near"><span class="fmark fmark-ramp inline">BR</span><span class="near-main"><span class="near-name">No boat ramp on the map yet</span><span class="muted">ask Operations where to put in</span></span></div>`);   // v44
+  // the hurt card rides on the Nearest card: the medic on the unit, or the nearest one
   const hurt = me ? hurtLines(data, { unit: me, at: p ? [p.lat, p.lng] : null })[0] : null;
   if (hurt) rows.push(`<div class="near hurt-near" data-action="hurt" role="button" tabindex="0"><span class="fmark inline">+</span><span class="near-main"><span class="near-name">If someone is hurt</span><span class="${hurt.warn ? 'warn' : 'muted'}" style="${hurt.warn ? 'color:var(--hazard-ink)' : ''}">${esc(firstSentence(hurt.text.replace(/^Medic on your unit: /, 'Medic: ')))}</span></span><button class="btn sm" data-action="hurt" type="button">Open</button></div>`);
   setHtml($('#nearby'), rows.length ? `<div class="card"><div class="k">Nearby</div>${rows.join('')}</div>` : '');
@@ -1067,6 +1069,7 @@ function drawMenu() {
     <span class="k">Incident</span><span>${esc(inc.name)}</span>
     <span class="k">Period</span><span>${per ? esc(periodLabel(per)) + (per.ic_name ? ', IC ' + esc(per.ic_name) : '') : esc(inc.period || 'not set')}</span>
     ${commandText(inc, per) ? `<span class="k">Command</span><span>${esc(commandText(inc, per))}</span>` : ''}
+    ${per && per.deputy ? `<span class="k">Deputy IC</span><span>${esc(per.deputy)}</span>` : ''}
     ${per && per.notes ? `<span class="k">Notes</span><span>${esc(per.notes)}</span>` : ''}
     ${data.channels().length ? `<span class="k">Channels</span><span>${data.channels().map((c) => esc(c.use) + ' <strong>' + esc(c.channel) + '</strong>').join(' · ')}</span>` : ''}
     <span class="k">Base</span><span>${esc(inc.base_name || 'not set')}</span>
@@ -1177,8 +1180,9 @@ function drawDeskResults() {
   const q = state.deskQ.trim();
   if (!q) { setHtml($('#desk-results'), ''); return; }
   const hits = evacueeMatch(data.evacuees(true), q, { facilityOf, structureOf: (id) => data.structure(id), zoneOf: (id) => data.zone(id) }).slice(0, 8);
+  state.deskStreet = hits.length > 0 && hits.every((e) => !evacueeWho(e).toLowerCase().includes(q.toLowerCase()));   // the words matched where they came from, not who they are (v44)
   setHtml($('#desk-results'), `<div class="card find-card">${hits.map((e) => `<div class="find-row"><span><strong>${esc(evacueeWho(e))}</strong>${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}</span><span class="muted">${esc(evacueeWhere(e, facilityOf))}${fromOf(e) ? ' · from ' + esc(fromOf(e)) : ''}</span></div>`).join('') || `<div class="muted">Nobody on record matches "${esc(q)}".</div>`}
-    <div class="find-ask">Not listed? <button type="button" class="btn sm" data-action="ev-ask">Ask Operations to look</button><span class="muted"> sends "Looking for ${esc(q)}" with your desk's number.</span></div></div>`);
+    <div class="find-ask">Not listed? <button type="button" class="btn sm" data-action="ev-ask">Ask Operations to look</button><span class="muted"> sends "Looking for ${state.deskStreet ? 'someone from ' : ''}${esc(q)}" with your desk's number.</span></div></div>`);
 }
 async function askOpsToLook() {
   const q = state.deskQ.trim();
@@ -1186,7 +1190,7 @@ async function askOpsToLook() {
   const r = data.recipientsFor('ops');
   if (!r.toUsers.length) { toast('Nobody at Operations to send to', true); return; }
   const me = data.me(), f = deskShelter(), phone = data.profile && data.profile.phone;
-  const text = `Looking for ${q}. Not on any shelter or hospital record. Call ${unitLabel(me)}${f ? ' at ' + placeLabel(f) : ''}${phone ? ' on ' + phone : ''}.`;
+  const text = `Looking for ${state.deskStreet ? 'someone from ' : ''}${q}. Not on any shelter or hospital record. Call ${unitLabel(me)}${f ? ' at ' + placeLabel(f) : ''}${phone ? ' on ' + phone : ''}.`;
   const id = uuid();
   data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, urgency: '', lat: null, lng: null, created_at: new Date().toISOString() });
   await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text, urgency: '' });

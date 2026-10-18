@@ -191,7 +191,8 @@ export function fieldBriefing(data, { me, at, now = Date.now() } = {}) {
   S.push({ key: 'with', title: 'Who you work with', text: [
     crew.length ? `On ${unitLabel(me)}: ${crew.map((x) => x.name + (qualsText(x.qualifications) ? ' (' + qualsText(x.qualifications) + ')' : '')).join(', ')}.` : (me ? (me.crew_count === 1 ? `On ${unitLabel(me)}: you alone.` : me.crew_count > 1 ? `On ${unitLabel(me)}: ${me.crew_count} people, no names yet; add them from the menu.` : `On ${unitLabel(me)}: nobody listed yet; add your people from the menu.`) : ''),
     others.length ? `Next door: ${others.map((x) => unitLabel(x.u) + ' in ' + x.z.code).join(', ')}.` : 'No other unit assigned yet.',
-    `Operations: ${p && p.ops_chief ? p.ops_chief : 'not named'}${icp ? ' at ' + (icp.name || 'the command post') : ''}.`
+    `Operations: ${p && p.ops_chief ? p.ops_chief : 'not named'}${icp ? ' at ' + (icp.name || 'the command post') : ''}.`,
+    p && p.deputy ? `Deputy Incident Commander: ${p.deputy}.` : ''   // the phone names the deputy (v44)
   ].filter(Boolean).join(' ') });
   const deskF = me && me.kind === 'shelter_desk' ? ((me.facility_id && data.facility ? data.facility(me.facility_id) : null) || data.facilities().find((x) => x.kind === 'shelter') || null) : null;   // a desk's work area is its shelter (v42)
   const stagingNear = at ? nearestFacility(data.facilities(), 'staging', at[0], at[1]) : null;

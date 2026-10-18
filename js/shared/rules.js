@@ -80,7 +80,9 @@ export const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 // What a field unit can say a photo shows, one tap each.
 export const NOTE_CHIPS = ['Water over road', 'Waterline on structure', 'Blocked access', 'Structure damage', 'People here', 'Other'];
 // Kinds of hazard a unit can report.
-export const HAZARD_KINDS = ['Downed power line', 'Gas smell', 'Structure unsafe', 'Road under water', 'Loose animal', 'Other'];
+export const HAZARD_KINDS = ['Downed power line', 'Gas smell', 'Structure unsafe', 'Road under water', 'Person or car in the water', 'Tree down, road blocked', 'Loose animal', 'Other'];
+// an act-on-now hazard waits on the base's bar until Operations acknowledges it (v41)
+export function hazardUrgent(h) { return !!h && h.urgency === 'now' && !h.acked_at && !h.resolved_at; }
 // Hazards left in a zone when it is marked clear, with the code painted on the search marking.
 export const CLEAR_HAZARDS = [['Power', 'ELEC'], ['Gas', 'GAS'], ['Structural', 'STRUC'], ['Water', 'H2O']];
 // Half-angle of the wedge drawn in front of a photo pin, degrees.

@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
+import { hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -135,6 +135,7 @@ function homeHtml(data, state) {
     ${resourcesHtml(data, state)}
     ${parHtml(data)}
     ${requestsHtml(data)}
+    ${hazardsHtml(data)}
     <div class="k" style="margin-top:6px">Message the field</div>
     ${composerHtml(data, 'all')}
     <div class="k" style="margin-top:6px">Messages</div>
@@ -1482,9 +1483,23 @@ export function messagesHtml(data, filter, limit) {
   return rows.length ? rows.map((m) => messageRowHtml(data, m)).join('') : '<div class="muted" style="font-size:12.5px">No messages yet</div>';
 }
 
-// The yellow bar: safety messages and PARs still waiting on someone, and anyone reporting a missing person.
+// Hazards open (v41): where Safety looks. Kind and words, division, when, who, the urgency word; Resolved and
+// Show on map on each; an act-on-now hazard waits on the bar above until Operations acknowledges it.
+export function hazardsHtml(data) {
+  const open = data.hazards();
+  const row = (h) => `<div class="haz-row${hazardUrgent(h) ? ' urgent' : ''}" data-hazard="${h.id}">
+      <div class="haz-top"><span class="t mono">${hhmm(h.created_at)}</span><strong>${esc(h.kind)}</strong>${h.note ? `<span class="muted">${esc(h.note)}</span>` : ''}${h.urgency ? `<span class="badge urg-${esc(h.urgency)}">${esc(urgencyLabel(h.urgency))}</span>` : ''}</div>
+      <div class="haz-foot"><span class="muted">${h.zone_id && data.zone(h.zone_id) ? esc(data.zone(h.zone_id).code) + ' · ' : ''}${esc(unitLabel(data.member(h.user_id)))}${h.acked_at ? ' · acknowledged ' + hhmm(h.acked_at) : ''}</span>${hazardUrgent(h) ? `<button class="btn sm" data-action="ack-hazard" data-id="${h.id}">Acknowledge</button>` : ''}${h.lat != null && h.lng != null ? `<button class="btn sm" data-action="pan-to" data-lat="${h.lat}" data-lng="${h.lng}">Show on map</button>` : ''}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>
+    </div>`;
+  return `<div class="k" style="margin-top:6px">Hazards open · ${open.length}</div>` + (open.length ? open.map(row).join('') : '<div class="muted" style="font-size:12.5px">None reported. A crew\'s Report hazard lands here, on the map and in the log; an act-on-now hazard waits on the bar until acknowledged.</div>');
+}
+
+// The yellow bar: safety messages and PARs still waiting on someone, anyone reporting a missing person, and
+// act-on-now hazards not yet acknowledged (v41).
 export function safetyHtml(data) {
   const parts = [];
+  for (const h of data.urgentHazards()) parts.push(barItem(`HAZARD · ${h.kind}${h.note ? ', ' + h.note : ''} · ${h.zone_id && data.zone(h.zone_id) ? data.zone(h.zone_id).code + ' · ' : ''}${hhmm(h.created_at)} · ${unitLabel(data.member(h.user_id))}`, 'hazard',
+    `<button class="btn sm" data-action="ack-hazard" data-id="${h.id}">Acknowledge</button>` + (h.lat != null && h.lng != null ? `<button class="btn sm" data-action="pan-to" data-lat="${h.lat}" data-lng="${h.lng}">Show on map</button>` : '')));
   // who has not answered comes first: on one row it is what is cut last
   for (const m of data.openSafety()) {   // the message's own words first; the waiting list is a count, the names on hover (v28)
     const names = data.waitingOn(m).map((u) => unitLabel(data.member(u)));

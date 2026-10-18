@@ -17,7 +17,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 1 | v38 One head count at a time, and a missing person who is found (shipped 17 October) | small to medium | now | Marcus, Priya, Dana, Ana, Rosa, Moreno, every phone |
 | 2 | v39 The newcomer's door (shipped 17 October) | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
 | 3 | v40 A period that has ended says so, and times and dates in one form (shipped 17 October) | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
-| 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
+| 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks (shipped 17 October) | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
 | 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
 | 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card | small | v42 | the IC, the clerk, Reyes, the administrator |
 | 7 | v44 Small words and buttons | small | any time | one or two personas each |
@@ -182,6 +182,11 @@ that says how urgent it is (v41)`. Re-walk Moreno's car in the water and Priya's
 **Start in.** `js/field/main.js` (the hazard sheet, `#s-hazard`), `js/base/ui.js` (`barItem`, `safetyHtml`, the
 home panel), `supabase/migrations/0005_hazards.sql` or wherever `ic_hazards` lives (`grep -l ic_hazards
 supabase/migrations/*`), `js/shared/rules.js` (`URGENCY`).
+
+**Shipped** 17 October 2026 as `A hazard that says how urgent it is (v41)`, migration `0025_hazards.sql`, rule test
+`supabase/tests/hazards.sql` (5 of 5), the `fieldReports` and `newcomer` smoke suites extended. Two differences from the
+plan: the toast goes under the header while a sheet is open (a sheet's foot buttons are not always at the bottom of the
+screen, so "above the foot" could still cover them), and no urgent hazard was seeded (the seeded checks count one hazard).
 
 ## 5. v42 The phone's sheets
 

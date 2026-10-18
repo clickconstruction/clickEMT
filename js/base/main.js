@@ -266,7 +266,7 @@ function drawAll() {
   const inc = data.incident;
   $('#inc-name').textContent = inc.name;
   const cur = data.currentPeriod();
-  $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`].filter(Boolean).join(' · ');
+  $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`, data.hazards().length ? `${data.hazards().length} hazard${data.hazards().length === 1 ? '' : 's'} open` : null].filter(Boolean).join(' · ');
   $('#inc-code').textContent = 'Join code ' + inc.code;
   drawLog();
   drawLegend();
@@ -899,6 +899,7 @@ document.addEventListener('click', async (e) => {
       case 'set-priority': await data.updateZone(id, { priority: Number(btn.dataset.p) }); break;
       case 'assign': { const z = data.zone(id); await data.assignZone(id, z && z.assigned_to === btn.dataset.user ? null : btn.dataset.user); break; }
       case 'resolve-hazard': await data.resolveHazard(id); break;
+      case 'ack-hazard': await data.ackHazard(id); toast('Hazard acknowledged'); break;
       case 'zoom-zone': { const z = data.zone(id); if (z) map.fitPolygon(z.polygon); break; }
       case 'pan-to': map.panTo(Number(btn.dataset.lat), Number(btn.dataset.lng)); break;
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', marking: null }); break; }

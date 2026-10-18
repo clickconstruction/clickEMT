@@ -207,6 +207,15 @@ async function fieldReports(check) {
   $(`#panel [data-action="resolve-hazard"][data-id="${hid}"]`).click();
   await until(() => eventText(base, 'Hazard resolved in B-2: gas smell'));
   check('Resolved from the base logs it and takes the hazard off the open list on both sides', !!eventText(base, 'Hazard resolved in B-2: gas smell') && !base.hazards().some((h) => h.id === hid) && base.hazards(true).some((h) => h.id === hid) && await until(() => !field.hazards().some((h) => h.id === hid)));
+  // v41: an act-on-now hazard waits on the bar until Operations acknowledges it; the home panel lists what is open and the header counts it
+  const hid2 = uuid();
+  if ($('#panel [data-action="close-panel"]')) { $('#panel [data-action="close-panel"]').click(); await until(() => has('#panel', 'join code')); }   // the Hazards open section is on the home panel
+  await field.addHazard(hid2, { kind: 'Person or car in the water', note: 'one inside', urgency: 'now', lat: 30.2598, lng: -97.7475, zoneId: b2 });
+  check('an urgent hazard sits on the bar with Acknowledge, the home panel lists it under Hazards open with its urgency, the header counts it, and the log carries the word', await until(() => has('#safety', 'hazard · person or car in the water, one inside', 'b-2') && !!$('#safety [data-action="ack-hazard"]')) && await until(() => has('#panel', 'hazards open · ', 'person or car in the water', 'act on now')) && has('#inc-sub', 'hazards open') && !!eventText(base, 'Hazard in B-2 (act on now): person or car in the water (one inside), reported by Unit 3'), text('#safety') + ' | ' + text('#inc-sub'));
+  $('#safety [data-action="ack-hazard"]').click();
+  check('Acknowledge takes it off the bar, logs it, and leaves it open on the list until Resolved', await until(() => !has('#safety', 'hazard ·')) && await until(() => eventText(base, 'Hazard acknowledged by Operations: person or car in the water in B-2')) && base.hazards().some((h) => h.id === hid2 && h.acked_at && !h.resolved_at) && await until(() => has('#panel', 'acknowledged')), logTexts()[0]);
+  await base.resolveHazard(hid2);
+  await until(() => !base.hazards().some((h) => h.id === hid2));
 }
 
 // Unit 3 raises an alert, Operations acknowledges it on the base, Unit 3 stands down.
@@ -1563,6 +1572,15 @@ async function newcomer(check) {
       f.requestSubmit();
       await until(() => base.members().some((m) => m.unit_name === 'Volunteer 4'), 70000);
       check('the base sees the volunteer under Volunteers, and the check-in line says so', await until(() => eventText(base, 'Volunteer 4, volunteer checked in as Kim Tran, 512 555 0190, identity not given with 1 person'), 8000) && base.members().find((m) => m.unit_name === 'Volunteer 4').kind === 'volunteer' && await until(() => has('#panel', 'volunteers', 'volunteer 4')), text('#panel').slice(0, 400));
+      // v41: the hazard sheet chooses nothing for the crew, offers the urgency words and the new kinds, and a toast never sits over its buttons
+      await P.act('hazard');
+      await until(() => P.shown('#s-hazard'), 5000);
+      check('the hazard sheet opens with nothing chosen: Send waits for a kind, the four urgency words are offered, and the new kinds are there', P.$('#s-hazard [data-action="send-hazard"]').disabled && !P.$('#hazard-chips .chip.on') && P.$$('#hazard-urgency .chip').length === 4 && P.$$('#hazard-chips .chip').some((c) => c.textContent.trim() === 'Person or car in the water') && P.$$('#hazard-chips .chip').some((c) => c.textContent.trim() === 'Tree down, road blocked'), P.text('#s-hazard').slice(0, 240));
+      P.$('#s-hazard [data-action="send-hazard"]').disabled = false; P.$('#s-hazard [data-action="send-hazard"]').click();
+      await until(() => P.shown('#toast'), 3000);
+      const tr = P.$('#toast').getBoundingClientRect(), ft = P.$('#s-hazard .sheet-btns').getBoundingClientRect();
+      check('a toast while a sheet is open sits under the header, not over the sheet\'s buttons', /pick what kind/.test(P.text('#toast')) && tr.bottom <= ft.top + 1, `toast bottom ${Math.round(tr.bottom)}, buttons top ${Math.round(ft.top)}: ${P.text('#toast')}`);
+      await P.act('home');
       check('the sheet that opened is at its top and nothing is wider than the phone', P.sideways().length === 0, P.sideways().join(' | '));
     }
   } finally { if (P) P.frame.remove(); }

@@ -550,3 +550,11 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
   .land-hero .land-wrap { padding: 30px 16px 16px; }
   .land-ops .land-wrap { padding: 24px 16px 28px; }
 }
+
+/* hazards (v41): the open list on the home panel and the HAZARD bar item */
+.haz-row { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.haz-row.urgent { background: var(--tint-orange); border-radius: 8px; padding: 6px 8px; }
+.haz-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.haz-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 2px; font-size: 12.5px; }
+.haz-foot .muted { flex: 1; }
+.safety .bar-item.hazard { color: var(--hazard-ink); font-weight: 600; }

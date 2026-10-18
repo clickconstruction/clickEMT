@@ -47,6 +47,7 @@ function uuid() { return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxx
 function toast(msg, bad) {
   const el = $('#toast');
   el.textContent = msg; el.classList.toggle('bad', !!bad); el.hidden = false;
+  el.classList.toggle('over-sheet', !!document.querySelector('.sheet:not([hidden])'));   // above a sheet's foot buttons, never over them (v41)
   clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
@@ -1414,21 +1415,25 @@ async function addrClear() { openStructure(null); }
 
 // ---- hazard and help
 function openHazard() {
-  state.hazI = 0;
+  state.hazI = -1; state.hazU = '';   // nothing chosen until the crew chooses (v41)
   $('#hazard-note').value = '';
   const p = sensors.pos;
   const z = p ? zoneAt(data.zones(), p.lat, p.lng) : null;
   $('#hazard-sub').textContent = p ? `Pinned where you stand, ${latLngText(p.lat, p.lng)}${z ? ', zone ' + z.code : ''}. Operations sees it at once.` : 'No GPS fix yet; the hazard will be sent without a position.';
   $('#hazard-chips').innerHTML = HAZARD_KINDS.map((c, i) => `<button class="chip${state.hazI === i ? ' on' : ''}" data-action="haz" data-i="${i}">${esc(c)}</button>`).join('');
+  $('#hazard-urgency').innerHTML = URGENCY.map(([val, label]) => `<button class="chip${state.hazU === val ? ' on' : ''}" data-action="haz-u" data-value="${val}">${esc(label)}</button>`).join('');
+  const send = $('#s-hazard [data-action="send-hazard"]'); if (send) send.disabled = state.hazI < 0;
   screen('hazard');
 }
 async function sendHazard() {
+  if (state.hazI < 0) { toast('Pick what kind of hazard first', true); return; }
   const p = sensors.pos;
   const z = p ? zoneAt(data.zones(), p.lat, p.lng) : myZone();
-  await outbox.add('hazard', { id: uuid(), kind: HAZARD_KINDS[state.hazI], note: $('#hazard-note').value.trim(), lat: p ? p.lat : null, lng: p ? p.lng : null, zoneId: z ? z.id : null });
+  const urgency = state.hazU || '';
+  await outbox.add('hazard', { id: uuid(), kind: HAZARD_KINDS[state.hazI], note: $('#hazard-note').value.trim(), lat: p ? p.lat : null, lng: p ? p.lng : null, zoneId: z ? z.id : null, urgency });
   state.lastSentAt = Date.now();
   screen('home');
-  toast(navigator.onLine ? 'Hazard sent' : 'Hazard kept, it sends when there is signal');
+  toast(!navigator.onLine ? 'Hazard kept, it sends when there is signal' : urgency === 'now' ? 'Hazard sent, act on now: Operations will acknowledge' : 'Hazard sent');
   queueDraw();
 }
 function openHelp() {
@@ -1512,6 +1517,7 @@ document.addEventListener('click', async (e) => {
       case 'confirm-clear': await confirmClear(); break;
       case 'hazard': openHazard(); break;
       case 'haz': state.hazI = Number(btn.dataset.i); openHazardChips(); break;
+      case 'haz-u': state.hazU = state.hazU === btn.dataset.value ? '' : btn.dataset.value; openHazardChips(); break;
       case 'send-hazard': await sendHazard(); break;
       case 'help': openHelp(); break;
       case 'send-alert': await sendAlert(); break;
@@ -1567,6 +1573,8 @@ document.addEventListener('click', async (e) => {
 });
 function openHazardChips() {
   $('#hazard-chips').innerHTML = HAZARD_KINDS.map((c, i) => `<button class="chip${state.hazI === i ? ' on' : ''}" data-action="haz" data-i="${i}">${esc(c)}</button>`).join('');
+  $('#hazard-urgency').innerHTML = URGENCY.map(([val, label]) => `<button class="chip${state.hazU === val ? ' on' : ''}" data-action="haz-u" data-value="${val}">${esc(label)}</button>`).join('');
+  const send = $('#s-hazard [data-action="send-hazard"]'); if (send) send.disabled = state.hazI < 0;
 }
 
 window.addEventListener('online', () => { toast('Back online, sending'); queueDraw(); });

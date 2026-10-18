@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 24;
+  const SEED_VERSION = 25;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -311,7 +311,7 @@
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, public_caption: '', public_checked_by: null, public_checked_at: null, taken_at: now(), created_at: now() }),
     ic_tracks: () => ({ id: eventId(), heading: null, at: now() }),   // unique across tabs, as ic_events
-    ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, created_at: now(), resolved_at: null }),
+    ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, urgency: '', acked_at: null, acked_by: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, note: '', created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
     ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
@@ -373,6 +373,7 @@
   function constraints(table, r) {
     const chk = (name) => dbError(`new row for relation "${table}" violates check constraint "${name}"`, '23514');
     const nn = (col) => dbError(`null value in column "${col}" of relation "${table}" violates not-null constraint`, '23502');
+    if (table === 'ic_hazards' && !['', 'now', 'nightfall', 'tomorrow', 'blocking'].includes(r.urgency ?? '')) throw chk('ic_hazards_urgency_check');
     if (table === 'ic_zones') {
       if (!r.code) throw nn('code');
       if (!r.polygon) throw nn('polygon');
@@ -590,7 +591,7 @@
       log(changes, r.incident_id, r.user_id, 'photo', `${label(r.incident_id, r.user_id)} sent a photo from ${zoneCode(r.zone_id)}${r.heading == null ? '' : ', facing ' + R.compass(r.heading)}${r.note !== '' ? ': ' + r.note : ''}`, 'ic_photos', r.id);
     }
     if (table === 'ic_hazards') {
-      log(changes, r.incident_id, r.user_id, 'hazard', `Hazard in ${zoneCode(r.zone_id)}: ${String(r.kind).toLowerCase()}${r.note !== '' ? ' (' + r.note + ')' : ''}, reported by ${label(r.incident_id, r.user_id)}`, 'ic_hazards', r.id);
+      log(changes, r.incident_id, r.user_id, 'hazard', `Hazard in ${zoneCode(r.zone_id)}${r.urgency ? ' (' + R.urgencyLabel(r.urgency).toLowerCase() + ')' : ''}: ${String(r.kind).toLowerCase()}${r.note !== '' ? ' (' + r.note + ')' : ''}, reported by ${label(r.incident_id, r.user_id)}`, 'ic_hazards', r.id);
       const z = r.zone_id && tables.ic_zones.find((x) => x.id === r.zone_id);
       if (z && !z.hazard) updateRow('ic_zones', z, { hazard: true }, uid, changes, true);
     }
@@ -754,7 +755,8 @@
         put('ops', `${r.code} assignment updated${r.channel !== old.channel ? ', channel ' + (r.channel || 'cleared') : ''}${r.supervisor !== old.supervisor ? ', supervisor ' + (r.supervisor || 'cleared') : ''}${(r.branch || '') !== (old.branch || '') ? ', branch ' + (r.branch || 'cleared') : ''}`);
       }
     }
-    if (table === 'ic_hazards' && r.resolved_at && !old.resolved_at) log(changes, r.incident_id, uid, 'hazard', `Hazard resolved in ${zoneCode(r.zone_id)}: ${String(r.kind).toLowerCase()}`, 'ic_hazards', r.id);
+    if (table === 'ic_hazards' && r.acked_at && !old.acked_at) log(changes, r.incident_id, r.acked_by || uid, 'hazard', `Hazard acknowledged by ${label(r.incident_id, r.acked_by || uid)}: ${String(r.kind).toLowerCase()} in ${zoneCode(r.zone_id)}`, 'ic_hazards', r.id);
+    else if (table === 'ic_hazards' && r.resolved_at && !old.resolved_at) log(changes, r.incident_id, uid, 'hazard', `Hazard resolved in ${zoneCode(r.zone_id)}: ${String(r.kind).toLowerCase()}`, 'ic_hazards', r.id);
     if (table === 'ic_alerts') {
       if (r.stood_down_at && !old.stood_down_at) log(changes, r.incident_id, r.user_id, 'help', `${label(r.incident_id, r.user_id)} stood down, all OK`, 'ic_alerts', r.id);
       else if (r.acknowledged_at && !old.acknowledged_at) log(changes, r.incident_id, r.acknowledged_by, 'help', `Operations acknowledged the emergency from ${label(r.incident_id, r.user_id)}`, 'ic_alerts', r.id);

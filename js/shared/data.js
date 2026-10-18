@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
 const BUCKET = 'ic-photos';
@@ -623,14 +623,22 @@ export class Data {
     this.urlCache.set(key, { url: data.signedUrl, until: Date.now() + 50 * 60 * 1000 });
     return data.signedUrl;
   }
-  async addHazard(id, { kind, note, lat, lng, zoneId, createdAt }) {
-    const row = { id, incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, kind, note: note || '', lat: lat ?? null, lng: lng ?? null };
+  async addHazard(id, { kind, note, lat, lng, zoneId, createdAt, urgency }) {
+    const row = { id, incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, kind, note: note || '', lat: lat ?? null, lng: lng ?? null, urgency: urgency || '' };
     if (createdAt) row.created_at = createdAt;
     const { data, error } = await this.sb.from('ic_hazards').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_hazards', data || row);
     return data || row;
   }
+  // Operations acknowledges an urgent hazard (v41): it leaves the bar, stays open until resolved
+  async ackHazard(id) {
+    const { data, error } = await this.sb.from('ic_hazards').update({ acked_at: new Date().toISOString(), acked_by: this.user.id }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_hazards', data);
+    return data;
+  }
+  urgentHazards() { return this.hazards().filter(hazardUrgent); }
   async resolveHazard(id) {
     const { data, error } = await this.sb.from('ic_hazards').update({ resolved_at: new Date().toISOString() }).eq('id', id).select().single();
     if (error) throw error;

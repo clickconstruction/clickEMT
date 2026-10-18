@@ -770,3 +770,23 @@ Items 3 and 4 of "What to do first" are clear.
 
 - **A planned end before the start** reads "20:07 to 19:00" (the mock's seed starts the period three hours ago and ends it at a fixed 19:00); the sheet lets Operations type any time. The overdue words still make sense; a warning when the end is typed earlier than the start would end it.
 - **"Overdue" is a word Operations may not want on the header** for a period that ran its course and was simply never closed; starting the next period clears it, which is the right habit, and the words say so.
+
+---
+
+## Re-walk after v41
+
+A hazard that says how urgent it is, and the open hazards where Safety looks: Moreno's car in the water and Priya's hazards job, walked on 2026-10-17 after migration 0025 in the same mock, the phone at 375 × 812 (as the seeded Unit 3, standing in A-2) and the base at 1280 × 800 as Operations. The Browser pane was hidden, so the walk read the screens' text; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Report hazard | Moreno | "Pinned where you stand … Operations sees it at once. HOW URGENT Act on now / Before nightfall / Can wait until tomorrow / Blocks further operations · WHAT KIND Downed power line / Gas smell / Structure unsafe / Road under water / Person or car in the water / Tree down, road blocked / Loose animal / Other · ANYTHING ELSE · Cancel · Send hazard (greyed until a kind is chosen)". Nothing chosen for him. Act on now, Person or car in the water, a line typed, Send: "Hazard sent, act on now: Operations will acknowledge". Four taps and typing, the urgency said. | Clear |
+| The base at that moment | Priya, Marcus, Dana | The yellow bar: "HAZARD · Person or car in the water, Car in the water at the low crossing, one inside · A-2 · 23:31 · Unit 3 · Acknowledge · Show on map". The header: "… 6 divisions, 1 cleared · 2 hazards open". The home panel's "HAZARDS OPEN · 2": the new one with its Act on now badge, "A-2 · Unit 3", Acknowledge / Show on map / Resolved, then the morning's downed power line with Show on map / Resolved. The 214: "Hazard in A-2 (act on now): person or car in the water (Car in the water at the low crossing, one inside), reported by Unit 3". | Clear |
+| Acknowledge | Marcus | The bar back to "No emergency open · no safety message or PAR waiting on an answer"; the list row "A-2 · Unit 3 · acknowledged 23:31" with Show on map and Resolved still there; the 214 "Hazard acknowledged by Operations: person or car in the water in A-2". | Clear |
+
+Items 5 and 6 of "What to do first" are clear. The toast now sits under the header while a sheet is open (checked by the `newcomer` suite on the hazard sheet).
+
+**Still bites, small:**
+
+- **The bar's words repeat themselves** when the crew's note restates the kind ("Person or car in the water, Car in the water at the low crossing"); the kind could be dropped from the bar when the note starts with the same words.
+- **Acknowledge is the base's word, not the crew's**: the phone says "Operations will acknowledge" but shows nothing when they do. A line on the phone's home ("Operations saw your hazard at 23:31") would close the loop.
+- **Before nightfall and the other three words** do nothing yet on the base beyond the badge; only Act on now reaches the bar, by design.

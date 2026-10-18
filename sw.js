@@ -2,7 +2,7 @@
 // map library from the CDN is cached on first use, map tiles are cached as they are seen (so a
 // zone the unit has looked at still draws without signal), and Supabase traffic always goes to
 // the network. Bump VERSION whenever a shell file changes.
-const VERSION = 'v40';
+const VERSION = 'v41';
 const SHELL_CACHE = 'shell-' + VERSION;
 const TILE_CACHE = 'tiles-v1';
 const SHELL = [

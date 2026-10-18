@@ -201,6 +201,7 @@
     <button class="btn sm" data-action="org" title="The organization chart, ICS 207: the seats, the branches and divisions, the units, with the span of control">Org chart</button>
     <button class="btn sm" data-action="people" title="Everyone on scene by name and unit: qualifications, status, hours on scene, and the check-in list (ICS 211)">People</button>
     <button class="btn sm" data-action="public" title="Public information: the photos cleared for the public with their captions and checks, the public set to download, who is PIO">Public</button>
+    <button class="btn sm" data-action="transports" title="The transport board: every bus, van, ambulance and boat run from a pickup to a shelter or a hospital, who is on it, where it is, one button for the next step">Transports</button>
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
     <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
@@ -313,6 +314,16 @@
     <button class="btn sm" data-action="close-public">Close</button>
   </div>
   <div class="briefing-page public-page" id="public-page"></div>
+</div>
+
+<div id="transports" class="briefing transports" hidden>
+  <div class="briefing-bar">
+    <strong>Transports</strong>
+    <span class="muted" id="transports-sub"></span>
+    <span style="flex:1"></span>
+    <button class="btn sm" data-action="close-transports">Close</button>
+  </div>
+  <div class="briefing-page transports-page" id="transports-page"></div>
 </div>
 
 <div id="briefing" class="briefing" hidden>

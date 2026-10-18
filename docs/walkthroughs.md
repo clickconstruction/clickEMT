@@ -1189,3 +1189,24 @@ Item 4 of the walk at v48's list is built; the four items from the walk are done
 **Still bites, small:**
 
 - **The row still sits under "Incidents you are already in"** for a unit that has checked out; one tap reopens the incident and the check-in brings its people back, as before.
+
+---
+
+## Re-walk after v54
+
+A transport board: Marcus, Ana, the shelter desk and a driver, walked on 2026-10-18 in the same mock on the base at 1280 × 900 and the phone at 375 × 812 (the pane visible; the words read from the screen and through the `transports` suite's phone frame).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Plan a bus | Marcus | **Transports** on the header beside Public opens the board: "Transports: 1 under way with 4 people in transit, 1 planned, 1 arrived, 0 done", a row per run ("Bus 2 · Bus · Travis ISD, 512 555 0177 · Pecan Park pickup → High school gym · 4 of 40 · 1 record · left 11:19 · expected 11:44 · En route · Arrived · Edit · Who is on it"), under way first. **New run**: kind, label, seats, from (a facility, a division, or words), to (the shelter first), leaves, expected, driver (a unit, or a name and a phone), notes; Save the run writes "Van 4 planned by Operations: A-2 Pecan Mobile Home Park to High school gym, 12 seats, driver Unit 2" and opens the row. One press for Loading, Leaving, Arrived, Done; a done run stays done. The home panel has the same line and the runs as rows. | Clear |
+| Who is coming | Marcus | The gym's card: "Expected · 3 runs coming here (below)", the typed box gone ("The runs on the Transports board say who is coming; the typed line … gave way"), then **Coming here · 3 runs** with each run's driver, status, times and who is on it, and its next step. The family on its way has **On which run** set to Bus 2; moving them to Bus 3 is "Operations put family of 4 from 112 Pecan Ln on Bus 3 to High school gym". | Clear |
+| Put a family on the bus | Ana | Address clear, the first person counted: the row has **On which run** under Went to, "On Van 4 · A-2 Pecan Mobile Home Park → High school gym · loading since 11:32 · expected 13:20 · 0 of 12" first (her own division's), Bus 3 next, Bus 2 (gone) not offered. Searched, save: "116 Pecan Ln searched · 1 record of who went where, 1 on a run"; the base reads "Unit 3 sent Patel, family of 2 from 116 Pecan Ln to High school gym on Van 4". | Clear |
+| Drive a run | A unit | Made Van 4's driver, the phone's home screen shows a blue card above the message: "YOU ARE VAN 4 · LOADING · A-2 Pecan Mobile Home Park → High school gym · 2 of 12 aboard · Patel, family of 2 · loading since 11:32 · expected 13:20" with one button, **Leaving**; pressed, "Van 4 left A-2 Pecan Mobile Home Park for High school gym with 2 people in 1 record" and the button is Arrived. A late run turns the card orange. | Clear |
+| The bus pulls in | The desk | People here: "High school gym · 9 of 60 · 3 runs coming", then **Arriving** by run: "Bus 2 from Pecan Park pickup · En route · 4 people in 1 record · left 11:19 · expected 11:44 · Travis ISD, 512 555 0177 · family of 4 · from 112 Pecan Ln · pets · Here" and **They're here, all 4**; Van 4 with the Patels; Bus 3 "nobody listed on it yet". One tap: the family is signed in, "Bus 2 arrived at High school gym with 4 people in 1 record", the count 13 of 60, the card reads "All 4 signed in." | Clear |
+| Count people in transit | Dana, Marcus | The situation report's Progress: "Transports: 1 under way with 2 people in transit, 1 planned, 1 arrived, 1 done"; the briefing's Facilities has the same line. | Clear |
+
+**Still bites, small:**
+
+- **A pickup is not yet a point on the map**: From is a facility, a division or a few words. A crew at a corner with no division name types it.
+- **The desk cannot put a walk-in on a run**: On which run is on the crew's house record and the base's arriving rows; the desk's sign-in sheet has no run (it signs people in, it does not send them).
+- **Runs nobody updates under load** is the risk the plan named: a bus that left without Leaving pressed reads "loading since" and goes late on its own clock, which at least says so.

@@ -2,8 +2,8 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, esc } from './ui.js';
-import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
+import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, esc } from './ui.js';
+import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -22,7 +22,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -293,6 +293,7 @@ function drawAll() {
   if (!$('#briefing').hidden) drawBriefing();
   if (!$('#people').hidden) drawPeople();
   if (!$('#public').hidden) drawPublic();
+  if (!$('#transports').hidden) drawTransports();
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
   map.render(data, state);
@@ -538,6 +539,17 @@ function drawPublic() {
   const page = $('#public-page'), html = publicPageHtml(data);
   if (page.__html !== html) { page.__html = html; page.innerHTML = html; }
 }
+// the transport board (v54): a page of its own, redrawn on every change unless a field in it has focus
+function openTransports() { $('#transports').hidden = false; drawTransports(); }
+function closeTransports() { $('#transports').hidden = true; state.tr.add = false; state.tr.edit = null; }
+function drawTransports() {
+  if (!data.incident || $('#transports').hidden) return;
+  $('#transports-sub').textContent = data.incident.name + ' · ' + hhmm(new Date());
+  const page = $('#transports-page'), html = transportsPageHtml(data, state);
+  const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+  if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
+}
+function focusTrForm() { setTimeout(() => { const f = $('#transports-page form.tr-form'); if (f) f.label.focus(); }, 30); }
 function openPeople() { $('#people').hidden = false; drawPeople(); }
 function closePeople() { $('#people').hidden = true; state.people.add = false; }
 function drawPeople() {
@@ -865,6 +877,18 @@ document.addEventListener('click', async (e) => {
       case 'people': if (LOG_ONLY) { selectFromLog({ type: 'people' }); break; } state.people.addUnit = btn.dataset.unit || state.people.addUnit; if (btn.dataset.tab) state.people.tab = btn.dataset.tab; openPeople(); break;
       case 'close-people': closePeople(); break;
       case 'public': if (!LOG_ONLY) openPublic(); break;
+      case 'transports': if (LOG_ONLY) break; if (id) state.tr.open = id; openTransports(); break;
+      case 'close-transports': closeTransports(); break;
+      case 'tr-new': if (LOG_ONLY) break; state.tr.add = true; state.tr.edit = null; openTransports(); focusTrForm(); break;
+      case 'tr-add-toggle': state.tr.add = !state.tr.add; state.tr.edit = null; drawTransports(); if (state.tr.add) focusTrForm(); break;
+      case 'tr-edit': state.tr.edit = id; state.tr.add = false; drawTransports(); focusTrForm(); break;
+      case 'tr-edit-cancel': state.tr.edit = null; state.tr.add = false; drawTransports(); break;
+      case 'tr-open': state.tr.open = state.tr.open === id ? null : id; drawTransports(); break;
+      case 'tr-gone-toggle': state.tr.gone = !state.tr.gone; drawTransports(); break;
+      case 'tr-step': { const t = data.transport(id); if (!t) break; const done = await data.updateTransport(id, { status: btn.dataset.status }); toast(transportLabel(done) + ': ' + TRANSPORT_STATUS[done.status].toLowerCase()); queueDraw(); drawTransports(); break; }
+      case 'tr-withdraw': { const t = data.transport(id); if (t && confirm(`Withdraw ${transportLabel(t)}? It stays in the history and can be put back; the people on it keep their records.`)) { await data.updateTransport(id, { archived_at: new Date().toISOString() }); state.tr.edit = null; toast(transportLabel(t) + ' withdrawn'); queueDraw(); drawTransports(); } break; }
+      case 'tr-restore': { const t = data.transport(id); await data.updateTransport(id, { archived_at: null }); toast((t ? transportLabel(t) : 'The run') + ' is back'); queueDraw(); drawTransports(); break; }
+      case 'tr-take-off': { const ev = data.evacuee(id); const done = await data.putOnTransport(id, null); toast(evacueeWho(done || ev) + ' taken off the run'); queueDraw(); drawTransports(); break; }
       case 'close-public': closePublic(); break;
       case 'print-211': openOverlay('211'); break;
       case 'hours': openOverlay('hours'); break;
@@ -1051,6 +1075,12 @@ document.addEventListener('change', async (e) => {
       if (ev) { const done = await data.updateEvacuee(ev.id, wherePatch(sel.value, { facilityOf: (fid) => data.facility(fid), current: ev })); toast(evacueeWho(done) + ': ' + evacueeWhere(done, (fid) => data.facility(fid))); }
       sel.blur(); queueDraw();
     }
+    if (sel.dataset.select === 'ev-transport') {   // put a record on a run, or take it off (v54)
+      const done = await data.putOnTransport(sel.dataset.id, sel.value || null);
+      const t = sel.value ? data.transport(sel.value) : null;
+      toast(evacueeWho(done) + (t ? ' on ' + transportLabel(t) : ' off the run') + ': ' + evacueeWhere(done, (fid) => data.facility(fid)));
+      sel.blur(); queueDraw();
+    }
     if (sel.dataset.select === 'unit-facility') { await data.setUnitFacility(sel.dataset.id, sel.value || null); sel.blur(); toast(unitLabelOf(data.member(sel.dataset.id)) + (sel.value ? ' works at ' + (data.facility(sel.value).name || 'the shelter') : ': no shelter chosen')); queueDraw(); }
     if (sel.dataset.select === 'person-buddy') { await data.updatePerson(sel.dataset.id, { buddy_id: sel.value || null }); sel.blur(); queueDraw(); }
   } catch (err) { toast(err.message || String(err), true); }
@@ -1111,6 +1141,15 @@ document.addEventListener('submit', async (e) => {
       toast('Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
+    } else if (form.dataset.form === 'transport-add' || form.dataset.form === 'transport-edit') {   // the board's New run and Edit (v54)
+      const fields = transportFormFields(form);
+      if (!fields.to_facility_id) { toast('Say where to: place a shelter or a hospital first', true); return; }
+      if (!fields.from_facility_id && !fields.from_zone_id && !fields.from_text) { toast('Say where from: a facility, a division, or a few words', true); return; }
+      const t = form.dataset.form === 'transport-edit' ? await data.updateTransport(form.dataset.id, fields) : await data.addTransport(crypto.randomUUID(), fields);
+      state.tr.add = false; state.tr.edit = null; state.tr.open = t.id;
+      toast(transportLabel(t) + (form.dataset.form === 'transport-edit' ? ' saved' : ' planned'));
+      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
+      queueDraw(); drawTransports();
     } else if (form.dataset.form === 'evacuee-add') {
       const label = form.label.value.trim();
       if (!label) { toast('Who: a name, or "family of 4"', true); return; }

@@ -47,6 +47,7 @@
 - **Base** · **Requests** from the field (hands, a boat, an ambulance, fuel, supplies) go asked, approved, ordered, filled, or cannot be filled, with a word back the unit sees.
 - **Base** · **Facilities**: place the command post, staging, shelters, hospitals, boat ramps, helibases with a contact each. The phone shows the nearest with directions.
 - **Base** · **Layers**: streets, satellite, Google Maps when a key is set, and your own aerial imagery laid over the map by its corner coordinates.
+- **Base** · **Transports** on the header is the board (v54): **New run** plans a bus, a van, an ambulance or a boat run from a pickup to a shelter or a hospital, with its seats, its times and who drives; each row has one button for the next step (Loading, Leaving, Arrived, Done), Edit, Withdraw and who is on it. A late run says so. On the shelter's card the runs **Coming here** replace the typed Expected line, and each arriving family's row has **On which run**. The situation report counts runs under way and people in transit.
 - **Base** · The home panel's Incident section ends with **Close incident** when it is over; **Reopen incident** undoes that.
 
 ## Rough edges

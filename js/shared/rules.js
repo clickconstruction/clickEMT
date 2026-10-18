@@ -563,14 +563,15 @@ export function bedsText(people, beds) { return beds != null ? people + ' of ' +
 
 // The situation report's line (ICS 209), counts only, never a name:
 // "People sheltered: 38 at High school gym (60 beds), 3 moved to hospital, 12 expected · 5 records with no name yet"
-export function peopleShelteredLine({ evacuees, facilities, placeWords }) {
+// Once a run comes to a shelter (v54) its typed Expected line has given way, so it no longer counts here.
+export function peopleShelteredLine({ evacuees, facilities, placeWords, transports = [] }) {
   const live = evacuees.filter((e) => !e.archived_at);
   const shelters = facilities.filter((f) => f.kind === 'shelter' && (!f.closed_at || live.some((e) => e.facility_id === f.id && e.status === 'here')));
   const sum = (rows) => rows.reduce((n, e) => n + (e.count || 1), 0);
   const kindOf = new Map(facilities.map((f) => [f.id, f.kind]));
   const at = shelters.map((f) => `${sum(live.filter((e) => e.facility_id === f.id && e.status === 'here'))} at ${f.name || 'a shelter'}${f.beds != null ? ' (' + f.beds + ' beds)' : ''}`);
   const hospital = sum(live.filter((e) => e.facility_id && kindOf.get(e.facility_id) === 'hospital' && (e.status === 'moved' || e.status === 'here')));
-  const expected = sum(live.filter((e) => e.status === 'on_the_way')) + shelters.filter((f) => !f.closed_at).reduce((n, f) => n + (countIn(f.expected) || 0), 0);
+  const expected = sum(live.filter((e) => e.status === 'on_the_way')) + shelters.filter((f) => !f.closed_at && !runsTo(transports, f.id).length).reduce((n, f) => n + (countIn(f.expected) || 0), 0);
   const unnamed = live.filter((e) => !hasName(e.label, placeWords)).length;
   if (!shelters.length && !live.length) return 'People sheltered: no shelter open and nobody on record';
   return `People sheltered: ${at.length ? at.join(', ') : 'no shelter open'}, ${hospital} moved to hospital, ${expected} expected · ${unnamed} record${unnamed === 1 ? '' : 's'} with no name yet`;
@@ -632,3 +633,74 @@ export function revisitWords(iso, now = Date.now()) {
 export function revisitHhmm(iso, typed, now = Date.now()) { const w = revisitWords(iso, now); return w ? (w.tomorrow ? 'tomorrow ' : '') + String(typed || w.hhmm).trim().slice(0, 5) : ''; }
 // a PAR closed by a newer one (v38) is not open: the bar, the panel and the phone show the newest
 export function parOpen(m) { return !!m && m.kind === 'par' && !m.superseded_by; }
+
+// ---- a transport board (v54): a run is a vehicle from a pickup to a facility, with evacuee records on it
+// (ic_transports, ic_evacuees.transport_id). The words are ic_transport_kind_text / ic_transport_label /
+// ic_transport_from / ic_transport_aboard in SQL, which write the 214; keep them the same.
+export const TRANSPORT_KINDS = [['bus', 'Bus'], ['van', 'Van'], ['ambulance', 'Ambulance'], ['boat', 'Boat run'], ['high_water', 'High-water vehicle'], ['other', 'Transport']];
+export const TRANSPORT_STATUS = { planned: 'Planned', loading: 'Loading', en_route: 'En route', arrived: 'Arrived', done: 'Done' };
+export const TRANSPORT_STEPS = ['planned', 'loading', 'en_route', 'arrived', 'done'];
+// the one button for the next step: [the status it sets, the word on the button]; nothing after done
+export function transportNext(status) { return { planned: ['loading', 'Loading'], loading: ['en_route', 'Leaving'], en_route: ['arrived', 'Arrived'], arrived: ['done', 'Done'] }[status] || null; }
+export function transportKindText(kind) { const k = TRANSPORT_KINDS.find((x) => x[0] === kind); return k ? k[1] : 'Transport'; }
+export function transportLabel(t) { return (t.label || '').trim() || transportKindText(t.kind); }
+// the pickup: the facility, else the division, else the words typed, else "the pickup"
+export function transportFrom(t, { facilityOf, zoneOf } = {}) {
+  const f = t.from_facility_id && facilityOf ? facilityOf(t.from_facility_id) : null;
+  if (f) return f.name || facilityKind(f.kind)[1];
+  const z = t.from_zone_id && zoneOf ? zoneOf(t.from_zone_id) : null;
+  if (z) return z.code + (z.name ? ' ' + z.name : '');
+  return t.from_text || 'the pickup';
+}
+// the records on a run and the people they count; signed in = already at the run's destination
+export function transportOnBoard(evacuees, t) {
+  const on = evacuees.filter((e) => e.transport_id === t.id && !e.archived_at);
+  const sum = (rows) => rows.reduce((n, e) => n + (e.count || 1), 0);
+  const signedIn = on.filter((e) => e.status === 'here' && e.facility_id === t.to_facility_id);
+  const coming = on.filter((e) => !signedIn.includes(e));
+  return { on, people: sum(on), signedIn, signedInPeople: sum(signedIn), coming, comingPeople: sum(coming) };
+}
+// "12 people in 4 records", "nobody on it" (ic_transport_aboard)
+export function aboardText(people, records) { return records ? `${people} ${people === 1 ? 'person' : 'people'} in ${records} ${records === 1 ? 'record' : 'records'}` : 'nobody on it'; }
+// "12 of 40" against the seats, or "12" when the capacity is not set
+export function capacityText(people, capacity) { return capacity != null ? people + ' of ' + capacity : String(people); }
+// a run is late when it has not left by its planned departure, or not arrived by its expected time
+export function transportLate(t, now = Date.now()) {
+  if (t.archived_at || t.status === 'arrived' || t.status === 'done') return false;
+  if ((t.status === 'planned' || t.status === 'loading') && t.leaves_at) return new Date(t.leaves_at).getTime() < now;
+  if (t.status === 'en_route' && t.expected_at) return new Date(t.expected_at).getTime() < now;
+  return false;
+}
+// the times in a line: "leaves 18:00 · expected 18:25", "loading since 17:10 · late: planned 17:00",
+// "left 17:05 · expected 17:30", "arrived 17:28"
+export function transportTimes(t, now = Date.now()) {
+  const late = transportLate(t, now);
+  switch (t.status) {
+    case 'planned': return [t.leaves_at ? (late ? 'late: planned ' : 'leaves ') + hhmm(t.leaves_at) : 'no time set', t.expected_at ? 'expected ' + hhmm(t.expected_at) : ''].filter(Boolean).join(' · ');
+    case 'loading': return ['loading since ' + hhmm(t.status_at), late ? 'late: planned ' + hhmm(t.leaves_at) : (t.expected_at ? 'expected ' + hhmm(t.expected_at) : '')].filter(Boolean).join(' · ');
+    case 'en_route': return ['left ' + hhmm(t.left_at || t.status_at), t.expected_at ? (late ? 'late: expected ' : 'expected ') + hhmm(t.expected_at) : ''].filter(Boolean).join(' · ');
+    case 'arrived': return 'arrived ' + hhmm(t.arrived_at || t.status_at);
+    default: return 'done ' + hhmm(t.status_at);
+  }
+}
+// the board's order: under way first (loading, en route), then planned by when they leave, then arrived, done last
+const STEP_RANK = { loading: 0, en_route: 0, planned: 1, arrived: 2, done: 3 };
+export function sortTransports(list) { return list.slice().sort((a, b) => STEP_RANK[a.status] - STEP_RANK[b.status] || ((a.leaves_at || a.created_at) < (b.leaves_at || b.created_at) ? -1 : 1)); }
+// the runs coming to a facility that are not done: the desk's Arriving and the shelter card
+export function runsTo(transports, facilityId) { return sortTransports(transports.filter((t) => !t.archived_at && t.to_facility_id === facilityId && t.status !== 'done')); }
+// the runs a record can still be put on: planned or loading (a bus that has left takes nobody), the crew's own division's first
+export function openRuns(transports, { zoneId } = {}) { return sortTransports(transports.filter((t) => !t.archived_at && (t.status === 'planned' || t.status === 'loading'))).sort((a, b) => (b.from_zone_id === zoneId) - (a.from_zone_id === zoneId)); }
+// a run in one line for a picker: "Bus 2 · Pecan Park pickup → High school gym · leaves 17:05 · 12 of 40"
+export function runLine(t, evacuees, opts = {}) {
+  const to = t.to_facility_id && opts.facilityOf ? opts.facilityOf(t.to_facility_id) : null;
+  return `${transportLabel(t)} · ${transportFrom(t, opts)} → ${to ? (to.name || facilityKind(to.kind)[1]) : 'a facility'} · ${transportTimes(t, opts.now)} · ${capacityText(transportOnBoard(evacuees, t).people, t.capacity)}`;
+}
+// the situation report's line, counts only: "Transports: 2 under way with 19 people in transit, 1 planned, 1 arrived, 0 done"
+export function transportsLine(transports, evacuees) {
+  const live = transports.filter((t) => !t.archived_at);
+  if (!live.length) return 'Transports: no runs on record';
+  const under = live.filter((t) => t.status === 'loading' || t.status === 'en_route');
+  const inTransit = under.reduce((n, t) => n + transportOnBoard(evacuees, t).comingPeople, 0);
+  const n = (s) => live.filter((t) => t.status === s).length;
+  return `Transports: ${under.length} under way with ${inTransit} ${inTransit === 1 ? 'person' : 'people'} in transit, ${n('planned')} planned, ${n('arrived')} arrived, ${n('done')} done`;
+}

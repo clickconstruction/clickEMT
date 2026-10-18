@@ -17,6 +17,7 @@ import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
 import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
+import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports } from '../shared/rules.js';   // the transport board (v54)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
 const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
@@ -92,7 +93,8 @@ const outbox = new Outbox({
   evacuee: (p, _b, at) => (p.update ? data.updateEvacuee(p.id, p.patch) : data.addEvacuee(p.id, Object.assign(at ? { created_at: at } : {}, p.fields))),
   personPatch: (p) => data.updatePerson(p.id, p.patch),
   found: (p) => data.markFound(p.messageId, p.userId, { personId: p.personId, name: p.name }),
-  accept: (p) => data.updateMember(p.userId, { accepted_zone_id: p.zoneId })
+  accept: (p) => data.updateMember(p.userId, { accepted_zone_id: p.zoneId }),
+  transport: (p) => data.updateTransport(p.id, p.patch)   // a run's next step, from the desk or the driver (v54)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -823,6 +825,7 @@ function drawAll() {
   setHtml($('#helpsent-missing'), al ? missingCardHtml() : '');
   setHtml($('#missing'), al ? '' : missingCardHtml());
   drawMyHazards();
+  drawMyRun();
 
   const p = sensors.pos;
   $('#foot-left').textContent = state.outbox ? `${state.outbox} waiting to send${state.outboxError ? ' (retrying)' : ''}` : (state.lastSentAt ? 'Last sent ' + hhmm(state.lastSentAt) : 'Nothing sent yet');
@@ -1162,12 +1165,26 @@ function drawDesk() {
   const c = f ? placeCounts(all, f.id) : null;
   setHtml($('#desk-head'), f
     ? `<div class="desk-top"><h2>People here</h2><span class="desk-count">${esc(placeLabel(f))} · <strong>${esc(bedsText(c.people, f.beds))}</strong></span></div>
-       <div class="muted small">${c.here.length} record${c.here.length === 1 ? '' : 's'}${c.needs.length ? ' · ' + esc(c.needs.map(([, label, n]) => n + ' ' + label.toLowerCase()).join(' · ')) : ''}${f.expected ? ' · expected: ' + esc(f.expected) : ''}. Operations sees this count live on the shelter's card.</div>`
+       <div class="muted small">${c.here.length} record${c.here.length === 1 ? '' : 's'}${c.needs.length ? ' · ' + esc(c.needs.map(([, label, n]) => n + ' ' + label.toLowerCase()).join(' · ')) : ''}${runsTo(data.transports(), f.id).length ? ' · ' + runsTo(data.transports(), f.id).length + (runsTo(data.transports(), f.id).length === 1 ? ' run' : ' runs') + ' coming' : f.expected ? ' · expected: ' + esc(f.expected) : ''}. Operations sees this count live on the shelter's card.</div>`
     : `<div class="desk-top"><h2>People here</h2></div><div class="muted small">Operations has not placed a shelter yet. You can still find a person; Sign in waits for a shelter on the map.</div>`);
   drawDeskResults();
-  const arriving = c ? c.arriving : [];
-  setHtml($('#desk-arriving'), arriving.length ? `<div class="k desk-arr-k">Arriving from crews · sign them in, not again</div>` + arriving.map((e) => `
-    <div class="arrive" data-ev="${e.id}"><span class="arrive-main"><strong>${esc(evacueeWho(e))}</strong>${fromOf(e) ? ' from ' + esc(fromOf(e)) : ''} · ${esc(unitLabel(data.member(e.logged_by)))}, ${hhmm(e.status_at || e.created_at)}${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><button type="button" class="btn arrive-btn" data-action="ev-arrived" data-id="${e.id}">They're here</button></div>`).join('') : '');
+  // Arriving by run (v54): each run coming here with who is on it and They're here for the whole run; then the records sent by crews on no run
+  const runs = f ? runsTo(data.transports(), f.id) : [], onRun = new Set();
+  const runCards = runs.map((t) => {
+    const b = transportOnBoard(all, t);
+    for (const e of b.coming) onRun.add(e.id);
+    const driver = t.driver_user_id ? unitLabel(data.member(t.driver_user_id)) : t.driver_text;
+    return `<div class="arrive-run${transportLate(t) ? ' late' : ''}" data-tr="${t.id}">
+      <div class="arrive-head"><strong>${esc(transportLabel(t))} from ${esc(transportFrom(t, { facilityOf, zoneOf: (id) => data.zone(id) }))}</strong><span class="badge tr-${esc(t.status)}">${esc(TRANSPORT_STATUS[t.status])}</span></div>
+      <div class="small">${esc(aboardText(b.people, b.on.length))} · ${esc(transportTimes(t))}${transportLate(t) ? ' · late' : ''}${driver ? ' · ' + esc(driver) : ''}</div>
+      ${b.coming.length ? `<div class="arrive-list">${b.coming.map((e) => `<div class="arrive-row" data-ev="${e.id}"><span>${esc(evacueeWho(e))}${fromOf(e) ? ' · <span class="muted">from ' + esc(fromOf(e)) + '</span>' : ''}${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><button type="button" class="btn sm" data-action="ev-arrived" data-id="${e.id}">Here</button></div>`).join('')}</div>
+      <button type="button" class="btn arrive-btn" data-action="ev-run-arrived" data-id="${t.id}">They're here, all ${b.comingPeople}</button><div class="muted small">or family by family as they come off: Here on a row.</div>`
+      : b.signedIn.length ? `<div class="muted small">All ${b.signedInPeople} signed in.</div>` : '<div class="muted small">Nobody listed on it yet; sign them in as they come off.</div>'}
+    </div>`;
+  }).join('');
+  const arriving = (c ? c.arriving : []).filter((e) => !onRun.has(e.id));
+  setHtml($('#desk-arriving'), (runCards ? `<div class="k desk-arr-k">Arriving · sign them in, not again</div>` + runCards : '') + (arriving.length ? `<div class="k desk-arr-k">${runCards ? 'Arriving from crews, on no run' : 'Arriving from crews · sign them in, not again'}</div>` : '') + arriving.map((e) => `
+    <div class="arrive" data-ev="${e.id}"><span class="arrive-main"><strong>${esc(evacueeWho(e))}</strong>${fromOf(e) ? ' from ' + esc(fromOf(e)) : ''} · ${esc(unitLabel(data.member(e.logged_by)))}, ${hhmm(e.status_at || e.created_at)}${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><button type="button" class="btn arrive-btn" data-action="ev-arrived" data-id="${e.id}">They're here</button></div>`).join(''));
   const here = c ? c.here : [];
   const left = c ? c.left : [];
   setHtml($('#desk-here'), f ? `<div class="k">Here now · ${c.people} ${c.people === 1 ? 'person' : 'people'} in ${here.length} record${here.length === 1 ? '' : 's'}, newest first</div>` +
@@ -1273,6 +1290,49 @@ async function theyAreHere(id) {
   state.lastSentAt = Date.now();
   openPerson('arrived', id);
 }
+// They're here for a whole run (v54): every record still coming on it is signed in here, and the run is marked arrived
+async function runArrived(id) {
+  const t = data.transport(id), f = deskShelter();
+  if (!t || !f) return;
+  const b = transportOnBoard(data.evacuees(), t);
+  const now = new Date().toISOString();
+  for (const e of b.coming) {
+    data.local('ic_evacuees', Object.assign({}, e, { status: 'here', facility_id: f.id, status_at: now, signed_in_at: now, signed_in_by: data.user.id }));
+    await outbox.add('evacuee', { id: e.id, update: true, patch: { status: 'here', facility_id: f.id } });
+  }
+  if (t.status !== 'arrived' && t.status !== 'done') {
+    data.local('ic_transports', Object.assign({}, t, { status: 'arrived', status_at: now, left_at: t.left_at || now, arrived_at: now }));
+    await outbox.add('transport', { id: t.id, patch: { status: 'arrived' } });
+  }
+  state.lastSentAt = Date.now();
+  toast(`${transportLabel(t)} signed in: ${aboardText(b.comingPeople, b.coming.length)}`);
+  queueDraw();
+}
+// The driver's run card (v54): a unit driving or in charge of a run sees it on its home screen with one button for the next step
+function drawMyRun() {
+  const el = $('#myrun');
+  const runs = sortTransports(data.myRuns());
+  if (!runs.length) { setHtml(el, ''); return; }
+  const t = runs[0], b = transportOnBoard(data.evacuees(), t), to = data.facility(t.to_facility_id), n = transportNext(t.status), late = transportLate(t);
+  const next = runs[1];
+  setHtml(el, `<div class="run-card${late ? ' late' : ''}" data-tr="${t.id}">
+    <div class="k">You are ${esc(transportLabel(t))} · ${esc(TRANSPORT_STATUS[t.status].toLowerCase())}${late ? ' · late' : ''}</div>
+    <div class="big">${esc(transportFrom(t, { facilityOf, zoneOf: (id) => data.zone(id) }))} → ${esc(to ? placeLabel(to) : 'a facility')}</div>
+    <div class="sub">${esc(capacityText(b.people, t.capacity))} aboard${b.on.length ? ' · ' + b.on.map((e) => esc(evacueeWho(e))).join(', ') : ''} · ${esc(transportTimes(t))}${t.notes ? ' · ' + esc(t.notes) : ''}</div>
+    ${n ? `<button type="button" class="btn" data-action="my-run-step" data-id="${t.id}" data-status="${n[0]}">${esc(n[1])}</button>` : '<div class="sub">Arrived. Operations closes the run from the board.</div>'}
+    ${next ? `<div class="run-next">Next: ${esc(transportLabel(next))} · ${esc(transportFrom(next, { facilityOf, zoneOf: (id) => data.zone(id) }))} → ${esc(placeLabel(data.facility(next.to_facility_id)))} · ${esc(transportTimes(next))}</div>` : ''}
+  </div>`);
+}
+async function myRunStep(id, status) {
+  const t = data.transport(id);
+  if (!t) return;
+  const now = new Date().toISOString();
+  data.local('ic_transports', Object.assign({}, t, { status, status_at: now }, status === 'en_route' ? { left_at: t.left_at || now, arrived_at: null } : status === 'arrived' ? { left_at: t.left_at || now, arrived_at: now } : {}));
+  await outbox.add('transport', { id, patch: { status } });
+  state.lastSentAt = Date.now();
+  toast(transportLabel(t) + ': ' + TRANSPORT_STATUS[status].toLowerCase());
+  queueDraw();
+}
 $('#desk-q').addEventListener('input', (e) => { state.deskQ = e.target.value; drawDeskResults(); });
 $('#ev-who').addEventListener('input', () => { if (state.ev && !state.ev.countTouched) { const n = countIn($('#ev-who').value); $('#ev-count').value = n || 1; } });
 $('#ev-count').addEventListener('input', () => { if (state.ev) state.ev.countTouched = true; });
@@ -1295,19 +1355,27 @@ function blankStPerson() {
   const st = state.st, shelters = data.facilities().filter((f) => f.kind === 'shelter');
   const near = st && st.lat != null ? nearestFacility(shelters, 'shelter', st.lat, st.lng) : null;
   const f = near ? near.facility : shelters[0];
-  return { who: '', cond: '', where: f ? 'f:' + f.id : 'unknown' };
+  return { who: '', cond: '', where: f ? 'f:' + f.id : 'unknown', run: '' };
+}
+// the runs a crew can put its people on: planned or loading, its own division's first (v54)
+function stRuns() { return openRuns(data.transports(), { zoneId: state.st && state.st.zoneId }); }
+function stRunOptions(sel) {
+  const ev = data.evacuees();
+  return `<option value=""${sel ? '' : ' selected'}>Not on a run</option>` + stRuns().map((t) => `<option value="${t.id}"${sel === t.id ? ' selected' : ''}>On ${esc(transportLabel(t))} · ${esc(transportFrom(t, { facilityOf, zoneOf: (id) => data.zone(id) }))} → ${esc(placeLabel(data.facility(t.to_facility_id)))} · ${esc(transportTimes(t))} · ${esc(capacityText(transportOnBoard(ev, t).people, t.capacity))}</option>`).join('');
 }
 function syncStPeople() {
   for (const el of document.querySelectorAll('#st-people [data-stp]')) { const r = state.st.people[Number(el.dataset.i)]; if (r) r[el.dataset.stp] = el.value; }
 }
 function drawStPeople() {
   const st = state.st;
+  const hasRuns = stRuns().length > 0;
   const on = st.id ? data.evacuees().filter((e) => e.structure_id === st.id) : [];
   setHtml($('#st-people'), on.map((e) => `<div class="st-on"><strong>${esc(evacueeWho(e))}</strong>${e.note ? ' · ' + esc(e.note) : ''}<span class="muted"> · ${esc(evacueeWhere(e, facilityOf))}</span></div>`).join('')
-    + st.people.map((r, i) => `<div class="st-row">
+    + st.people.map((r, i) => `<div class="st-row${hasRuns ? ' has-run' : ''}">
       <input class="input" data-stp="who" data-i="${i}" value="${esc(r.who)}" placeholder="Who: a name, or &quot;family of 4&quot;" autocapitalize="words" autocomplete="off" maxlength="120" aria-label="Who">
       <input class="input" data-stp="cond" data-i="${i}" value="${esc(r.cond)}" placeholder="Condition: on oxygen, stable" autocomplete="off" maxlength="200" aria-label="Condition">
       <select class="input" data-stp="where" data-i="${i}" aria-label="Went to" title="Went to">${stWhereOptions(r.where, true)}</select>
+      ${hasRuns ? `<select class="input" data-stp="run" data-i="${i}" aria-label="On which run" title="On which run: the record rides with it and the desk sees it under the run">${stRunOptions(r.run)}</select>` : ''}
       <button type="button" class="btn pp-x" data-action="st-person-x" data-i="${i}" aria-label="Remove this row" title="Remove this row">×</button></div>`).join(''));
 }
 // ---- a structure: who was there and what state it is in
@@ -1388,7 +1456,9 @@ async function saveStructure() {
   // each row a record linked to the house: after the house in the outbox, so the link has something to point at
   for (const r of rows) {
     const eid = uuid(), at = now.toISOString();
-    const ev = { label: r.who, count: r.count, needs: needsIn(r.who + ' ' + r.cond), note: r.cond, structure_id: id, from_text: fields.label || (zone ? zone.code : ''), ...wherePatch(r.where, { facilityOf }) };
+    const run = r.run ? data.transport(r.run) : null;
+    const ev = { label: r.who, count: r.count, needs: needsIn(r.who + ' ' + r.cond), note: r.cond, structure_id: id, from_text: fields.label || (zone ? zone.code : ''), ...wherePatch(r.where, { facilityOf }), transport_id: run ? run.id : null };
+    if (run) { const dest = data.facility(run.to_facility_id); ev.facility_id = run.to_facility_id; ev.status = dest && dest.kind === 'shelter' ? 'on_the_way' : 'moved'; }   // on a run, the record goes where the run goes (ic_evacuee_before)
     data.local('ic_evacuees', Object.assign({ id: eid, incident_id: data.incident.id, prev_facility_id: null, logged_by: data.user.id, status_at: at, signed_in_by: null, signed_in_at: null, created_at: at, updated_at: at, archived_at: null }, ev));
     await outbox.add('evacuee', { id: eid, fields: ev });
   }
@@ -1397,7 +1467,7 @@ async function saveStructure() {
   screen('home');
   const z = zone ? data.zone(zone.id) : null;
   if (z && z.structures && z.cleared >= z.structures) { openClear(); toast('That was the last structure. Is the search of ' + z.code + ' complete?'); }
-  else toast((fields.label || 'Structure') + ' searched' + (z ? ' · ' + z.cleared + ' of ' + z.structures : '') + (rows.length ? ' · ' + rows.length + (rows.length === 1 ? ' record' : ' records') + ' of who went where' : ''));
+  else toast((fields.label || 'Structure') + ' searched' + (z ? ' · ' + z.cleared + ' of ' + z.structures : '') + (rows.length ? ' · ' + rows.length + (rows.length === 1 ? ' record' : ' records') + ' of who went where' + (rows.some((r) => r.run) ? ', ' + rows.filter((r) => r.run).length + ' on a run' : '') : ''));
   queueDraw();
 }
 
@@ -1563,6 +1633,8 @@ document.addEventListener('click', async (e) => {
       case 'ev-new': openPerson('new'); break;
       case 'ev-open': { const e = data.evacuee(btn.dataset.id); if (e) openPerson('edit', e.id); break; }
       case 'ev-arrived': await theyAreHere(btn.dataset.id); break;
+      case 'ev-run-arrived': await runArrived(btn.dataset.id); break;
+      case 'my-run-step': await myRunStep(btn.dataset.id, btn.dataset.status); break;
       case 'ev-need': { const k = btn.dataset.need; if (state.ev.needs.has(k)) state.ev.needs.delete(k); else state.ev.needs.add(k); drawPersonNeeds(); break; }
       case 'ev-save': await savePerson(); break;
       case 'ev-ask': await askOpsToLook(); break;

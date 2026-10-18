@@ -2,7 +2,7 @@
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
 import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT } from './rules.js';
 
-const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes'];
+const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports'];
 const BUCKET = 'ic-photos';
 const OVERLAY_BUCKET = 'ic-overlays';
 const ID_BUCKET = 'ic-ids';
@@ -10,7 +10,7 @@ const EVENTS_LIMIT = 400;
 const MESSAGES_LIMIT = 300;
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map() };
 }
 
 function keyOf(table, row) {
@@ -165,6 +165,7 @@ export class Data {
       put('ic_period_agencies', ag.data); put('ic_commands', cm.data);
     } catch (e) { /* a client without the tables */ }
     try { const { data: ev, error: evErr } = await q('ic_evacuees'); if (!evErr) put('ic_evacuees', ev); } catch (e) { /* a client without the table (migration 0018) */ }
+    try { const { data: tr, error: trErr } = await q('ic_transports'); if (!trErr) put('ic_transports', tr); } catch (e) { /* a client without the table (migration 0031) */ }
     try { const { data: oc, error: ocErr } = await q('ic_ops_codes'); if (!ocErr) put('ic_ops_codes', oc); } catch (e) { /* a client without the table (migration 0019); a unit gets no row */ }
     try {   // the profiles of the incident's members: Operations sees every one, a unit its own
       const ids = (members.data || []).map((m) => m.user_id);
@@ -317,6 +318,27 @@ export class Data {
     this.local('ic_evacuees', data);
     return data;
   }
+  // ---- a transport board (v54): a run from a pickup to a facility, with evacuee records on it (transport_id).
+  // Withdrawn runs are archived, kept for the history (all = true).
+  transports(all) { return [...this.store.transports.values()].filter((t) => all || !t.archived_at); }
+  transport(id) { return this.store.transports.get(id) || null; }
+  async addTransport(id, fields) {
+    const row = Object.assign({ id, incident_id: this.store.incident.id, created_by: this.user.id }, fields);
+    const { data, error } = await this.sb.from('ic_transports').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_transports', data || row);
+    return data || row;
+  }
+  async updateTransport(id, patch) {
+    const { data, error } = await this.sb.from('ic_transports').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_transports', data);
+    return data;
+  }
+  // the runs this account drives or is in charge of, not done: the phone's run card
+  myRuns() { return this.user ? this.transports().filter((t) => t.driver_user_id === this.user.id && t.status !== 'done') : []; }
+  // put a record on a run (or take it off with null): the database moves it to the run's destination
+  async putOnTransport(evacueeId, transportId) { return this.updateEvacuee(evacueeId, { transport_id: transportId || null }); }
   // the facility a unit works at: a shelter desk's shelter (ic_members.facility_id)
   async setUnitFacility(userId, facilityId) { return this.updateMember(userId, { facility_id: facilityId || null }); }
 

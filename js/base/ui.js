@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
+import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, transportsLine } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -142,6 +142,7 @@ function homeHtml(data, state) {
     ${messagesHtml(data, null, 8)}
     ${facilitiesHtml(data)}
     ${shelteredHtml(data, state)}
+    ${transportsHtml(data)}
     ${channelsHtml(data)}
     ${agenciesHtml(data)}
     ${publicHtml(data)}
@@ -655,7 +656,7 @@ function facilityHtml(data, f, state) {
     <div class="kv">
       <span class="k">Contact</span><span>${esc(f.contact) || 'not set'}</span>
       ${shelter ? `<span class="k">Beds</span><span><strong>${esc(bedsText(c.people, f.beds))}</strong>${f.beds == null ? ' <span class="muted">· capacity not set: Beds, below</span>' : ''}</span>
-      <span class="k">Expected</span><span>${f.expected ? esc(f.expected) + ' · ' : ''}<span class="ev-coming${c.arriving.length ? ' on' : ''}">${c.arrivingPeople} on ${c.arrivingPeople === 1 ? 'the' : 'their'} way from crews</span> <span class="muted">(live: records a crew sent here, not yet signed in at the desk)</span></span>
+      <span class="k">Expected</span><span>${runsTo(data.transports(), f.id).length ? `${runsTo(data.transports(), f.id).length} run${runsTo(data.transports(), f.id).length === 1 ? '' : 's'} coming here (below)` : f.expected ? esc(f.expected) + ' · ' : ''}${runsTo(data.transports(), f.id).length ? ' · ' : ''}<span class="ev-coming${c.arriving.length ? ' on' : ''}">${c.arrivingPeople} on ${c.arrivingPeople === 1 ? 'the' : 'their'} way from crews</span> <span class="muted">(live: records a crew sent here, not yet signed in at the desk)</span></span>
       <span class="k">Needs here</span><span>${c.needs.length ? esc(needsTotalsText(c.needs)) : 'none listed'}</span>
       <span class="k">Desk</span><span>${esc(data.units().filter((u) => u.kind === 'shelter_desk' && u.facility_id === f.id && u.status !== 'checked_out').map((u) => unitLabel(u)).join(', ') || 'no shelter desk checked in here yet')}</span>` : ''}
       <span class="k">Address</span><span>${esc(f.address) || 'not set'}</span>
@@ -673,7 +674,7 @@ function facilityHtml(data, f, state) {
       <label>Notes <input name="notes" value="${esc(f.notes)}" placeholder="What the field should know"></label>
       ${shelter ? `<div class="row-2">
         <label>Beds <input name="beds" type="number" min="0" max="100000" inputmode="numeric" value="${f.beds == null ? '' : f.beds}" placeholder="Capacity"></label>
-        <label>Expected <input name="expected" value="${esc(f.expected || '')}" placeholder="Bus 2 from Pecan Park, 12 people, 17:30" maxlength="200"></label>
+        ${runsTo(data.transports(), f.id).length ? `<label>Expected <span class="muted" style="font-size:12.5px;padding-top:8px">The runs on the Transports board say who is coming (v54)${f.expected ? '; the typed line "' + esc(f.expected) + '" gave way' : ''}.</span></label>` : `<label>Expected <input name="expected" value="${esc(f.expected || '')}" placeholder="Bus 2 from Pecan Park, 12 people, 17:30" maxlength="200"></label>`}
       </div>` : ''}
       <div class="row-btns">
         <button class="btn sm" type="button" data-action="pan-to" data-lat="${f.lat}" data-lng="${f.lng}">Show on map</button>
@@ -681,7 +682,7 @@ function facilityHtml(data, f, state) {
         <button class="btn pri sm" type="submit">Save</button>
       </div>
     </form>
-    ${people ? placePeopleHtml(data, f, c, state) : ''}`;
+    ${people ? comingRunsHtml(data, f) + placePeopleHtml(data, f, c, state) : ''}`;
 }
 
 // ---- people sheltered and moved (v26): one record per person or family, on the shelter's or the
@@ -714,7 +715,7 @@ function placePeopleHtml(data, f, c, state) {
   const hospital = f.kind !== 'shelter';
   return `
     ${c.arriving.length ? `<div class="ev-box arriving"><div class="d-row"><span class="k" style="width:auto;flex:1">On the way from crews · ${c.arrivingPeople} ${c.arrivingPeople === 1 ? 'person' : 'people'}</span></div>
-      ${c.arriving.map((e) => `<div class="ev-r" data-ev="${e.id}"><span class="ev-who"><strong>${esc(evacueeWho(e))}</strong>${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><span class="muted">${evFrom(data, e) ? 'from ' + esc(evFrom(data, e)) : ''}</span><span>${esc(needsText(e.needs))}</span><span class="muted">${esc(evOrigin(data, e))}</span><button class="btn sm" data-action="ev-sign-in" data-id="${e.id}" data-facility="${f.id}" title="They have arrived: sign them in here (the desk usually does this)">Signed in</button></div>`).join('')}</div>` : ''}
+      ${c.arriving.map((e) => `<div class="ev-r" data-ev="${e.id}"><span class="ev-who"><strong>${esc(evacueeWho(e))}</strong>${e.note ? `<span class="muted"> · ${esc(e.note)}</span>` : ''}</span><span class="muted">${evFrom(data, e) ? 'from ' + esc(evFrom(data, e)) : ''}</span><span>${esc(needsText(e.needs))}</span><span class="muted">${esc(evOrigin(data, e))}</span><span class="ev-on">${runSelectHtml(data, e, f)}<button class="btn sm" data-action="ev-sign-in" data-id="${e.id}" data-facility="${f.id}" title="They have arrived: sign them in here (the desk usually does this)">Signed in</button></span></div>`).join('')}</div>` : ''}
     <div class="ev-box"><div class="d-row"><span class="k" style="width:auto;flex:1">${hospital ? 'People sent here' : 'People here'} · ${c.people} in ${c.here.length} record${c.here.length === 1 ? '' : 's'}</span><span class="muted" style="font-size:12px">newest first</span></div>
       ${c.here.length ? `<div class="ev-grid">${c.here.map((e) => evRowHtml(data, e, f)).join('')}</div>` : '<div class="muted" style="font-size:12.5px">Nobody signed in yet.</div>'}
       ${c.left.length ? `<div class="k" style="margin-top:4px">Left here</div><div class="ev-grid">${c.left.map((e) => evRowHtml(data, e, f)).join('')}</div>` : ''}
@@ -777,7 +778,112 @@ export function placeListHtml(data, f) { return sectionsHtml(placeListSections(d
 export function placeListText(data, f) { return sectionsText(placeListSections(data, f)); }
 // The sitrep's line: counts only, never a name.
 export function peopleLine(data) {
-  return peopleShelteredLine({ evacuees: data.evacuees(), facilities: data.facilities(true), placeWords: placeWordsOf({ zones: data.zones(), structures: data.structures(), facilities: data.facilities(true) }) });
+  return peopleShelteredLine({ evacuees: data.evacuees(), facilities: data.facilities(true), placeWords: placeWordsOf({ zones: data.zones(), structures: data.structures(), facilities: data.facilities(true) }), transports: data.transports() });
+}
+
+// ---- a transport board (v54): a run is a vehicle from a pickup to a facility, with evacuee records on it.
+// The board is its own overlay (#transports, like #people); the shelter's card lists the runs coming to it; the
+// arriving rows put a record on a run; the sitrep and the briefing count people in transit.
+const trFrom = (data, t) => transportFrom(t, { facilityOf: facilityOf(data), zoneOf: (id) => data.zone(id) });
+const trTo = (data, t) => { const f = data.facility(t.to_facility_id); return f ? (f.name || facilityKind(f.kind)[1]) : 'a facility'; };
+function trDriver(data, t) { return t.driver_user_id ? unitLabel(data.member(t.driver_user_id)) : t.driver_text || 'driver not named'; }
+function runBadge(t) { return `<span class="badge tr-${esc(t.status)}">${TRANSPORT_STATUS[t.status] || t.status}</span>`; }
+// the next step as one button: Loading, Leaving, Arrived, Done
+function runStepBtn(t, cls = 'btn sm') { const n = transportNext(t.status); return n && !t.archived_at ? `<button class="${cls}" data-action="tr-step" data-id="${t.id}" data-status="${n[0]}">${n[1]}</button>` : ''; }
+// the runs a record on its way to this facility can be put on
+function runSelectHtml(data, e, f) {
+  const runs = runsTo(data.transports(), f.id);
+  if (!runs.length) return '';
+  return `<select class="sel" data-select="ev-transport" data-id="${e.id}" aria-label="On which run" title="On which run: the record rides with it and the desk sees it under the run"><option value=""${e.transport_id ? '' : ' selected'}>Not on a run</option>${runs.map((t) => `<option value="${t.id}"${e.transport_id === t.id ? ' selected' : ''}>${esc(transportLabel(t))} · ${esc(transportFrom(t, { facilityOf: facilityOf(data), zoneOf: (id) => data.zone(id) }))} · ${esc(TRANSPORT_STATUS[t.status].toLowerCase())}</option>`).join('')}</select>`;
+}
+// Coming here, on a shelter's or a hospital's card: a row per run with who is on it and the next step
+function comingRunsHtml(data, f) {
+  const runs = runsTo(data.transports(), f.id);
+  if (!runs.length) return '';
+  const ev = data.evacuees();
+  return `<div class="ev-box coming"><div class="d-row"><span class="k" style="width:auto;flex:1">Coming here · ${runs.length} run${runs.length === 1 ? '' : 's'}</span><button class="btn sm" data-action="transports" data-id="${runs[0].id}">Open the board</button></div>
+    ${runs.map((t) => { const b = transportOnBoard(ev, t); return `<div class="tr-c${transportLate(t) ? ' late' : ''}" data-tr="${t.id}"><span><strong>${esc(transportLabel(t))}</strong> from ${esc(trFrom(data, t))} · ${esc(trDriver(data, t))}</span><span>${runBadge(t)} ${esc(transportTimes(t))}${transportLate(t) ? ' <span class="tr-late">late</span>' : ''}</span><span class="tr-c-btn">${runStepBtn(t)}</span><span class="muted tr-c-who">${b.on.length ? esc(aboardText(b.people, b.on.length)) + ': ' + b.on.map((e) => esc(evacueeWho(e)) + (b.signedIn.includes(e) ? ' (signed in)' : '')).join(', ') : 'nobody listed on it yet'}</span></div>`; }).join('')}</div>`;
+}
+// The home panel's section: the count line, the runs under way and planned, New run
+export function transportsHtml(data) {
+  const live = sortTransports(data.transports()), ev = data.evacuees();
+  const shown = live.filter((t) => t.status !== 'done').slice(0, 6);
+  return `
+    <div class="d-row" style="margin-top:6px"><span class="k" style="width:auto;flex:1">Transports</span><button class="btn sm" data-action="transports">Open the board</button><button class="btn sm" data-action="tr-new">New run</button></div>
+    <div class="muted" style="font-size:12.5px">${esc(transportsLine(live, ev))}</div>
+    ${shown.map((t) => { const b = transportOnBoard(ev, t); return `<button class="ur" data-action="transports" data-id="${t.id}"><span class="ur-main"><span class="ur-name">${esc(transportLabel(t))} · ${esc(trFrom(data, t))} → ${esc(trTo(data, t))}</span><span class="ur-sub">${esc(TRANSPORT_STATUS[t.status])} · ${esc(transportTimes(t))} · ${esc(capacityText(b.people, t.capacity))} aboard${transportLate(t) ? ' · <span class="tr-late">late</span>' : ''}</span></span></button>`; }).join('')}
+    ${!live.length ? '<div class="muted" style="font-size:12.5px">None yet. New run plans a bus, a van, an ambulance or a boat run from a pickup to a shelter or a hospital; crews put their people on it from the house record, and the desk sees the whole run coming.</div>' : ''}`;
+}
+// hh:mm typed on the form, as the next such moment: today, or tomorrow when it is well past
+function timeIso(hhmmText) {
+  if (!hhmmText) return null;
+  const [h, m] = String(hhmmText).split(':').map(Number);
+  if (!(h >= 0 && h < 24 && m >= 0 && m < 60)) return null;
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  if (d.getTime() < Date.now() - 6 * 3600000) d.setDate(d.getDate() + 1);
+  return d.toISOString();
+}
+// what the form says, as a row: the fields the board's New run and Edit share
+export function transportFormFields(form) {
+  const from = form.from.value, driver = form.driver.value;
+  return {
+    kind: form.kind.value, label: form.label.value.trim(), capacity: form.capacity.value === '' ? null : Math.min(999, Math.max(1, Math.round(Number(form.capacity.value)) || 1)),
+    from_facility_id: from.startsWith('f:') ? from.slice(2) : null, from_zone_id: from.startsWith('z:') ? from.slice(2) : null, from_text: from ? '' : form.from_text.value.trim(),
+    to_facility_id: form.to.value, leaves_at: timeIso(form.leaves.value), expected_at: timeIso(form.expected.value),
+    driver_user_id: driver || null, driver_text: driver ? '' : form.driver_text.value.trim(), notes: form.notes.value.trim()
+  };
+}
+function transportFormHtml(data, t) {
+  const places = data.facilities(), zones = data.zones(), units = data.units().filter((u) => u.status !== 'checked_out');
+  const dest = places.filter((f) => PERSON_PLACES.includes(f.kind)).sort((a, b) => PERSON_PLACES.indexOf(a.kind) - PERSON_PLACES.indexOf(b.kind)).concat(places.filter((f) => !PERSON_PLACES.includes(f.kind)));   // shelters first, then hospitals, then the rest
+  const fromVal = t ? (t.from_facility_id ? 'f:' + t.from_facility_id : t.from_zone_id ? 'z:' + t.from_zone_id : '') : '';
+  return `<form class="inline-form tr-form" data-form="${t ? 'transport-edit' : 'transport-add'}"${t ? ` data-id="${t.id}"` : ''}>
+    <div class="k">${t ? 'Edit ' + esc(transportLabel(t)) : 'New run'}</div>
+    <div class="row-3">
+      <label>Kind <select name="kind" class="sel">${TRANSPORT_KINDS.map(([v, label]) => `<option value="${v}"${(t ? t.kind : 'bus') === v ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></label>
+      <label>Label <input name="label" maxlength="60" placeholder="Bus 4" value="${esc(t ? t.label : '')}" autocomplete="off"></label>
+      <label>Seats <input name="capacity" type="number" min="1" max="999" inputmode="numeric" placeholder="40" value="${t && t.capacity != null ? t.capacity : ''}"></label>
+    </div>
+    <div class="row-2">
+      <label>From <select name="from" class="sel"><option value=""${fromVal === '' ? ' selected' : ''}>Somewhere else (type it)</option>${places.map((f) => `<option value="f:${f.id}"${fromVal === 'f:' + f.id ? ' selected' : ''}>${esc(f.name || facilityKind(f.kind)[1])}</option>`).join('')}${zones.map((z) => `<option value="z:${z.id}"${fromVal === 'z:' + z.id ? ' selected' : ''}>${esc(z.code)}${z.name ? ' ' + esc(z.name) : ''}</option>`).join('')}</select></label>
+      <label>Pickup, in words <input name="from_text" maxlength="120" placeholder="Pecan Park pickup" value="${esc(t ? t.from_text : '')}" autocomplete="off"></label>
+    </div>
+    <div class="row-3">
+      <label>To <select name="to" class="sel" required>${dest.map((f) => `<option value="${f.id}"${(t ? t.to_facility_id : (dest[0] || {}).id) === f.id ? ' selected' : ''}>${esc(f.name || facilityKind(f.kind)[1])} (${esc(facilityKind(f.kind)[1].toLowerCase())})</option>`).join('')}</select></label>
+      <label>Leaves <input name="leaves" type="time" value="${t ? timeValue(t.leaves_at) : ''}"></label>
+      <label>Expected <input name="expected" type="time" value="${t ? timeValue(t.expected_at) : ''}"></label>
+    </div>
+    <div class="row-2">
+      <label>Driver <select name="driver" class="sel"><option value=""${t && t.driver_user_id ? '' : ' selected'}>Not in the app (name and phone)</option>${units.map((u) => `<option value="${u.user_id}"${t && t.driver_user_id === u.user_id ? ' selected' : ''}>${esc(unitWithKind(u))}</option>`).join('')}</select></label>
+      <label>Name and phone <input name="driver_text" maxlength="120" placeholder="Travis ISD, 512 555 0177" value="${esc(t ? t.driver_text : '')}" autocomplete="off"></label>
+    </div>
+    <label>Notes <input name="notes" maxlength="200" placeholder="Wheelchair lift; pets in crates" value="${esc(t ? t.notes : '')}" autocomplete="off"></label>
+    <div class="row-btns"><button class="btn sm" type="button" data-action="tr-edit-cancel">Cancel</button>${t && !t.archived_at ? `<button class="btn sm" type="button" data-action="tr-withdraw" data-id="${t.id}" title="Withdrawn, never removed: it stays in the history and can be put back">Withdraw</button>` : ''}<button class="btn pri sm" type="submit">${t ? 'Save' : 'Save the run'}</button></div>
+    ${dest.length ? '' : '<div class="muted" style="font-size:12.5px">No facility to go to yet: place a shelter or a hospital first.</div>'}
+  </form>`;
+}
+export function transportsPageHtml(data, state) {
+  const ts = state.tr || {}, ev = data.evacuees();
+  const live = sortTransports(data.transports()), gone = data.transports(true).filter((t) => t.archived_at);
+  const editing = ts.edit ? data.transport(ts.edit) : null;
+  const row = (t) => {
+    const b = transportOnBoard(ev, t), late = transportLate(t), open = ts.open === t.id;
+    return `<div class="tr-row st-${esc(t.status)}${late ? ' late' : ''}${t.archived_at ? ' gone' : ''}${open ? ' open' : ''}" data-id="${t.id}">
+      <span class="tr-run"><strong>${esc(transportLabel(t))}</strong><span class="muted">${esc(transportKindText(t.kind))} · ${esc(trDriver(data, t))}</span></span>
+      <span class="tr-route">${esc(trFrom(data, t))} → ${esc(trTo(data, t))}${t.notes ? `<span class="muted"> · ${esc(t.notes)}</span>` : ''}</span>
+      <span class="tr-aboard"><strong>${esc(capacityText(b.people, t.capacity))}</strong><span class="muted">${b.on.length ? b.on.length + (b.on.length === 1 ? ' record' : ' records') + (b.signedIn.length ? ', ' + b.signedInPeople + ' signed in' : '') : 'nobody listed'}</span></span>
+      <span class="tr-times">${esc(transportTimes(t))}${late ? ' <span class="tr-late">late</span>' : ''}</span>
+      ${runBadge(t)}
+      <span class="tr-btns">${t.archived_at ? `<button class="btn sm" data-action="tr-restore" data-id="${t.id}">Put back</button>` : runStepBtn(t) + `<button class="btn sm" data-action="tr-edit" data-id="${t.id}">Edit</button>`}<button class="btn sm" data-action="tr-open" data-id="${t.id}" aria-expanded="${open}">${open ? 'Hide' : 'Who is on it'}</button></span>
+      ${open ? `<div class="tr-on">${b.on.length ? b.on.map((e) => `<div class="tr-on-row"><span><strong>${esc(evacueeWho(e))}</strong>${evFrom(data, e) ? ' · from ' + esc(evFrom(data, e)) : ''}${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${e.note ? ` · <span class="muted">${esc(e.note)}</span>` : ''}</span><span class="muted">${esc(evacueeWhere(e, facilityOf(data)))}</span>${!t.archived_at && !b.signedIn.includes(e) ? `<button class="btn sm" data-action="tr-take-off" data-id="${e.id}" title="Off this run; the record stays where it says">Take off</button>` : ''}</div>`).join('') : '<div class="muted" style="font-size:12.5px">Nobody on it yet. A crew puts its people on from the house record; Operations from the shelter card\'s arriving rows.</div>'}</div>` : ''}
+    </div>`;
+  };
+  const under = live.filter((t) => t.status === 'loading' || t.status === 'en_route');
+  return `
+    <div class="pp-top"><span class="pp-count">${esc(transportsLine(live, ev))}${under.length ? '' : ''}</span>${ts.add || editing ? '' : '<button class="btn sm" data-action="tr-add-toggle">New run</button>'}</div>
+    ${ts.add || editing ? transportFormHtml(data, editing) : ''}
+    ${live.length ? live.map(row).join('') : '<p class="muted">No run on record yet. New run plans a bus, a van, an ambulance or a boat run from a pickup to a shelter or a hospital. A crew at the pickup puts its people on it from the house record; the desk at the destination sees the whole run under Arriving and signs it in as one; the 214 has every step.</p>'}
+    ${gone.length ? `<div class="d-row" style="margin-top:8px"><button class="btn sm" data-action="tr-gone-toggle">${ts.gone ? 'Hide withdrawn' : gone.length + ' withdrawn'}</button></div>${ts.gone ? gone.map(row).join('') : ''}` : ''}`;
 }
 
 function structureHtml(data, s) {
@@ -1179,6 +1285,7 @@ export function briefingSections(data) {
   const facilities = data.facilities();
   S.push({ title: 'Facilities', lines: facilities.length ? facilities.map((f) => { const c = f.kind === 'shelter' ? placeCounts(data.evacuees(), f.id) : null; return `${facilityLabel(f)}${c ? ' · ' + bedsText(c.people, f.beds) + (f.beds != null ? ' beds' : '') + (c.arrivingPeople ? ', ' + c.arrivingPeople + ' on the way' : '') + (f.expected ? ', expecting ' + f.expected : '') : ''}${f.contact ? ' · ' + f.contact : ''}${f.notes ? ' · ' + f.notes : ''}`; }) : ['None set'] });
   if (data.evacuees().length) S[S.length - 1].lines.push(peopleLine(data));
+  if (data.transports(true).length) S[S.length - 1].lines.push(transportsLine(data.transports(), data.evacuees()));   // v54
   const channels = data.channels();
   S.push({ title: 'Communications (ICS 205)', lines: channels.length ? channels.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
   const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
@@ -1256,6 +1363,7 @@ export function sitrepSections(data) {
     `${structs.filter((s) => s.status === 'searched').length} of ${structs.length} structures on record searched`,
     `People: ${help} needing help, ${sheltering} sheltering in place, ${refused} refused to leave`,
     peopleLine(data),
+    transportsLine(data.transports(), data.evacuees()),   // v54
     `Damage: ${damaged.major} major, ${damaged.destroyed} destroyed`,
     `Hazards open: ${data.hazards().length} · emergencies open: ${data.alerts().length}`
   ] });
@@ -1374,7 +1482,7 @@ export function sitrepFormHtml(data) {
 // lines Operations marked notable), searched, with the hours marked and every line linked to the
 // thing it is about.
 export const LOG_GROUPS = [['all', 'All'], ['new', 'Since you looked'], ['notable', 'Notable'], ['field', 'From the field'], ['msg', 'Messages'], ['ops', 'Operations'], ['note', 'Notes']];   // 'new' is the lines since state.log.sinceAt (v45)
-const GROUP_OF = { shelter: 'field', request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
+const GROUP_OF = { shelter: 'field', transport: 'field', request: 'field', photo: 'field', clear: 'field', hazard: 'field', help: 'field', msg: 'msg', safety: 'msg', par: 'msg', ops: 'ops', status: 'ops', note: 'note' };
 export function logGroupOf(kind) { return GROUP_OF[kind] || 'ops'; }
 const inGroup = (e, g, sinceAt) => !g || g === 'all' || (g === 'notable' ? !!e.notable : g === 'new' ? !!sinceAt && e.at > sinceAt : logGroupOf(e.kind) === g);
 export function logFilter(events, { group, q, sinceAt } = {}) {
@@ -1401,6 +1509,7 @@ function logLink(e) {
     case 'ic_objectives': return `<button class="llink" data-action="period">Open period</button>`;
     case 'ic_people': return `<button class="llink" data-action="people">Open people</button>`;
     case 'ic_evacuees': return `<button class="llink" data-action="select-evacuee" data-id="${id}">Where now</button>`;
+    case 'ic_transports': return `<button class="llink" data-action="transports" data-id="${id}">Open the board</button>`;
     default: return '';
   }
 }

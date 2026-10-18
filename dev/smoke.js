@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -941,7 +941,7 @@ async function log(check) {
   check('lines link to the thing they are about', $$('#log .llink[data-action="select-structure"]').length >= 1 && $$('#log .llink[data-action="select-facility"]').length >= 1 && $$('#log .llink[data-action="select-photo"]').length >= 3, $$('#log .llink').length);
   $('[data-action="log-group"][data-group="field"]').click();
   await until(() => rows() < all);
-  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request|shelter)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
+  check('the Field filter keeps only what the units sent', rows() > 0 && $$('#log .log-row').every((r) => /log-(photo|clear|hazard|help|request|shelter|transport)/.test(r.className)) && $('[data-action="log-group"][data-group="field"]').classList.contains('on'), rows());
   $('[data-action="log-group"][data-group="all"]').click();
   await until(() => rows() === all);
   const q = $('#log-search');
@@ -1640,6 +1640,139 @@ async function rewalks(check) {
   }
 }
 
+// ---- the transport board (v54): a run from a pickup to a facility with evacuee records on it. The base plans
+// a run and presses its steps, the gym card lists the runs coming, a crew puts its people on a run from the house
+// record, a unit that drives sees its run card, and the desk signs a whole run in with one tap.
+async function transports(check) {
+  const confirmWas = window.confirm; window.confirm = () => true;
+  for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+  let P = null;
+  const gym = M().ids.facilities[2], a2 = ZONE('A-2');
+  const TR = M().tables.ic_transports.map((t) => t.id);
+  const run = (label) => base.transports(true).find((t) => t.label === label) || null;
+  const rec = (label) => base.evacuees(true).find((e) => e.label === label) || null;
+  const openFacility = async (id) => {
+    const b = document.createElement('button'); b.dataset.action = 'select-facility'; b.dataset.id = id; b.hidden = true; document.body.appendChild(b); b.click(); b.remove();
+    return until(() => $('#panel form[data-form="facility-edit"]') && $('#panel .title') && base.facility(id) && $('#panel .title').textContent.startsWith(base.facility(id).name));
+  };
+  try {
+    check('seeded: three runs, Bus 2 en route to the gym with the family of 4 on it, the home panel counts people in transit', base.transports().length === 3 && run('Bus 2').status === 'en_route' && rec('family of 4').transport_id === run('Bus 2').id && rec('family of 4').status === 'on_the_way' && has('#panel', 'transports: 1 under way with 4 people in transit, 1 planned, 1 arrived, 0 done'), text('#panel').slice(0, 300));
+    check('the seeded log names the run the crew put them on', !!eventText(base, 'Unit 3 sent family of 4 from 112 Pecan Ln to High school gym on Bus 2, needs pets') && !!eventText(base, 'Bus 2 left Pecan Park pickup for High school gym with 4 people in 1 record'));
+
+    // ---- the board from the header
+    $('.top-btns [data-action="transports"]').click();
+    await until(() => !$('#transports').hidden && $$('#transports-page .tr-row').length === 3);
+    check('Transports on the header opens the board: a row per run, under way first, then planned, then arrived', $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Bus 3|Ambulance 1' && has('#transports-page .tr-row', 'pecan park pickup → high school gym', '4 of 40', 'en route') && $('#transports-page .tr-row [data-action="tr-step"]').textContent === 'Arrived', $$('#transports-page .tr-row').map((r) => r.innerText.replace(/\s+/g, ' ').slice(0, 80)).join(' | '));
+    $('#transports-page [data-action="tr-add-toggle"]').click();
+    const f = await until(() => $('#transports-page form[data-form="transport-add"]'));
+    check('New run opens the form with the label focused and the shelter as the destination', !!f && await until(() => document.activeElement === f.label, 1500) && f.to.value === gym && [...f.kind.options].map((o) => o.textContent).join('|') === 'Bus|Van|Ambulance|Boat run|High-water vehicle|Transport', f && f.to.value);
+    f.kind.value = 'van'; f.label.value = 'Van 4'; f.capacity.value = '12'; f.from.value = 'z:' + a2; f.to.value = gym; f.leaves.value = '13:00'; f.expected.value = '13:20'; f.driver.value = USERS().unit2; f.notes.value = 'wheelchair lift';
+    f.requestSubmit();
+    const van = await until(() => run('Van 4'));
+    check('Save the run makes it: planned, from A-2, to the gym, 12 seats, Unit 2 driving, and the log says so', !!van && van.status === 'planned' && van.from_zone_id === a2 && van.to_facility_id === gym && van.capacity === 12 && van.driver_user_id === USERS().unit2 && van.notes === 'wheelchair lift' && !!van.leaves_at && await until(() => eventText(base, 'Van 4 planned by Operations: A-2 Pecan Mobile Home Park to High school gym, 12 seats, driver Unit 2')), logTexts()[0]);
+    check('the new run\'s row is open with nobody on it yet, in its place among the planned', await until(() => $(`#transports-page .tr-row[data-id="${van.id}"].open`)) && has(`#transports-page .tr-row[data-id="${van.id}"]`, 'nobody on it yet', 'leaves 13:00 · expected 13:20') && $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Bus 3|Van 4|Ambulance 1', $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|'));
+    $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-step"]`).click();
+    check('Loading is one press: the status, the stamp, the log line and the row moving up with the runs under way', await until(() => run('Van 4').status === 'loading') && await until(() => eventText(base, 'Van 4 loading at A-2 Pecan Mobile Home Park for High school gym')) && await until(() => $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Van 4|Bus 3|Ambulance 1') && $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-step"]`).textContent === 'Leaving', logTexts()[0]);
+    const amb = run('Ambulance 1');
+    $(`#transports-page .tr-row[data-id="${amb.id}"] [data-action="tr-step"]`).click();
+    check('Done on an arrived run is final, with who rode it in the log', await until(() => run('Ambulance 1').status === 'done') && await until(() => eventText(base, 'Ambulance 1 done at Dell Seton Medical Center, 1 person in 1 record')) && !$(`#transports-page .tr-row[data-id="${amb.id}"] [data-action="tr-step"]`), logTexts()[0]);
+    const e1 = await (async () => { try { await base.updateTransport(amb.id, { status: 'en_route' }); return null; } catch (e) { return e; } })();
+    check('a done run stays done', !!e1 && /done stays done/.test(e1.message) && run('Ambulance 1').status === 'done', e1 && e1.message);
+    $('[data-action="close-transports"]').click();
+
+    // ---- the gym card: the typed Expected line gave way to the runs coming here; a record is put on a run from its row
+    await openFacility(gym);
+    check('the gym card lists the runs coming here, the typed Expected line gives way, and each run has its next step', !$('#panel input[name="expected"]') && has('#panel .ev-box.coming', 'coming here · 3 runs', 'bus 2 from pecan park pickup', 'en route', '4 people in 1 record: family of 4', 'van 4 from a-2', 'loading', 'nobody listed on it yet', 'bus 3 from a-1') && has('#panel', 'the runs on the transports board say who is coming') && $$('#panel .ev-box.coming [data-action="tr-step"]').length === 3, text('#panel .ev-box.coming').slice(0, 300));
+    const sel = $('#panel [data-select="ev-transport"]');
+    check('the family on its way has an On-run select set to Bus 2, offering the runs coming here', !!sel && sel.value === run('Bus 2').id && [...sel.options].map((o) => o.textContent).join('|') === 'Not on a run|Bus 2 · Pecan Park pickup · en route|Van 4 · A-2 Pecan Mobile Home Park · loading|Bus 3 · A-1 Riverside Drive, east · planned', sel && [...sel.options].map((o) => o.textContent).join('|'));
+    sel.value = run('Bus 3').id; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    check('moving them to Bus 3 is one line in the log, the record still on its way to the gym', await until(() => rec('family of 4').transport_id === run('Bus 3').id) && rec('family of 4').status === 'on_the_way' && rec('family of 4').facility_id === gym && await until(() => eventText(base, 'Operations put family of 4 from 112 Pecan Ln on Bus 3 to High school gym')), logTexts()[0]);
+    const sel2 = await until(() => { const x = $('#panel [data-select="ev-transport"]'); return x && x.value === run('Bus 3').id ? x : null; });
+    sel2.value = run('Bus 2').id; sel2.dispatchEvent(new Event('change', { bubbles: true }));
+    await until(() => rec('family of 4').transport_id === run('Bus 2').id);
+    check('and back on Bus 2 for the desk', rec('family of 4').transport_id === run('Bus 2').id && await until(() => eventText(base, 'Operations put family of 4 from 112 Pecan Ln on Bus 2 to High school gym')), logTexts()[0]);
+
+    // ---- a crew's house record (Unit 3's phone): On which run, its own division's run first
+    P = await phoneFrame();
+    check('the field app opens at 375 px as Unit 3, with no run card (it drives nothing)', !!P.ready && !P.$('#myrun .run-card'));
+    await P.act('briefed');
+    await P.act('addr-clear');
+    P.$('#structure-label').value = '116 Pecan Ln';
+    await P.act('help-up');
+    const rs = P.$('#st-people [data-stp="run"]');
+    check('the first person counted opens a row with On which run: Van 4 (loading from A-2, the crew\'s own division) first, Bus 3 next, Bus 2 (gone) not offered', !!rs && [...rs.options].map((o) => o.textContent.replace(/ · (leaves|loading since) \d\d:\d\d( · expected \d\d:\d\d)?/, '')).join('|') === 'Not on a run|On Van 4 · A-2 Pecan Mobile Home Park → High school gym · 0 of 12|On Bus 3 · A-1 Riverside Drive, east → High school gym · 0 of 40' && P.$('#st-people .st-row').classList.contains('has-run'), rs && [...rs.options].map((o) => o.textContent).join('|'));
+    check('the sheet is whole at 375 px with the run select', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#st-people [data-stp="who"]').value = 'Patel, family of 2'; P.$('#st-people [data-stp="cond"]').value = 'wet, cold'; P.$('#st-people [data-stp="where"]').value = 'f:' + gym; rs.value = van.id;
+    await P.act('save-structure');
+    const patel = await until(() => rec('Patel, family of 2'), 70000);
+    check('saved, the record is on Van 4 and on its way to the gym, and the log names the run', !!patel && patel.transport_id === van.id && patel.status === 'on_the_way' && patel.facility_id === gym && patel.count === 2 && await until(() => eventText(base, 'Unit 3 sent Patel, family of 2 from 116 Pecan Ln to High school gym on Van 4'), 10000), logTexts()[0]);
+    check('the phone said how many went on a run', /1 record of who went where, 1 on a run/.test(P.text('#toast')), P.text('#toast'));
+
+    // ---- a driver who is a unit: the run card on the home screen, one button per step
+    await base.updateTransport(van.id, { driver_user_id: USERS().unit3 });
+    check('made Van 4\'s driver, Unit 3\'s phone shows the run card: You are Van 4, the route, who is aboard, Leaving', await until(() => P.$('#myrun .run-card'), 30000) && /you are van 4 · loading/.test(P.text('#myrun')) && /a-2 pecan mobile home park → high school gym/.test(P.text('#myrun')) && /2 of 12 aboard · patel, family of 2/.test(P.text('#myrun')) && P.$('#myrun [data-action="my-run-step"]').textContent === 'Leaving', P.text('#myrun'));
+    check('the home screen is whole at 375 px with the card', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#myrun [data-action="my-run-step"]').click();
+    check('Leaving on the phone sends the step: en route, left_at stamped, the log counts who left on it, the button is Arrived', await until(() => run('Van 4').status === 'en_route', 70000) && !!run('Van 4').left_at && await until(() => eventText(base, 'Van 4 left A-2 Pecan Mobile Home Park for High school gym with 2 people in 1 record'), 10000) && await until(() => P.$('#myrun [data-action="my-run-step"]') && P.$('#myrun [data-action="my-run-step"]').textContent === 'Arrived', 10000), logTexts()[0]);
+
+    // ---- the shelter desk: Arriving by run, They're here for the whole bus
+    await P.act('menu');
+    await P.act('sign-out');
+    await until(() => P.shown('#auth'));
+    await phoneSignIn(P, 'tr-desk@mock.local', true);
+    await until(() => P.shown('#s-identify'));
+    P.$('#id-name').value = 'Sam Lee'; P.$('#id-phone').value = '512 555 0198';
+    await P.act('id-save');
+    await P.act('jp-kind', { kind: 'shelter_desk' });
+    const jf = P.$('#join-form');
+    jf.code.value = 'CEDAR7'; jf.unit.value = 'Gym desk'; jf.agency.value = 'Red Cross';
+    jf.requestSubmit();
+    await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Gym desk', 8000);
+    await until(() => P.shown('#s-briefing'), 8000);
+    await P.act('briefed');
+    check('her home says the runs coming, not the typed line, and Arriving is by run: Bus 2 with the family of 4, Van 4 with the Patels, Bus 3 with nobody listed yet', await until(() => P.shown('#desk') && P.$$('#desk-arriving .arrive-run').length === 3, 10000) && /3 runs coming/.test(P.text('#desk-head')) && !/expected: bus 2 from pecan park/.test(P.text('#desk-head')) && /bus 2 from pecan park pickup en route 4 people in 1 record/.test(P.text('#desk-arriving')) && /family of 4 · from 112 pecan ln · pets/.test(P.text('#desk-arriving')) && /van 4 from a-2 pecan mobile home park en route 2 people in 1 record/.test(P.text('#desk-arriving')) && /bus 3 from a-1 riverside drive, east planned/.test(P.text('#desk-arriving')) && /nobody listed on it yet/.test(P.text('#desk-arriving')), P.text('#desk-arriving').slice(0, 400));
+    check('each run with people has They\'re here for all of them, and Here per family', P.$$('#desk-arriving [data-action="ev-run-arrived"]').length === 2 && P.$$('#desk-arriving [data-action="ev-arrived"]').length === 2 && /they're here, all 4/.test(P.text('#desk-arriving')), P.text('#desk-arriving').slice(0, 300));
+    check('People here at 375 px: nothing sideways', P.sideways().length === 0, P.sideways().join('; '));
+    const desk = base.units().find((u) => u.unit_name === 'Gym desk');
+    P.$$('#desk-arriving .arrive-run').find((r) => /bus 2/i.test(r.textContent)).querySelector('[data-action="ev-run-arrived"]').click();
+    check('They\'re here, all 4: the family is signed in by the desk, Bus 2 is arrived, both in the log', await until(() => rec('family of 4').status === 'here' && rec('family of 4').signed_in_by === desk.user_id, 70000) && await until(() => run('Bus 2').status === 'arrived', 70000) && !!run('Bus 2').arrived_at && await until(() => eventText(base, 'Bus 2 arrived at High school gym with 4 people in 1 record'), 10000) && !!eventText(base, 'High school gym: Gym desk signed in family of 4, from 112 Pecan Ln, needs pets'), logTexts().slice(0, 3).join(' | '));
+    check('the record stays on Bus 2 for the history, the count is 13 of 60, and Bus 2 reads all signed in', rec('family of 4').transport_id === run('Bus 2').id && await until(() => /13 of 60/.test(P.text('#desk-head')), 10000) && await until(() => /bus 2 from pecan park pickup arrived/.test(P.text('#desk-arriving')) && /all 4 signed in/.test(P.text('#desk-arriving')), 10000), P.text('#desk-head') + ' | ' + P.text('#desk-arriving').slice(0, 200));
+    check('the toast counted the bus', /bus 2 signed in: 4 people in 1 record/.test(P.text('#toast')), P.text('#toast'));
+
+    // ---- the base again: who is on it, take off, withdraw, the reports
+    $('.top-btns [data-action="transports"]').click();
+    await until(() => !$('#transports').hidden && $(`#transports-page .tr-row[data-id="${van.id}"]`));
+    if (!$(`#transports-page .tr-row[data-id="${van.id}"].open`)) $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-open"]`).click();
+    await until(() => $(`#transports-page .tr-row[data-id="${van.id}"] .tr-on`));
+    check('Who is on it lists the Patels with where they are and Take off', has(`#transports-page .tr-row[data-id="${van.id}"] .tr-on`, 'patel, family of 2', 'from 116 pecan ln', 'on the way to high school gym') && !!$(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-take-off"]`), text(`#transports-page .tr-row[data-id="${van.id}"] .tr-on`));
+    $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-take-off"]`).click();
+    check('Take off leaves the record where it says and logs it', await until(() => rec('Patel, family of 2').transport_id === null) && rec('Patel, family of 2').status === 'on_the_way' && await until(() => eventText(base, 'Patel, family of 2 taken off Van 4 by Operations')), logTexts()[0]);
+    const bus3 = run('Bus 3');
+    $(`#transports-page .tr-row[data-id="${bus3.id}"] [data-action="tr-edit"]`).click();
+    await until(() => $('#transports-page form[data-form="transport-edit"]'));
+    check('Edit opens the form filled in, with Withdraw', $('#transports-page form[data-form="transport-edit"]').label.value === 'Bus 3' && $('#transports-page form[data-form="transport-edit"]').from.value === 'z:' + ZONE('A-1') && !!$('#transports-page [data-action="tr-withdraw"]'));
+    $('#transports-page [data-action="tr-withdraw"]').click();
+    check('Withdraw archives the run, logs it, and folds it under withdrawn; nothing is deleted', await until(() => run('Bus 3').archived_at) && await until(() => eventText(base, 'Bus 3 withdrawn by Operations')) && await until(() => has('#transports-page', '1 withdrawn')) && !$(`#transports-page .tr-row[data-id="${bus3.id}"]`) && M().tables.ic_transports.some((t) => t.id === bus3.id), logTexts()[0]);
+    $('#transports-page [data-action="tr-gone-toggle"]').click();
+    await until(() => $(`#transports-page .tr-row[data-id="${bus3.id}"].gone`));
+    $(`#transports-page .tr-row[data-id="${bus3.id}"] [data-action="tr-restore"]`).click();
+    check('Put back brings it back', await until(() => !run('Bus 3').archived_at) && await until(() => eventText(base, 'Bus 3 put back by Operations')), logTexts()[0]);
+    $('[data-action="close-transports"]').click();
+    $('[data-action="sitrep"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-page', 'incident status summary'));
+    check('the situation report counts the runs and the people in transit', has('#briefing-page', 'transports: 1 under way with 0 people in transit, 1 planned, 1 arrived, 1 done'), (text('#briefing-page').match(/transports: [^·]*/) || [])[0]);
+    $('#briefing [data-action="close-briefing"]').click();
+    check('the log line for a run opens the board', (() => { const row = $$('#log .log-row').find((r) => /van 4 left/i.test(r.textContent)); return !!row && !!row.querySelector('[data-action="transports"]'); })());
+  } finally {
+    window.confirm = confirmWas;
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    if (!$('#transports').hidden) $('[data-action="close-transports"]').click();
+    if (!$('#briefing').hidden) $('#briefing [data-action="close-briefing"]').click();
+    await wait(100);
+  }
+}
+
 // ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.
 async function demo(check) {
   await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });
@@ -2054,7 +2187,7 @@ async function evacuees(check) {
     check('her home is People here: the gym\'s count against its beds, no division card and no search buttons', await until(() => P.shown('#desk') && /high school gym · 9 of 60/.test(P.text('#desk-head'))) && !P.shown('.actions') && !P.shown('#assignment') && !P.shown('#mini') && P.shown('.help'), P.text('#desk-head'));
     const desk = base.units().find((u) => u.unit_name === 'Gym desk');
     check('the desk\'s shelter is saved on her unit, so the base knows whose desk it is', await until(() => base.member(desk.user_id).facility_id === gym) && base.member(desk.user_id).kind === 'shelter_desk');
-    check('Arriving from crews lists the records on their way here, with who sent them', P.$$('#desk-arriving .arrive').length === 2 && /reyes, family of 2 from 114 pecan ln · a-2 · unit 3/.test(P.text('#desk-arriving')) && /family of 4 from 112 pecan ln · unit 3/.test(P.text('#desk-arriving')), P.text('#desk-arriving'));
+    check('Arriving lists the records on their way here, with who sent them: the Reyes family on no run as a row, the family of 4 under Bus 2 (v54)', P.$$('#desk-arriving .arrive').length === 1 && /reyes, family of 2 from 114 pecan ln · a-2 · unit 3/.test(P.text('#desk-arriving')) && P.$$('#desk-arriving .arrive-run').length >= 1 && /bus 2 from pecan park pickup/.test(P.text('#desk-arriving')) && /family of 4 · from 112 pecan ln/.test(P.text('#desk-arriving')), P.text('#desk-arriving'));
     check('People here at 375 px: nothing sideways, every button whole', P.sideways().length === 0, P.sideways().join('; '));
 
     // They're here: one tap signs the crew's record in, then the name
@@ -2066,7 +2199,7 @@ async function evacuees(check) {
     P.$('#ev-who').value = 'Reyes, Ana and Luis';
     await P.act('ev-save');
     check('the name she adds is on the record and in the log', await until(() => eventText(base, 'Reyes, family of 2 now on record as Reyes, Ana and Luis (2)')) && !!rec('Reyes, Ana and Luis'), logTexts()[0]);
-    check('her count is 11 of 60 now, the arrival gone from Arriving', await until(() => /11 of 60/.test(P.text('#desk-head'))) && P.$$('#desk-arriving .arrive').length === 1, P.text('#desk-head'));
+    check('her count is 11 of 60 now, the arrival gone from Arriving', await until(() => /11 of 60/.test(P.text('#desk-head'))) && P.$$('#desk-arriving .arrive').length === 0 && /family of 4/.test(P.text('#desk-arriving')), P.text('#desk-head') + ' | ' + P.text('#desk-arriving').slice(0, 120));
 
     // a walk-up, with only who and a need
     await P.act('ev-new');
@@ -2107,9 +2240,10 @@ async function evacuees(check) {
     check('People here, newest first: Lopez, then the Reyes family', /lopez, ana/i.test(rows()[0] ? rows()[0].textContent : '') && /reyes, ana and luis/i.test(rows()[1] ? rows()[1].textContent : ''), [...rows()].map((r) => r.textContent.trim().slice(0, 30)).join(' | '));
     check('a moved record shows where it went', /nguyen, tam[\s\S]*dell seton medical center since \d\d:\d\d/i.test(text('#panel')), text('#panel').slice(-600));
     const ff = $('#panel form[data-form="facility-edit"]');
-    ff.beds.value = '40'; ff.expected.value = 'Bus 3 from Bee Creek, 8 people, 19:00';
+    check('the typed Expected box is gone from the gym\'s card because runs are coming here; the board says who is coming (v54)', !ff.expected && has('#panel', 'the runs on the transports board say who is coming') && !!$('#panel .ev-box.coming'), text('#panel').slice(0, 300));
+    ff.beds.value = '40';
     ff.requestSubmit();
-    check('beds and expected are set on the card, logged, and the count reads against them', await until(() => eventText(base, 'Shelter: High school gym has 40 beds')) && !!eventText(base, 'Shelter: High school gym expecting Bus 3 from Bee Creek, 8 people, 19:00') && !eventText(base, 'Shelter: High school gym updated') && await until(() => has('#panel', '11 of 40')), logTexts().slice(0, 3).join(' | '));
+    check('beds are set on the card, logged, and the count reads against them', await until(() => eventText(base, 'Shelter: High school gym has 40 beds')) && !eventText(base, 'Shelter: High school gym updated') && await until(() => has('#panel', '11 of 40')), logTexts().slice(0, 3).join(' | '));
     check('the desk\'s phone follows: 11 of 40', await until(() => /11 of 40/.test(P.text('#desk-head'))), P.text('#desk-head'));
     $('#panel [data-action="ev-add-toggle"]').click();
     const af = await until(() => $('#panel form[data-form="evacuee-add"]'));
@@ -2154,7 +2288,7 @@ async function evacuees(check) {
     // the situation report: counts, never a name
     $('[data-action="sitrep"]').click();
     await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
-    check('the situation report says people sheltered, beds, moved to hospital, expected and records with no name yet', has('#briefing-page', 'people sheltered: 9 at high school gym (40 beds), 3 moved to hospital, 12 expected · 2 records with no name yet'), (text('#briefing-page').match(/people sheltered[^.]*/) || [''])[0]);
+    check('the situation report says people sheltered, beds, moved to hospital, expected and records with no name yet', has('#briefing-page', 'people sheltered: 9 at high school gym (40 beds), 3 moved to hospital, 4 expected · 2 records with no name yet')   /* the typed line no longer counts once a run comes (v54) */, (text('#briefing-page').match(/people sheltered[^.]*/) || [''])[0]);
     check('and no name of anyone sheltered or moved appears in it', !/alvarez|okafor|nguyen|reyes|lopez|haddad|okonkwo/i.test($('#briefing-page').innerText));
     $('[data-action="close-briefing"]').click();
 

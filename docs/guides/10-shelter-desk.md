@@ -12,12 +12,12 @@ Your home screen is **People here**: the shelter's count against its beds, the n
 
 ### 1. Who is coming on the next bus
 
-- **Phone** · The **expected** line at the top is Operations' words ("Bus 2 from Pecan Park, 12 people, 17:30"). **Arriving from crews** lists the people a crew has sent your way, with the house they left and the crew that sent them.
+- **Phone** · **Arriving** is by run (v54): each bus, van or ambulance coming to your shelter as a card, "Bus 2 from Pecan Park pickup · En route · 4 people in 1 record · left 17:05 · expected 17:30 · Travis ISD, 512 555 0177", with the families on it listed. A run that has not arrived by its time says **late**. The header says how many runs are coming; Operations' typed expected line gave way to them. Families a crew sent on no run still list under **Arriving from crews**, with the house they left and the crew that sent them.
 
 ### 2. Sign in a family
 
 - **Phone** · Press **Sign in a person**: who (the only thing needed), how many, the needs chips, where from, where now (here first), a note. **Sign in here**.
-- **Phone** · When a family a crew sent arrives, press **They're here** on their row instead, so nobody is signed in twice; add the name if you have it.
+- **Phone** · When the bus pulls in, press **They're here, all 12** on its card: every family on it is signed in at once and the run is marked arrived for Operations. Or press **Here** on one family's row as they come off, so nobody is signed in twice; add the name if you have it.
 
 ### 3. This man needs oxygen or insulin
 

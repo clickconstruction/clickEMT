@@ -43,6 +43,7 @@
 - **Phone** · **Inbox → Message Operations**: say how urgent in four words (Act on now, Before nightfall, Can wait until tomorrow, Blocks further operations), use a quick chip or your own words, and **Attach my location**.
 - **Phone** · **Inbox → Ask for something** sends Logistics a request: what, how many, by when, where.
 - **Phone** · A safety message takes over the phone until you answer Copy, Will do or Cannot.
+- **Phone** · On the house record, each person's row has **On which run** when a bus or a van is planned or loading (v54): your own division's run first. Saved, the family is on that run and on its way to its destination; the desk at the gym sees them under the bus before it arrives. If Operations makes your unit the driver of a run, your home screen shows **You are Van 4** with Loading, Leaving and Arrived as one tap each.
 - **Phone** · **Menu → People on the unit**: Check out, Back in or Edit each person. **Menu → Check out** walks the demobilization list; nothing is required.
 
 ## Rough edges

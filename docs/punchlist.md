@@ -373,6 +373,32 @@ clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty
 
 ---
 
+## 12. v54 A transport board
+
+From the plan "Invite by email, a transport board, and people and tags" (18 October 2026, on claude.ai) and its mock-ups
+at `/try/mockups/#transport`: the first of the three, chosen because it is the smallest, needs no server code and no
+hardware, and the desk and Operations feel it at once.
+
+1. **A run is a row, not a typed line** (Marcus, the desk, the crews). *Why.* "Who is on the next bus" was a line
+   Operations typed on the shelter's card; the desk could not see who was on it, Operations could not count people in
+   transit, and a family put on a bus at a pickup was nowhere until the desk signed them in. *Built.* `ic_transports`
+   (kind, label, from a facility, a division or words, to a facility, seats, leaves and expected, status planned →
+   loading → en route → arrived → done with its stamps, driver a member or a name and a phone, withdrawn never deleted)
+   and `ic_evacuees.transport_id`: a record put on a run is on the way to the run's destination from that moment, follows
+   a new destination, and is off the run when it leaves for somewhere else. The 214 has the plan, loading, departure and
+   arrival with who was on it, and who put each record on. Update is Operations, the maker, the driver or the desk at
+   the destination. The base: Transports on the header (a row per run, one button for the next step, New run, Edit,
+   Withdraw, who is on it), the home panel's section, the shelter card's Coming here (the typed Expected line gives way
+   once a run exists) and On which run on the arriving rows; the sitrep and the briefing count runs under way and people
+   in transit. The phone: Arriving by run with They're here for the whole bus, the house record's On which run (the
+   crew's own division's run first), the driver's You are Bus 2 card with one button per step.
+   *Decisions kept from the plan:* transports are of people, never supplies; a run's people are records, never names
+   typed on the run; a driver not in the app is a name and a phone and Operations presses the buttons; the typed line
+   stays until the first run exists for that shelter. *Not in this cut:* a pickup as a point clicked on the map (a
+   facility, a division or a few words instead); the desk putting a walk-in on a run.
+   *Shipped 18 October 2026 as `A transport board (v54)`; rule test `supabase/tests/transports.sql` (33), smoke suite
+   `transports` (34).*
+
 ## Done before this list
 
 The previous punchlist (items 1 to 6, from the v24 walkthroughs and the re-walks after v25 and v26) shipped on 17

@@ -229,3 +229,28 @@ body { background: var(--bg-2); }
 /* the sign-in screen with a join code waiting (v39) */
 .code-ready { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--tint-green, #e8f3e8); color: var(--ink); font-size: 14.5px; line-height: 1.4; }
 .code-ready .mono { letter-spacing: .1em; }
+
+/* ---- the transport board (v54): the desk's Arriving by run, the driver's run card, the house record's On select */
+.arrive-run { border: 2px solid var(--active); background: var(--tint-blue); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.arrive-run.late { border-color: var(--hazard); background: var(--tint-orange); }
+.arrive-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.arrive-list { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.arrive-row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.arrive-row > span { flex: 1; min-width: 0; }
+.arrive-run .arrive-btn { min-height: 50px; width: 100%; }
+.badge.tr-planned { background: var(--soft); color: var(--ink-2); }
+.badge.tr-loading { background: var(--tint-orange); color: var(--hazard-ink); }
+.badge.tr-en_route { background: var(--tint-blue); color: var(--active); }
+.badge.tr-arrived { background: var(--tint-green); color: var(--cleared); }
+.badge.tr-done { background: var(--soft); color: var(--muted); }
+.run-card { background: var(--accent); color: #fff; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.run-card .k { color: #CFE0F2; }
+.run-card .big { font-size: 17px; font-weight: 700; line-height: 1.25; }
+.run-card .sub { font-size: 13px; opacity: .92; }
+.run-card .btn { background: #fff; color: var(--accent); border-color: #fff; min-height: 54px; font-size: 17px; font-weight: 600; border-radius: 12px; }
+.run-card.late { background: var(--hazard); color: #1B1B18; }
+.run-card.late .k { color: #1B1B18; }
+.run-card.late .btn { color: #1B1B18; }
+.run-next { font-size: 13px; }
+.st-row.has-run { grid-template-areas: "who x" "cond cond" "where where" "run run"; }
+.st-row > [data-stp="run"] { grid-area: run; }

@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 30;
+  const SEED_VERSION = 31;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -43,6 +43,7 @@
   const AGY = [ID('8', 1)];   // the agency representatives the Liaison Officer keeps
   const CMD = [ID('9', 1)];   // who has held command
   const EV = [ID('0', 1), ID('0', 2), ID('0', 3), ID('0', 4), ID('0', 5)];   // people sheltered and moved (ic_evacuees)
+  const TR = [1, 2, 3].map((n) => 'ab000000-0000-4000-8000-' + String(n).padStart(12, '0'));   // the runs on the transport board (ic_transports)
   const OPS_CODE = 'MR7KQ2VD';   // the seeded incident's Operations code (ic_ops_codes), read by Operations alone
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
@@ -75,7 +76,7 @@
       water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: U.ops, created_at: ago(60), updated_at: ago(60), ...extra
     });
     const evacuee = (i, label, count, needs, note, from, status, facility, by, min, extra) => ({
-      id: EV[i], incident_id: INC, label, count, needs, note, structure_id: null, from_text: from, status, facility_id: facility, prev_facility_id: null,
+      id: EV[i], incident_id: INC, label, count, needs, note, structure_id: null, from_text: from, status, facility_id: facility, prev_facility_id: null, transport_id: null,
       status_at: ago(min), logged_by: by, signed_in_by: null, signed_in_at: null, created_at: ago(min), updated_at: ago(min), archived_at: null, ...extra
     });
     const sevenPm = new Date(); sevenPm.setHours(19, 0, 0, 0);
@@ -201,12 +202,19 @@
       ],
       // people sheltered and moved: three records signed in at the gym by Operations before a desk was there,
       // a family Unit 3 sent from 112 Pecan Ln that is still on its way, and a woman it sent to hospital
+      // the transport board (v54): Bus 2 on its way to the gym with the family of 4 Unit 3 put on it, the ambulance that
+      // took Maria Alvarez to Dell Seton (arrived), and Bus 3 planned from Riverside Drive with nobody on it yet
+      ic_transports: [
+        { id: TR[0], incident_id: INC, kind: 'bus', label: 'Bus 2', from_facility_id: null, from_zone_id: null, from_text: 'Pecan Park pickup', to_facility_id: FAC[2], capacity: 40, leaves_at: ago(12), expected_at: ago(-13), status: 'en_route', status_at: ago(12), left_at: ago(12), arrived_at: null, driver_user_id: null, driver_text: 'Travis ISD, 512 555 0177', notes: '', created_by: U.ops, created_at: ago(46), updated_at: ago(12), archived_at: null },
+        { id: TR[1], incident_id: INC, kind: 'ambulance', label: 'Ambulance 1', from_facility_id: null, from_zone_id: Z['A-2'], from_text: '', to_facility_id: FAC[3], capacity: 2, leaves_at: ago(13), expected_at: ago(0), status: 'arrived', status_at: ago(6), left_at: ago(13), arrived_at: ago(6), driver_user_id: null, driver_text: 'Travis County EMS, 512 555 0100', notes: '', created_by: U.ops, created_at: ago(16), updated_at: ago(6), archived_at: null },
+        { id: TR[2], incident_id: INC, kind: 'bus', label: 'Bus 3', from_facility_id: null, from_zone_id: Z['A-1'], from_text: '', to_facility_id: FAC[2], capacity: 40, leaves_at: ago(-40), expected_at: ago(-65), status: 'planned', status_at: ago(10), left_at: null, arrived_at: null, driver_user_id: null, driver_text: '', notes: '', created_by: U.ops, created_at: ago(10), updated_at: ago(10), archived_at: null }
+      ],
       ic_evacuees: [
         evacuee(4, 'Okonkwo family', 5, ['infant', 'pets'], '', 'Riverside Drive', 'here', FAC[2], U.ops, 75, { signed_in_by: U.ops, signed_in_at: ago(75) }),
         evacuee(3, 'family of 3', 3, [], 'wet, no shoes', 'Mill Street', 'here', FAC[2], U.unit2, 48, { signed_in_by: U.ops, signed_in_at: ago(48), created_at: ago(55) }),
         evacuee(2, 'Nguyen, Tam', 1, ['oxygen'], '', '118 Pecan Ln', 'here', FAC[2], U.ops, 40, { signed_in_by: U.ops, signed_in_at: ago(40) }),
-        evacuee(0, 'family of 4', 4, ['pets'], 'wet, cold, a dog', '112 Pecan Ln', 'on_the_way', FAC[2], U.unit3, 14),
-        evacuee(1, 'Maria Alvarez, 78', 1, ['oxygen'], 'on oxygen, stable', '112 Pecan Ln', 'moved', FAC[3], U.unit3, 14)
+        evacuee(0, 'family of 4', 4, ['pets'], 'wet, cold, a dog', '112 Pecan Ln', 'on_the_way', FAC[2], U.unit3, 14, { transport_id: TR[0] }),
+        evacuee(1, 'Maria Alvarez, 78', 1, ['oxygen'], 'on oxygen, stable', '112 Pecan Ln', 'moved', FAC[3], U.unit3, 14, { transport_id: TR[1] })
       ],
       ic_messages: [
         { id: MSG[0], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'message', text: 'Shelter is open at the high school gym, send anyone who needs it there', created_at: ago(60) },
@@ -280,8 +288,15 @@
     ev(55, U.unit2, 'shelter', 'Unit 2 sent family of 3 from Mill Street to High school gym', 'ic_evacuees', EV[3]);
     ev(48, U.ops, 'shelter', 'High school gym: Operations signed in family of 3, from Mill Street', 'ic_evacuees', EV[3]);
     ev(40, U.ops, 'shelter', 'High school gym: Operations signed in Nguyen, Tam, from 118 Pecan Ln, needs oxygen', 'ic_evacuees', EV[2]);
-    ev(14, U.unit3, 'shelter', 'Unit 3 sent family of 4 from 112 Pecan Ln to High school gym, needs pets', 'ic_evacuees', EV[0]);
-    ev(14, U.unit3, 'shelter', 'Unit 3 sent Maria Alvarez, 78 from 112 Pecan Ln to Dell Seton Medical Center, needs oxygen', 'ic_evacuees', EV[1]);
+    ev(14, U.unit3, 'shelter', 'Unit 3 sent family of 4 from 112 Pecan Ln to High school gym on Bus 2, needs pets', 'ic_evacuees', EV[0]);
+    ev(14, U.unit3, 'shelter', 'Unit 3 sent Maria Alvarez, 78 from 112 Pecan Ln to Dell Seton Medical Center on Ambulance 1, needs oxygen', 'ic_evacuees', EV[1]);
+    ev(46, U.ops, 'transport', 'Bus 2 planned by Operations: Pecan Park pickup to High school gym, 40 seats, driver Travis ISD, 512 555 0177', 'ic_transports', TR[0]);
+    ev(20, U.ops, 'transport', 'Bus 2 loading at Pecan Park pickup for High school gym', 'ic_transports', TR[0]);
+    ev(12, U.ops, 'transport', 'Bus 2 left Pecan Park pickup for High school gym with 4 people in 1 record', 'ic_transports', TR[0]);
+    ev(16, U.ops, 'transport', 'Ambulance 1 planned by Operations: A-2 Pecan Park to Dell Seton Medical Center, 2 seats, driver Travis County EMS, 512 555 0100', 'ic_transports', TR[1]);
+    ev(13, U.ops, 'transport', 'Ambulance 1 left A-2 Pecan Park for Dell Seton Medical Center with 1 person in 1 record', 'ic_transports', TR[1]);
+    ev(6, U.ops, 'transport', 'Ambulance 1 arrived at Dell Seton Medical Center with 1 person in 1 record', 'ic_transports', TR[1]);
+    ev(10, U.ops, 'transport', 'Bus 3 planned by Operations: A-1 Riverside Drive to High school gym, 40 seats', 'ic_transports', TR[2]);
     ev(5, U.ops, 'ops', 'Objective 3 done: Shelter open and staffed at the high school', 'ic_objectives', OBJ[2]);
     ev(5, U.ops, 'note', 'Shelter open at Cedar Fork High School gym, Red Cross on site');
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
@@ -296,7 +311,8 @@
     ic_ops_codes: () => ({ created_at: now(), created_by: null }),
     ic_id_purge: () => ({ id: eventId(), queued_at: now(), done_at: null }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', address: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
-    ic_evacuees: () => ({ id: uuid(), label: '', count: 1, needs: [], note: '', structure_id: null, from_text: '', status: 'here', facility_id: null, prev_facility_id: null, status_at: now(), logged_by: null, signed_in_by: null, signed_in_at: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_evacuees: () => ({ id: uuid(), label: '', count: 1, needs: [], note: '', structure_id: null, from_text: '', status: 'here', facility_id: null, prev_facility_id: null, transport_id: null, status_at: now(), logged_by: null, signed_in_by: null, signed_in_at: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_transports: () => ({ id: uuid(), kind: 'bus', label: '', from_facility_id: null, from_zone_id: null, from_text: '', to_facility_id: null, capacity: null, leaves_at: null, expected_at: null, status: 'planned', status_at: now(), left_at: null, arrived_at: null, driver_user_id: null, driver_text: '', notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, stint_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
@@ -365,6 +381,8 @@
       case 'ic_objectives': return isOps(row.incident_id, uid);
       // members add; the logger, the shelter's desk (where it is, or the shelter it left) or Operations change (checked on the row as it was)
       case 'ic_evacuees': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (row.logged_by === uid || isOps(row.incident_id, uid) || isDesk(row.incident_id, uid, row.facility_id) || isDesk(row.incident_id, uid, row.prev_facility_id));
+      // members add a run; Operations, the one who made it, the driver or the desk at its destination change it (checked on the row as it was)
+      case 'ic_transports': return op === 'insert' ? mayWrite(row.incident_id, uid, row.created_at) : isMember(row.incident_id, uid) && (isOps(row.incident_id, uid) || row.created_by === uid || row.driver_user_id === uid || isDesk(row.incident_id, uid, row.to_facility_id));
       case 'ic_messages': return op === 'insert' && row.from_user === uid && mayWrite(row.incident_id, uid, row.created_at);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && mayWrite(row.incident_id, uid, row.acked_at);
       default: return false;
@@ -433,6 +451,12 @@
       if (!(r.count >= 1 && r.count <= 999)) throw chk('ic_evacuees_count_check');
       if (!Array.isArray(r.needs) || r.needs.some((x) => !NEED_KEYS.includes(x))) throw chk('ic_evacuees_needs_check');
       if (!['on_the_way', 'here', 'moved', 'with_family', 'own_transport', 'unknown'].includes(r.status)) throw chk('ic_evacuees_status_check');
+    }
+    if (table === 'ic_transports') {
+      if (!['bus', 'van', 'ambulance', 'boat', 'high_water', 'other'].includes(r.kind)) throw chk('ic_transports_kind_check');
+      if (!['planned', 'loading', 'en_route', 'arrived', 'done'].includes(r.status)) throw chk('ic_transports_status_check');
+      if (r.capacity != null && !(r.capacity >= 1 && r.capacity <= 999)) throw chk('ic_transports_capacity_check');
+      if (!r.to_facility_id) throw nn('to_facility_id');
     }
   }
   const NEED_KEYS = ['oxygen', 'insulin', 'wheelchair', 'infant', 'pets', 'other'];
@@ -534,6 +558,15 @@
       r.logged_by = old.logged_by; r.created_at = old.created_at;
     } else r.logged_by = uid || r.logged_by;
     if (['with_family', 'own_transport', 'unknown'].includes(r.status)) r.facility_id = null;
+    if (r.transport_id) {   // v54: put on a run, the record goes where the run goes; gone somewhere else, it is off the run
+      const t = tables.ic_transports.find((x) => x.id === r.transport_id && x.incident_id === r.incident_id);
+      if (!t) throw dbError('that run is not on this incident');
+      if (!old || r.transport_id !== old.transport_id) {
+        if (t.archived_at) throw dbError('that run was withdrawn');
+        if (t.status === 'done') throw dbError('that run is done');
+        if (!(r.status === 'here' && r.facility_id === t.to_facility_id)) { r.facility_id = t.to_facility_id; r.status = destStatus(t.to_facility_id); }
+      } else if ((r.status !== old.status || (r.facility_id || null) !== (old.facility_id || null)) && (r.facility_id || null) !== t.to_facility_id) r.transport_id = null;
+    }
     if (['here', 'on_the_way', 'moved'].includes(r.status) && !r.facility_id) throw dbError('say where: a shelter or a hospital');
     if (r.facility_id && !tables.ic_facilities.some((f) => f.id === r.facility_id && f.incident_id === r.incident_id)) throw dbError('that facility is not on this incident');
     if (r.structure_id && !tables.ic_structures.some((x) => x.id === r.structure_id && x.incident_id === r.incident_id)) throw dbError('that structure is not on this incident');
@@ -549,16 +582,19 @@
     const placeOf = (id) => { const f = id && tables.ic_facilities.find((x) => x.id === id); return f ? (f.name || FACILITY_TEXT[f.kind]) : null; };
     const who = R.evacueeWho(r), unit = label(r.incident_id, uid), place = placeOf(r.facility_id);
     const frm = r.from_text ? ' from ' + r.from_text : '', nd = r.needs.length ? ', needs ' + R.needsText(r.needs) : '';
+    const run = runLabel(r.transport_id), onRun = run && ['on_the_way', 'moved'].includes(r.status) ? ' on ' + run : '';
     const signedIn = () => `${place}: ${unit} signed in ${who}${frm ? ',' + frm : ''}${nd}`;
     let line = null;
     if (!old) {
       line = r.status === 'here' ? signedIn() : r.status === 'with_family' ? `${unit}: ${who}${frm} left with family${nd}` : r.status === 'own_transport' ? `${unit}: ${who}${frm} left by own transport${nd}`
-        : r.status === 'unknown' ? `${unit} logged ${who}${frm}, whereabouts unknown${nd}` : `${unit} sent ${who}${frm} to ${place}${nd}`;
+        : r.status === 'unknown' ? `${unit} logged ${who}${frm}, whereabouts unknown${nd}` : `${unit} sent ${who}${frm} to ${place}${onRun}${nd}`;
     } else {
       const was = placeOf(old.facility_id), leftFrom = old.status === 'here' ? was : null;
       if (r.archived_at && !old.archived_at) line = `Record of ${who} withdrawn by ${unit}`;
       else if (!r.archived_at && old.archived_at) line = `Record of ${who} put back by ${unit}`;
       else if (r.archived_at) line = null;
+      else if ((r.transport_id || null) !== (old.transport_id || null) && r.transport_id) line = `${unit} put ${who}${frm} on ${run} to ${place}`;
+      else if ((r.transport_id || null) !== (old.transport_id || null) && r.status === old.status && (r.facility_id || null) === (old.facility_id || null)) line = `${who} taken off ${runLabel(old.transport_id)} by ${unit}`;
       else if (r.status !== old.status || (r.facility_id || null) !== (old.facility_id || null)) {
         line = r.status === 'here' ? signedIn()
           : r.status === 'with_family' ? who + (leftFrom ? ` left ${leftFrom} with family` : ' went with family')
@@ -570,12 +606,56 @@
     }
     if (line) log(changes, r.incident_id, uid, 'shelter', line, 'ic_evacuees', r.id);
   }
+  // ---- the transport board (v54): ic_transport_before / ic_transport_after
+  const placeText = (id) => { const f = id && tables.ic_facilities.find((x) => x.id === id); return f ? (f.name || FACILITY_TEXT[f.kind]) : null; };
+  const destStatus = (facilityId) => { const f = tables.ic_facilities.find((x) => x.id === facilityId); return f && f.kind === 'shelter' ? 'on_the_way' : 'moved'; };
+  const runLabel = (id) => { const t = id && tables.ic_transports.find((x) => x.id === id); return t ? R.transportLabel(t) : null; };
+  const runFrom = (t) => R.transportFrom(t, { facilityOf: (id) => tables.ic_facilities.find((x) => x.id === id) || null, zoneOf: (id) => tables.ic_zones.find((x) => x.id === id) || null });
+  const aboardOf = (id) => { const on = tables.ic_evacuees.filter((e) => e.transport_id === id && !e.archived_at); return R.aboardText(on.reduce((n, e) => n + (e.count || 1), 0), on.length); };
+  function transportBefore(r, old, uid) {
+    r.label = String(r.label ?? '').trim(); r.from_text = String(r.from_text ?? '').trim(); r.driver_text = String(r.driver_text ?? '').trim(); r.notes = String(r.notes ?? '').trim();
+    r.updated_at = now();
+    if (old) {
+      if (r.incident_id !== old.incident_id) throw dbError('a run stays on the incident it was made on');
+      r.created_by = old.created_by; r.created_at = old.created_at;
+      if (old.status === 'done' && r.status !== 'done') throw dbError('a run that is done stays done');
+    } else r.created_by = uid || r.created_by;
+    if (!tables.ic_facilities.some((f) => f.id === r.to_facility_id && f.incident_id === r.incident_id)) throw dbError('say where to: a shelter, a hospital or another facility on this incident');
+    if (r.from_facility_id && !tables.ic_facilities.some((f) => f.id === r.from_facility_id && f.incident_id === r.incident_id)) throw dbError('that facility is not on this incident');
+    if (r.from_zone_id && !tables.ic_zones.some((z) => z.id === r.from_zone_id && z.incident_id === r.incident_id)) throw dbError('that division is not on this incident');
+    if (r.driver_user_id && !tables.ic_members.some((m) => m.incident_id === r.incident_id && m.user_id === r.driver_user_id && !m.removed_at)) throw dbError('the driver is not on this incident');
+    if (r.status === 'done' && (!old || !['arrived', 'done'].includes(old.status))) throw dbError('a run arrives before it is done');
+    if (!old || r.status !== old.status) {
+      r.status_at = now();
+      if (r.status === 'planned' || r.status === 'loading') { r.left_at = null; r.arrived_at = null; }
+      if (r.status === 'en_route') { r.left_at = r.left_at || now(); r.arrived_at = null; }
+      if (r.status === 'arrived') { r.left_at = r.left_at || now(); r.arrived_at = r.arrived_at || now(); }
+    }
+  }
+  function transportLog(r, old, uid, changes) {
+    if (old && (r.to_facility_id || null) !== (old.to_facility_id || null)) {   // the records on it not yet signed in follow the destination, quietly
+      const wasQuiet = quiet; quiet = true;
+      try { for (const e of tables.ic_evacuees.filter((e) => e.transport_id === r.id && !e.archived_at && ['on_the_way', 'moved'].includes(e.status))) updateRow('ic_evacuees', e, { facility_id: r.to_facility_id, status: destStatus(r.to_facility_id) }, uid, changes, true); } finally { quiet = wasQuiet; }
+    }
+    if (quiet) return;
+    const run = R.transportLabel(r), unit = label(r.incident_id, uid), frm = runFrom(r), dest = placeText(r.to_facility_id);
+    let line = null;
+    if (!old) line = `${run} planned by ${unit}: ${frm} to ${dest}${r.capacity != null ? ', ' + r.capacity + ' seats' : ''}${r.driver_user_id ? ', driver ' + label(r.incident_id, r.driver_user_id) : r.driver_text ? ', driver ' + r.driver_text : ''}`;
+    else if (r.archived_at && !old.archived_at) line = `${run} withdrawn by ${unit}`;
+    else if (!r.archived_at && old.archived_at) line = `${run} put back by ${unit}`;
+    else if (r.archived_at) line = null;
+    else if (r.status !== old.status) line = r.status === 'loading' ? `${run} loading at ${frm} for ${dest}` : r.status === 'en_route' ? `${run} left ${frm} for ${dest} with ${aboardOf(r.id)}` : r.status === 'arrived' ? `${run} arrived at ${dest} with ${aboardOf(r.id)}` : r.status === 'done' ? `${run} done at ${dest}, ${aboardOf(r.id)}` : `${run} back to planned`;
+    else if ((r.to_facility_id || null) !== (old.to_facility_id || null)) line = `${run} now going to ${dest} with ${aboardOf(r.id)}`;
+    else if (['kind', 'label', 'from_facility_id', 'from_zone_id', 'from_text', 'capacity', 'leaves_at', 'expected_at', 'driver_user_id', 'driver_text', 'notes'].some((k) => (r[k] ?? null) !== (old[k] ?? null))) line = `${run} updated`;
+    if (line) log(changes, r.incident_id, uid, 'transport', line, 'ic_transports', r.id);
+  }
   const agencyRepLine = (r) => r.agency + ' representative: ' + (r.name || 'not set') + (r.phone ? ', ' + r.phone : '');
   function afterInsert(table, r, uid, changes) {
     if (table === 'ic_periods') periodCommand(r, null, uid, changes);
     if (table === 'ic_period_agencies' && !quiet) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
     if (table === 'ic_structures') structureAfter(r, null, uid, changes);
     if (table === 'ic_evacuees') evacueeLog(r, null, uid, changes);
+    if (table === 'ic_transports') transportLog(r, null, uid, changes);
     if (table === 'ic_people') {
       if (!r.archived_at && !quiet) log(changes, r.incident_id, uid, 'status', `${r.name}${personQuals(r)} checked in with ${label(r.incident_id, r.user_id)}`, 'ic_people', r.id);
       if (!r.archived_at && !joining) { const m = member(r.incident_id, r.user_id); if (m && m.unnamed_count > 0) updateRow('ic_members', m, { unnamed_count: m.unnamed_count - 1 }, uid, changes, true); }   // naming one of the unnamed keeps the count
@@ -637,6 +717,7 @@
   function afterUpdate(table, r, old, uid, changes) {
     if (table === 'ic_structures') structureAfter(r, old, uid, changes);
     if (table === 'ic_evacuees') evacueeLog(r, old, uid, changes);
+    if (table === 'ic_transports') transportLog(r, old, uid, changes);
     if (table === 'ic_periods') periodCommand(r, old, uid, changes);
     if (table === 'ic_period_agencies' && !quiet && (r.name !== old.name || r.phone !== old.phone)) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
     if (table === 'ic_people') {   // ic_person_after
@@ -806,6 +887,7 @@
     if (table === 'ic_period_agencies') { row.agency = String(row.agency || '').trim(); row.name = String(row.name || '').trim(); row.phone = String(row.phone || '').trim(); if (tables.ic_period_agencies.some((a) => a.period_id === row.period_id && a.agency === row.agency)) throw dbError('duplicate key value violates unique constraint "ic_period_agencies_period_id_agency_key"', '23505'); }   // ic_period_agency_before
     if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
     if (table === 'ic_evacuees') evacueeBefore(row, null, uid);
+    if (table === 'ic_transports') transportBefore(row, null, uid);
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -824,9 +906,10 @@
     for (const k in patch) if (patch[k] !== undefined) next[k] = patch[k];
     constraints(table, next);
     if (table === 'ic_events') for (const k of ['incident_id', 'user_id', 'kind', 'text', 'ref_table', 'ref_id', 'at']) if (next[k] !== r[k]) throw dbError('a log line is never changed, only marked notable');   // ic_event_before_update
-    if (!system && !allowed(table, 'update', table === 'ic_evacuees' ? r : next, uid)) throw rlsError(table);   // an evacuee's USING is on the row as it was
+    if (!system && !allowed(table, 'update', table === 'ic_evacuees' || table === 'ic_transports' ? r : next, uid)) throw rlsError(table);   // an evacuee's or a run's USING is on the row as it was
     if (table === 'ic_members' && next.facility_id && !tables.ic_facilities.some((f) => f.id === next.facility_id && f.incident_id === next.incident_id)) throw dbError('that facility is not on this incident');   // ic_member_facility
     if (table === 'ic_evacuees') evacueeBefore(next, old, uid);
+    if (table === 'ic_transports') transportBefore(next, old, uid);
     Object.assign(r, next);
     if (table === 'ic_zones') {
       r.updated_at = now();   // ic_touch

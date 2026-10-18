@@ -19,7 +19,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 3 | v40 A period that has ended says so, and times and dates in one form (shipped 17 October) | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
 | 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks (shipped 17 October) | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
 | 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division (shipped 17 October) | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
-| 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card | small | v42 | the IC, the clerk, Reyes, the administrator |
+| 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card (shipped 17 October) | small | v42 | the IC, the clerk, Reyes, the administrator |
 | 7 | v44 Small words and buttons | small | any time | one or two personas each |
 | 8 | Later: since you last looked; on scene too long | medium | v44 | the IC, Marcus's relief, Priya |
 | 9 | Decisions only Grace can make | — | — | — |
@@ -250,6 +250,11 @@ safety message and "Getting there:" gives coordinates.
 
 **Done when.** Migration (`ic_periods.bring`) applied and mirrored; `dev/test-briefings.mjs` or the `reports` suite
 checks the lines; full run green; `VERSION` v43. Commit: `Paper that leaves the base (v43)`.
+
+**Shipped** 17 October 2026 as `Paper that leaves the base (v43)`, migration `0027_bring.sql`, rule test
+`supabase/tests/bring.sql` (3 of 3), checks in `dev/test-briefings.mjs` and the `reports` smoke suite. Send by email is an
+anchor with a `mailto:` link rebuilt on every draw (the mail app may cut a long body; Copy as text stays beside it);
+Getting there gives the facility's notes and the coordinates "for a satnav", since a facility has no street address field.
 
 ## 7. v44 Small words and buttons
 

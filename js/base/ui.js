@@ -976,7 +976,7 @@ function timeValue(iso) { if (!iso) return ''; const d = new Date(iso); return S
 function periodFormHtml(data, p, next, state) {
   const d = next ? { ic: p ? p.ic_name : '', ops: p ? p.ops_chief : '', safety: p ? p.safety_officer : '', notes: '', ends: timeValue(new Date(Date.now() + 12 * 3600000).toISOString()), unified: p ? p.unified || '' : '' } : { ic: p.ic_name, ops: p.ops_chief, safety: p.safety_officer, notes: p.notes, ends: timeValue(p.ends_at), unified: p.unified || '' };
   d.planning = p ? p.planning_chief || '' : ''; d.logistics = p ? p.logistics_chief || '' : ''; d.finance = p ? p.finance_chief || '' : '';
-  d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : ''; d.deputy = p ? p.deputy || '' : '';
+  d.pio = p ? p.pio || '' : ''; d.liaison = p ? p.liaison || '' : ''; d.deputy = p ? p.deputy || '' : ''; d.bring = p ? p.bring || '' : '';
   d.rotation = p && p.rotation_minutes != null ? p.rotation_minutes : data.rotationMinutes();
   const reps = next ? [] : agencyReps(data, p);
   return `
@@ -1015,6 +1015,8 @@ function periodFormHtml(data, p, next, state) {
       ${reps.length ? `<div class="reps">${reps.map((r) => `<div class="rep-row"><span class="rep-agency">${esc(r.agency)}<span class="muted"> · ${r.units ? r.units + ' unit' + (r.units === 1 ? '' : 's') : 'no unit on scene now'}</span></span>${r.lead ? '<span class="muted">lead agency · the IC</span><span class="muted">—</span>' : `<input data-rep="name" data-agency="${esc(r.agency)}" value="${esc(r.name)}" placeholder="Representative" aria-label="${esc(r.agency)} representative" maxlength="80"><input data-rep="phone" data-agency="${esc(r.agency)}" value="${esc(r.phone)}" placeholder="Phone" aria-label="${esc(r.agency)} phone" type="tel" maxlength="30">`}</div>`).join('')}</div>` : '<div class="muted" style="font-size:12px">An agency with a unit on scene appears here on its own (the agency is on the unit at check-in).</div>'}
       <div class="muted" style="font-size:12px">One row per agency on scene, drawn from the units. The name and phone are kept with the period and printed on the 203.</div>`}
       <label>Safety message and notes for the period <textarea name="notes" rows="2">${esc(d.notes)}</textarea></label>
+      <label>What to bring <input name="bring" value="${esc(d.bring)}" maxlength="300" placeholder="PFDs, dry bags, a radio each, water for the day"></label>
+      <div class="muted" style="font-size:12px;margin-top:-6px">The join card's Bring line; it carries into the next period like the seats.</div>
       ${next ? `<label class="chk"><input type="checkbox" name="carry" checked> Carry open objectives and assignments into the new period</label>` : ''}
       <div class="row-btns">${next ? '<button class="btn sm" type="button" data-action="period-next-cancel">Cancel</button>' : ''}<button class="btn pri sm" type="submit">${next ? 'Start period ' + ((p ? p.number : 0) + 1) : 'Save'}</button></div>
     </form>`;
@@ -1240,7 +1242,9 @@ export function iapSections(data) {
   S.push({ title: 'Incident Action Plan', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     periodLine(p),
-    'Prepared ' + whenText(new Date())
+    'Prepared ' + whenText(new Date()),
+    'Prepared by (Planning Section Chief): ' + ((p && p.planning_chief) || '______________________') + ' · signature ______________________',
+    'Approved by (Incident Commander): ' + ((p && p.ic_name) || '______________________') + ' · signature ______________________ · date and time ______________________'
   ] });
   S.push({ title: 'Objectives, ICS 202', lines: (p ? data.objectives(p.id) : []).length ? data.objectives(p.id).map((o) => `${o.number}. ${o.text}${o.done_at ? ' (done ' + hhmm(o.done_at) + ')' : ''}`) : ['None set'] });
   const cmd = data.currentCommand(), earlier = data.commands().filter((c) => c.ended_at);

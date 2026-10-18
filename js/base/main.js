@@ -3,12 +3,12 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, esc } from './ui.js';
-import { dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
+import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
-import { photoCaption, photoFileName, imageType, withCaption, zip, whenText } from './photo-export.js';
+import { photoCaption, photoFileName, imageType, withCaption, zip } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
 const LAST_INCIDENT = 'ic.base.incident';
@@ -445,6 +445,9 @@ function drawBriefing() {
   page.className = 'briefing-page kind-' + kind;
   $('#briefing-title').textContent = kind === 'shelter' ? 'People at ' + (pf.name || 'the facility') : kind === '204' ? 'Division ' + z.code + ' assignment (ICS 204)' : kind === '214' ? 'Activity log (ICS 214)' : kind === '211' ? 'Check-in list (ICS 211)' : kind === 'join' ? 'Join card · deployment briefing' : kind === 'hours' ? 'Hours on scene' : kind === 'sitrep' ? 'Situation report (ICS 209)' : kind === 'iap' ? 'Incident Action Plan' : kind === 'org' ? 'Organization chart (ICS 207)' : 'Shift-change briefing';
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
+  // Send by email (v43): the mail app with the text in the body; the app sends nothing itself
+  const mail = $('#briefing-mail');
+  if (mail) { const subject = data.incident.name + ' · ' + $('#briefing-title').textContent + (data.currentPeriod() ? ' · ' + periodLabel(data.currentPeriod()) : '') + ' · ' + whenText(new Date()); mail.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(briefingAsText()); }
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
@@ -489,7 +492,7 @@ async function doTransfer() {
   else {
     const patch = Object.assign({}, t.patch, { ic_name: c.ic_name, ops_chief: c.ops_chief });
     await data.updatePeriod(t.periodId, patch);
-    if (period) { const cur = data.currentPeriod(); const p = await data.startPeriod({ endsAt: new Date(Date.now() + 12 * 3600000).toISOString(), ic: c.ic_name, ops: cur.ops_chief, safety: cur.safety_officer, notes: cur.notes, carry: true, planning: cur.planning_chief, logistics: cur.logistics_chief, finance: cur.finance_chief, unified: cur.unified, pio: cur.pio, liaison: cur.liaison, rotation: cur.rotation_minutes, deputy: cur.deputy }); toast('Operational period ' + p.number + ' started'); }
+    if (period) { const cur = data.currentPeriod(); const p = await data.startPeriod({ endsAt: new Date(Date.now() + 12 * 3600000).toISOString(), ic: c.ic_name, ops: cur.ops_chief, safety: cur.safety_officer, notes: cur.notes, carry: true, planning: cur.planning_chief, logistics: cur.logistics_chief, finance: cur.finance_chief, unified: cur.unified, pio: cur.pio, liaison: cur.liaison, rotation: cur.rotation_minutes, deputy: cur.deputy, bring: cur.bring }); toast('Operational period ' + p.number + ' started'); }
   }
   toast('Command transferred to ' + c.ic_name + (notify ? ' · every unit is told' : ''));
   queueDraw();
@@ -1155,7 +1158,7 @@ document.addEventListener('submit', async (e) => {
       queueDraw();
     } else if (form.dataset.form === 'period-edit') {
       const cur = data.period(form.dataset.id);
-      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim(), rotation_minutes: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : undefined, deputy: form.deputy ? form.deputy.value.trim() : undefined };
+      const patch = { ic_name: form.ic.value.trim(), ops_chief: form.ops.value.trim(), safety_officer: form.safety.value.trim(), notes: form.notes.value.trim(), ends_at: timeToIso(form.ends.value), unified: form.unified.value.trim(), planning_chief: form.planning.value.trim(), logistics_chief: form.logistics.value.trim(), finance_chief: form.finance.value.trim(), pio: form.pio.value.trim(), liaison: form.liaison.value.trim(), rotation_minutes: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : undefined, deputy: form.deputy ? form.deputy.value.trim() : undefined, bring: form.bring ? form.bring.value.trim() : undefined };
       // the agency representatives: one row per agency, saved when changed
       const reps = new Map();
       for (const el of form.querySelectorAll('[data-rep]')) { const r = reps.get(el.dataset.agency) || { agency: el.dataset.agency }; r[el.dataset.rep] = el.value.trim(); reps.set(el.dataset.agency, r); }
@@ -1169,7 +1172,7 @@ document.addEventListener('submit', async (e) => {
       await savePending({ mode: 'edit', periodId: form.dataset.id, patch });
     } else if (form.dataset.form === 'period-start') {
       const cur = data.currentPeriod();
-      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value, rotation: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : null, deputy: form.deputy ? form.deputy.value.trim() : '' };
+      const payload = { endsAt: timeToIso(form.ends.value), ic: form.ic.value.trim(), ops: form.ops.value, safety: form.safety.value, notes: form.notes.value, carry: form.carry.checked, planning: form.planning.value, logistics: form.logistics.value, finance: form.finance.value, unified: form.unified.value, pio: form.pio.value, liaison: form.liaison.value, rotation: form.rotation ? Math.min(600, Math.max(0, Math.round(Number(form.rotation.value) || 0))) : null, deputy: form.deputy ? form.deputy.value.trim() : '', bring: form.bring ? form.bring.value.trim() : '' };
       const from = cur ? cur.ic_name : '';
       if (from && payload.ic && payload.ic !== from) { askTransfer({ mode: 'start', from, to: payload.ic, ops: payload.ops.trim(), payload }); return; }
       await savePending({ mode: 'start', payload });

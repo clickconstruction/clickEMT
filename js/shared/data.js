@@ -454,8 +454,8 @@ export class Data {
     const from = period.starts_at, to = period.closed_at || null;
     return this.events().filter((e) => e.at >= from && (!to || e.at <= to));
   }
-  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison, rotation, deputy }) {
-    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '', p_rotation: rotation == null || rotation === '' ? null : Number(rotation), p_deputy: deputy || '' });
+  async startPeriod({ endsAt, ic, ops, safety, notes, carry, planning, logistics, finance, unified, pio, liaison, rotation, deputy, bring }) {
+    const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '', p_rotation: rotation == null || rotation === '' ? null : Number(rotation), p_deputy: deputy || '', p_bring: bring || '' });
     if (error) throw error;
     this.local('ic_periods', data);
     return data;

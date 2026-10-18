@@ -736,9 +736,15 @@ async function reports(check) {
 
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
+  check('the IAP opens with the Prepared by and Approved by signature lines, and Send by email carries the text (v43)', has('#briefing-page', 'prepared by (planning section chief): theresa okafor · signature', 'approved by (incident commander): dana ruiz · signature', 'date and time') && /^mailto:\?subject=/.test($('#briefing-mail').getAttribute('href')) && /Incident Action Plan/.test(decodeURIComponent($('#briefing-mail').getAttribute('href').split('subject=')[1].split('&')[0])) && /INCIDENT ACTION PLAN/.test(decodeURIComponent($('#briefing-mail').getAttribute('href').split('&body=')[1] || '')), text('#briefing-page').slice(0, 400));
   check('the IAP stitches the 202, 203, a 204 per division, the 205, 206 and 208 together', ['objectives, ics 202', '1. primary search', 'organization, ics 203', 'incident commander: dana ruiz', 'division a-1 supervisor: lt. okafor', 'unit 1, engine (ramirez, okafor)', 'assignment, ics 204 · division a-1', 'work assignment: primary search of every structure', 'assignment, ics 204 · division b-3', 'communications, ics 205', 'command: cmd 1', 'medical, ics 206', 'dell seton', 'emergency traffic: tac 9', 'safety message, ics 208', 'swift water everywhere'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 500));
   check('every division has its own 204 section', $$('#briefing-page h2').filter((h) => /ICS 204/.test(h.textContent)).length === 6);
   check('each division\'s 204 in the IAP carries its map, on a page of its own when printed', $$('#briefing-page section.has-map svg.pmap').length === 6 && $$('#briefing-page svg.pmap').map((m) => m.getAttribute('aria-label')).join(', ') === 'Map of Division A-1, Map of Division A-2, Map of Division A-3, Map of Division B-1, Map of Division B-2, Map of Division B-3' && $('#briefing-page').classList.contains('kind-iap'), $$('#briefing-page svg.pmap').map((m) => m.getAttribute('aria-label')).join(', '));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('[data-action="print-join"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'join'));
+  check('the join card tells Safety and Bring apart and gives the staging area with its notes and satnav coordinates (v43)', has('#briefing-page', 'safety: swift water everywhere south of mill street', 'bring: pfds and dry bags for water crews', 'getting there: high school east lot · units wait here between assignments · for a satnav 30.25560, -97.74000'), text('#briefing-page').slice(0, 900));
   $('[data-action="close-briefing"]').click();
   check('and it closes', $('#briefing').hidden);
 }
@@ -1421,7 +1427,7 @@ async function ics100(check) {
   await until(() => $('#panel [data-action="print-join"]'));
   $('#panel [data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
-  check('the join card carries the six deployment lines and what to bring, from the data, and when it was printed', has('#briefing-page', 'deployment briefing', 'incident: cedar fork flooding · lead agency cedar fork fire department · ic priya natarajan', 'check in at: staging, high school east lot · units wait here between assignments', 'your assignment: given at check-in by operations. the period', 'report by:', 'for the operational period 3 briefing at staging', 'getting there: high school east lot at 30.25560, -97.74000', 'radio: command cmd 1 · tactical, division a tac 2', 'bring: not set', 'who to ask for', 'staging: sam whitaker (logistics) · operations: jo castillo', 'printed') && has('#briefing-page', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 1400));
+  check('the join card carries the six deployment lines and what to bring, from the data, and when it was printed', has('#briefing-page', 'deployment briefing', 'incident: cedar fork flooding · lead agency cedar fork fire department · ic priya natarajan', 'check in at: staging, high school east lot · units wait here between assignments', 'your assignment: given at check-in by operations. the period', 'report by:', 'for the operational period 3 briefing at staging', 'getting there: high school east lot · units wait here between assignments · for a satnav 30.25560, -97.74000', 'radio: command cmd 1 · tactical, division a tac 2', 'safety:', 'bring: pfds and dry bags for water crews', 'who to ask for', 'staging: sam whitaker (logistics) · operations: jo castillo', 'printed') && has('#briefing-page', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 1400));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
 

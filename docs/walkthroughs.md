@@ -811,3 +811,22 @@ Items 7, 8 and 9 of "What to do first" are clear.
 - **The desk's "you alone"** reads oddly for a desk with helpers it never named; the count is theirs to give.
 - **A unit standing in another unit's division** still reads that division's name on its card ("You are standing in A-2, Unit 3's division"), by design now, so a crew driving through knows whose ground it is on.
 - **Accept is not required**: a unit that never presses it but sends a photo from the division reads "In progress" all the same, which is the point; one that neither presses nor reports stays "not accepted" for ever, which Operations can read as a prompt to call them.
+
+---
+
+## Re-walk after v43
+
+Paper that leaves the base: Dana's IAP, the clerk's situation report and Reyes's join card, walked on 2026-10-18 after migration 0027 in the same mock on the base at 1280 × 800 as Operations. The Browser pane was hidden, so the walk read the screens' text through the `reports` and `ics100` suites' steps; no screenshots.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Sign the IAP | Dana | The first page ends "Prepared by (Planning Section Chief): Theresa Okafor · signature ______" and "Approved by (Incident Commander): Dana Ruiz · signature ______ · date and time ______"; an empty seat prints the line with a blank for the name. | Clear |
+| Get the sitrep to the EOC | The clerk | A Send by email button beside Copy as text on every report; it opens the mail app with the subject "Cedar Fork Flooding · Situation report · OP 1 · … · 18 Oct 2026 00:05" and the whole report in the body. Nothing is sent by the app, and the mail app's own limits may cut a very long body; Copy as text is still there. | Clear |
+| The join card | Reyes, the administrator | "Safety: Swift water everywhere south of Mill Street…" and, as its own line, "Bring: PFDs and dry bags for water crews, a radio each, water for the day" from the Period sheet's new What to bring box (carried into the next period, logged like the seats); "Getting there: High school east lot · Units wait here between assignments · for a satnav 30.25560, -97.74000 · directions open from Nearby on your phone once you have checked in". | Clear |
+
+Item 10 of "What to do first" is clear.
+
+**Still bites, small:**
+
+- **A facility has no street address field**, so Getting there gives its notes and the coordinates "for a satnav"; an address line on the facility card would read better on paper.
+- **Send by email is only as good as the mail app's URL limit**; a report over a few thousand characters may arrive cut short. A true send needs a server, which the app does not have.

@@ -191,12 +191,15 @@ t('a shelter desk\'s job is the people at its shelter, not staging (v26)', () =>
 t('the deployment lines on the join card: incident, where to check in, assignment, when, how to get there, radio, bring', () => {
   const d = stub();
   const L = deploymentLines(d, new Date(at(0)));
-  assert.deepEqual(L.map((l) => l[0]), ['Incident', 'Check in at', 'Your assignment', 'Report by', 'Getting there', 'Radio', 'Bring']);
+  assert.deepEqual(L.map((l) => l[0]), ['Incident', 'Check in at', 'Your assignment', 'Report by', 'Getting there', 'Radio', 'Safety', 'Bring']);   // Safety and Bring told apart (v43)
   assert.ok(L[0][1].startsWith('Cedar Fork Flooding · lead agency Cedar Fork Fire Department · IC Dana Ruiz · opened '));
   assert.ok(L[1][1].startsWith('Staging, High school east lot · Come by Bee Creek Rd, park in the east lot · check in on your phone'));
   assert.equal(L[2][1], 'Given at check-in by Operations. The period\'s objectives: 1. Primary search of every structure north of the river by 19:00; 2. Keep the bridge approach closed. Needed now: 2 boat crew for A-2.');
   assert.ok(/^19:00 on .* for the operational period 2 briefing at staging \(OP 1 runs \d\d:\d\d to 19:00\)$/.test(L[3][1]), L[3][1]);
-  assert.equal(L[4][1], 'High school east lot at 30.25560, -97.74000 · directions open from Nearby on your phone once you have checked in');
+  assert.equal(L[4][1], 'High school east lot · Come by Bee Creek Rd, park in the east lot · for a satnav 30.25560, -97.74000 · directions open from Nearby on your phone once you have checked in');
+  assert.equal(L[6][1], 'Nobody enters moving water. PFDs on near water.');
+  assert.equal(L[7][1], 'not set; ask at check-in');
+  assert.equal(deploymentLines(stub({ period: { bring: 'PFDs, dry bags' } }), new Date(at(0)))[7][1], 'PFDs, dry bags');
   assert.equal(L[5][1], 'Command CMD 1 · Tactical, Division A TAC 2 · Emergency traffic TAC 9 · plain English, no codes');
   assert.equal(L[6][1], 'Nobody enters moving water. PFDs on near water.');
   assert.equal(whoToAsk(d), 'Staging: Sam Whitaker (Logistics) · Operations: Marcus Bell · Safety: Priya Natarajan · Liaison, other agencies: Tomás Herrera');
@@ -204,7 +207,7 @@ t('the deployment lines on the join card: incident, where to check in, assignmen
   assert.ok(later[3][1].startsWith('Now:'), 'past the planned end, report now');
   const bare = deploymentLines(stub({ facilities: [], period: { notes: '' }, incident: { channels: [] } }), new Date(at(0)));
   assert.equal(bare[1][1], 'Base, Cedar Fork High School · check in on your phone with the code, then find the staging manager');
-  assert.ok(bare[5][1].startsWith('No communications plan set yet') && bare[6][1].startsWith('not set'));
+  assert.ok(bare[5][1].startsWith('No communications plan set yet') && bare[6][1].startsWith('No safety message written') && bare[7][1].startsWith('not set; ask at check-in'), bare[6][1] + ' | ' + bare[7][1]);   // Safety and Bring told apart (v43)
 });
 
 t('a request finds the units of its kind on scene, nearest to its division first', () => {

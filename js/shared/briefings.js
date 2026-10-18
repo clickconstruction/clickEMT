@@ -232,9 +232,10 @@ export function deploymentLines(data, now = new Date()) {
     ['Check in at', `${where}${staging && staging.notes ? ' · ' + staging.notes : ''} · check in on your phone with the code, then find the staging manager`],
     ['Your assignment', 'Given at check-in by Operations.' + (objectives.length ? ' The period\'s objectives: ' + objectives.slice(0, 3).map((o) => o.number + '. ' + o.text).join('; ') + '.' : '') + (needed.length ? ' Needed now: ' + needed.slice(0, 3).map((r) => (r.quantity > 1 ? r.quantity + ' ' : '') + r.what + (r.zone_id && data.zone(r.zone_id) ? ' for ' + data.zone(r.zone_id).code : '')).join(' · ') + '.' : '')],
     ['Report by', ends && ends.getTime() > now.getTime() ? `${hhmm(ends)} on ${dateText(ends)} for the operational period ${p.number + 1} briefing${staging ? ' at staging' : ''} (OP ${p.number} runs ${hhmm(p.starts_at)} to ${hhmm(ends)})` : 'Now: the incident is under way and units are checked in as they arrive'],
-    ['Getting there', staging ? `${staging.name || 'Staging area'} at ${latLngText(staging.lat, staging.lng)} · directions open from Nearby on your phone once you have checked in` : (icp ? `${icp.name || 'Command post'} at ${latLngText(icp.lat, icp.lng)}` : (inc.base_name ? 'Report to ' + inc.base_name : 'Operations will say'))],
+    ['Getting there', staging ? `${staging.name || 'Staging area'}${staging.notes ? ' · ' + staging.notes : ''} · for a satnav ${latLngText(staging.lat, staging.lng)} · directions open from Nearby on your phone once you have checked in` : (icp ? `${icp.name || 'Command post'}${icp.notes ? ' · ' + icp.notes : ''} · for a satnav ${latLngText(icp.lat, icp.lng)}` : (inc.base_name ? 'Report to ' + inc.base_name : 'Operations will say'))],
     ['Radio', channels.length ? channels.map((c) => c.use + ' ' + c.channel).join(' · ') + ' · plain English, no codes' : 'No communications plan set yet; Operations gives you a channel at check-in'],
-    ['Bring', p && p.notes ? p.notes : 'not set: the period\'s safety message goes here']
+    ['Safety', p && p.notes ? p.notes : 'No safety message written for this period yet'],
+    ['Bring', p && p.bring ? p.bring : 'not set; ask at check-in']
   ];
 }
 export function whoToAsk(data) {

@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 26;
+  const SEED_VERSION = 27;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -102,7 +102,7 @@
       ic_ops_codes: [{ incident_id: INC, code: OPS_CODE, created_at: ago(190), created_by: U.ops }],
       ic_id_purge: [],   // licence photos the clearing queued for the base to remove
       ic_periods: [
-        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '', pio: 'Lena Marsh', liaison: 'Tomás Herrera', rotation_minutes: 45, deputy: '',
+        { id: PER, incident_id: INC, number: 1, starts_at: ago(190), ends_at: sevenPm.toISOString(), closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan', notes: 'Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.', created_at: ago(190), unified: '', planning_chief: 'Theresa Okafor', logistics_chief: 'Sam Whitaker', finance_chief: '', pio: 'Lena Marsh', liaison: 'Tomás Herrera', rotation_minutes: 45, deputy: '', bring: 'PFDs and dry bags for water crews, a radio each, water for the day',
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
       ],
       ic_objectives: [
@@ -300,7 +300,7 @@
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
-    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, deputy: '', created_at: now() }),
+    ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, deputy: '', bring: '', created_at: now() }),
     ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
     ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
@@ -680,7 +680,7 @@
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
       else if (r.text !== old.text) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} is now: ${r.text}`, 'ic_objectives', r.id);
     }
-    if (table === 'ic_periods' && !quiet && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || '') || (r.planning_chief || '') !== (old.planning_chief || '') || (r.logistics_chief || '') !== (old.logistics_chief || '') || (r.finance_chief || '') !== (old.finance_chief || '') || (r.pio || '') !== (old.pio || '') || (r.liaison || '') !== (old.liaison || '') || (r.deputy || '') !== (old.deputy || ''))) {
+    if (table === 'ic_periods' && !quiet && !r.closed_at && (r.ic_name !== old.ic_name || r.ops_chief !== old.ops_chief || r.safety_officer !== old.safety_officer || (r.ends_at || null) !== (old.ends_at || null) || (r.unified || '') !== (old.unified || '') || (r.planning_chief || '') !== (old.planning_chief || '') || (r.logistics_chief || '') !== (old.logistics_chief || '') || (r.finance_chief || '') !== (old.finance_chief || '') || (r.pio || '') !== (old.pio || '') || (r.liaison || '') !== (old.liaison || '') || (r.deputy || '') !== (old.deputy || '') || (r.bring || '') !== (old.bring || ''))) {
       log(changes, r.incident_id, uid, 'ops', `Operational period ${r.number} updated`
         + (r.ic_name !== old.ic_name ? ', Incident Commander ' + (r.ic_name || 'not set') : '')
         + ((r.deputy || '') !== (old.deputy || '') ? ', Deputy ' + (r.deputy || 'not set') : '')
@@ -691,6 +691,7 @@
         + (r.safety_officer !== old.safety_officer ? ', Safety ' + (r.safety_officer || 'not set') : '')
         + ((r.pio || '') !== (old.pio || '') ? ', PIO ' + (r.pio || 'not set') : '')
         + ((r.liaison || '') !== (old.liaison || '') ? ', Liaison ' + (r.liaison || 'not set') : '')
+        + ((r.bring || '') !== (old.bring || '') ? ', bring: ' + (r.bring || 'not set') : '')
         + ((r.unified || '') !== (old.unified || '') ? ', unified command ' + (r.unified || 'cleared') : ''));
     }
     if (table === 'ic_periods' && !quiet && JSON.stringify(r.sitrep ?? {}) !== JSON.stringify(old.sitrep ?? {})) log(changes, r.incident_id, uid, 'ops', `Situation report updated for operational period ${r.number}`);
@@ -1076,7 +1077,7 @@
         const incS = (tables.ic_incidents.find((i) => i.id === a.p_incident) || {}).settings || {};
         const rot = a.p_rotation != null ? Number(a.p_rotation) : cur && cur.rotation_minutes != null ? cur.rotation_minutes : incS.rotation_minutes != null && incS.rotation_minutes !== '' ? Number(incS.rotation_minutes) : 45;
         if (!(rot >= 0 && rot <= 600)) throw dbError('The rotation is 0 (off) to 600 minutes');
-        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '', pio: trim(a.p_pio) || '', liaison: trim(a.p_liaison) || '', rotation_minutes: rot, deputy: trim(a.p_deputy) || '' };
+        const np = { ...DEFAULTS.ic_periods(), incident_id: a.p_incident, number: (cur ? cur.number : maxN) + 1, ends_at: a.p_ends_at || null, ic_name: trim(a.p_ic) || '', ops_chief: trim(a.p_ops) || '', safety_officer: trim(a.p_safety) || '', notes: trim(a.p_notes) || '', planning_chief: trim(a.p_planning) || '', logistics_chief: trim(a.p_logistics) || '', finance_chief: trim(a.p_finance) || '', unified: trim(a.p_unified) || '', pio: trim(a.p_pio) || '', liaison: trim(a.p_liaison) || '', rotation_minutes: rot, deputy: trim(a.p_deputy) || '', bring: trim(a.p_bring) || '' };
         tables.ic_periods.push(np); changes.push(['INSERT', 'ic_periods', np, null]);
         periodCommand(np, null, uid, changes);
         let n = 0;

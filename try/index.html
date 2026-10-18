@@ -52,7 +52,8 @@
   .fine { color: var(--muted); font-size: 13.5px; max-width: 760px; margin: 0 0 8px; }
 
   /* ---- the demo: the toolbar, the guide and the two frames, one window tall */
-  #demo { height: 100vh; min-height: 560px; display: flex; flex-direction: column; border-top: 1px solid var(--line); scroll-margin-top: 0; }
+  #demo { height: 100vh; min-height: 560px; display: flex; flex-direction: column; border-top: 1px solid var(--line); scroll-margin-top: 0; background: var(--bg); }
+  #demo:fullscreen, #demo:-webkit-full-screen { height: 100vh; width: 100vw; border-top: 0; }
   header.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
   header.bar h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; white-space: nowrap; }
   header.bar .grp { display: flex; gap: 4px; align-items: center; }
@@ -186,6 +187,7 @@
     <div class="grp">
       <button id="fit" class="on" title="Scale both to fit the window">Fit</button>
       <button id="one" title="Real size, scroll to see the rest">1:1</button>
+      <button id="full" title="The demo on the whole screen; Esc brings the page back">Full screen</button>
     </div>
     <div class="grp">
       <button id="guide" class="on">Guide</button>
@@ -194,8 +196,8 @@
     </div>
     <span class="sp"></span>
     <span class="muted" id="hint"></span>
-    <a class="btn" href="/?demo" target="_blank" rel="noopener">Base ↗</a>
-    <a class="btn" href="/field/?demo" target="_blank" rel="noopener">Phone ↗</a>
+    <a class="btn" href="/try/base/" target="_blank" rel="noopener" title="The base alone on its own page">Base ↗</a>
+    <a class="btn" href="/try/phone/" target="_blank" rel="noopener" title="The phone alone on its own page">Phone ↗</a>
   </header>
   <main>
     <aside id="aside"><p class="muted">Pick a role above.</p></aside>
@@ -547,6 +549,21 @@
   $('fit').addEventListener('click', () => { state.fit = true; $('fit').classList.add('on'); $('one').classList.remove('on'); layout(); });
   $('one').addEventListener('click', () => { state.fit = false; $('one').classList.add('on'); $('fit').classList.remove('on'); layout(); });
   $('guide').addEventListener('click', () => { state.guide = !state.guide; $('aside').hidden = !state.guide; $('guide').classList.toggle('on', state.guide); layout(); });
+  // Full screen: the demo section (toolbar, tour and frames) on the whole display. Esc, or the button again, leaves.
+  // iPhones cannot put a page element on the whole screen, so the button hides where the browser cannot do it.
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  const fullBtn = $('full');
+  if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) fullBtn.hidden = true;
+  fullBtn.addEventListener('click', () => {
+    const d = $('demo');
+    try {
+      if (fsEl()) { const p = (document.exitFullscreen || document.webkitExitFullscreen).call(document); if (p && p.catch) p.catch(() => {}); }
+      else { const p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (p && p.catch) p.catch(() => toast('The browser would not go full screen here')); }
+    } catch (e) { toast('The browser would not go full screen here'); }
+  });
+  const onFs = () => { const on = !!fsEl(); fullBtn.textContent = on ? 'Exit full screen' : 'Full screen'; fullBtn.classList.toggle('on', on); layout(); };
+  document.addEventListener('fullscreenchange', onFs);
+  document.addEventListener('webkitfullscreenchange', onFs);
   $('reload').addEventListener('click', () => { reloadFrames(); toast('Both frames reloaded'); });
   $('reset').addEventListener('click', resetMock);
   window.addEventListener('resize', layout);

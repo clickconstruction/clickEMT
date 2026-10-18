@@ -1452,7 +1452,7 @@ async function demo(check) {
   document.body.appendChild(page);
   const pd = () => page.contentDocument;
   const cards = await until(() => pd() && pd().querySelectorAll('.card[data-role]').length === 12 && pd().querySelectorAll('.card[data-role]').length, 8000);
-  check('/try/ draws a card for each of the twelve personas and frames both views in demo mode', cards === 12 && pd().querySelector('#base').dataset.src === '/?demo' && pd().querySelector('#phone').dataset.src === '/field/?demo', `${cards} cards`);
+  check('/try/ draws a card for each of the twelve personas and frames both views in demo mode', cards === 12 && pd().querySelector('#base').dataset.src === '/?demo' && pd().querySelector('#phone').dataset.src === '/field/?demo' && !!pd().querySelector('#full'), `${cards} cards`);
   pd().querySelector('.card[data-role="10-shelter-desk"]').click();
   check('a role card loads both frames on the stand-in and shows that role\'s tour', await until(() => pd().querySelector('#base').getAttribute('src') === '/?demo' && pd().querySelector('#phone').getAttribute('src') === '/field/?demo' && /Shelter desk volunteer/.test((pd().querySelector('.who-head') || {}).textContent || '') && pd().querySelectorAll('.step').length >= 6, 8000), `${pd().querySelectorAll('.step').length} steps`);
   check('the base\'s signed-out screen is the front door: the join code first, then Try it and Sign in', !!$('#auth.landing #door-form') && has('#auth .door h1', 'part of an incident right now') && $$('#auth .land-card').length === 6 && $$('#auth #show .show-pic').length === 8 && $('#auth #show .show-pic.cur').dataset.i === '0' && !!$('#auth #auth-form #auth-email'), text('#auth .door h1'));
@@ -1471,6 +1471,8 @@ async function demo(check) {
   nd().getElementById('door-code').value = 'CEDAR0'; nd().getElementById('door-form').requestSubmit();
   check('its code box refuses a code outside the alphabet and stays put', await until(() => /never has 0, O, 1 or I/.test(nd().getElementById('door-msg').textContent), 4000) && /404\.html$/.test(nd().location.pathname), nd().getElementById('door-msg').textContent);
   nf.remove();
+  const alone = await Promise.all(['/try/base/', '/try/phone/'].map((u) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.text() : ''))));
+  check('the base and the phone each have a page of their own on the stand-in, with Full screen and Reset', /src="\/\?demo"/.test(alone[0]) && /src="\/field\/\?demo"/.test(alone[1]) && alone.every((t) => /id="full"/.test(t) && /id="reset"/.test(t)));
   const tour = page.contentWindow.__tour;
   check('six roles have a tour, with Show me on every step and Do it for me on most', !!tour && tour.tours.length === 6 && pd().querySelectorAll('.step [data-act="show"]').length === pd().querySelectorAll('.step').length && pd().querySelectorAll('.step [data-act="do"]').length >= 5, tour && tour.tours.join());
   await tour.pick('03-unit-lead-on-foot');

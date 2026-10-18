@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The phone · Try Incident Map</title>
+<meta name="description" content="The field app of Incident Map on its own page, live on a made-up incident with no account: full screen it, or open the base page beside it and they share the incident.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icons/icon-192.png">
+<!-- The phone alone: the field app at 375 x 812 in a frame, scaled to fit, on the stand-in.
+     Both pages run on the stand-in (?demo) on this origin, so when the base page and the phone page are open
+     at the same time, in two windows or on two displays, they share one incident: a tap on the phone shows on
+     the base. Full screen puts the page on the whole display; Esc brings the browser back. -->
+<style>
+  :root { --bg: #15161a; --panel: #1d1f24; --ink: #e8e8e8; --muted: #9aa0a8; --line: #2c2f36; --accent: #e8b84a; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header .brand { font-weight: 700; margin-right: 6px; white-space: nowrap; }
+  header .brand span { color: var(--muted); font-weight: 400; }
+  header .sp { flex: 1; }
+  .muted { color: var(--muted); }
+  button, a.btn { font: inherit; color: var(--ink); background: #262930; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+  button:hover, a.btn:hover { border-color: #555; }
+  #stage { flex: 1; min-height: 0; overflow: auto; padding: 12px; display: flex; align-items: center; justify-content: center; }
+  .slot { flex: none; overflow: hidden; border-radius: 8px; }
+  .scaled { transform-origin: top left; }
+  .base-box { width: 1280px; height: 800px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 18px rgba(0,0,0,.5); }
+  .phone-box { width: 395px; height: 832px; padding: 10px; background: #0b0b0d; border-radius: 40px; box-shadow: 0 2px 18px rgba(0,0,0,.6), inset 0 0 0 1px #333; }
+  iframe { border: 0; display: block; background: #fff; width: 100%; height: 100%; }
+  .phone-box iframe { width: 375px; height: 812px; border-radius: 30px; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: #111; padding: 8px 14px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+  .toast[hidden] { display: none; }
+  @media (max-width: 600px) { header .hint { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Incident Map <span>· The phone</span></div>
+  <a class="btn" href="/try/">‹ Tours</a>
+  <a class="btn" href="/try/base/">The base ›</a>
+  <button id="fit" class="on" title="Scale to fit the window">Fit</button>
+  <button id="one" title="Real size, scroll to see the rest">1:1</button>
+  <button id="full" title="This page on the whole display; Esc brings the browser back">Full screen</button>
+  <button id="reset" title="Put the seeded incident back">Reset the mock</button>
+  <span class="sp"></span>
+  <span class="muted hint">Unit 3, a swift-water team in A-2 · open /try/base/ in another window and they share the incident</span>
+</header>
+<main id="stage">
+  <div class="slot" id="slot"><div class="scaled" id="scaled"><div class="phone-box"><iframe id="frame" title="The phone" src="/field/?demo"></iframe></div></div></div>
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function () {
+  'use strict';
+  const W = 395, H = 832;
+  const $ = (id) => document.getElementById(id);
+  const state = { fit: true };
+  function layout() {
+    const stage = $('stage');
+    const s = state.fit ? Math.min(1, (stage.clientWidth - 24) / W, (stage.clientHeight - 24) / H) : 1;
+    $('slot').style.width = Math.round(W * s) + 'px'; $('slot').style.height = Math.round(H * s) + 'px';
+    $('scaled').style.transform = 'scale(' + s + ')';
+    $('stage').style.justifyContent = s < 1 || state.fit ? 'center' : 'flex-start';
+  }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2400); }
+  $('fit').addEventListener('click', () => { state.fit = true; $('fit').classList.add('on'); $('one').classList.remove('on'); layout(); });
+  $('one').addEventListener('click', () => { state.fit = false; $('one').classList.add('on'); $('fit').classList.remove('on'); layout(); });
+  $('reset').addEventListener('click', () => {
+    let ok = false; try { const m = $('frame').contentWindow.__mock; if (m && m.reset) { m.reset(); ok = true; } } catch (e) { /* ignore */ }
+    $('frame').src = $('frame').getAttribute('src');
+    toast(ok ? 'The seeded incident is back' : 'Reloaded');
+  });
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) $('full').hidden = true;
+  $('full').addEventListener('click', () => {
+    const d = document.documentElement;
+    try {
+      if (fsEl()) { const p = (document.exitFullscreen || document.webkitExitFullscreen).call(document); if (p && p.catch) p.catch(() => {}); }
+      else { const p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d); if (p && p.catch) p.catch(() => toast('The browser would not go full screen here')); }
+    } catch (e) { toast('The browser would not go full screen here'); }
+  });
+  const onFs = () => { const on = !!fsEl(); $('full').textContent = on ? 'Exit full screen' : 'Full screen'; $('full').classList.toggle('on', on); layout(); };
+  document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
+  window.addEventListener('resize', layout);
+  if ('ResizeObserver' in window) new ResizeObserver(layout).observe($('stage'));
+  layout();
+})();
+</script>
+</body>
+</html>

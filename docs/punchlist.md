@@ -291,9 +291,10 @@ by the suites they touch.
   *Shipped 18 October 2026 as `On scene too long (v47)`, migration `0029_scene_hours.sql` (the column is `scene_hours`,
   default 12, 0 off, carried by `ic_start_period`), rule test `supabase/tests/scene.sql`; the board and the unit panel
   rows, the briefing's Needs attention, the sitrep's own section and the 208 name who is past it; the `sections`,
-  `periods` and `fieldReports` suites cover it; the phone's Your briefing says so under Shift, and a person
-  checked out and back in starts a new stretch (`ic_person_rejoin`). It also carries v46's revisit clock time into the 214 line
-  (`revisit_hhmm`, typed by the phone, as Grace asked after the v46 report). Nothing is left on this list.*
+  `periods` and `fieldReports` suites cover it (rule test 9 of 9, full run 595 of 595); the phone's Your briefing
+  says so under Shift. A person checked out and back in still counts from the first check-in, as the Hours do (a
+  reset of the check-in stamp was tried and left out; see the re-walk). It also carries v46's revisit clock time into
+  the 214 line (`revisit_hhmm`, typed by the phone, as Grace asked after the v46 report). Nothing is left on this list.*
 
 ## 9. Decisions only Grace can make
 

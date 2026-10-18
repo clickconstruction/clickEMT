@@ -11,6 +11,7 @@ const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay } from '../shared/layers.js';
 import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
+import { watchUpdates } from '../shared/update.js';
 import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
@@ -1527,6 +1528,7 @@ window.addEventListener('online', () => { toast('Back online, sending'); queueDr
 window.addEventListener('offline', () => { toast('No signal. Reports are kept and sent later.'); queueDraw(); });
 setInterval(() => { if (!$('#app').hidden) queueDraw(); }, 15000);
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('../sw.js').catch(() => {});
+// New versions: a reload only on the sign-in screen, where nothing can be lost; the chip anywhere else.
+watchUpdates({ script: '../sw.js', mayReload: () => { const a = document.getElementById('auth'); return !!a && !a.hidden; }, chip: 'update-chip' });
 
 boot();

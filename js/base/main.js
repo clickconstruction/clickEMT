@@ -7,6 +7,7 @@ import { nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markin
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
+import { watchUpdates } from '../shared/update.js';
 import { photoCaption, photoFileName, imageType, withCaption, zip, whenText } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
@@ -1205,7 +1206,15 @@ setInterval(() => {
 }, 15000);
 $('#clock').textContent = hhmm(new Date());
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+// New versions: the signed-out front door reloads itself once when a new worker takes over; a signed-in
+// base gets the chip instead. The front door's footer says which version is on screen, with Reload.
+const updates = watchUpdates({ script: 'sw.js', mayReload: () => !$('#auth').hidden, chip: 'update-chip' });
+(async () => {
+  let v = await updates.version();
+  if (!v) { try { v = ((await (await fetch('sw.js', { cache: 'no-store' })).text()).match(/VERSION = '([^']+)'/) || [])[1]; } catch (e) { /* offline */ } }
+  if ($('#land-ver')) $('#land-ver').textContent = v ? 'Version ' + v : '';
+})();
+if ($('#land-reload')) $('#land-reload').addEventListener('click', async () => { await updates.check(); location.reload(); });
 
 // a join link opened on the base (?join=<code>) fills the picker's join form
 (function takeJoinLink() {

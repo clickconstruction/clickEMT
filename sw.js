@@ -2,14 +2,14 @@
 // map library from the CDN is cached on first use, map tiles are cached as they are seen (so a
 // zone the unit has looked at still draws without signal), and Supabase traffic always goes to
 // the network. Bump VERSION whenever a shell file changes.
-const VERSION = 'v35';
+const VERSION = 'v36';
 const SHELL_CACHE = 'shell-' + VERSION;
 const TILE_CACHE = 'tiles-v1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'field/', 'field/index.html', 'field/manifest.webmanifest',
   'css/shared.css', 'css/base.css', 'css/field.css',
-  'js/shared/rules.js', 'js/shared/data.js', 'js/shared/queue.js', 'js/shared/theme.js', 'js/shared/layers.js', 'js/shared/qr.js', 'js/shared/licence.js', 'js/shared/hours.js', 'js/shared/briefings.js',
+  'js/shared/rules.js', 'js/shared/data.js', 'js/shared/queue.js', 'js/shared/theme.js', 'js/shared/layers.js', 'js/shared/qr.js', 'js/shared/licence.js', 'js/shared/hours.js', 'js/shared/briefings.js', 'js/shared/update.js',
   'js/base/main.js', 'js/base/map.js', 'js/base/ui.js', 'js/base/print-map.js', 'js/base/photo-export.js',
   'js/field/main.js', 'js/field/sensors.js', 'js/field/camera.js', 'js/field/scan.js',
   'supabase-client.js', 'config.js', 'vendor/supabase-js-2.108.0.min.js', 'vendor/qrcode-generator-1.4.4.min.js', 'vendor/jsQR-1.4.0.js', 'vendor/zxing-library-0.21.3.min.js',
@@ -25,6 +25,11 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== SHELL_CACHE && k !== TILE_CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+
+// The page asks which version is in control (the footer's version line): answer on the port it sends.
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'version' && e.ports && e.ports[0]) e.ports[0].postMessage({ version: VERSION });
 });
 
 self.addEventListener('fetch', (e) => {

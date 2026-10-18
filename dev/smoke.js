@@ -1463,6 +1463,7 @@ async function demo(check) {
   $('#door-code').value = 'CEDAR0'; $('#door-form').requestSubmit();
   check('the code box refuses a code outside the join code\'s alphabet, and stays on the page', /never has 0, O, 1 or I/.test($('#door-msg').textContent) && location.pathname === '/', $('#door-msg').textContent);
   $('#door-code').value = ''; $('#door-msg').textContent = '';
+  check('the front door\'s footer says which version is on screen, with Reload, and the new-version chip waits hidden', await until(() => /^Version v\d+$/.test(($('#land-ver') || {}).textContent || ''), 6000) && !!$('#land-reload') && !!$('#update-chip') && $('#update-chip').hidden, ($('#land-ver') || {}).textContent);
   const tour = page.contentWindow.__tour;
   check('six roles have a tour, with Show me on every step and Do it for me on most', !!tour && tour.tours.length === 6 && pd().querySelectorAll('.step [data-act="show"]').length === pd().querySelectorAll('.step').length && pd().querySelectorAll('.step [data-act="do"]').length >= 5, tour && tour.tours.join());
   await tour.pick('03-unit-lead-on-foot');

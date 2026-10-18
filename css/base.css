@@ -534,7 +534,9 @@ select.sel { border: 1px solid var(--control-border); border-radius: 6px; paddin
 .land-ops h3 { font-size: 20px; margin: 0 0 6px; }
 .land-ops p { margin: 0 0 12px; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
 .land-foot { border-top: 1px solid var(--line); }
-.land-foot .land-wrap { padding: 22px 24px 44px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.land-foot .land-wrap { padding: 22px 24px 44px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
+.land-ver { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+@media (max-width: 600px) { .land-ver { margin-left: 0; } }
 @media (max-width: 600px) {
   .show-stage.phone { aspect-ratio: 4 / 5; }
   .show-arrow { width: 36px; height: 36px; font-size: 22px; }

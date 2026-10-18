@@ -215,8 +215,8 @@ export function layersPopHtml(data, state) {
     <div class="lp-col">
       <div class="k">Overlays</div>
       ${active.length ? active.map((o) => `<div class="lp-ovl"><label class="lp-row"><input type="checkbox" data-action="overlay-toggle" data-id="${o.id}"${hidden.has(o.id) ? '' : ' checked'}><span class="lp-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) : 'added ' + hhmm(o.created_at)}</span></label><input type="range" class="lp-range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity of ${esc(o.name || 'the imagery')}"></div>`).join('') : '<div class="muted lp-note">No imagery over the map yet.</div>'}
-      ${state.layersUpload ? overlayFormHtml() : '<button class="btn sm" data-action="layers-upload">Upload aerial photography</button>'}
-      <div class="muted lp-note">Hiding is for this screen; opacity and the upload are for everyone. Remove or put back under Map imagery on the home panel.</div>
+      ${overlayPickHtml()}
+      <div class="muted lp-note">A picture lands on the map; drag it into place. Hiding is for this screen; opacity and the picture are for everyone. Adjust, remove or put back under Map imagery on the home panel.</div>
     </div>    <div class="lp-col">
       <div class="k">Map underneath</div>
       ${availableLayers().map((l) => `<label class="lp-row"><input type="radio" name="base-layer" value="${l.id}" data-action="layer-pick" data-layer="${l.id}"${cur === l.id ? ' checked' : ''}><span class="lp-name">${esc(l.name)}</span><span class="muted">${esc(l.source || '')}</span></label>`).join('')}
@@ -224,29 +224,20 @@ export function layersPopHtml(data, state) {
     </div>`;
 }
 
-// Custom imagery over the map: fresh aerial or satellite pictures by their corner coordinates.
-// The upload form for a picture over the map: the corners come from the map's view (main.js fills them).
-export function overlayFormHtml() {
-  return `    <form class="inline-form" data-form="overlay-add">
-      <label>Picture (PNG or JPEG, up to 50 MB) <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required></label>
-      <div class="row-2">
-        <label>Name <input name="name" placeholder="Aerial 06:40, Civil Air Patrol" maxlength="120"></label>
-        <label>Taken at <input name="taken" type="datetime-local"></label>
-      </div>
-      <div class="row-2">
-        <label>South edge, latitude <input name="south" type="number" step="any" required></label>
-        <label>West edge, longitude <input name="west" type="number" step="any" required></label>
-      </div>
-      <div class="row-2">
-        <label>North edge, latitude <input name="north" type="number" step="any" required></label>
-        <label>East edge, longitude <input name="east" type="number" step="any" required></label>
-      </div>
-      <div class="row-2">
-        <label>Opacity <input name="opacity" type="range" min="0" max="1" step="0.05" value="0.8"></label>
-        <button class="btn sm" type="button" data-action="overlay-view-bounds" title="Fill the corners with what the map shows now">Use the map's view</button>
-      </div>
-      <div class="row-btns"><button class="btn pri sm" type="submit">Put it on the map</button></div>
-    </form>`;
+// Custom imagery over the map (v62): a picture is added with one button, lands over the map's view and is dragged
+// into place by its corners (js/base/placing.js); the card over the map asks its name and when it was taken.
+export function overlayPickHtml() {
+  return `<label class="btn sm pick-btn" title="PNG or JPEG, up to 50 MB. It lands on the map; drag it into place.">Add a picture<input type="file" data-file="overlay" accept="image/png,image/jpeg,image/webp" hidden></label>`;
+}
+// the card over the map while a picture is placed (#place-card): the file, Name, Taken at, Opacity, the buttons
+export function placeCardHtml(p) {
+  return `
+    <div class="pc-top"><b title="${esc(p.fileName)}">${esc(p.fileName)}</b><span class="muted">${Number(p.width)} × ${Number(p.height)}</span></div>
+    <label class="f">Name <input id="place-name" value="${esc(p.name || '')}" placeholder="Aerial 06:40, Civil Air Patrol" maxlength="120"></label>
+    <label class="f">Taken at <input id="place-taken" type="datetime-local" value="${esc(p.taken || '')}"></label>
+    <label class="f">Opacity · <span id="place-op-v">${Math.round(Number(p.opacity) * 100)}%</span><input type="range" id="place-op" data-range="place-opacity" min="0.1" max="1" step="0.05" value="${Number(p.opacity)}" aria-label="Opacity"></label>
+    <p class="muted pc-hint">Drag the picture to move it, a corner to stretch it, the round handle to turn it. Zoom in to line the roads up. Arrows nudge; Escape cancels.</p>
+    <div class="pc-btns"><button class="btn pri sm" data-action="place-save">Save</button><button class="btn sm" data-action="place-undo" disabled>Undo</button><button class="btn sm" data-action="place-cancel">Cancel</button></div>`;
 }
 
 export function imageryHtml(data) {
@@ -258,16 +249,17 @@ export function imageryHtml(data) {
       <div class="muted mono" style="font-size:11.5px">${esc(boundsText(o.bounds))}</div>
       <div class="ovl-ctl">
         <label class="ovl-op">Opacity <input type="range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity"></label>
+        <button class="btn sm" data-action="overlay-adjust" data-id="${o.id}" title="Drag it into place again, for everyone">Adjust</button>
         ${hidden.has(o.id) ? `<button class="btn sm" data-action="overlay-show" data-id="${o.id}" title="Hidden on this screen only">Show</button>` : `<button class="btn sm" data-action="overlay-hide" data-id="${o.id}" title="Hides it on this screen only">Hide</button>`}
         <button class="btn sm" data-action="overlay-remove" data-id="${o.id}" title="Takes it off the map for everyone; it is kept">Remove</button>
       </div>
     </div>`;
   return `
     <div class="k" style="margin-top:6px">Map imagery</div>
-    <div class="muted" style="font-size:12.5px">A picture laid over the map for every screen: fresh aerial or satellite imagery, a drone mosaic, a scanned plan. Give its corner coordinates; the map's view fills them in.</div>
+    <div class="muted" style="font-size:12.5px">A picture laid over the map for every screen: fresh aerial or satellite imagery, a drone mosaic, a scanned plan. Add one; it lands on the map; drag it into place.</div>
     ${active.length ? active.map(row).join('') : ''}
     ${gone.length ? `<div class="muted" style="font-size:12px">${gone.length} removed: ${gone.map((o) => `${esc(o.name || 'imagery')} <button class="plink" data-action="overlay-restore" data-id="${o.id}">put back</button>`).join(', ')}</div>` : ''}
-    ${overlayFormHtml()}`;
+    ${overlayPickHtml()}`;
 }
 
 // The field app's address, for the join link the QR carries.

@@ -14,7 +14,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 33;
+  const SEED_VERSION = 34;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -165,7 +165,7 @@
         { id: CMD[0], incident_id: INC, period_id: PER, ic_name: 'Dana Ruiz', from_name: '', ops_chief: 'Marcus Bell', started_at: ago(189), ended_at: null, transferred_by: U.ops, created_at: ago(189) }
       ],
       ic_overlays: [
-        { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2640, west: -97.7440, north: 30.2730, east: -97.7280 }, opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
+        { id: OVL[0], incident_id: INC, name: 'Aerial 06:40, Civil Air Patrol', storage_path: INC + '/' + OVL[0] + '.png', bounds: { south: 30.2635, west: -97.7452, north: 30.2735, east: -97.7275 }, corners: [[30.2735, -97.7445], [30.2718, -97.7275], [30.2635, -97.7283], [30.2652, -97.7452]], opacity: 0.7, taken_at: ago(300), created_by: U.ops, created_at: ago(120), updated_at: ago(120), archived_at: null }
       ],
       ic_profiles: [
         { user_id: U.ops, full_name: 'Marcus Bell', phone: '512 555 0101', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: 'photo', photo_path: U.ops + '/licence.jpg', verified_at: null, verified_by: null, created_at: ago(400), updated_at: ago(400) },
@@ -344,7 +344,7 @@
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', address: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
     ic_evacuees: () => ({ id: uuid(), label: '', count: 1, needs: [], note: '', structure_id: null, from_text: '', status: 'here', facility_id: null, prev_facility_id: null, transport_id: null, status_at: now(), logged_by: null, signed_in_by: null, signed_in_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_transports: () => ({ id: uuid(), kind: 'bus', label: '', from_facility_id: null, from_zone_id: null, from_text: '', to_facility_id: null, capacity: null, leaves_at: null, expected_at: null, status: 'planned', status_at: now(), left_at: null, arrived_at: null, driver_user_id: null, driver_text: '', notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
-    ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, corners: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
     ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, stint_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, scene_hours: 12, deputy: '', bring: '', created_at: now() }),
@@ -515,6 +515,8 @@
   const transferText = (to, ops, at) => 'Command transferred to ' + to + (at ? ' at ' + at : '') + '.' + (ops ? ' Operations Section Chief is ' + ops + '.' : '') + ' Your assignment, your division and your channel do not change.';
   const facilityWhat = (r) => FACILITY_TEXT[r.kind] + (r.name ? ': ' + r.name : '');
   const overlayWhat = (r) => 'Imagery' + (r.name ? ': ' + r.name : '');
+  // ic_overlay_before (v62): corners are four [lat, lng] pairs, and bounds is their box
+  const overlayBefore = (r) => { if (r.corners != null) { if (!R.cornersOk(r.corners)) throw dbError('corners must be four [lat, lng] pairs'); r.bounds = R.cornersBox(r.corners); } };
   const requestLine = (r) => (r.quantity > 1 ? r.quantity + ' ' : '') + r.what;
 
   // ---- the triggers: the log (ic_events), updated_at, a hazard's flag on its zone
@@ -888,7 +890,7 @@
     if (table === 'ic_overlays') {
       if (r.archived_at && !old.archived_at) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' removed from the map', 'ic_overlays', r.id);
       else if (!r.archived_at && old.archived_at) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' put back on the map', 'ic_overlays', r.id);
-      else if (r.name !== old.name || JSON.stringify(r.bounds) !== JSON.stringify(old.bounds)) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' updated', 'ic_overlays', r.id);
+      else if (r.name !== old.name || JSON.stringify(r.bounds) !== JSON.stringify(old.bounds) || JSON.stringify(r.corners ?? null) !== JSON.stringify(old.corners ?? null)) log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' updated', 'ic_overlays', r.id);
     }
     if (table === 'ic_facilities') {
       if (r.closed_at && !old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' closed', 'ic_facilities', r.id);
@@ -1022,7 +1024,7 @@
     const row = { ...(DEFAULTS[table] ? DEFAULTS[table]() : {}), ...given };
     if (table === 'ic_profiles') { row.verified_at = null; row.verified_by = null; row.full_name = String(row.full_name || '').trim(); row.phone = String(row.phone || '').trim(); row.licence_number = String(row.licence_number || '').trim().toUpperCase(); row.licence_state = String(row.licence_state || '').trim().toUpperCase(); }   // ic_profile_before
     if (table === 'ic_facilities') row.created_by = row.created_by || uid;   // ic_facility_before
-    if (table === 'ic_overlays') row.created_by = row.created_by || uid;   // ic_overlay_before
+    if (table === 'ic_overlays') { row.created_by = row.created_by || uid; overlayBefore(row); }   // ic_overlay_before
     if (table === 'ic_requests') { row.what = String(row.what || '').trim(); row.status = 'asked'; row.answer = ''; row.status_by = null; row.status_at = null; }   // ic_request_before
     if (table === 'ic_period_agencies') { row.agency = String(row.agency || '').trim(); row.name = String(row.name || '').trim(); row.phone = String(row.phone || '').trim(); if (tables.ic_period_agencies.some((a) => a.period_id === row.period_id && a.agency === row.agency)) throw dbError('duplicate key value violates unique constraint "ic_period_agencies_period_id_agency_key"', '23505'); }   // ic_period_agency_before
     if (table === 'ic_people') { row.created_by = row.created_by || uid; personBefore(row, null); }
@@ -1084,7 +1086,7 @@
       if (!r.public_ok && old.public_ok) { r.public_checked_at = null; r.public_checked_by = null; }
     }
     if (table === 'ic_facilities') r.updated_at = now();   // ic_facility_before
-    if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
+    if (table === 'ic_overlays') { r.updated_at = now(); overlayBefore(r); }   // ic_overlay_before
     if (table === 'ic_requests') { r.updated_at = now(); r.what = String(r.what || '').trim(); if (r.status !== old.status || r.answer !== old.answer) { r.status_by = uid; r.status_at = now(); } }   // ic_request_before
     if (table === 'ic_period_agencies') { r.updated_at = now(); r.name = String(r.name || '').trim(); r.phone = String(r.phone || '').trim(); }   // ic_period_agency_before
     if (table === 'ic_people') { personBefore(r, old); if (!r.checked_out_at && old.checked_out_at) r.stint_at = now(); }   // ic_person_stint (v48): back on, the current stretch starts now; the check-in stays

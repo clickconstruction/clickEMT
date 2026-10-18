@@ -2,15 +2,15 @@
 // map library from the CDN is cached on first use, map tiles are cached as they are seen (so a
 // zone the unit has looked at still draws without signal), and Supabase traffic always goes to
 // the network. Bump VERSION whenever a shell file changes.
-const VERSION = 'v61';
+const VERSION = 'v62';
 const SHELL_CACHE = 'shell-' + VERSION;
 const TILE_CACHE = 'tiles-v1';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'field/', 'field/index.html', 'field/manifest.webmanifest',
   'css/shared.css', 'css/base.css', 'css/field.css',
-  'js/shared/rules.js', 'js/shared/data.js', 'js/shared/queue.js', 'js/shared/theme.js', 'js/shared/layers.js', 'js/shared/qr.js', 'js/shared/licence.js', 'js/shared/hours.js', 'js/shared/briefings.js', 'js/shared/update.js',
-  'js/base/main.js', 'js/base/map.js', 'js/base/ui.js', 'js/base/print-map.js', 'js/base/photo-export.js', 'js/base/discover.js',
+  'js/shared/rules.js', 'js/shared/data.js', 'js/shared/queue.js', 'js/shared/theme.js', 'js/shared/layers.js', 'js/shared/qr.js', 'js/shared/licence.js', 'js/shared/hours.js', 'js/shared/briefings.js', 'js/shared/update.js', 'js/shared/exif.js',
+  'js/base/main.js', 'js/base/map.js', 'js/base/ui.js', 'js/base/print-map.js', 'js/base/photo-export.js', 'js/base/discover.js', 'js/base/placing.js',
   'js/field/main.js', 'js/field/sensors.js', 'js/field/camera.js', 'js/field/scan.js',
   'supabase-client.js', 'config.js', 'vendor/supabase-js-2.108.0.min.js', 'vendor/qrcode-generator-1.4.4.min.js', 'vendor/jsQR-1.4.0.js', 'vendor/zxing-library-0.21.3.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',

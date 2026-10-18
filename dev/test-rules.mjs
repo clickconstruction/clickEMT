@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, cornersBox, cornersOk, boxCorners, overlayCorners } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -315,3 +315,18 @@ t('the header clock reads UTC from the same moment, and the zone has a short nam
   assert.equal(hhmmUtc(''), '');
   assert.equal(typeof zoneShort(new Date()), 'string');
 });
+
+t('a picture by its corners (v62): the box, what is a valid set of corners, and where an overlay lies', () => {
+  const c = [[30.2735, -97.7445], [30.2718, -97.7275], [30.2635, -97.7283], [30.2652, -97.7452]];
+  assert.deepEqual(cornersBox(c), { south: 30.2635, north: 30.2735, west: -97.7452, east: -97.7275 });
+  assert.equal(cornersOk(c), true);
+  assert.equal(cornersOk(c.map((p) => p.map(String))), true, 'numbers as strings count');
+  assert.equal(cornersOk(c.slice(0, 3)), false);
+  assert.equal(cornersOk(null), false);
+  assert.equal(cornersOk([[1, 1], [1, 1], [1, 1], [1, 1]]), false, 'no size');
+  assert.equal(cornersOk([[91, 0], [1, 2], [0, 2], [0, 1]]), false, 'off the globe');
+  assert.deepEqual(boxCorners({ south: 1, west: 2, north: 3, east: 4 }), [[3, 2], [3, 4], [1, 4], [1, 2]]);
+  assert.deepEqual(overlayCorners({ corners: c, bounds: { south: 0, west: 0, north: 1, east: 1 } }), c);
+  assert.deepEqual(overlayCorners({ corners: null, bounds: { south: 1, west: 2, north: 3, east: 4 } }), [[3, 2], [3, 4], [1, 4], [1, 2]]);
+});
+

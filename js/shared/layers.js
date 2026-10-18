@@ -2,6 +2,9 @@
 // page's global L. Streets (OpenStreetMap) and Satellite (Esri World Imagery) need nothing;
 // Google Maps streets and satellite appear when the incident's settings carry a Google Maps key for the
 // Map Tiles API (setGoogleKey; config.js's window.GOOGLE_MAPS_KEY is the fallback). The choice is a device setting.
+// A picture with corners (v62) is drawn by cornersImage, a layer of our own: Leaflet's image overlay knows only
+// a rectangle, so the picture is laid over its four points by a CSS matrix3d, redrawn on zoom and animated with it.
+import { cornersOk, overlayCorners } from './rules.js';
 export const LAYER_KEY = 'ic.map.layer';
 export const HIDDEN_KEY = 'ic.map.hidden';   // imagery this device has hidden, by id
 
@@ -77,7 +80,76 @@ export function boundsOk(b) {
   return b && [b.south, b.west, b.north, b.east].every((v) => Number.isFinite(Number(v))) && Number(b.north) > Number(b.south) && Number(b.east) > Number(b.west);
 }
 export function makeOverlay(o, url, pane) {
-  return L.imageOverlay(url, overlayBounds(o), { opacity: o.opacity == null ? 0.8 : Number(o.opacity), interactive: false, pane: pane || 'imagery', className: 'imagery' });
+  const opacity = o.opacity == null ? 0.8 : Number(o.opacity);
+  if (cornersOk(o.corners)) return new (cornersImage())(url, overlayCorners(o), { opacity, pane: pane || 'imagery', className: 'imagery' });
+  return L.imageOverlay(url, overlayBounds(o), { opacity, interactive: false, pane: pane || 'imagery', className: 'imagery' });
+}
+
+// ---- a picture over four points (v62)
+// The unit square onto four points, as a 3 × 3 projective matrix (Heckbert's formulas), row by row: a point (u, v)
+// lands at ((a u + b v + c) / (g u + h v + i), (d u + e v + f) / (g u + h v + i)).
+export function squareToQuad(p) {
+  const [x0, y0] = p[0], [x1, y1] = p[1], [x2, y2] = p[2], [x3, y3] = p[3];
+  const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3;
+  const dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3;
+  if (Math.abs(dx3) < 1e-9 && Math.abs(dy3) < 1e-9) return [x1 - x0, x3 - x0, x0, y1 - y0, y3 - y0, y0, 0, 0, 1];
+  const det = dx1 * dy2 - dx2 * dy1;
+  const g = (dx3 * dy2 - dx2 * dy3) / det, h = (dx1 * dy3 - dx3 * dy1) / det;
+  return [x1 - x0 + g * x1, x3 - x0 + h * x3, x0, y1 - y0 + g * y1, y3 - y0 + h * y3, y0, g, h, 1];
+}
+// the CSS transform that lays a w × h element (transform-origin 0 0) over four points: top-left, top-right,
+// bottom-right, bottom-left, in the element's parent's pixels
+export function cornersTransform(pts, w, h) {
+  const [a, b, c, d, e, f, g, hh, i] = squareToQuad(pts);
+  return `matrix3d(${a / w},${d / w},0,${g / w},${b / h},${e / h},0,${hh / h},0,0,1,0,${c},${f},0,${i})`;
+}
+// four points keep a picture whole only while they make a convex quadrilateral; a corner dragged across the
+// picture would fold it, so placing refuses that drag
+export function quadConvex(p) {
+  let s = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = p[i], b = p[(i + 1) % 4], c = p[(i + 2) % 4];
+    const z = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    if (!z) return false;
+    if (!s) s = Math.sign(z); else if (Math.sign(z) !== s) return false;
+  }
+  return true;
+}
+// The layer: one <img> in the pane, laid over its corners by cornersTransform once its own size is known, kept there
+// through zoom (zoom, viewreset) and moved with the zoom animation as Leaflet's own image overlay is (zoomanim with
+// the map's new layer points). Made on first use, because L is the page's global and the tests run in Node.
+let CornersImage = null;
+export function cornersImage() {
+  if (CornersImage) return CornersImage;
+  CornersImage = L.Layer.extend({
+    options: { opacity: 1, pane: 'imagery', className: '' },
+    initialize(url, corners, options) { this._url = url; this._corners = corners.map((c) => [Number(c[0]), Number(c[1])]); L.setOptions(this, options); },
+    onAdd() {
+      if (!this._img) {
+        const img = this._img = L.DomUtil.create('img', 'imagery-corners ' + (this.options.className || ''));
+        L.DomUtil.addClass(img, this._zoomAnimated ? 'leaflet-zoom-animated' : 'leaflet-zoom-hide');
+        img.alt = ''; img.draggable = false; img.hidden = true;   // nothing until its size is known
+        img.style.opacity = String(this.options.opacity);
+        img.onload = () => { this._w = img.naturalWidth; this._h = img.naturalHeight; img.hidden = false; this._reset(); this.fire('load'); };
+        img.onerror = () => this.fire('error');
+        img.src = this._url;
+      }
+      this.getPane().appendChild(this._img);
+      this._reset();
+    },
+    onRemove() { if (this._img) L.DomUtil.remove(this._img); },
+    getEvents() { const ev = { zoom: this._reset, viewreset: this._reset }; if (this._zoomAnimated) ev.zoomanim = this._animateZoom; return ev; },
+    setOpacity(v) { this.options.opacity = Number(v); if (this._img) this._img.style.opacity = String(this.options.opacity); return this; },
+    setCorners(c) { this._corners = c.map((p) => [Number(p[0]), Number(p[1])]); this._reset(); return this; },
+    getCorners() { return this._corners.map((p) => [p[0], p[1]]); },
+    getBounds() { return L.latLngBounds(this._corners); },
+    getElement() { return this._img; },
+    size() { return this._w ? [this._w, this._h] : null; },
+    _place(project) { if (!this._img || !this._w) return; this._img.style.transform = cornersTransform(this._corners.map((c) => { const p = project(L.latLng(c[0], c[1])); return [p.x, p.y]; }), this._w, this._h); },
+    _reset() { if (this._map) this._place((ll) => this._map.latLngToLayerPoint(ll)); },
+    _animateZoom(e) { this._place((ll) => this._map._latLngToNewLayerPoint(ll, e.zoom, e.center)); }
+  });
+  return CornersImage;
 }
 export function boundsText(b) {
   if (!boundsOk(b)) return '';

@@ -513,13 +513,13 @@ export class Data {
   // ---- custom imagery (ic_overlays): a picture over the map by its corner coordinates, ops only
   overlays(all) { return [...this.store.overlays.values()].filter((o) => all || !o.archived_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
   overlay(id) { return this.store.overlays.get(id) || null; }
-  async addOverlay(file, { name, bounds, opacity, takenAt }) {
+  async addOverlay(file, { name, bounds, corners, opacity, takenAt }) {
     const id = crypto.randomUUID();
     const ext = (/\.(png|jpe?g|webp|gif)$/i.exec(file.name || '') || ['', 'png'])[1].toLowerCase().replace('jpeg', 'jpg');
     const path = this.store.incident.id + '/' + id + '.' + ext;
     const up = await this.sb.storage.from(OVERLAY_BUCKET).upload(path, file, { contentType: file.type || 'image/png', upsert: false });
     if (up.error) throw up.error;
-    const row = { id, incident_id: this.store.incident.id, name: name || '', storage_path: path, bounds, opacity: opacity == null ? 0.8 : Number(opacity), taken_at: takenAt || null, created_by: this.user.id };
+    const row = { id, incident_id: this.store.incident.id, name: name || '', storage_path: path, bounds, corners: corners || null, opacity: opacity == null ? 0.8 : Number(opacity), taken_at: takenAt || null, created_by: this.user.id };
     const { data, error } = await this.sb.from('ic_overlays').insert(row).select().single();
     if (error) throw error;
     this.local('ic_overlays', data);

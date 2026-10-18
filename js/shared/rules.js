@@ -762,3 +762,21 @@ export function seenGuess({ desk, zone, par } = {}) { return par ? 'par' : desk 
 export const INVITE_STATE = { pending: 'Invited, not yet in', accepted: 'Accepted', withdrawn: 'Withdrawn', expired: 'Expired', unsent: 'Not sent' };
 export function inviteState(v, now = Date.now()) { return v.withdrawn_at ? 'withdrawn' : v.accepted_at ? 'accepted' : new Date(v.expires_at).getTime() < now ? 'expired' : !v.sent_at ? 'unsent' : 'pending'; }
 export function inviteFromSearch(search) { const m = /[?&]invite=([A-Za-z0-9-]+)/.exec(String(search || '')); return m ? m[1] : ''; }
+
+// ---- a picture over the map by its corners (v62): ic_overlays.corners is [[lat, lng] × 4], the picture's top-left,
+// top-right, bottom-right and bottom-left; a picture with no corners fills its bounds. cornersBox is what
+// ic_overlay_before writes into bounds, so the two never disagree; ic_corners_ok in SQL says the same as cornersOk.
+export function cornersBox(c) {
+  const lats = c.map((p) => Number(p[0])), lngs = c.map((p) => Number(p[1]));
+  return { south: Math.min(...lats), north: Math.max(...lats), west: Math.min(...lngs), east: Math.max(...lngs) };
+}
+export function cornersOk(c) {
+  if (!Array.isArray(c) || c.length !== 4 || !c.every((p) => Array.isArray(p) && p.length === 2 && p.every((v) => Number.isFinite(Number(v))))) return false;
+  if (!c.every((p) => Math.abs(Number(p[0])) <= 90 && Math.abs(Number(p[1])) <= 180)) return false;
+  const b = cornersBox(c);
+  return b.north > b.south && b.east > b.west;
+}
+// the corners of a rectangle given by its edges, in the same order
+export function boxCorners(b) { return [[Number(b.north), Number(b.west)], [Number(b.north), Number(b.east)], [Number(b.south), Number(b.east)], [Number(b.south), Number(b.west)]]; }
+// where an overlay's picture lies: its corners, else the corners of its bounds
+export function overlayCorners(o) { return cornersOk(o && o.corners) ? o.corners.map((p) => [Number(p[0]), Number(p[1])]) : boxCorners((o && o.bounds) || {}); }

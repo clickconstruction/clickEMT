@@ -1016,7 +1016,7 @@ function drawMiniOverlays() {
       if (!overlayUrls.has(o.storage_path)) { overlayUrls.set(o.storage_path, null); data.overlayUrl(o.storage_path).then((u) => { overlayUrls.set(o.storage_path, u); drawMiniOverlays(); }).catch(() => overlayUrls.delete(o.storage_path)); }
       continue;
     }
-    want.set(o.id, { o, url, stamp: o.updated_at + '|' + url + '|' + JSON.stringify(o.bounds) + '|' + o.opacity });
+    want.set(o.id, { o, url, stamp: o.updated_at + '|' + url + '|' + JSON.stringify(o.bounds) + '|' + JSON.stringify(o.corners || null) + '|' + o.opacity });
   }
   for (const [id, cur] of miniOverlays) if (!want.has(id) || want.get(id).stamp !== cur.stamp) { mini.removeLayer(cur.layer); miniOverlays.delete(id); }
   for (const [id, w] of want) if (!miniOverlays.has(id)) miniOverlays.set(id, { layer: makeOverlay(w.o, w.url, 'imagery').addTo(mini), stamp: w.stamp });

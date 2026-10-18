@@ -2,13 +2,15 @@
 // drawn from the shared data module while it follows live changes.
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
-import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml } from './ui.js';
-import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch } from '../shared/rules.js';
+import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, placeCardHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml } from './ui.js';
+import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
-import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
+import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
 import { startAround, clearAround, layoutAround, aroundOn, aroundSeen } from './discover.js';
+import { placePicture } from './placing.js';
+import { exifTaken } from '../shared/exif.js';
 import { photoCaption, photoFileName, imageType, withCaption, zip } from './photo-export.js';
 const FACILITY_LABEL = Object.fromEntries(FACILITY_KINDS.map(([v, label]) => [v, label]));
 
@@ -24,7 +26,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -222,6 +224,7 @@ $('#join-form').addEventListener('submit', async (e) => {
 
 // ---- the open incident
 async function openIncident(id) {
+  if (state.placing && map) endPlacing();   // v62: a picture half placed on the last incident is dropped
   if (state.replay) closeReplay();
   const inc = await data.open(id);
   setGoogleKey(data.settings().maps_key);   // the Google layers come from the incident's settings (v28)
@@ -427,7 +430,6 @@ function drawSide() {
         if (el) side.scrollTop += el.getBoundingClientRect().top - side.getBoundingClientRect().top - anchor.off;
       }
     }
-    fillOverlayBounds(false);
   }
   if (key !== sideSel) {
     sideSel = key;
@@ -755,23 +757,80 @@ function drawLayers() {
   if (focused) return;
   const html = layersPopHtml(data, state);
   if (pop.__html !== html) { pop.__html = html; pop.innerHTML = html; }
-  fillOverlayBounds(false);
 }
-function setLayersOpen(open) { state.layersOpen = !!open; if (!open) state.layersUpload = false; drawLayers(); }
-// the upload form's corners: the map's view, unless Operations has typed its own
-function fillOverlayBounds(force) {
-  if (!map) return;
-  for (const f of document.querySelectorAll('form[data-form="overlay-add"]')) {
-    if (!force && f.south.value !== '') continue;
-    let b;
-    try { b = map.viewBounds(); } catch (e) { return; }   // a map with no size yet (the pane still laying out) has no bounds
-    for (const k of ['south', 'west', 'north', 'east']) f[k].value = b[k].toFixed(5);
-  }
-}
+function setLayersOpen(open) { state.layersOpen = !!open; drawLayers(); }
 document.addEventListener('input', (e) => {
   const r = e.target.closest('[data-range="overlay-opacity"]');
   if (r && map) map.setOverlayOpacity(r.dataset.id, r.value);
+  const pr = e.target.closest('[data-range="place-opacity"]');
+  if (pr && state.placing) { state.placing.ctl.setOpacity(pr.value); $('#place-op-v').textContent = Math.round(pr.value * 100) + '%'; }
 });
+
+// ---- a picture by its corners (v62). Chosen on the Layers panel or the home panel, it lands over the view and is
+// dragged into place (js/base/placing.js); the card over the map asks its name and when it was taken; Save writes
+// the row (the corners and their box); Adjust on a saved picture opens the same handles on it.
+const OVERLAY_MAX = 50 * 1024 * 1024;
+async function pickOverlayFile(file) {
+  if (!file) return;
+  if (state.placing) { toast('Save or cancel the picture being placed first', true); return; }
+  if (file.size > OVERLAY_MAX) { toast('That picture is over 50 MB', true); return; }
+  const url = URL.createObjectURL(file);
+  let size;
+  try { size = await imageSize(url); } catch (e) { URL.revokeObjectURL(url); toast('That is not a picture the browser can show', true); return; }
+  let taken = '';
+  try { if (file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name)) taken = exifTaken(await file.slice(0, 256 * 1024).arrayBuffer()); } catch (e) { /* no Exif to read */ }
+  if (!taken && file.lastModified) taken = localDateTime(new Date(file.lastModified));
+  const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+  startPlacing({ file, fileName: file.name, url, blob: true, width: size[0], height: size[1], name, taken, opacity: 0.5, corners: map.landingCorners(size[0], size[1]) });
+}
+function imageSize(url) { return new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve([im.naturalWidth, im.naturalHeight]); im.onerror = reject; im.src = url; }); }
+function localDateTime(d) { const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+function startPlacing(p) {
+  setLayersOpen(false);
+  state.placing = p;
+  map.placingId = p.editing || null;
+  map.map.keyboard.disable();   // the arrows nudge the picture, not the map
+  p.ctl = placePicture(map.map, { url: p.url, corners: p.corners, opacity: p.opacity, onChange: (c) => { const b = $('#place-card [data-action="place-undo"]'); if (b) b.disabled = !c.canUndo(); } });
+  const card = $('#place-card');
+  card.innerHTML = placeCardHtml(p);
+  card.hidden = false;
+  setHint(p.editing ? 'Drag the picture where it belongs, then Save.' : 'The picture is on the map: drag it until the roads line up, then Save.');
+  queueDraw();
+}
+function endPlacing() {
+  const p = state.placing;
+  if (!p) return;
+  p.ctl.end();
+  if (p.blob) URL.revokeObjectURL(p.url);
+  state.placing = null;
+  map.placingId = null;
+  map.map.keyboard.enable();
+  $('#place-card').hidden = true; $('#place-card').innerHTML = '';
+  setHint(defaultHint());
+  queueDraw();
+}
+function cancelPlacing() { const was = state.placing; if (!was) return; endPlacing(); toast(was.editing ? 'Left as it was' : 'Taken off the map'); }
+async function savePlacing() {
+  const p = state.placing;
+  if (!p) return;
+  const corners = p.ctl.corners(), bounds = cornersBox(corners);
+  const name = $('#place-name').value.trim(), takenAt = $('#place-taken').value ? new Date($('#place-taken').value).toISOString() : null, opacity = Number($('#place-op').value);
+  const btn = $('#place-card [data-action="place-save"]');
+  if (btn) btn.disabled = true;
+  try {
+    if (p.editing) { await data.updateOverlay(p.editing, { corners, bounds, name, taken_at: takenAt, opacity }); toast('Saved for everyone'); }
+    else { toast('Uploading the picture…'); await data.addOverlay(p.file, { name, corners, bounds, opacity, takenAt }); toast('On the map for everyone'); }
+    endPlacing();
+  } catch (err) { toast(err.message || String(err), true); if (btn) btn.disabled = false; }
+}
+async function adjustOverlay(id) {
+  if (state.placing) { toast('Save or cancel the picture being placed first', true); return; }
+  const o = data.overlay(id);
+  if (!o) return;
+  const url = await data.overlayUrl(o.storage_path);
+  const size = await imageSize(url);
+  startPlacing({ editing: id, url, fileName: o.name || 'Imagery', width: size[0], height: size[1], name: o.name || '', taken: o.taken_at ? localDateTime(new Date(o.taken_at)) : '', opacity: Number(o.opacity), corners: overlayCorners(o) });
+}
 
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
@@ -1009,7 +1068,6 @@ document.addEventListener('click', async (e) => {
       case 'overlay-show': setOverlayHidden(id, false); queueDraw(); break;
       case 'overlay-remove': { const o = data.overlay(id); if (o && window.confirm(`Remove "${o.name || 'this imagery'}" from the map for everyone? It is kept and can be put back.`)) { await data.archiveOverlay(id); toast('Imagery removed from the map'); } break; }
       case 'overlay-restore': await data.updateOverlay(id, { archived_at: null }); toast('Imagery put back'); break;
-      case 'overlay-view-bounds': fillOverlayBounds(true); break;
       case 'select-unit': if (btn.closest('#people')) closePeople(); select({ type: 'unit', id }); break;
       case 'select-structure': selectFromLog({ type: 'structure', id }); break;
       case 'select-facility': if (btn.closest('#briefing')) $('#briefing').hidden = true; selectFromLog({ type: 'facility', id }); break;
@@ -1101,7 +1159,10 @@ document.addEventListener('click', async (e) => {
       case 'layers': setLayersOpen(!state.layersOpen); break;
       case 'layer-pick': { const want = btn.dataset.layer; const got = await map.setBaseLayer(want); if (got !== want) drawLayers(); break; }
       case 'overlay-toggle': setOverlayHidden(id, !btn.checked); queueDraw(); break;
-      case 'layers-upload': state.layersUpload = true; drawLayers(); { const f = $('#layers-pop form[data-form="overlay-add"]'); if (f) f.file.focus(); } break;
+      case 'overlay-adjust': await adjustOverlay(id); break;
+      case 'place-save': await savePlacing(); break;
+      case 'place-undo': if (state.placing) { state.placing.ctl.undo(); btn.disabled = !state.placing.ctl.canUndo(); } break;
+      case 'place-cancel': cancelPlacing(); break;
       case 'sitrep': openOverlay('sitrep'); break;
       case 'iap': openOverlay('iap'); break;
       case 'close-briefing': $('#briefing').hidden = true; state.printZone = null; state.print = null; state.printFacility = null; break;
@@ -1157,6 +1218,8 @@ function timeToIso(hhmmValue) {
 }
 
 document.addEventListener('change', async (e) => {
+  const pick = e.target.closest('input[data-file="overlay"]');
+  if (pick) { const f = pick.files && pick.files[0]; pick.value = ''; await pickOverlayFile(f); return; }   // v62
   const box = e.target.closest('[data-check="invite-only"]');
   if (box) { try { await data.setInviteOnly(box.checked); toast(box.checked ? 'Invited members only: the join code is off' : 'The join code is on again'); } catch (err) { toast(err.message || String(err), true); box.checked = !box.checked; } queueDraw(); return; }   // v56
   const sel = e.target.closest('[data-select], [data-range]');
@@ -1186,6 +1249,13 @@ document.addEventListener('change', async (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && aroundOn()) { clearAround('cleared'); return; }   // v58
   if (e.key === 'Escape' && (state.gearOpen || state.codesOpen || state.liveOpen)) { setGearOpen(false); state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); return; }   // v60
+  if (state.placing) {   // v62: while a picture is placed, Escape cancels, arrows nudge (Shift: ten pixels), ⌘Z / Ctrl+Z undoes
+    const typing = e.target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable);
+    if (e.key === 'Escape') { cancelPlacing(); return; }
+    if (!typing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { state.placing.ctl.undo(); const b = $('#place-card [data-action="place-undo"]'); if (b) b.disabled = !state.placing.ctl.canUndo(); e.preventDefault(); return; }
+    const d = e.shiftKey ? 10 : 1, k = e.key;
+    if (!typing && (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight')) { state.placing.ctl.nudge(k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0); e.preventDefault(); return; }
+  }
   if (e.key === 'Escape' && state.layersOpen) { setLayersOpen(false); return; }
   if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;
@@ -1301,17 +1371,6 @@ document.addEventListener('submit', async (e) => {
       await data.addObjective(text);
       form.text.value = '';
       form.text.blur();
-      queueDraw();
-    } else if (form.dataset.form === 'overlay-add') {
-      const file = form.file.files && form.file.files[0];
-      if (!file) { toast('Choose a picture first', true); return; }
-      const bounds = { south: Number(form.south.value), west: Number(form.west.value), north: Number(form.north.value), east: Number(form.east.value) };
-      if (!boundsOk(bounds)) { toast('The corners need south below north and west left of east', true); return; }
-      toast('Uploading the imagery…');
-      await data.addOverlay(file, { name: form.name.value.trim(), bounds, opacity: Number(form.opacity.value), takenAt: form.taken.value ? new Date(form.taken.value).toISOString() : null });
-      toast('Imagery on the map for everyone');
-      if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
-      state.layersUpload = false;
       queueDraw();
     } else if (form.dataset.form === 'person-add') {
       const name = form.name.value.trim();
@@ -1445,7 +1504,7 @@ function drawTools() {
   const drawing = !!map.mode, noB = !data.incident.boundary, noZ = !data.zones().length;
   $('#btn-boundary').classList.toggle('pri', !drawing && noB);
   $('#btn-zone').classList.toggle('pri', !drawing && !noB && noZ);
-  if (!drawing) setHint(defaultHint());
+  if (!drawing && !state.placing) setHint(defaultHint());   // v62: the placing hint stays while a picture is placed
 }
 // A division's hover card (v60): rest on a row for half a second and it opens beside the side panel, over the map;
 // it goes on leaving the list, scrolling it or clicking.

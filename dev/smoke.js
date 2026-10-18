@@ -8,7 +8,7 @@
 // reports are sent through a second Data instance signed in as Unit 3, the same module the field
 // app uses, and after each one the test reads what the base's Data sees and what the page draws.
 import { Data } from '../js/shared/data.js';
-import { markingFor, ringToLatLngs, nextPass, nearestFacility } from '../js/shared/rules.js';
+import { markingFor, ringToLatLngs, nextPass, nearestFacility, cornersBox } from '../js/shared/rules.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s, root = document) => root.querySelector(s);
@@ -1074,7 +1074,7 @@ async function layers(check) {
   $('#btn-layers').click();
   await until(() => !$('#layers-pop').hidden && radios().length === 2);
   check('the panel\'s left column is the overlays, the right the map underneath (v60)', $$('#layers-pop .lp-col .k').map((k) => k.textContent).join(' | ') === 'Overlays | Map underneath', $$('#layers-pop .lp-col .k').map((k) => k.textContent).join(' | '));
-  check('Layers opens a panel: the map underneath on one side (Streets, Satellite, and Google twice because the mock\'s settings carry a key; Streets on), the overlays on the other', radios().map((r) => r.dataset.layer).join(' ') === 'streets satellite google-streets google-satellite' && radios()[0].checked && has('#layers-pop', 'map underneath', 'overlays', 'aerial 06:40', 'upload aerial photography', 'google maps, streets') && tileHosts().some((h) => /openstreetmap/.test(h)), text('#layers-pop').slice(0, 300) + ' | ' + radios().map((r) => r.dataset.layer).join(' '));
+  check('Layers opens a panel: the map underneath on one side (Streets, Satellite, and Google twice because the mock\'s settings carry a key; Streets on), the overlays on the other', radios().map((r) => r.dataset.layer).join(' ') === 'streets satellite google-streets google-satellite' && radios()[0].checked && has('#layers-pop', 'map underneath', 'overlays', 'aerial 06:40', 'add a picture', 'google maps, streets') && tileHosts().some((h) => /openstreetmap/.test(h)), text('#layers-pop').slice(0, 300) + ' | ' + radios().map((r) => r.dataset.layer).join(' '));
   radios()[1].click();
   await until(() => tileHosts().includes('server.arcgisonline.com') && !tileHosts().some((h) => /openstreetmap/.test(h)), 6000);
   check('Satellite swaps the tiles underneath and is remembered on this device', tileHosts().includes('server.arcgisonline.com') && localStorage.getItem('ic.map.layer') === 'satellite' && radios()[1].checked, tileHosts());
@@ -1088,26 +1088,54 @@ async function layers(check) {
   check('unticking it hides it on this screen', $$('#map img.imagery').length === 0 && (localStorage.getItem('ic.map.hidden') || '').includes(M().ids.overlays[0]));
   box().click();
   await until(() => $$('#map img.imagery').length === 1);
-  $('#layers-pop [data-action="layers-upload"]').click();
-  await until(() => $('#layers-pop form[data-form="overlay-add"]'));
-  const pf = $('#layers-pop form[data-form="overlay-add"]');
-  check('Upload aerial photography opens the form right there, corners from the map\'s view', !!pf && Number(pf.north.value) > Number(pf.south.value), pf && pf.north.value);
+  check('Add a picture is one button, with no edges to type (v62)', !!$('#layers-pop label.pick-btn input[data-file="overlay"]') && !$('#layers-pop form[data-form="overlay-add"]'));
   document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await until(() => $('#layers-pop').hidden);
   check('Escape closes the panel', $('#layers-pop').hidden && !$('#btn-layers').classList.contains('on'));
 
   const ovl = M().ids.overlays[0];
-  check('the seeded imagery is on the map and listed under Map imagery', base.overlays().length === 1 && await until(() => $$('#map img.imagery').length === 1, 6000) && has('#panel', 'map imagery', 'aerial 06:40, civil air patrol'), text('#panel'));
-  const form = () => $('#panel form[data-form="overlay-add"]');
-  const f = form();
-  check('the upload form has the map\'s view as its corners', !!f && Number(f.north.value) > Number(f.south.value) && Number(f.east.value) > Number(f.west.value), f && f.north.value + ' ' + f.south.value);
-  const corners = { south: Number(f.south.value), west: Number(f.west.value), north: Number(f.north.value), east: Number(f.east.value) };
-  const dt = new DataTransfer(); dt.items.add(new File([await tinyPng()], 'drone.png', { type: 'image/png' })); f.file.files = dt.files;
-  f.name.value = 'Drone pass 14:10'; f.opacity.value = '0.6';
-  f.requestSubmit();
+  const pic = () => $('#map img.imagery:not(.placing)');
+  check('the seeded picture lies by its corners on the map (one image under a matrix3d) and is listed under Map imagery (v62)', base.overlays().length === 1 && Array.isArray(base.overlay(ovl).corners) && await until(() => pic() && /matrix3d/.test(pic().style.transform), 6000) && pic().classList.contains('imagery-corners') && has('#panel', 'map imagery', 'aerial 06:40, civil air patrol', 'add a picture') && !$('#panel form[data-form="overlay-add"]'), text('#panel').slice(0, 200));
+  // a new picture: chosen on the home panel, it lands over the view with handles; dragged, undone, saved
+  const input = $('#panel input[data-file="overlay"]');
+  const dt = new DataTransfer(); dt.items.add(new File([await tinyPng()], 'drone-pass.png', { type: 'image/png' })); input.files = dt.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  const placing = () => $('#map img.imagery.placing');
+  await until(() => !$('#place-card').hidden && $$('#map .hdl.corner').length === 4 && placing() && placing().style.transform, 8000);
+  check('a chosen picture lands over the view at half strength, with four corner handles, a Turn handle and the card, named from the file', !$('#place-card').hidden && $$('#map .hdl.corner').length === 4 && !!$('#map .hdl.turn') && $('#place-name').value === 'drone pass' && placing().style.opacity === '0.5' && $('#place-card [data-action="place-undo"]').disabled && has('#tool-hint', 'drag it until the roads line up'), $('#place-name').value + ' | ' + text('#tool-hint'));
+  const mouse = (type, target, x, y) => target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: 1, view: window }));
+  const dragHandle = async (sel, dx, dy) => { const h = $(sel), r = h.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; mouse('mousedown', h, x, y); for (let i = 1; i <= 4; i++) mouse('mousemove', document.body, x + dx * i / 4, y + dy * i / 4); mouse('mouseup', document.body, x + dx, y + dy); await wait(60); };
+  const before = placing().style.transform;
+  await dragHandle('#map .hdl.c0', -40, -30);
+  check('dragging a corner moves it: the picture follows and Undo wakes', placing().style.transform !== before && !$('#place-card [data-action="place-undo"]').disabled);
+  $('#place-card [data-action="place-undo"]').click();
+  await wait(40);
+  check('Undo puts it back', placing().style.transform === before && $('#place-card [data-action="place-undo"]').disabled);
+  await dragHandle('#map .hdl.turn', 50, 20);
+  check('the Turn handle turns it', placing().style.transform !== before && !/,0,0,0,0,/.test(placing().style.transform.replace(/^matrix3d\(/, '')));
+  $('#place-name').value = 'Drone pass 14:10';
+  $('#place-op').value = '0.6'; $('#place-op').dispatchEvent(new Event('input', { bubbles: true }));
+  check('the opacity slider works live', placing().style.opacity === '0.6' && $('#place-op-v').textContent === '60%');
+  $('#place-card [data-action="place-save"]').click();
   await until(() => base.overlays().length === 2, 15000);   // the picture's decode and upload take longer late in a full run
   const o = base.overlays()[1];
-  check('saving uploads the picture and keeps its corners and opacity, logs it, and both maps show it', o.name === 'Drone pass 14:10' && o.storage_path.endsWith('.png') && o.bounds.north === corners.north && o.bounds.west === corners.west && Number(o.opacity) === 0.6 && !!eventText(base, 'Imagery: Drone pass 14:10 added to the map') && await until(() => $$('#map img.imagery').length === 2, 6000) && await until(() => field.overlays().length === 2), logTexts()[0]);
+  check('Save uploads the picture with its four corners and their box as bounds, the name and the opacity, logs it, closes the card, and both maps show it', o.name === 'Drone pass 14:10' && Array.isArray(o.corners) && o.corners.length === 4 && JSON.stringify(o.bounds) === JSON.stringify(cornersBox(o.corners)) && o.storage_path.endsWith('.png') && Number(o.opacity) === 0.6 && !!eventText(base, 'Imagery: Drone pass 14:10 added to the map') && await until(() => $('#place-card').hidden && $$('#map .hdl').length === 0) && await until(() => $$('#map img.imagery').length === 2, 6000) && await until(() => field.overlays().length === 2), logTexts()[0]);
+  // Adjust: the same handles on a saved picture; Escape leaves it as it was; a nudge and Save move it for everyone
+  $(`#panel [data-action="overlay-adjust"][data-id="${o.id}"]`).click();
+  await until(() => !$('#place-card').hidden && $$('#map .hdl.corner').length === 4 && placing(), 8000);
+  check('Adjust opens the handles on a saved picture, with its name and opacity, and keeps the saved copy off the map meanwhile', !$('#place-card').hidden && $('#place-name').value === 'Drone pass 14:10' && $('#place-op').value === '0.6' && $$('#map img.imagery:not(.placing)').length === 1, $$('#map img.imagery').length);
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#place-card').hidden && $$('#map img.imagery').length === 2);
+  check('Escape cancels: the card closes, the handles go, the picture is back as it was', $('#place-card').hidden && $$('#map .hdl').length === 0 && $$('#map img.imagery').length === 2 && base.overlay(o.id).name === 'Drone pass 14:10');
+  $(`#panel [data-action="overlay-adjust"][data-id="${o.id}"]`).click();
+  await until(() => !$('#place-card').hidden && placing(), 8000);
+  const b0 = JSON.stringify(base.overlay(o.id).bounds);
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }));
+  await wait(30);
+  check('Shift + arrow nudges it ten pixels and wakes Undo', !$('#place-card [data-action="place-undo"]').disabled);
+  $('#place-card [data-action="place-save"]').click();
+  await until(() => JSON.stringify(base.overlay(o.id).bounds) !== b0, 8000);
+  check('Save after a nudge moves the corners for everyone, the box with them, logged once as updated', JSON.stringify(base.overlay(o.id).bounds) !== b0 && JSON.stringify(base.overlay(o.id).bounds) === JSON.stringify(cornersBox(base.overlay(o.id).corners)) && base.events().filter((ev) => ev.text === 'Imagery: Drone pass 14:10 updated').length === 1 && await until(() => $('#place-card').hidden) && await until(() => field.overlay(o.id) && JSON.stringify(field.overlay(o.id).bounds) !== b0), logTexts()[0]);
   const r = $(`#panel [data-range="overlay-opacity"][data-id="${o.id}"]`);
   r.value = '0.3'; r.dispatchEvent(new Event('change', { bubbles: true }));
   await until(() => Number(base.overlay(o.id).opacity) === 0.3);
@@ -1126,7 +1154,7 @@ async function layers(check) {
   $(`#panel [data-action="overlay-restore"][data-id="${ovl}"]`).click();
   await until(() => !base.overlay(ovl).archived_at);
   check('Put back restores it', await until(() => $$('#map img.imagery').length === 2) && !!eventText(base, 'Imagery: Aerial 06:40, Civil Air Patrol put back on the map'));
-  const e1 = await (async () => { try { await field.addOverlay(new File([await tinyPng()], 'x.png', { type: 'image/png' }), { name: 'Nope', bounds: corners }); return null; } catch (e) { return e; } })();
+  const e1 = await (async () => { try { await field.addOverlay(new File([await tinyPng()], 'x.png', { type: 'image/png' }), { name: 'Nope', bounds: o.bounds }); return null; } catch (e) { return e; } })();
   check('a unit cannot put imagery on the map', !!e1 && e1.code === '42501' && base.overlays().length === 2, e1 && e1.message);
   const e2 = await (async () => { try { await field.updateOverlay(o.id, { opacity: 1 }); return null; } catch (e) { return e; } })();
   check('nor change it', !!e2 && e2.code === '42501', e2 && e2.message);

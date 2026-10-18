@@ -42,6 +42,7 @@ export class BaseMap {
     this.map.createPane('imagery').style.zIndex = 250;
     this.overlayLayers = new Map();   // overlay id → { layer, stamp }
     this.overlayUrls = new Map();     // storage path → signed url
+    this.placingId = null;            // a saved picture being adjusted (v62): drawn by the placing handles, not here
     this.setBaseLayer(storedLayer() || 'streets');
     this.layers = {};
     for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'messages', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
@@ -77,7 +78,7 @@ export class BaseMap {
     const hidden = hiddenOverlays();
     const want = new Map();
     for (const o of data.overlays ? data.overlays() : []) {
-      if (hidden.has(o.id)) continue;
+      if (hidden.has(o.id) || o.id === this.placingId) continue;
       const url = this.overlayUrls.get(o.storage_path);
       if (!url) {
         if (!this.overlayUrls.has(o.storage_path)) {
@@ -86,13 +87,21 @@ export class BaseMap {
         }
         continue;
       }
-      want.set(o.id, { o, url, stamp: o.updated_at + '|' + url + '|' + JSON.stringify(o.bounds) + '|' + o.opacity });
+      want.set(o.id, { o, url, stamp: o.updated_at + '|' + url + '|' + JSON.stringify(o.bounds) + '|' + JSON.stringify(o.corners || null) + '|' + o.opacity });
     }
     for (const [id, cur] of this.overlayLayers) if (!want.has(id) || want.get(id).stamp !== cur.stamp) { this.map.removeLayer(cur.layer); this.overlayLayers.delete(id); }
     for (const [id, w] of want) if (!this.overlayLayers.has(id)) this.overlayLayers.set(id, { layer: makeOverlay(w.o, w.url, 'imagery').addTo(this.map), stamp: w.stamp });
   }
   setOverlayOpacity(id, opacity) { const cur = this.overlayLayers.get(id); if (cur) cur.layer.setOpacity(Number(opacity)); }
   viewBounds() { const b = this.map.getBounds(); return { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() }; }
+  // where a new picture of w × h pixels lands (v62): over the view, 70 % of it, its own shape, as four corners
+  landingCorners(w, h) {
+    const size = this.map.getSize();
+    let pw = size.x * 0.7, ph = pw * h / w;
+    if (ph > size.y * 0.7) { ph = size.y * 0.7; pw = ph * w / h; }
+    const cx = size.x / 2, cy = size.y / 2;
+    return [[cx - pw / 2, cy - ph / 2], [cx + pw / 2, cy - ph / 2], [cx + pw / 2, cy + ph / 2], [cx - pw / 2, cy + ph / 2]].map(([x, y]) => { const g = this.map.containerPointToLatLng(L.point(x, y)); return [g.lat, g.lng]; });
+  }
 
   setView(lat, lng, zoom) { this.map.setView([lat, lng], zoom || 14); }
   fitPolygon(polygon) {

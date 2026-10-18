@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-ups: invite by email, a transport board, people and tags · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var t = localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<script src="/vendor/qrcode-generator-1.4.4.min.js"></script>
+<!-- Click-through mock-ups of three features that are not built: invitations by email, a transport board, and a
+     tag per person. Drawn in the app's own styles with made-up data, so each screen can be judged before it is
+     built: is this the best we can do for the person who will use it? Nothing here writes anywhere. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); cursor: pointer; }
+  .tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.feature { display: none; }
+  section.feature.on { display: block; }
+  .intro { max-width: 760px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 375px; line-height: 1.4; }
+  .screen > .cap b { color: var(--ink); }
+  .phone { width: 375px; min-height: 560px; background: var(--bg); border: 10px solid #0b0b0d; border-radius: 36px; padding: 14px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.35); font-size: 14px; }
+  .panel { width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .panel.wide { width: 720px; }
+  h2.t { font-size: 18px; margin: 0 0 4px; }
+  .k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+  .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row.between { justify-content: space-between; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
+  .phone .card { background: var(--panel); }
+  .card.blue { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .card.blue .sub, .card.blue .k { color: rgba(255,255,255,.8); }
+  .card.warn { border-color: var(--hazard); background: color-mix(in srgb, var(--hazard) 10%, var(--panel)); }
+  .list > div { padding: 9px 0; border-top: 1px solid var(--line-soft); }
+  .list > div:first-child { border-top: 0; }
+  .chip { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); margin: 2px 4px 2px 0; cursor: pointer; }
+  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .chip.ok { background: var(--sel-bg); color: var(--accent-text); border-color: transparent; }
+  .chip.orange { background: color-mix(in srgb, var(--hazard) 18%, var(--panel)); color: var(--hazard-ink); border-color: transparent; }
+  .chip.red { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .big { display: block; width: 100%; padding: 14px; font-size: 16px; font-weight: 600; margin: 6px 0; }
+  input.input, select.input { width: 100%; border: 1px solid var(--control-border); border-radius: 8px; padding: 9px 10px; font-size: 15px; background: var(--control-bg); color: var(--ink); margin: 0 0 8px; }
+  label.f { display: block; font-size: 12px; color: var(--muted); margin: 6px 0 2px; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+  .switch i { width: 36px; height: 20px; border-radius: 10px; background: var(--dot-off); position: relative; display: inline-block; }
+  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .switch.on i { background: var(--accent); } .switch.on i::after { left: 18px; }
+  .viewfinder { height: 220px; border-radius: 12px; background: repeating-linear-gradient(135deg, #2a2d34 0 12px, #23262c 12px 24px); position: relative; margin: 0 0 10px; }
+  .viewfinder::after { content: ""; position: absolute; inset: 40px 70px; border: 3px solid var(--accent); border-radius: 10px; }
+  .bands { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .band { border: 1px dashed var(--control-border); border-radius: 8px; padding: 8px; text-align: center; font-size: 11px; color: var(--muted); }
+  .band svg { width: 86px; height: 86px; display: block; margin: 0 auto 4px; }
+  .band b { color: var(--ink); font-size: 12px; }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+  table.tbl td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .orange { color: var(--hazard-ink); font-weight: 600; }
+  .red { color: var(--danger); font-weight: 600; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg, #222); color: var(--toast-ink, #fff); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; }
+  .toast[hidden] { display: none; }
+  @media (max-width: 480px) { .phone { width: 100%; } .panel, .panel.wide { width: 100%; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-ups</span></div>
+  <div class="tabs" id="tabs">
+    <button class="on" data-tab="invite">Invite by email</button>
+    <button data-tab="transport">A transport board</button>
+    <button data-tab="tags">People and tags</button>
+  </div>
+  <span class="sp"></span>
+  <a class="btn sm" href="/try/">‹ Try it</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<!-- ============================================================ INVITE BY EMAIL -->
+<section class="feature on" id="invite">
+  <div class="intro"><h1>Invite by email</h1>Operations or the administrator invites a person to an incident with a role. The link lands them in the incident with no code to type. Made-up data; press the buttons.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="panel">
+        <div class="row between"><h2 class="t">People · Members</h2><span class="sub">Cedar Fork Flooding</span></div>
+        <div class="k">Invite by email</div>
+        <input class="input" id="inv-email" placeholder="name@agency.gov" value="">
+        <div class="row"><select class="input" id="inv-role" style="width:auto;flex:1"><option>Unit</option><option>Operations</option></select><input class="input" id="inv-unit" placeholder="Unit name (optional)" style="width:auto;flex:1"></div>
+        <button class="btn pri" id="inv-send">Send the invitation</button>
+        <p class="note">One link in one email. The person sets a password once and lands in this incident as the role you chose; their name and phone are asked as today. The link expires in seven days.</p>
+        <div class="k">Invited, not yet in · <span id="inv-count">2</span></div>
+        <div class="list" id="inv-list">
+          <div class="row between"><span>j.ortiz@cedarfork.gov · <b>Unit</b> · invited 09:12</span><span><button class="btn sm">Resend</button> <button class="btn sm">Withdraw</button></span></div>
+          <div class="row between"><span>t.herrera@traviscounty.gov · <b>Operations</b> · invited 08:40</span><span><button class="btn sm">Resend</button> <button class="btn sm">Withdraw</button></span></div>
+        </div>
+        <div class="k">Accepted</div>
+        <div class="list">
+          <div><span>a.ramirez@cedarfork.gov · <b>Unit 1</b> · accepted 06:31 · <span class="chip ok">Verified</span></span></div>
+        </div>
+        <div class="k">The roster</div>
+        <div class="row between"><span class="sub">14 members invited last season</span><button class="btn sm">Invite the roster to this incident</button></div>
+      </div>
+      <div class="cap"><b>The Members tab.</b> One box to invite, the invited list with Resend and Withdraw, the accepted ones, and the season's roster to invite in one press.</div>
+    </div>
+    <div class="screen">
+      <div class="panel">
+        <div class="k">Join code for field phones</div>
+        <div class="row between"><span class="mono" style="font-size:22px;letter-spacing:.15em">CEDAR7</span><span><button class="btn sm">Copy</button> <button class="btn sm">Print a join card</button></span></div>
+        <div class="row" style="margin-top:10px"><label class="switch" id="inv-only"><i></i><span><b>Invited members only</b></span></label></div>
+        <p class="note" id="inv-only-note">The code works: anyone with it joins as a unit. Switch it off to let only invited people in; the door then says "this incident is by invitation; ask Operations".</p>
+        <div class="k">Operations code</div>
+        <div class="row between"><span class="mono" style="font-size:18px;letter-spacing:.12em">MR7KQ2VD</span><span><button class="btn sm">Copy</button> <button class="btn sm">New code</button></span></div>
+      </div>
+      <div class="cap"><b>The home panel.</b> The switch sits with the codes, so what it changes is in view: the join code stops working for the uninvited.</div>
+    </div>
+    <div class="screen">
+      <div class="phone" id="inv-phone">
+        <div class="k">Incident Map · Field</div>
+        <div class="card blue">
+          <div class="k">You're invited</div>
+          <div style="font-size:18px;font-weight:700;margin:2px 0 6px">Cedar Fork Flooding</div>
+          <div>as <b>Unit 4</b>, by Marcus Bell (Operations) · Cedar Fork Fire Department</div>
+        </div>
+        <label class="f">Email</label><input class="input" value="j.ortiz@cedarfork.gov" readonly>
+        <label class="f">Choose a password (8 or more characters)</label><input class="input" type="password" value="••••••••••">
+        <button class="btn pri big" id="inv-accept">Set the password and check in</button>
+        <p class="note">No code to type: the invitation carries the incident and your role. Next, Identify yourself, name and phone, as today. The link stops working after seven days or once used.</p>
+        <div id="inv-accepted" hidden>
+          <div class="card"><b>You are Unit 4 in Cedar Fork Flooding.</b><div class="sub">Operations sees "J. Ortiz accepted the invitation from Marcus Bell" in the log. Identify yourself comes next.</div></div>
+        </div>
+      </div>
+      <div class="cap"><b>The phone, from the link.</b> The invitation says who asked and as what; one password, and the person is in. On a laptop the same link opens the base.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ TRANSPORT BOARD -->
+<section class="feature" id="transport">
+  <div class="intro"><h1>A transport board</h1>A run is a vehicle from a pickup point to a shelter or hospital, with the people on it. The desk sees it coming; Operations counts people in transit. Made-up data; press the buttons.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="panel wide">
+        <div class="row between"><h2 class="t">Transports · 2 running · 19 people in transit</h2><button class="btn sm pri" id="tr-new-btn">New run</button></div>
+        <table class="tbl" id="tr-table">
+          <tr><th>Run</th><th>From → to</th><th>Aboard</th><th>Times</th><th>Status</th><th></th></tr>
+          <tr id="tr-bus2"><td><b>Bus 2</b><br><span class="sub">Travis ISD · 512 555 0177</span></td><td>Pecan Park pickup → High school gym</td><td><b>12</b> of 40<br><span class="sub">4 records</span></td><td>left 17:05<br>expected 17:30</td><td><span class="chip ok" id="tr-bus2-status">en route</span></td><td><button class="btn sm" data-tr="arrived">Arrived</button></td></tr>
+          <tr><td><b>Ambulance 1</b><br><span class="sub">Unit 5</span></td><td>120 Pecan Ln (A-2) → Dell Seton Medical Center</td><td><b>1</b> of 2<br><span class="sub">Mrs. Lee, 90 · oxygen</span></td><td>left 16:48<br>expected 17:02</td><td><span class="chip ok">en route</span></td><td><button class="btn sm">Arrived</button></td></tr>
+          <tr><td><b>Boat run 3</b><br><span class="sub">Unit 2</span></td><td>Mill Street bridge → Low-water crossing ramp</td><td><b>6</b> of 6<br><span class="sub">2 records</span></td><td>loading since 17:10<br><span class="orange">late: planned 17:00</span></td><td><span class="chip orange">loading</span></td><td><button class="btn sm">Leaving</button></td></tr>
+          <tr><td><b>Bus 3</b><br><span class="sub">driver not named</span></td><td>Riverside Drive (A-1) → First Baptist hall</td><td><b>0</b> of 40</td><td>leaves 18:00<br>expected 18:25</td><td><span class="chip">planned</span></td><td><button class="btn sm">Loading</button></td></tr>
+        </table>
+        <div id="tr-new" class="card" hidden style="margin-top:12px">
+          <div class="k">New run</div>
+          <div class="row"><select class="input" style="width:auto;flex:1"><option>Bus</option><option>Van</option><option>Ambulance</option><option>Boat run</option><option>High-water vehicle</option></select><input class="input" placeholder="Label (Bus 4)" style="width:auto;flex:1"><input class="input" placeholder="Capacity" style="width:auto;flex:0 0 90px"></div>
+          <div class="row"><select class="input" style="width:auto;flex:1"><option>From: Pecan Park pickup</option><option>From: a division…</option><option>From: a point on the map…</option></select><select class="input" style="width:auto;flex:1"><option>To: High school gym</option><option>To: First Baptist hall</option><option>To: Dell Seton Medical Center</option></select></div>
+          <div class="row"><input class="input" placeholder="Leaves 18:00" style="width:auto;flex:1"><input class="input" placeholder="Expected 18:25" style="width:auto;flex:1"><input class="input" placeholder="Driver: a unit, or a name and phone" style="width:auto;flex:2"></div>
+          <div class="row"><button class="btn pri">Save the run</button><button class="btn" id="tr-new-cancel">Cancel</button></div>
+        </div>
+        <p class="note">Each run's start, arrival and every record put on it is a line in the 214. The situation report counts people in transit. A run late against its plan shows so.</p>
+      </div>
+      <div class="cap"><b>The Transports board on the base.</b> A row per run: aboard against capacity, the times, the status, one button for the next step. The shelter card's typed "Expected" line reads from these.</div>
+    </div>
+    <div class="screen">
+      <div class="phone">
+        <div class="row between"><b style="font-size:20px">Gym desk</b><span class="sub">Inbox · Menu</span></div>
+        <div class="k">People here · High school gym · <b>21 of 60</b></div>
+        <div class="k" style="color:var(--hazard-ink)">Arriving · sign them in, not again</div>
+        <div class="card warn" id="tr-desk-bus2">
+          <div class="row between"><b>Bus 2 from Pecan Park</b><span class="chip ok">en route</span></div>
+          <div class="sub">12 people in 4 records · expected 17:30 · Travis ISD, 512 555 0177</div>
+          <div class="list" style="margin:6px 0">
+            <div>Garza, family of 3 · <span class="sub">from 120 Pecan Ln · infant</span></div>
+            <div>Okonkwo family (5) · <span class="sub">from Riverside Drive · pets</span></div>
+            <div>Nguyen, Tam · <span class="sub">oxygen</span></div>
+            <div>family of 3 · <span class="sub">from Mill Street · wet, no shoes</span></div>
+          </div>
+          <button class="btn pri big" id="tr-desk-all">They're here, all 12</button>
+          <div class="sub">or sign them in family by family as they come off</div>
+        </div>
+        <div class="card">
+          <div class="row between"><b>Ambulance 1 from 120 Pecan Ln</b><span class="chip">to Dell Seton</span></div>
+          <div class="sub">Not coming here: Mrs. Lee, 90, went to the hospital. Listed so Find a person knows.</div>
+        </div>
+        <div id="tr-desk-done" hidden><div class="card"><b>Bus 2 signed in: 12 people, 4 records, 33 of 60.</b><div class="sub">Operations sees it arrived. Each family's row is under Here now; add a name where one is missing.</div></div></div>
+      </div>
+      <div class="cap"><b>The shelter desk's Arriving, by run.</b> The whole bus and who is on it, before it arrives. One tap signs the bus in; family by family still works.</div>
+    </div>
+    <div class="screen">
+      <div class="phone">
+        <div class="k">Address clear · 120 Pecan Ln</div>
+        <div class="k">People needing help · 4</div>
+        <div class="card">
+          <div><b>Garza, family of 3</b> · <span class="sub">wet, cold, a baby</span></div>
+          <div class="row" style="margin-top:6px"><span class="sub">Went to</span><select class="input" style="width:auto;flex:1;margin:0"><option>High school gym (shelter)</option><option>Dell Seton Medical Center (hospital)</option><option>With family</option></select></div>
+          <div class="row" style="margin-top:6px"><span class="sub">On</span><select class="input" id="tr-put" style="width:auto;flex:1;margin:0"><option>Bus 2 · Pecan Park pickup · leaves 17:05 · 12 of 40</option><option>Bus 3 · leaves 18:00 · 0 of 40</option><option>Not on a run (own transport)</option></select></div>
+        </div>
+        <div class="card">
+          <div><b>Mrs. Lee, 90</b> · <span class="sub">cannot walk, on oxygen</span></div>
+          <div class="row" style="margin-top:6px"><span class="sub">Went to</span><select class="input" style="width:auto;flex:1;margin:0"><option>Dell Seton Medical Center (hospital)</option></select></div>
+          <div class="row" style="margin-top:6px"><span class="sub">On</span><select class="input" style="width:auto;flex:1;margin:0"><option>Ambulance 1 · Unit 5 · 1 of 2</option><option>Ask Logistics for an ambulance</option></select></div>
+        </div>
+        <button class="btn green big">Searched, save</button>
+        <p class="note">The record is on the run from the moment it is saved: the desk at the gym sees the Garzas under Bus 2, and the 214 says who put them on it.</p>
+      </div>
+      <div class="cap"><b>The crew's house record.</b> "On" beside "Went to": the runs coming to this pickup, with room left. Nothing new to type.</div>
+    </div>
+    <div class="screen">
+      <div class="phone">
+        <div class="row between"><b style="font-size:20px">Unit 5</b><span class="sub">Ambulance</span></div>
+        <div class="card blue">
+          <div class="k">You are Ambulance 1</div>
+          <div style="font-size:17px;font-weight:700">120 Pecan Ln → Dell Seton Medical Center</div>
+          <div class="sub" style="margin:4px 0 8px">1 of 2 aboard · Mrs. Lee, 90 · oxygen · left 16:48 · expected 17:02</div>
+          <div class="row"><button class="btn big" style="flex:1;background:#fff;color:var(--accent)" id="tr-drv">Arrived</button></div>
+        </div>
+        <div class="card"><b>Next:</b> Bus 2 leaves Pecan Park 17:05 · 12 aboard · to High school gym</div>
+        <div id="tr-drv-done" hidden><div class="card"><b>Arrived 17:01.</b><div class="sub">Mrs. Lee is at Dell Seton on her record; the hospital's list and Find a person say so. The 214 has the line.</div></div></div>
+      </div>
+      <div class="cap"><b>A driver who is a unit.</b> One card, one button per step: Loading, Leaving, Arrived. A driver who is not in the app is a name and a phone on the run; Operations presses the buttons.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ PEOPLE AND TAGS -->
+<section class="feature" id="tags">
+  <div class="intro"><h1>People and tags</h1>A wristband with a QR code per person, scanned at check-in, at the division, at a transport and at the shelter door. A scan is a "seen" record; the board shows last seen per person; the PAR can be answered by scanning. Made-up data; press the buttons.</div>
+  <div class="screens">
+    <div class="screen">
+      <div class="panel wide">
+        <div class="row between"><h2 class="t">Print bands · Cedar Fork Flooding</h2><span><button class="btn sm">Print 24</button> <button class="btn sm">Print 96</button></span></div>
+        <p class="note">A sheet of bands: the incident's name, a number and the code. No name on a band; a lost one tells nobody anything. Boxes of bands can be printed before the season and assigned by scanning.</p>
+        <div class="bands" id="bands"></div>
+      </div>
+      <div class="cap"><b>The band sheet, from the base.</b> Tyvek wristbands on a sheet printer with a template, a few cents each. QR, not NFC, because every phone's camera reads it.</div>
+    </div>
+    <div class="screen">
+      <div class="phone">
+        <div class="k">Scan a band</div>
+        <div class="viewfinder"></div>
+        <div class="card" id="tag-read">
+          <div class="row between"><b>Band 014 · Okafor</b><span class="chip ok">Unit 1</span></div>
+          <div class="sub">last seen: checked in at the high school, 06:40</div>
+        </div>
+        <div class="k">What is this scan?</div>
+        <div id="tag-what">
+          <span class="chip">Checking in</span><span class="chip on">Entering A-1</span><span class="chip">Leaving A-1</span><span class="chip">Boarding Bus 2</span><span class="chip">At the shelter door</span><span class="chip">Head count</span>
+        </div>
+        <p class="note">The likely answer is chosen from where the phone is: in A-1, so "Entering A-1". Change it with a tap.</p>
+        <button class="btn pri big" id="tag-save">Save: Okafor entering A-1, 07:05</button>
+        <div id="tag-saved" hidden><div class="card"><b>Seen: Okafor · A-1 · 07:05 · by Unit 1.</b><div class="sub">The board and the unit panel read it as last seen; the 214 has the line. Scan the next band.</div></div></div>
+      </div>
+      <div class="cap"><b>The phone's Scan.</b> On the menu and on the check-in form. One tap and the camera; the meaning is preselected; the person confirms. Names and counts still work without any scan.</div>
+    </div>
+    <div class="screen">
+      <div class="panel wide">
+        <div class="row between"><h2 class="t">People · 6 on scene on 3 units</h2><span class="sub">last seen from scans</span></div>
+        <table class="tbl">
+          <tr><th>Person</th><th>Unit</th><th>Last seen</th><th>Where</th><th></th></tr>
+          <tr><td><b>Ramirez</b> · Lt.</td><td>Unit 1</td><td>07:05 · entering A-1</td><td>A-1 · Riverside Drive</td><td><span class="chip ok">band 013</span></td></tr>
+          <tr><td><b>Okafor</b></td><td>Unit 1</td><td>07:05 · entering A-1</td><td>A-1</td><td><span class="chip ok">band 014</span></td></tr>
+          <tr><td><b>Nguyen</b> · Capt.</td><td>Unit 2</td><td>17:40 · boarding the boat</td><td>Mill Street bridge</td><td><span class="chip ok">band 021</span></td></tr>
+          <tr><td><b>Patel</b></td><td>Unit 2</td><td class="orange">16:20 · at the shelter door</td><td class="orange">High school gym · not seen since</td><td><span class="chip orange">1 h 40 min</span></td></tr>
+          <tr><td><b>Hale</b></td><td>Unit 3</td><td>06:56 · checked in</td><td>High school</td><td><span class="chip ok">band 031</span></td></tr>
+          <tr><td><b>Dominguez</b></td><td>Unit 3</td><td class="sub">no band</td><td class="sub">unit's position only</td><td><button class="btn sm">Assign a band</button></td></tr>
+        </table>
+        <p class="note">Last seen is a record, never "is at": it says where and when a band was scanned. A person with no band shows the unit's position, as today.</p>
+      </div>
+      <div class="cap"><b>The People board with last seen.</b> Where and when each band was last scanned, orange when it is long ago; the 211 fills itself from the check-in scans.</div>
+    </div>
+    <div class="screen">
+      <div class="phone" style="background:var(--safety)">
+        <div class="k" style="color:#3a2a00">Head count (PAR)</div>
+        <div class="card">
+          <div class="sub">18:00 · Operations to everyone</div>
+          <div style="font-size:18px;font-weight:700;margin:4px 0">PAR: is everyone accounted for?</div>
+          <div class="k">Checked in with you</div>
+          <div class="list" id="par-list">
+            <div class="row between"><span>Ramirez</span><span class="chip" id="par-1">not scanned</span></div>
+            <div class="row between"><span>Okafor</span><span class="chip" id="par-2">not scanned</span></div>
+            <div class="row between"><span>Vela</span><span class="chip" id="par-3">not scanned</span></div>
+          </div>
+          <button class="btn big" id="par-scan" style="border:2px solid var(--accent)">Scan them in · 0 of 3</button>
+          <button class="btn green big" id="par-all">All 3 accounted for</button>
+          <button class="btn danger big">Someone's missing</button>
+          <p class="note" id="par-note">Scan each band in front of you, or press All accounted for as today. A person scanned is accounted for by the scan; one not scanned is for you to say.</p>
+        </div>
+      </div>
+      <div class="cap"><b>The PAR by scan.</b> Press Scan them in three times. The count fills from the bands in front of you; the one still in the boat shows its last seen instead of a guess.</div>
+    </div>
+    <div class="screen">
+      <div class="phone">
+        <div class="k">Sign in a person · High school gym</div>
+        <div class="row"><button class="btn big" style="flex:1;border:2px solid var(--accent)">Scan a band</button></div>
+        <div class="sub" style="margin:0 0 8px">A family from a crew already has bands: scan one and the record comes up. A walk-up gets a band from the box here.</div>
+        <label class="f">Who</label><input class="input" value="Lopez, Ana">
+        <label class="f">How many</label><input class="input" value="1">
+        <div class="k">Needs</div><span class="chip">Oxygen</span><span class="chip on">Insulin</span><span class="chip">Wheelchair</span><span class="chip">Infant</span><span class="chip">Pets</span>
+        <label class="f">Band</label><input class="input" value="Band 207 · scanned 18:12" readonly>
+        <button class="btn pri big">Sign in here</button>
+        <p class="note">"Is my mother here?" is then a scan of her band at any shelter, or her name as today. Evacuees' bands clear with their names by rule after the close.</p>
+      </div>
+      <div class="cap"><b>The desk's sign-in with a band.</b> A scan brings up a record a crew made at the house; a walk-up gets a band here.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const toast = (t) => { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); };
+  // tabs
+  const show = (name) => { for (const s of document.querySelectorAll('section.feature')) s.classList.toggle('on', s.id === name); for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === name); try { history.replaceState(null, '', '#' + name); } catch (e) {} };
+  $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
+  const h = location.hash.slice(1); if (['invite', 'transport', 'tags'].includes(h)) show(h);
+  // invite
+  $('inv-send').addEventListener('click', () => { const em = $('inv-email').value.trim() || 'new.member@agency.gov'; const role = $('inv-role').value; const row = document.createElement('div'); row.className = 'row between'; row.innerHTML = '<span>' + em.replace(/[<>&]/g, '') + ' · <b>' + role + '</b> · invited just now</span><span><button class="btn sm">Resend</button> <button class="btn sm">Withdraw</button></span>'; $('inv-list').prepend(row); $('inv-count').textContent = String(Number($('inv-count').textContent) + 1); $('inv-email').value = ''; toast('Invitation sent to ' + em + ' · logged in the 214'); });
+  $('inv-only').addEventListener('click', () => { const on = $('inv-only').classList.toggle('on'); $('inv-only-note').textContent = on ? 'Invited members only: the join code is off for this incident. The door says "this incident is by invitation; ask Operations". Mutual aid arriving unannounced needs an invitation or the switch back on.' : 'The code works: anyone with it joins as a unit. Switch it off to let only invited people in; the door then says "this incident is by invitation; ask Operations".'; });
+  $('inv-accept').addEventListener('click', () => { $('inv-accepted').hidden = false; $('inv-accept').disabled = true; toast('J. Ortiz accepted the invitation · Unit 4'); });
+  // transport
+  $('tr-new-btn').addEventListener('click', () => { $('tr-new').hidden = !$('tr-new').hidden; });
+  $('tr-new-cancel').addEventListener('click', () => { $('tr-new').hidden = true; });
+  document.querySelector('#tr-bus2 [data-tr="arrived"]').addEventListener('click', () => { $('tr-bus2-status').textContent = 'arrived 17:28'; $('tr-bus2-status').className = 'chip ok'; toast('Bus 2 arrived at High school gym · 12 people · the desk signs them in'); });
+  $('tr-desk-all').addEventListener('click', () => { $('tr-desk-bus2').hidden = true; $('tr-desk-done').hidden = false; toast('Bus 2 signed in: 12 people in 4 records'); });
+  $('tr-drv').addEventListener('click', () => { $('tr-drv-done').hidden = false; $('tr-drv').disabled = true; toast('Ambulance 1 arrived · Mrs. Lee at Dell Seton'); });
+  // tags: the band sheet with real QR codes (an id only), the scan, the PAR by scan
+  const bands = $('bands');
+  for (let i = 13; i < 25; i++) { const code = 'CF7-' + String(i).padStart(3, '0') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase(); const qr = window.qrcode(0, 'M'); qr.addData('https://clickemt.com/field/?band=' + code); qr.make(); const d = document.createElement('div'); d.className = 'band'; d.innerHTML = qr.createSvgTag({ cellSize: 2, margin: 0 }) + '<b>Band ' + String(i).padStart(3, '0') + '</b><br>Cedar Fork Flooding'; bands.appendChild(d); }
+  $('tag-what').addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (!c) return; for (const x of $('tag-what').children) x.classList.toggle('on', x === c); $('tag-save').textContent = 'Save: Okafor ' + c.textContent.toLowerCase() + ', 07:05'; });
+  $('tag-save').addEventListener('click', () => { $('tag-saved').hidden = false; toast('Seen: Okafor · ' + document.querySelector('#tag-what .on').textContent + ' · 07:05'); });
+  let scanned = 0; const names = ['Ramirez', 'Okafor', 'Vela'];
+  $('par-scan').addEventListener('click', () => { if (scanned >= 3) return; scanned++; const chip = $('par-' + scanned); chip.textContent = 'scanned 18:0' + scanned; chip.className = 'chip ok'; $('par-scan').textContent = 'Scan them in · ' + scanned + ' of 3'; if (scanned === 3) { $('par-note').textContent = 'All three scanned: one tap sends "All 3 accounted for, by scan". A third in the boat would read "last seen boarding the boat 17:40", not a guess.'; toast('3 of 3 scanned · All 3 accounted for, by scan'); } else toast(names[scanned - 1] + ' scanned'); });
+  $('par-all').addEventListener('click', () => toast(scanned ? 'All 3 accounted for, ' + scanned + ' by scan' : 'All 3 accounted for, by your word'));
+})();
+</script>
+</body>
+</html>

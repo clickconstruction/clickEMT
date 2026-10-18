@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -337,6 +337,28 @@ t('bands (v55): what a scan or a typed box gives, the band on a person, last see
   assert.equal(seenGuess({ zone: { code: 'A-2' } }), 'enter');
   assert.equal(seenGuess({ par: true, desk: true }), 'par');
   assert.equal(seenGuess({}), 'check_in');
+});
+
+t('a run as a card: the label and where it goes, the times and the seats, the crew\'s own division marked; past three they fold (v66)', () => {
+  const fac = (id) => ({ gym: { kind: 'shelter', name: 'High school gym' } }[id]);
+  const now = new Date('2026-10-18T18:00:00Z').getTime();
+  const bus = { id: 'b3', kind: 'bus', label: 'Bus 3', from_zone_id: 'a1', to_facility_id: 'gym', capacity: 40, status: 'planned', leaves_at: '2026-10-18T18:04:00Z', expected_at: '2026-10-18T18:29:00Z' };
+  const ev = [{ transport_id: 'b3', count: 3, status: 'on_the_way', facility_id: 'gym' }];
+  const c = runCard(bus, ev, { facilityOf: fac, zoneOf: (id) => ({ a1: { code: 'A-1' } }[id]), zoneId: 'a2', now });
+  assert.equal(c.label, 'Bus 3');
+  assert.equal(c.to, 'High school gym');
+  assert.equal(c.sub, 'leaves ' + new Date(bus.leaves_at).toTimeString().slice(0, 5) + ' · expected ' + new Date(bus.expected_at).toTimeString().slice(0, 5) + ' · 3 of 40');
+  assert.equal(c.own, false);
+  assert.equal(runCard(bus, ev, { facilityOf: fac, zoneId: 'a1', now }).own, true, 'leaving from the crew\'s own division');
+  assert.equal(runCard({ ...bus, capacity: null, to_facility_id: null }, [], { now }).to, 'a facility');
+  assert.equal(runCard({ ...bus, capacity: null, to_facility_id: null }, [], { now }).sub.endsWith(' · 0'), true, 'no seats set: the count alone');
+  assert.equal(c.title.startsWith('Bus 3 · A-1 → High school gym · leaves '), true);
+  const runs = ['r1', 'r2', 'r3', 'r4', 'r5'].map((id) => ({ id }));
+  assert.equal(RUN_FOLD, 3);
+  assert.deepEqual(foldRuns(runs.slice(0, 3), '', false), { shown: runs.slice(0, 3), hidden: 0 }, 'three show whole');
+  assert.deepEqual(foldRuns(runs, '', false), { shown: runs.slice(0, 2), hidden: 3 }, 'past three: the first two and N more');
+  assert.deepEqual(foldRuns(runs, 'r4', false), { shown: [runs[0], runs[1], runs[3]], hidden: 2 }, 'the one chosen is never hidden');
+  assert.deepEqual(foldRuns(runs, 'r4', true), { shown: runs, hidden: 0 }, 'opened, all of them');
 });
 
 t('the header clock reads UTC from the same moment, and the zone has a short name (v59)', () => {

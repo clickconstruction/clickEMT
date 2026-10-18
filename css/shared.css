@@ -97,6 +97,20 @@ input, select, textarea { font: inherit; color: inherit; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { border: 1px solid var(--control-border); background: var(--control-bg); border-radius: 999px; padding: 8px 14px; font-size: 14px; min-height: 44px; display: inline-flex; align-items: center; }
 .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* a run as a card in a chip row (v66): two lines, "Bus 3 → High school gym" over the times and the seats, lit like a chip;
+   .sm on the base's arriving rows, .more for "N more", .own marks the crew's own division */
+.chips.runs { gap: 6px; }
+.rcard { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; border: 1px solid var(--control-border); background: var(--control-bg); border-radius: 14px; padding: 7px 14px; min-height: 54px; box-sizing: border-box; font: inherit; font-size: 14px; line-height: 1.25; text-align: left; color: var(--ink); max-width: 100%; }
+.rcard .l1 { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rcard .l2 { font-size: 12px; color: var(--muted); }
+.rcard .own { font-size: 10.5px; font-weight: 600; letter-spacing: .04em; border-radius: 6px; padding: 1px 6px; background: var(--sel-bg); color: var(--accent-text); }
+.rcard.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rcard.on .l2 { color: rgba(255,255,255,.82); }
+.rcard.on .own { background: rgba(255,255,255,.22); color: #fff; }
+.rcard.late .l2 { color: var(--hazard-ink); } .rcard.on.late .l2 { color: #FDE2C4; }
+.rcard.more { color: var(--accent-text); border-style: dashed; }
+.rcard.sm { min-height: 40px; padding: 4px 10px; font-size: 12.5px; border-radius: 10px; }
+.rcard.sm .l2 { font-size: 11px; }
 
 .form { display: flex; flex-direction: column; gap: 10px; }
 .form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }

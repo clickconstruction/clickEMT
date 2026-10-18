@@ -1426,3 +1426,20 @@ page's own measurements and the `people` and `members` suites).
 - **The drawer's log lines are a name match**: a surname that is also a given name (Lee) also catches "Jordan Lee Hale checked in". A person reference on the seen and status lines (a migration) would make it exact.
 - **A long agency name** ("Cedar Fork Fire Department · swift-water team · 2 on the unit") wraps to two lines in a card's header at 1280 with the drawer open; the facts are all there, the card is a line taller.
 - **The old row's controls on the unit panel** (People on the unit) are unchanged: Check out and the compact row as before, not the drawer. Fine for the panel, but a second shape of the same person.
+## Re-walk after v66
+
+Went to and On which run as chips: Ana at a house in A-2 with a family and a man on oxygen, the shelter desk seeing them come, Marcus on the shelter card's arriving rows, walked on 2026-10-18 in the mock at 375 px (the phone) and 1280 × 800 (the base), the words read through the `evacuees` and `transports` suites and the sheet's own text.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The family on the van | Ana | The row under People needing help: who, condition, then Went to as chips with High school gym lit (the nearest shelter), then On which run: Not on a run lit, "Van 4 → High school gym A-2" over "loading since 18:07 · expected 21:27 · 0 of 12", Bus 3 after it. One tap on Van 4 lights it; the gym stays lit; Save sends the record on Van 4, on its way to the gym, as before. No drop-down to open, nothing cut off. | Clear |
+| The man to the hospital | Ana | Dell Seton Medical Center tapped on his row: no run row, since no open run goes there; had a run been chosen, the toast says "Van 4 does not go there: off the run". The gym tapped again brings the cards back with Not on a run lit. The row always says what Save sends. | Clear |
+| Five runs to the gym | Ana | Not on a run, Bus 3, Bus 7 and "2 more"; More opens them all. A bus that has left is not offered. | Clear |
+| Under the run | the desk | Arriving groups the Patels under Van 4 as before; nothing changed on her screen or in the 214 ("Unit 3 sent Patel, family of 2 from 116 Pecan Ln to High school gym on Van 4"). | Clear |
+| The arriving row | Marcus | The shelter card's "On the way from crews" row carries the same cards at 40 px under the facts, Bus 2 lit, Van 4 and Bus 3 after it, Signed in at the end; a click on Bus 3 moves the family and logs "Operations put family of 4 from 112 Pecan Ln on Bus 3 to High school gym". | Clear |
+
+**Still bites, small:**
+
+- **The sheet draws its rows once, when opened**, as the drop-downs did: a run planned while the crew types a row shows on the next open of Address clear, not live.
+- **Run first** (the mock-up's fourth frame: every open run listed, Went to following the run's destination) is not built; it is one line to switch in `stRuns`, if the crews turn out to know the van before the shelter.
+- **The hospital chip is the facility's name** ("Dell Seton Medical Center"), the longest chip on the row; a second hospital makes the row a line taller.

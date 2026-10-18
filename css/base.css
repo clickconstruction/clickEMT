@@ -677,7 +677,12 @@ html.page-open .menu, html.page-open .pop, html.page-open .find-pop { z-index: 1
 .tr-c:last-child { border-bottom: 0; }
 .tr-c > :nth-child(1) { grid-area: a; } .tr-c > :nth-child(2) { grid-area: b; } .tr-c-btn { grid-area: c; } .tr-c-who { grid-area: d; font-size: 12px; }
 .ev-on { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
-.ev-on .sel { max-width: 220px; }
+/* an arriving row with run cards (v66) gives them the whole width under the facts, Signed in at the end */
+.ev-r.runs { grid-template-areas: "who from what" "by by by" "where where where"; }
+.ev-r.runs > :nth-child(5) { justify-self: stretch; }
+.ev-r.runs .ev-on { justify-content: flex-start; }
+.ev-r.runs .ev-on > .btn { margin-left: auto; }
+.ev-on .chips.runs { gap: 4px; }
 @media (max-width: 900px) { .tr-row { grid-template-columns: 1fr 1fr; } .tr-btns { grid-column: 1 / -1; justify-content: flex-start; } .row-3 { grid-template-columns: 1fr; } }
 
 /* ---- people and tags (v55): the band and its last scan on a person's row, the sheet of bands to print */

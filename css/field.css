@@ -215,8 +215,10 @@ body { background: var(--bg-2); }
 .sheet label.k .input { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--ink); }
 .st-people { display: flex; flex-direction: column; gap: 8px; }
 .st-people:empty { display: none; }
-.st-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: "who x" "cond cond" "where where"; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
-.st-row > [data-stp="who"] { grid-area: who; } .st-row > [data-stp="cond"] { grid-area: cond; } .st-row > [data-stp="where"] { grid-area: where; } .st-row > .pp-x { grid-area: x; }
+.st-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: "who x" "cond cond"; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.st-row > [data-stp="who"] { grid-area: who; } .st-row > [data-stp="cond"] { grid-area: cond; } .st-row > .pp-x { grid-area: x; }
+.st-row > .st-k, .st-row > .chips { grid-column: 1 / -1; }   /* Went to and On which run as chip rows under who and condition (v66) */
+.st-row > .st-k { margin-top: 4px; }
 .st-on { font-size: 13px; padding: 6px 10px; border-left: 3px solid var(--cleared-fill); background: var(--control-bg); border-radius: 0 10px 10px 0; }
 
 /* time in the water (v28): one row at the top of the home screen, a slim banner past the rotation, never a takeover */
@@ -252,8 +254,6 @@ body { background: var(--bg-2); }
 .run-card.late .k { color: #1B1B18; }
 .run-card.late .btn { color: #1B1B18; }
 .run-next { font-size: 13px; }
-.st-row.has-run { grid-template-areas: "who x" "cond cond" "where where" "run run"; }
-.st-row > [data-stp="run"] { grid-area: run; }
 
 /* ---- people and tags (v55): the typed box under the camera, the band sheet, the band at check-in and on the desk's sheet */
 .scan-typed { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }

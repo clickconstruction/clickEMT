@@ -5,15 +5,15 @@ to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "I
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
 that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), v61, the units section
-(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), v64, the pages as windows (section 23), and v65, the People board as cards and a drawer with its bar and its Members tab redrawn (section 24). **Open and not yet ranked** (18 October 2026, v65): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
-Written 17 October 2026, after v37 (`c89a929`), brought up to date at v65. Each numbered release below is written to be picked
+(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), v64, the pages as windows (section 23), v65, the People board as cards and a drawer with its bar and its Members tab redrawn (section 24), and v66, Went to and On which run as chips on the house record (section 25). **Open and not yet ranked** (18 October 2026, v66): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v66. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v66**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v67**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -43,6 +43,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 22 | v63 Replay: a time you name, and a speed in words (shipped 18 October) | small | v62 | Marcus, the clerk, Dana |
 | 23 | v64 The pages as windows: Briefing, People and the rest over the dimmed map, Expand to full screen (shipped 18 October) | small to medium | v63 | Marcus, the IC, the clerk, Priya |
 | 24 | v65 The People board: cards and a drawer, the bar, the Members tab (shipped 18 October) | medium | v64 | Priya, Marcus, the Safety Officer, the clerk, the newcomer at the post, the administrator |
+| 25 | v66 Went to and On which run as chips on the house record, and the base's arriving rows the same (shipped 18 October) | small | v65 | Ana, every crew, the desk, Marcus |
 
 ---
 
@@ -766,7 +767,6 @@ overlays and the gear menu's item in index.html; the `pages` smoke suite (13 che
 and Shrink with the setting, an emergency in front of a full-screen page, Escape, the board's width, the half-filled
 form, the dim click, the print rules, the gear menu's item); full run 761 of 761 across 39 suites; check and test pass;
 every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
-
 ## 24. v65 The People board: cards and a drawer, the bar, the Members tab
 
 **Why.** Todd, walking the base at v59 on 18 October, marked the People board three times: the six controls on every
@@ -816,6 +816,44 @@ drawer, the menu, Check and the Make a unit… dialog in js/base/main.js (`state
 the styles under "v65" in base.css; the `people`, `members`, `tags`, `sections`, `rewalks`, `parbyname`, `pages`,
 `walkfix` and `invite` suites drive the cards, the drawer, the menu and the dialogs; full run 772 of 772 across 39 suites (761 at v64 and 11 of the board's); check and test
 pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
+
+## 25. v66 Went to and On which run as chips
+
+**Why.** Todd, walking the phone's Address clear on 18 October: "I think we can make this drop-down a little better
+where it's more intuitive for the user to click, perhaps a series of buttons." Every other field on the sheet was a
+chip row (Occupants, Water at the structure, Damage, Hazards left there); each person row under People needing help had
+two native drop-downs, Went to and On which run, the only pickers on the phone, and the picker cut the runs' words off
+("On Bus 3 · A-1 Riverside Drive, east → High school gym · leaves 18:04 · expected 18:29 · 0 of 40"). The Went to box
+could also say one place while the run chosen went to another, and the run won silently at Save.
+
+**Built.** Went to is a chip row: the shelters, then the hospitals (`PERSON_PLACES`), each by its name, then With family,
+Own transport, Not known (`LEFT_CHOICES`), the nearest shelter lit as before. Under it, when open runs go to the place
+chosen, On which run is a row of cards: "Bus 3 → High school gym" over "leaves 18:04 · expected 18:29 · 0 of 40"
+(`runCard` in rules.js: the label, the destination, `transportTimes` and the seats), Not on a run first and lit, the
+crew's own division's run first and marked with its code, a late run's times orange, folded past three to the first two
+and "N more" (`foldRuns`, `RUN_FOLD`), the run chosen never hidden. A run tapped sets Went to from its destination; a
+place tapped that the run does not go to takes the person off it and says so, so the row always says what Save sends.
+Save sends what it sent before: `wherePatch`'s status and facility and `transport_id`, the run's destination winning, so
+the desk, the board and the 214 see no difference. The base's arriving rows on the shelter card carry the same cards at
+40 px in place of their drop-down (`runChipsHtml`), with the row's whole width under the facts and Signed in at the end.
+The mock-up (`try/mockups/runchips.html`) drew the row as it was, the row as proposed, a run chosen, and a fourth frame
+with the run tapped first and every open run listed; place first was built, as Todd approved it, and run first stays
+drawn as the alternative (one line to switch, in `stRuns`).
+
+*Decided:* chips, not drop-downs, since the two selects were the only pickers on the phone; the words and the order are
+rules.js's, "Not known" being `LEFT_CHOICES`'s word; the seats stay on the card (whether the family fits is what the
+crew cannot see from the corner); past three the cards fold to two and More, so a sheet with gloves does not grow a
+screen per person; the base's rows changed in the same release, so the two views draw one run one way; no migration.
+The sheet draws its rows once, when opened, as the drop-downs were: a run planned while the crew types is on the next
+open.
+
+**Shipped** 18 October 2026 as `Went to and On which run as chips (v66)`: `runCard`, `foldRuns` and `RUN_FOLD` in
+rules.js, `stWhereChips` / `stRuns` / `stRunCards` and the `st-where` / `st-run` / `st-runs-more` actions in
+js/field/main.js, `runChipsHtml` and the `ev-transport` / `ev-runs-more` actions on the base, `.rcard` in shared.css,
+the row grids in field.css and base.css; the `evacuees` suite reads the chips, the fold and More, the `transports`
+suite the cards on both views, a run tapped, a place that takes them off it, and the base's cards. Full run 754 of 754 across 38 suites on
+v63 plus this release alone (the worktree's own served copy, the pane hidden); check and test pass; every rule test
+20 of 20 files (331 checks). No migration; the mock needed nothing.
 
 ## Done before this list
 

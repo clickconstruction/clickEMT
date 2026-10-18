@@ -22,7 +22,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card (shipped 17 October) | small | v42 | the IC, the clerk, Reyes, the administrator |
 | 7 | v44 Small words and buttons (shipped 18 October) | small | any time | one or two personas each |
 | 8 | Later: since you last looked (shipped 18 October, v45); on scene too long | medium | v44 | the IC, Marcus's relief, Priya |
-| 9 | Decisions only Grace can make | — | — | — |
+| 9 | Decisions only Grace can make (answered 18 October; built as v46 The decisions) | small to medium | v45 | Ana, Reyes, Priya, the clerk, the resident |
 
 ---
 
@@ -291,15 +291,18 @@ by the suites they touch.
 
 ## 9. Decisions only Grace can make
 
-- **Zone clear for a part of a division.** Ana, with 9 of 24 marked, is asked to send the whole division. May a unit
-  close a division it has not finished (as now, with plainer words), or should the sheet offer "My part is done" as a
-  message to Operations and leave closing to the base?
-- **An urgent hazard and the base.** Should an act-on-now hazard also page the base like an emergency (sound, the red
-  slot), or only sit on the bar until acknowledged (v41 builds the latter)?
-- **The sitrep's address.** Should the incident keep an EOC email address in its settings so Send by email is one tap,
-  or is the mail app's own address book enough?
-- **A revisit that fires.** The resident's "revisit at 16:00" is a note; should it be a time on the house record that
-  shows on the division's panel and the next crew's 204, and nudges the unit in the division?
+Answered by Grace on 18 October 2026; all four are built in **v46 The decisions** (v45 was taken by "Since you
+last looked" before the answers arrived).
+
+- **Zone clear for a part of a division.** *Decided: keep Zone clear for the unit the division is assigned to, with
+  plainer words on the sheet ("9 of 24 marked; send A-1 as primary search complete?"), and add "My part is done" as a
+  message to Operations for a unit that shares the division with another. Both in v46.*
+- **An urgent hazard and the base.** *Decided: the yellow bar until acknowledged, with the base's sound, but not the
+  red slot, which stays for a crew in trouble. v41 built the bar; v46 adds the sound.*
+- **The sitrep's address.** *Decided: yes, keep an EOC email address in the incident's settings so Send by email is one
+  tap, with the mail app's own address book as the fallback when none is set. v46.*
+- **A revisit that fires.** *Decided: yes, "revisit at" on the house record, shown on the division's structure list and
+  on the next crew's 204, without push alerts for now. v46.*
 - **Already decided not to build:** per-person "last seen" notes for boat crews (trackers instead), invite-by-email
   accounts, a transport board, NIMS resource typing and strike team / task force labels. Decided earlier: the hazard
   outline stays after the last hazard is resolved; a unit may be on several divisions; the typed period label stays on

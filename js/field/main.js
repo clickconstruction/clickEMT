@@ -1307,6 +1307,15 @@ function drawStPeople() {
       <button type="button" class="btn pp-x" data-action="st-person-x" data-i="${i}" aria-label="Remove this row" title="Remove this row">×</button></div>`).join(''));
 }
 // ---- a structure: who was there and what state it is in
+// a clock time typed on the sheet, as the next such moment: today, or tomorrow when it has passed
+function revisitIso(hhmmText) {
+  if (!hhmmText) return null;
+  const [h, m] = hhmmText.split(':').map(Number);
+  if (!(h >= 0 && h < 24 && m >= 0 && m < 60)) return null;
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  if (d.getTime() < Date.now() - 3600000) d.setDate(d.getDate() + 1);
+  return d.toISOString();
+}
 function openStructure(id) {
   const existing = id ? data.structure(id) : null;
   const p = sensors.pos;
@@ -1324,6 +1333,7 @@ function openStructure(id) {
   $('#structure-title').textContent = existing ? (existing.label || 'Structure') : 'Address clear';
   $('#structure-sub').textContent = (zone ? zone.code + (nextPass(zone) === 'secondary' ? ', secondary search' : '') : 'Outside the divisions') + (state.st.lat != null ? ' · ' + latLngText(state.st.lat, state.st.lng) : ' · no GPS fix yet') + '. Save marks it searched and counts it for the zone.';
   $('#structure-label').value = existing ? existing.label : '';
+  $('#structure-revisit').value = existing && existing.revisit_at ? hhmm(existing.revisit_at) : '';
   $('#structure-notes').value = existing ? existing.notes : '';
   screen('structure');
   drawStructure();
@@ -1352,7 +1362,8 @@ async function saveStructure() {
     zone_id: st.zoneId, lat: st.lat, lng: st.lng, status: 'searched', pass: nextPass(zone), label: $('#structure-label').value.trim(),
     occupants: st.occ, people_needing_help: st.help, water_cm: st.water, damage: st.damage, hazards: codes.join(' '),
     marking: markingFor(unitLabel(me).replace(/^Unit /, 'U'), now, codes, st.help), notes: $('#structure-notes').value.trim(),
-    searched_by: data.user.id, searched_at: now.toISOString()
+    searched_by: data.user.id, searched_at: now.toISOString(),
+    revisit_at: revisitIso($('#structure-revisit').value)   // v46: when the next crew should go back
   };
   const id = st.id || uuid();
   const existing = st.id ? data.structure(st.id) : null;
@@ -1385,18 +1396,37 @@ function openClear() {
   if (z.status === 'cleared') { toast(z.code + ' is already clear'); return; }
   state.victims = 0; state.clearHaz = new Set(); state.pass = nextPass(z);
   $('#clear-title').textContent = state.pass === 'secondary' ? 'Mark ' + z.code + ' clear' : 'Finish the search of ' + z.code;
-  $('#clear-sub').textContent = `Sends ${z.code} ${z.name} to Operations.` + (z.structures && !data.structures(z.id).length ? ` All ${z.structures} structures are marked searched.` : '');
   screen('clear');
   drawClear();
 }
+// the sheet says plainly what Confirm clear sends, and offers My part is done for a unit sharing the division (v46)
+function clearWords(z) {
+  const sends = state.pass === 'secondary' ? 'cleared' : 'primary search complete';
+  return `${z.code}${z.name ? ' ' + z.name : ''}: ${z.cleared} of ${z.structures || '?'} marked. Confirm clear sends the whole division to Operations as ${sends}` + (z.structures && !data.structures(z.id).length ? `, all ${z.structures} structures marked searched` : '') + '. Only your part done? My part is done tells Operations and leaves the division open.';
+}
 function drawClear() {
   const z = myZone();
+  if (z) $('#clear-sub').textContent = clearWords(z);
   setHtml($('#pass-chips'), [['primary', 'Primary search done'], ['secondary', 'Secondary search done, zone clear']].map(([v, label]) => `<button class="chip${state.pass === v ? ' on' : ''}${z && z.status === 'primary' && v === 'primary' ? ' dim' : ''}" data-action="pass" data-v="${v}">${label}</button>`).join(''));
   $('#victims').textContent = state.victims;
   $('#clear-chips').innerHTML = CLEAR_HAZARDS.map(([label], i) => `<button class="chip${state.clearHaz.has(i) ? ' on' : ''}" data-action="clear-haz" data-i="${i}">${esc(label)}</button>`).join('');
   const me = data.me();
   const m = markingFor(unitLabel(me).replace(/^Unit /, 'U'), new Date(), [...state.clearHaz].map((i) => CLEAR_HAZARDS[i][1]), state.victims);
   $('#x-out').textContent = m.out; $('#x-team').textContent = m.team; $('#x-haz').textContent = m.haz; $('#x-victims').textContent = m.victims;
+}
+async function myPartDone() {
+  const z = myZone(), me = data.me();
+  if (!z || !me) { screen('home'); return; }
+  const r = data.recipientsFor('ops');
+  if (!r.toUsers.length) { toast('Nobody at Operations to send to', true); return; }
+  const text = `My part of ${z.code} is done: ${z.cleared} of ${z.structures || '?'} marked; the rest is still to search.`;
+  const id = uuid();
+  data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, urgency: '', lat: null, lng: null, created_at: new Date().toISOString() });
+  await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text, urgency: '' });
+  state.lastSentAt = Date.now();
+  screen('home');
+  toast(navigator.onLine ? 'Sent to Operations; the division stays open' : 'Kept, it sends when there is signal');
+  queueDraw();
 }
 async function confirmClear() {
   const z = myZone();
@@ -1522,6 +1552,7 @@ document.addEventListener('click', async (e) => {
       case 'victims-down': state.victims = Math.max(0, state.victims - 1); drawClear(); break;
       case 'clear-haz': { const i = Number(btn.dataset.i); if (state.clearHaz.has(i)) state.clearHaz.delete(i); else state.clearHaz.add(i); drawClear(); break; }
       case 'confirm-clear': await confirmClear(); break;
+      case 'my-part-done': await myPartDone(); break;
       case 'hazard': openHazard(); break;
       case 'haz': state.hazI = Number(btn.dataset.i); openHazardChips(); break;
       case 'haz-u': state.hazU = state.hazU === btn.dataset.value ? '' : btn.dataset.value; openHazardChips(); break;

@@ -274,6 +274,31 @@ function queueDraw() {
   setTimeout(() => { if (drawQueued) { drawQueued = false; drawAll(); } }, 1600);   // a frame that never comes (the pane hidden a moment after the draw was queued) no longer holds every later draw
 }
 
+// The base's sound (v46): a short chime when an emergency or an act-on-now hazard arrives, never for what
+// was already there when the page opened. Web Audio, no file; the browser lets it sound after the first click.
+let audioCtx = null;
+function chime(kind) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    const tones = kind === 'emergency' ? [880, 660, 880] : [660];
+    tones.forEach((hz, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = hz; o.connect(g); g.connect(audioCtx.destination);
+      const t = audioCtx.currentTime + i * 0.22;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.start(t); o.stop(t + 0.22);
+    });
+  } catch (e) { /* no sound here */ }
+}
+function ringForNew() {
+  if (!data.incident) return;
+  const open = data.alerts().filter((a) => !a.acknowledged_at).map((a) => 'a:' + a.id).concat(data.urgentHazards().map((h) => 'h:' + h.id));
+  if (!state.rang) { state.rang = new Set(open); return; }
+  let emergency = false, hazard = false;
+  for (const id of open) if (!state.rang.has(id)) { state.rang.add(id); if (id[0] === 'a') emergency = true; else hazard = true; }
+  if (emergency) chime('emergency'); else if (hazard) chime('hazard');
+}
 function drawAll() {
   if (!data.incident || $('#app').hidden) return;
   const inc = data.incident;
@@ -297,6 +322,7 @@ function drawAll() {
   md.hidden = !mh;
   if (md.__html !== mh) { md.__html = mh; md.innerHTML = mh; }
   md.classList.toggle('ack', !!mh && data.alerts().every((a) => a.acknowledged_at));
+  ringForNew();   // v46: a chime for an emergency or an act-on-now hazard that just arrived
   const sf = $('#safety');
   const sh = safetyHtml(data);
   sf.hidden = !sh;
@@ -464,7 +490,7 @@ function drawBriefing() {
   $('#briefing-when').textContent = data.incident.name + ' · ' + (data.currentPeriod() ? periodLabel(data.currentPeriod()) : '') + ' · ' + hhmm(new Date());
   // Send by email (v43): the mail app with the text in the body; the app sends nothing itself
   const mail = $('#briefing-mail');
-  if (mail) { const subject = data.incident.name + ' · ' + $('#briefing-title').textContent + (data.currentPeriod() ? ' · ' + periodLabel(data.currentPeriod()) : '') + ' · ' + whenText(new Date()); mail.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(briefingAsText()); }
+  if (mail) { const subject = data.incident.name + ' · ' + $('#briefing-title').textContent + (data.currentPeriod() ? ' · ' + periodLabel(data.currentPeriod()) : '') + ' · ' + whenText(new Date()); mail.href = 'mailto:' + (data.settings().eoc_email || '') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(briefingAsText()); }   // the EOC address from the settings, else the mail app's own book (v46)
 }
 function briefingAsText() {
   const z = state.printZone ? data.zone(state.printZone) : null;
@@ -1099,7 +1125,7 @@ document.addEventListener('submit', async (e) => {
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'settings') {
-      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))) };
+      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))), eoc_email: form.eoc_email ? form.eoc_email.value.trim() : '' };
       await data.saveSettings(patch);
       setGoogleKey(patch.maps_key);
       const dlg = $('#settings-dialog'); if (dlg.open) dlg.close();

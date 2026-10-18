@@ -874,3 +874,26 @@ Item 12 ("Later") is built. The one left on the list, on scene too long (item 13
 
 - **The line counts, it does not name**: "1 missing person (1 found)" says what, not who; Show them is one press away.
 - **The first mark is set when the incident is first drawn on this device**, so the very first "since" is since the base was opened, not since the IC's last look.
+
+---
+
+## Re-walk after v46
+
+The decisions: Grace's four answers, walked on 2026-10-18 in the same mock, the base at 1280 × 800 as Marcus and the phone at 375 × 812 as Unit 3 on A-2 Pecan Mobile Home Park (the pane was hidden; the words were read from the screen).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Zone clear with the division half done | Unit 3 | The sheet: "A-2 Pecan Mobile Home Park: 1 of 18 marked. Confirm clear sends the whole division to Operations as primary search complete. Only your part done? My part is done tells Operations and leaves the division open." Under the pass chips, on its own row, "My part is done, not the division"; the foot keeps Cancel and Confirm clear. All of it inside 375 px. | Clear |
+| My part is done | Unit 3, Marcus | The toast "Sent to Operations; the division stays open"; on the base, the log and the Messages card: "Unit 3 to Operations: My part of A-2 is done: 1 of 18 marked; the rest is still to search." A-2 stays active. | Clear |
+| An act-on-now hazard | Marcus | As at v41: the yellow HAZARD bar until acknowledged, the red slot untouched. The chime (three tones for an emergency, one for an urgent hazard) cannot be heard in the Browser pane; it is Web Audio, no file, and sounds only after the first click on the page, as every browser requires. | Clear, the sound unheard |
+| The EOC address | Marcus | Settings: "EOC email address · Send by email on the situation report and the other papers goes to it in one tap; leave it empty to pick the address in the mail app." Saved, the log says "Marcus Bell set the EOC email address to eoc@county.gov" and the situation report's Send by email link starts `mailto:eoc@county.gov?subject=Cedar Fork Flooding · Situation report…`. | Clear |
+| Revisit at, on the phone | Unit 3 | The house record's new box: "REVISIT AT (the next crew sees it on the division and the 204)", a time; saved with the notes "on oxygen, wants a nurse", the toast "14 Pecan Ln searched · 1 of 18". | Clear |
+| Revisit at, on the base | Marcus | The log: "A-2: 14 Pecan Ln · revisit requested (on oxygen, wants a nurse)"; the division's structure list: "14 Pecan Ln · Searched · 00:51 · revisit 02:51" ("(due)" once the time has passed); the 204's new section "REVISITS · 14 Pecan Ln at 02:51 · on oxygen, wants a nurse". No push alert, as decided. | Clear |
+
+Section 9 of the punchlist (Grace's decisions) is built in full. On scene too long (item 8, Later) is the one item left.
+
+**Still bites, small:**
+
+- **The chime is silent until the first click**: a base opened and left untouched rings nothing for the first emergency; the bars still turn red or yellow at once.
+- **A revisit is a clock time, not a date**: the phone takes the next such moment, so a time already past today means tomorrow; the 204 says "at 02:51" and the next crew reads it against the day it is on.
+- **My part is done is a message, not a mark**: the division does not say which part is done; the message's words ("1 of 18 marked") and the structure list are what Operations has.

@@ -344,7 +344,7 @@ function zoneHtml(data, z, state) {
         : `<button class="btn sm green" data-action="finish-pass" data-id="${z.id}" data-pass="primary">Primary search done</button><button class="btn sm" data-action="finish-pass" data-id="${z.id}" data-pass="secondary">Mark cleared</button>`}
     </div>
     <div class="d-row"><span class="k" style="width:auto;flex:1">Structures on record · ${structs.length}</span><button class="btn sm" data-action="place-structures" data-id="${z.id}">Place structures</button></div>
-    ${structs.length ? structs.slice(-8).reverse().map((s) => `<button class="plink" data-action="select-structure" data-id="${s.id}">${esc(s.label || 'Structure')} · ${STRUCTURE_STATUS[s.status] || s.status}${structureSummary(s) ? ' · ' + esc(structureSummary(s)) : ''}${s.searched_at ? ' · ' + hhmm(s.searched_at) : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. The field adds one with every address it clears; you can place the ones you know in advance.</div>'}
+    ${structs.length ? structs.slice(-8).reverse().map((s) => `<button class="plink" data-action="select-structure" data-id="${s.id}">${esc(s.label || 'Structure')} · ${STRUCTURE_STATUS[s.status] || s.status}${structureSummary(s) ? ' · ' + esc(structureSummary(s)) : ''}${s.searched_at ? ' · ' + hhmm(s.searched_at) : ''}${s.revisit_at ? ' · revisit ' + hhmm(s.revisit_at) + (new Date(s.revisit_at).getTime() < Date.now() ? ' (due)' : '') : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. The field adds one with every address it clears; you can place the ones you know in advance.</div>'}
     <div class="k">Photos from this zone</div>
     ${photos.length ? photos.map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.heading != null ? ' · facing ' + compass(p.heading) : ''}${p.note ? ' · ' + esc(p.note) : ''}${p.public_ok ? ' · public' : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet</div>'}
     ${z.assigned_to ? `<div class="k">Message ${esc(unitLabel(data.member(z.assigned_to)))} in ${esc(z.code)}</div>${composerHtml(data, 'zone:' + z.id)}${messagesHtml(data, (m) => m.to_zone === z.id, 4)}` : ''}`;
@@ -769,6 +769,7 @@ function structureHtml(data, s) {
       <span class="k">Searched by</span><span>${s.searched_by ? esc(unitLabel(data.member(s.searched_by))) : 'nobody yet'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(s.lat, s.lng)) || 'unknown'}</span>
       ${s.marking ? `<span class="k">Marking</span><span>team ${esc(s.marking.team)} · out ${esc(s.marking.out)} · hazards ${esc(s.marking.haz)} · people ${esc(s.marking.victims)}</span>` : ''}
+      ${s.revisit_at ? `<span class="k">Revisit at</span><span>${hhmm(s.revisit_at)}${new Date(s.revisit_at).getTime() < Date.now() ? ' · due' : ''}</span>` : ''}
       ${s.notes ? `<span class="k">Notes</span><span>${esc(s.notes)}</span>` : ''}
     </div>
     <form class="inline-form" data-form="structure-edit" data-id="${s.id}">
@@ -1180,6 +1181,8 @@ export function form204Sections(data, z) {
   const places = data.facilities().filter((f) => ['staging', 'shelter', 'hospital', 'icp'].includes(f.kind));
   S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '', data.zoneAccepted(z))].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
+  const revisits = data.structures(z.id).filter((s) => s.revisit_at).sort((a, b) => (a.revisit_at < b.revisit_at ? -1 : 1));   // v46: the next crew's revisits
+  if (revisits.length) S.push({ title: 'Revisits', lines: revisits.map((s) => `${s.label || 'A structure'} at ${hhmm(s.revisit_at)}${new Date(s.revisit_at).getTime() < Date.now() ? ' (due)' : ''}${s.notes ? ' · ' + s.notes : ''}`) });
   S.push({ title: 'Prepared', lines: ['By Operations, ' + whenText(new Date())] });
   return S;
 }
@@ -1542,6 +1545,8 @@ export function settingsDialogHtml(data) {
       <label>Personal records clear by rule <select name="retention_days" class="sel">${[30, 60, 90].map((d) => `<option value="${d}"${days === d ? ' selected' : ''}>${d} days after the close</option>`).join('')}</select></label>
       <div class="muted" style="font-size:12px">Licences, dates of birth, addresses, licence photos and the names of people sheltered; the names, the log and the forms stay.</div>
       <label>Default rotation in the water, minutes (0 = off) <input name="rotation_minutes" type="number" min="0" max="600" step="5" value="${esc(String(st.rotation_minutes ?? 45))}"></label>
+      <label>EOC email address <input name="eoc_email" type="email" value="${esc(st.eoc_email || '')}" autocomplete="off" placeholder="eoc@county.gov" maxlength="120"></label>
+      <div class="muted" style="font-size:12px">Send by email on the situation report and the other papers goes to it in one tap; leave it empty to pick the address in the mail app.</div>
       <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
       <div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
     </form>`;

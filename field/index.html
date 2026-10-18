@@ -202,6 +202,7 @@
       </div>
       <div class="xt"><span>Top: time out</span><span>Left: team</span><span>Right: hazards</span><span>Bottom: people found</span></div>
     </div>
+    <div class="row-btns" style="justify-content:flex-end"><button class="btn sm" data-action="my-part-done" title="Tells Operations your part is done and leaves the division open">My part is done, not the division</button></div>
     <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn green" data-action="confirm-clear">Confirm clear</button></div>
   </div>
 
@@ -224,6 +225,8 @@
     <div class="chips" id="shaz-chips"></div>
     <label class="k" for="structure-notes">Notes for the next crew</label>
     <input id="structure-notes" class="input" placeholder="Dog inside, gas shut off at the meter" maxlength="300">
+    <label class="k" for="structure-revisit">Revisit at <span class="muted" style="font-weight:400">(the next crew sees it on the division and the 204)</span></label>
+    <input id="structure-revisit" class="input" type="time">
     <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn green" data-action="save-structure">Searched, save</button></div>
   </div>
 

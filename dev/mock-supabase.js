@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 27;
+  const SEED_VERSION = 28;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -307,7 +307,7 @@
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null , accepted_zone_id: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
-    ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() }),
+    ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now() , revisit_at: null }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, public_caption: '', public_checked_by: null, public_checked_at: null, taken_at: now(), created_at: now() }),
     ic_tracks: () => ({ id: eventId(), heading: null, at: now() }),   // unique across tabs, as ic_events
@@ -475,6 +475,7 @@
       ].filter(Boolean).join(' · ');
       log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · ${what}`, 'ic_structures', r.id);
     }
+    if (r.revisit_at && (!old || r.revisit_at !== old.revisit_at)) log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · revisit requested${r.notes ? ' (' + r.notes + ')' : ''}`, 'ic_structures', r.id);   // v46
   }
   // ic_track_position: every reported position is kept, except a repeat of the same spot within a minute
   function trackPosition(r, old, uid, changes) {
@@ -774,6 +775,7 @@
       if ((ns.maps_key || '') !== (os.maps_key || '')) log(changes, r.id, uid, 'ops', actor + (ns.maps_key ? ' set the Google Maps key' : ' cleared the Google Maps key'));
       if (String(ns.retention_days ?? '') !== String(os.retention_days ?? '')) log(changes, r.id, uid, 'ops', actor + ' set personal records to clear ' + (ns.retention_days || 30) + ' days after the close');
       if (String(ns.rotation_minutes ?? '') !== String(os.rotation_minutes ?? '')) log(changes, r.id, uid, 'ops', actor + ' set the default rotation to ' + (ns.rotation_minutes ?? 45) + ' minutes in the water');
+      if ((ns.eoc_email || '') !== (os.eoc_email || '')) log(changes, r.id, uid, 'ops', actor + (ns.eoc_email ? ' set the EOC email address to ' + ns.eoc_email : ' cleared the EOC email address'));   // v46
     }
   }
 

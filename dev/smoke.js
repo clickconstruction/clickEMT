@@ -216,6 +216,19 @@ async function fieldReports(check) {
   check('Acknowledge takes it off the bar, logs it, and leaves it open on the list until Resolved', await until(() => !has('#safety', 'hazard ·')) && await until(() => eventText(base, 'Hazard acknowledged by Operations: person or car in the water in B-2')) && base.hazards().some((h) => h.id === hid2 && h.acked_at && !h.resolved_at) && await until(() => has('#panel', 'acknowledged')), logTexts()[0]);
   await base.resolveHazard(hid2);
   await until(() => !base.hazards().some((h) => h.id === hid2));
+  // v46: a revisit time on a house record
+  const rid = uuid(), rat = new Date(Date.now() + 2 * 3600000), rhh = String(rat.getHours()).padStart(2, '0') + ':' + String(rat.getMinutes()).padStart(2, '0');
+  await field.addStructure(rid, { zone_id: b2, label: '113 Bee Creek Rd', status: 'not_searched', notes: 'on oxygen', revisit_at: rat.toISOString() });
+  await until(() => base.structure(rid));
+  $(`#zones .zr[data-id="${b2}"]`).click();
+  await until(() => has('#panel .title', 'b-2'));
+  check('a revisit time shows on the division\'s structure list and is logged', await until(() => has('#panel', '113 bee creek rd · not searched', 'revisit ' + rhh)) && !!eventText(base, 'B-2: 113 Bee Creek Rd · revisit requested (on oxygen)'), text('#panel').slice(0, 600));
+  $$('#panel button').find((x) => /print the 204/i.test(x.innerText)).click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', '204'));
+  check('the 204 carries a Revisits section for the next crew', has('#briefing-page', 'revisits', '113 bee creek rd at ' + rhh + ' · on oxygen'), text('#briefing-page').slice(0, 1200));
+  $('[data-action="close-briefing"]').click();
+  await until(() => $('#briefing').hidden);
+  $('#panel [data-action="close-panel"]').click();
 }
 
 // Unit 3 raises an alert, Operations acknowledges it on the base, Unit 3 stands down.
@@ -1600,6 +1613,12 @@ async function newcomer(check) {
       await base.updateZone(ZONE('B-2'), { assigned_to: vol.user_id, status: 'active' });   // as the base's Assigned to press does
       check('assigned from the base, the division reads Assigned, not accepted, and the phone shows the Accept card', await until(() => has(`#zones .zr[data-id="${ZONE('B-2')}"]`, 'assigned, not accepted · volunteer 4')) && await until(() => P.$('#banner [data-action="accept"]'), 15000), text(`#zones .zr[data-id="${ZONE('B-2')}"]`));
       P.$('#banner [data-action="accept"]').click();
+      await until(() => base.member(vol.user_id).accepted_zone_id === ZONE('B-2'), 70000);
+      await P.act('zone-clear');
+      await until(() => P.shown('#s-clear'), 5000);
+      check('Zone clear says what Confirm clear sends and offers My part is done (v46)', /b-2 bee creek low-water crossing: 0 of 9 marked\. confirm clear sends the whole division to operations as primary search complete/.test(P.text('#clear-sub')) && /my part is done tells operations and leaves the division open/.test(P.text('#clear-sub')) && !!P.$('#s-clear [data-action="my-part-done"]'), P.text('#clear-sub'));
+      P.$('#s-clear [data-action="my-part-done"]').click();
+      check('My part is done reaches Operations as a message and leaves the division open', await until(() => eventText(base, 'Volunteer 4 to Operations: My part of B-2 is done: 0 of 9 marked; the rest is still to search.'), 70000) && base.zone(ZONE('B-2')).status === 'active' && await until(() => P.shown('#s-home'), 5000), logTexts()[0]);
       check('Accept on the phone makes it In progress on the base and writes the line', await until(() => base.member(vol.user_id).accepted_zone_id === ZONE('B-2'), 70000) && await until(() => has(`#zones .zr[data-id="${ZONE('B-2')}"]`, 'in progress · volunteer 4')) && await until(() => eventText(base, 'Volunteer 4 accepted the assignment to B-2'), 8000) && await until(() => !P.$('#banner [data-action="accept"]') && !P.$('.actions [data-action="addr-clear"]').hidden), logTexts()[0]);
       await base.updateZone(ZONE('B-2'), { assigned_to: null, status: 'open' });
       await until(() => !P.$('.actions [data-action="addr-clear"]') || P.$('.actions [data-action="addr-clear"]').hidden, 15000);
@@ -2217,11 +2236,16 @@ async function safetyset(check) {
     $('[data-action="settings"]').click();
     const sform = await until(() => $('#settings-dialog[open] form[data-form="settings"]'));
     check('Settings opens from the header with the key, the retention days and the default rotation, the mock\'s values filled in', !!sform && sform.maps_key.value === 'mock-maps-key-for-the-layers-suite' && sform.retention_days.value === '30' && sform.rotation_minutes.value === '45' && has('#settings-dialog', 'google cloud', 'never the key'), text('#settings-dialog').slice(0, 300));
-    sform.maps_key.value = 'AIza-new-key-9'; sform.retention_days.value = '60'; sform.rotation_minutes.value = '20';
+    sform.maps_key.value = 'AIza-new-key-9'; sform.retention_days.value = '60'; sform.rotation_minutes.value = '20'; sform.eoc_email.value = 'eoc@county.gov';
     sform.requestSubmit();
     await until(() => $('#settings-dialog') && !$('#settings-dialog').open);
     const inc = () => M().tables.ic_incidents.find((i) => i.id === INC());
-    check('Save writes the settings and logs what changed, never the key', await until(() => inc().settings.maps_key === 'AIza-new-key-9' && inc().settings.retention_days === 60 && inc().settings.rotation_minutes === 20) && await until(() => eventText(base, 'Marcus Bell set the Google Maps key') && eventText(base, 'Marcus Bell set personal records to clear 60 days after the close') && eventText(base, 'Marcus Bell set the default rotation to 20 minutes in the water')) && !base.events().some((e) => /AIza-new-key-9/.test(e.text)), logTexts().slice(0, 3).join(' | '));
+    check('Save writes the settings and logs what changed, never the key', await until(() => inc().settings.maps_key === 'AIza-new-key-9' && inc().settings.retention_days === 60 && inc().settings.rotation_minutes === 20) && await until(() => eventText(base, 'Marcus Bell set the Google Maps key') && eventText(base, 'Marcus Bell set personal records to clear 60 days after the close') && eventText(base, 'Marcus Bell set the default rotation to 20 minutes in the water') && eventText(base, 'Marcus Bell set the EOC email address to eoc@county.gov')) && !base.events().some((e) => /AIza-new-key-9/.test(e.text)), logTexts().slice(0, 4).join(' | '));
+    $('[data-action="sitrep"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
+    check('with an EOC address set, Send by email goes to it (v46)', /^mailto:eoc@county\.gov\?subject=/.test($('#briefing-mail').getAttribute('href')), $('#briefing-mail').getAttribute('href').slice(0, 60));
+    $('[data-action="close-briefing"]').click();
+    await until(() => $('#briefing').hidden);
     $('[data-action="layers"]').click();
     await until(() => !$('#layers-pop').hidden);
     check('the Layers panel lists Google Maps from the incident\'s key', $$('#layers-pop input[type="radio"]').some((r) => r.dataset.layer === 'google-satellite'), $$('#layers-pop input[type="radio"]').map((r) => r.dataset.layer).join(' '));

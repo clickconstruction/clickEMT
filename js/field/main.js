@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, ALERT_WRONG, ALERT_NEEDS, alertCodes, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 import { revisitWords, revisitHhmm } from '../shared/rules.js';   // a revisit already past today means tomorrow (v48)
 
@@ -31,7 +31,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null };
+const state = { screen: 'home', alertWrong: new Set(), alertNeeds: new Set(), pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null };
 function blankPerson() { return { name: '', role: '', quals: new Set(), band: '' }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -106,6 +106,7 @@ const outbox = new Outbox({
   hazard: (p, _b, at) => data.addHazard(p.id, { ...p, createdAt: at }),
   alert: (p, _b, at) => data.raiseAlert(p.id, { ...p, createdAt: at }),
   standdown: (p) => data.standDown(p.id),
+  alertWords: (p) => data.setAlertWords(p.id, p.wrong, p.needs),   // a chip tapped on Alert sent (v68)
   message: (p, _b, at) => data.sendMessage(p.id, { ...p, createdAt: at }),
   ack: (p, _b, at) => data.ackMessage(p.messageId, p.reply, p.count, at, p.missing, p.scanned),
   count: (p) => data.updateMember(p.userId, { unnamed_count: p.n }),
@@ -931,6 +932,7 @@ function drawAll() {
       ? `<div class="k" style="color:var(--cleared)">Operations acknowledged at ${hhmm(al.acknowledged_at)}</div><div class="muted">Stay put if you can. Your location keeps sending.</div>`
       : `<div class="k">Waiting for Operations</div><div class="muted">Your location keeps sending every few seconds.</div>`);
     $('#helpsent-card').style.borderColor = al.acknowledged_at ? 'var(--cleared-fill)' : '';
+    setHtml($('#helpsent-ask'), alertAskHtml(al.wrong, al.needs, true));   // the chips stay live after the send (v68)
   } else if (state.screen === 'helpsent') screen('home');
   setHtml($('#helpsent-missing'), al ? missingCardHtml() : '');
   setHtml($('#missing'), al ? '' : missingCardHtml());
@@ -1817,13 +1819,17 @@ function openHelp() {
     <span class="k">Zone</span><span>${z ? esc(z.code + ' · ' + z.name) : 'none'}</span>
     <span class="k">Position</span><span class="mono">${p ? esc(latLngText(p.lat, p.lng)) : 'no GPS fix yet'}</span>
     <span class="k">Time</span><span>${hhmm(new Date())}</span>`;
+  state.alertWrong.clear(); state.alertNeeds.clear();   // nothing chosen until the crew chooses; Send alert never waits for a chip (v68)
+  drawHelpAsk();
   screen('help');
 }
-async function sendAlert(note) {
+// chips: what's wrong and what you need, codes from ALERT_WRONG / ALERT_NEEDS (v68); the PAR's missing report sends none
+async function sendAlert(note, chips) {
   const p = sensors.pos, z = myZone();
   const id = uuid();
-  data.local('ic_alerts', { id, incident_id: data.incident.id, user_id: data.user.id, zone_id: z ? z.id : null, lat: p ? p.lat : null, lng: p ? p.lng : null, note: note || '', created_at: new Date().toISOString(), acknowledged_at: null, stood_down_at: null });
-  await outbox.add('alert', { id, lat: p ? p.lat : null, lng: p ? p.lng : null, zoneId: z ? z.id : null, note: note || '' });
+  const words = { wrong: chips ? alertCodes(ALERT_WRONG, chips.wrong) : [], needs: chips ? alertCodes(ALERT_NEEDS, chips.needs) : [] };
+  data.local('ic_alerts', { id, incident_id: data.incident.id, user_id: data.user.id, zone_id: z ? z.id : null, lat: p ? p.lat : null, lng: p ? p.lng : null, note: note || '', ...words, created_at: new Date().toISOString(), acknowledged_at: null, stood_down_at: null });
+  await outbox.add('alert', { id, lat: p ? p.lat : null, lng: p ? p.lng : null, zoneId: z ? z.id : null, note: note || '', ...words });
   state.lastPosAt = 0; await maybeSendPosition();
   screen('helpsent');
   queueDraw();
@@ -1835,6 +1841,33 @@ async function standDown() {
   await outbox.add('standdown', { id: al.id });
   screen('home');
   toast('Stood down');
+  queueDraw();
+}
+
+// What's wrong and what you need (v68): the same two rows on Need help now (state.alertWrong / alertNeeds, cleared by
+// openHelp, sent with the alert) and on Alert sent, where a tap updates the open alert through the outbox and the
+// database writes the "adds" / "takes back" line. A lit chip tapped again is taken back: gloves slip.
+function alertAskHtml(wrong, needs, sent) {
+  const w = new Set(wrong || []), n = new Set(needs || []);
+  const chips = (list, kind, set) => list.map(([c, l]) => `<button class="chip${set.has(c) ? ' on' : ''}" data-action="alert-chip" data-kind="${kind}" data-code="${c}" aria-pressed="${set.has(c) ? 'true' : 'false'}">${esc(l)}</button>`).join('');
+  return `<div class="k">What's wrong</div><div class="chips">${chips(ALERT_WRONG, 'wrong', w)}</div>
+    <div class="k">What you need</div><div class="chips">${chips(ALERT_NEEDS, 'needs', n)}</div>${sent ? '<div class="small">Operations sees each tap.</div>' : ''}`;
+}
+function drawHelpAsk() { setHtml($('#help-ask'), alertAskHtml([...state.alertWrong], [...state.alertNeeds], false)); }
+async function tapAlertChip(kind, code) {
+  const al = myAlert();
+  if (!al) {   // on the sheet, before the send
+    const set = kind === 'needs' ? state.alertNeeds : state.alertWrong;
+    if (set.has(code)) set.delete(code); else set.add(code);
+    drawHelpAsk();
+    return;
+  }
+  const wrong = new Set(al.wrong || []), needs = new Set(al.needs || []);
+  const set = kind === 'needs' ? needs : wrong;
+  if (set.has(code)) set.delete(code); else set.add(code);
+  const patch = { wrong: alertCodes(ALERT_WRONG, [...wrong]), needs: alertCodes(ALERT_NEEDS, [...needs]) };
+  data.local('ic_alerts', Object.assign({}, al, patch));
+  await outbox.add('alertWords', { id: al.id, ...patch });
   queueDraw();
 }
 
@@ -1912,7 +1945,8 @@ document.addEventListener('click', async (e) => {
       case 'haz-u': state.hazU = state.hazU === btn.dataset.value ? '' : btn.dataset.value; openHazardChips(); break;
       case 'send-hazard': await sendHazard(); break;
       case 'help': openHelp(); break;
-      case 'send-alert': await sendAlert(); break;
+      case 'send-alert': await sendAlert('', { wrong: [...state.alertWrong], needs: [...state.alertNeeds] }); break;
+      case 'alert-chip': await tapAlertChip(btn.dataset.kind, btn.dataset.code); break;
       case 'stand-down': await standDown(); break;
       case 'inbox': screen('inbox'); drawInbox(); break;
       case 'par-less': state.parCounts.set(btn.dataset.id, Math.max(0, parCount(btn.dataset.id) - 1)); drawSafety(); drawInbox(); break;

@@ -1443,3 +1443,24 @@ Went to and On which run as chips: Ana at a house in A-2 with a family and a man
 - **The sheet draws its rows once, when opened**, as the drop-downs did: a run planned while the crew types a row shows on the next open of Address clear, not live.
 - **Run first** (the mock-up's fourth frame: every open run listed, Went to following the run's destination) is not built; it is one line to switch in `stRuns`, if the crews turn out to know the van before the shelter.
 - **The hospital chip is the facility's name** ("Dell Seton Medical Center"), the longest chip on the row; a second hospital makes the row a line taller.
+
+
+## Re-walk after v68
+
+Need help now with its two rows of chips: Ana Ramirez pinned under a shifted trailer in A-2, Dep. Moreno alone at the
+bridge post with a car in the water, Marcus at the base reading the alarm line, walked on 2026-10-18 in the mock at
+375 px and 1280 × 800 (the pane hidden, so the screens read through the `emergency` suite and the mock-up's renders,
+light and dark).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The sheet | Ana | "Need help now · Goes to Operations and every unit, with your position.", the Will be sent card, then WHAT'S WRONG (In the water · Trapped · Injured · Cut off · Unsafe structure · Someone missing) and WHAT YOU NEED (Boat · Medic · Rope · More hands), 52 px each, two to a row, nothing lit; Cancel and the red Send alert at the foot, on screen however long the sheet is. Send alert does not wait for a chip. | Clear |
+| A bare press | Moreno | One tap. The base reads "EMERGENCY · Unit 2 needs help in B-1 · sent 17:43", the 214 the same line as before, word for word; the phone is on Alert sent with the same two rows under the status card and "Operations sees each tap." | Clear |
+| A tap after the send | Moreno | In the water, then Boat: the alarm line reads "… needs help in B-1 · in the water · needs boat · sent 17:43", the 214 "Unit 2 adds: in the water" and "Unit 2 adds: needs boat". A slip on Boat again: "Unit 2 takes back: boat", and the bar follows. | Clear |
+| Chips before the send | Ana | Trapped and Injured lit, then Send alert: the first line reads "EMERGENCY, Unit 3 needs help in A-2: trapped, injured", the unit panel's badge the same words, the chips still lit on Alert sent. | Clear |
+| The alarm line | Marcus | The words after the zone and before the clock, so they survive the cut; whole on hover; Acknowledge and Show unit as before; the badge on the unit panel reads "EMERGENCY · trapped, injured · acknowledged 17:47". | Clear |
+
+**Still bites, small:**
+
+- **Two open emergencies with words** share the 40 px line: at 1280 px each cell reads "EMERGENCY · Unit 2 needs help in B-1 · in the water · nee…", the rest on hover. The words come before the clock for that reason; a third open thing cuts them to the unit.
+- **The PAR's missing report** sends its note and no chips; "Missing: Okafor" reads after the chips once the unit adds some on Alert sent.

@@ -300,7 +300,59 @@ async function emergency(check) {
   check('the field client sees the acknowledgement', await until(() => field.alerts()[0] && field.alerts()[0].acknowledged_at));
   await field.standDown(aid);
   await until(() => $('#mayday').hidden && eventText(base, 'Unit 3 stood down, all OK'));
-  check('standing down clears the bar, keeps the alert in history, and logs it', $('#mayday').hidden && base.alerts().length === 0 && base.alerts(true).length === 1 && !!eventText(base, 'Unit 3 stood down, all OK') && $$('#map .umark.sos').length === 0);
+  check('standing down clears the bar, keeps the alert in history, and logs it', $('#mayday').hidden && base.alerts().length === 0 && base.alerts(true).some((a) => a.id === aid) && !!eventText(base, 'Unit 3 stood down, all OK') && $$('#map .umark.sos').length === 0);
+
+  // v68: what's wrong and what you need, on the phone's sheet and after the send, read by the bar, the unit panel and the 214
+  const count = (t) => base.events().filter((e) => e.text === t).length;
+  let P = null;
+  try {
+    P = await phoneFrame();
+    check('the field app opens beside the base as Unit 3', !!P.ready, P.text('#me-name'));
+    if (P.$('#s-briefing') && !P.$('#s-briefing').hidden) await P.act('briefing-later');
+    for (let i = 0; i < 4 && P.shown('#s-safety'); i++) {   // the seeded PAR, and anything else waiting on Unit 3's phone, is answered first
+      const b = P.$('#s-safety [data-action="par-ok"]:not([disabled])') || P.$('#s-safety [data-action="ack"]');
+      if (!b) break;
+      b.click(); await wait(400);
+    }
+    await P.act('help');
+    await until(() => P.shown('#s-help'), 5000);
+    const kids = [...P.$('#s-help').children], at = (s) => kids.indexOf(P.$(s));
+    check('Need help now offers six What\'s wrong chips and four What you need chips, none lit, between the Will be sent card and the buttons, with the shorter sentence', P.$$('#help-ask .chip').length === 10 && !P.$('#help-ask .chip.on') && /what's wrong/.test(P.text('#help-ask')) && /what you need/.test(P.text('#help-ask')) && /goes to operations and every unit, with your position/.test(P.text('#s-help')) && at('#s-help .card') < at('#help-ask') && at('#help-ask') < at('#s-help .sheet-btns'), P.text('#s-help').slice(0, 240));
+    check('nothing wider than the phone with the chips on the sheet', P.sideways().length === 0, P.sideways().join('; '));
+    const bare = 'EMERGENCY, Unit 3 needs help in A-2';
+    P.$('#s-help [data-action="send-alert"]').click();   // a bare press: nothing chosen
+    await until(() => P.shown('#s-helpsent'), 5000);
+    await until(() => count(bare) === 2 && !$('#mayday').hidden, 30000);
+    check('a bare press sends today\'s alert word for word: the bar and the 214 read as before', has('#mayday', 'emergency · unit 3 needs help in a-2 · sent') && count(bare) === 2 && base.alerts()[0].wrong.length === 0 && base.alerts()[0].needs.length === 0, text('#mayday'));
+    check('Alert sent keeps the same two rows, nothing lit, and says Operations sees each tap', P.$$('#helpsent-ask .chip').length === 10 && !P.$('#helpsent-ask .chip.on') && /operations sees each tap/.test(P.text('#helpsent-ask')), P.text('#helpsent-ask'));
+    P.$('#helpsent-ask .chip[data-code="medic"]').click();
+    await until(() => eventText(base, 'Unit 3 adds: needs medic'), 30000);
+    check('a chip tapped after the send updates the open alert: the bar reads it, the 214 says what was added, the chip stays lit', await until(() => has('#mayday', 'needs help in a-2 · needs medic · sent'), 5000) && base.alerts()[0].needs.includes('medic') && await until(() => P.$('#helpsent-ask .chip[data-code="medic"]').classList.contains('on'), 5000), text('#mayday'));
+    P.$('#helpsent-ask .chip[data-code="trapped"]').click();
+    await until(() => eventText(base, 'Unit 3 adds: trapped'), 30000);
+    P.$('#helpsent-ask .chip[data-code="medic"]').click();   // a glove slip, taken back
+    await until(() => eventText(base, 'Unit 3 takes back: medic'), 30000);
+    check('a lit chip tapped again is taken back, logged, and the bar follows', await until(() => has('#mayday', 'needs help in a-2 · trapped · sent') && !has('#mayday', 'medic'), 5000), text('#mayday'));
+    $('#mayday [data-action="select-unit"]').click();
+    check('the unit panel\'s badge carries the words', await until(() => has('#panel', 'emergency · trapped'), 5000), text('#panel').slice(0, 300));
+    $('#mayday [data-action="ack-alert"]').click();
+    await until(() => base.alerts()[0] && base.alerts()[0].acknowledged_at, 10000);
+    check('acknowledged, the badge keeps the words and adds the time', await until(() => /emergency · trapped · acknowledged \d\d:\d\d/.test(text('#panel')), 5000), text('#panel').slice(0, 300));
+    await P.act('stand-down');
+    await until(() => $('#mayday').hidden && count('Unit 3 stood down, all OK') === 2, 30000);
+    // chips chosen before the send ride on the first line
+    await P.act('help');
+    await until(() => P.shown('#s-help'), 5000);
+    P.$('#help-ask .chip[data-code="in_water"]').click(); P.$('#help-ask .chip[data-code="boat"]').click();
+    check('chips chosen on the sheet light up, and Send alert stays the one red button', P.$$('#help-ask .chip.on').length === 2 && P.$('#s-help [data-action="send-alert"]').classList.contains('danger') && !P.$('#s-help [data-action="send-alert"]').disabled, P.$$('#help-ask .chip.on').map((c) => c.textContent).join());
+    P.$('#s-help [data-action="send-alert"]').click();
+    const said = 'EMERGENCY, Unit 3 needs help in A-2: in the water · needs boat';
+    await until(() => eventText(base, said), 30000);
+    check('the words ride on the first line and the bar, in the lists\' order, and the chips are lit on Alert sent', !!eventText(base, said) && await until(() => has('#mayday', 'needs help in a-2 · in the water · needs boat · sent'), 5000) && await until(() => P.shown('#s-helpsent') && P.$$('#helpsent-ask .chip.on').length === 2, 5000), text('#mayday'));
+    await P.act('stand-down');
+    await until(() => $('#mayday').hidden, 30000);
+    check('the seed carries the morning\'s alert with its words, stood down, and its lines', base.alerts(true).some((a) => a.user_id === USERS().unit2 && a.wrong.includes('in_water') && a.needs.includes('boat') && a.stood_down_at) && !!eventText(base, 'EMERGENCY, Unit 2 needs help in B-1: in the water · needs boat') && !!eventText(base, 'Unit 2 stood down, all OK'));
+  } finally { if (P) P.frame.remove(); }
 }
 
 // Messages (ICS 213): Operations messages Unit 3 and gets a reply, a safety message to everyone

@@ -762,10 +762,12 @@ export class Data {
     this.local('ic_hazards', data);
     return data;
   }
-  async raiseAlert(id, { lat, lng, zoneId, createdAt, note }) {
+  async raiseAlert(id, { lat, lng, zoneId, createdAt, note, wrong, needs }) {
     const row = { id, incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, lat: lat ?? null, lng: lng ?? null };
     if (createdAt) row.created_at = createdAt;
     if (note) row.note = note;
+    if (Array.isArray(wrong) && wrong.length) row.wrong = wrong;   // what's wrong and what you need: codes from ALERT_WRONG / ALERT_NEEDS (v68)
+    if (Array.isArray(needs) && needs.length) row.needs = needs;
     const { data, error } = await this.sb.from('ic_alerts').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_alerts', data || row);
@@ -779,6 +781,13 @@ export class Data {
   }
   async standDown(id) {
     const { data, error } = await this.sb.from('ic_alerts').update({ stood_down_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_alerts', data);
+    return data;
+  }
+  // a chip tapped on Alert sent (v68): the unit's own open alert, a plain update; ic_log_alert writes the "adds" / "takes back" line
+  async setAlertWords(id, wrong, needs) {
+    const { data, error } = await this.sb.from('ic_alerts').update({ wrong: wrong || [], needs: needs || [] }).eq('id', id).select().single();
     if (error) throw error;
     this.local('ic_alerts', data);
     return data;

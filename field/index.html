@@ -262,8 +262,9 @@
 
   <div id="s-help" class="sheet" hidden>
     <h2 style="color:var(--danger)">Need help now</h2>
-    <p style="font-size:16px;margin:0">Sends an emergency alert to Operations with your live location and your zone. Every unit on the incident sees it.</p>
+    <p style="font-size:16px;margin:0">Goes to Operations and every unit, with your position.</p>
     <div class="card"><div class="k">Will be sent</div><div class="kv" id="help-facts"></div></div>
+    <div class="alert-ask" id="help-ask"></div>
     <div class="sheet-btns"><button class="btn" data-action="home">Cancel</button><button class="btn danger" data-action="send-alert">Send alert</button></div>
   </div>
 
@@ -271,6 +272,7 @@
     <h2 style="color:var(--danger)" id="helpsent-title">Alert sent</h2>
     <div class="card" id="helpsent-card"></div>
     <div id="helpsent-missing"></div>
+    <div class="alert-ask" id="helpsent-ask"></div>
     <div class="sheet-btns"><button class="btn" data-action="stand-down">Stand down, all OK</button></div>
   </div>
 

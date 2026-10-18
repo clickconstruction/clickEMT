@@ -33,6 +33,7 @@
   const Z = { 'A-1': ID('e', 1), 'A-2': ID('e', 2), 'A-3': ID('e', 3), 'B-1': ID('e', 4), 'B-2': ID('e', 5), 'B-3': ID('e', 6) };
   const P = [ID('f', 1), ID('f', 2), ID('f', 3)];
   const H1 = ID('b', 1);
+  const AL1 = ID('b', 2);   // the morning's emergency, stood down (v68)
   const MSG = [ID('d', 1), ID('d', 2), ID('d', 3), ID('d', 4)];
   const PER = ID('1', 1);
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
@@ -176,7 +177,10 @@
       ic_hazards: [
         { id: H1, incident_id: INC, user_id: U.unit3, zone_id: Z['A-2'], kind: 'Downed power line', note: 'Line across the park entrance', lat: 30.2668, lng: -97.7396, created_at: ago(20), resolved_at: null }
       ],
-      ic_alerts: [],
+      ic_alerts: [
+        // the morning's emergency, stood down: Unit 2's car in the water at the bridge, said with the chips (v68)
+        { id: AL1, incident_id: INC, user_id: U.unit2, zone_id: Z['B-1'], lat: 30.2612, lng: -97.7418, note: '', wrong: ['in_water'], needs: ['boat'], created_at: ago(150), acknowledged_at: ago(149), acknowledged_by: U.ops, stood_down_at: ago(140) },
+      ],
       ic_structures: [
         // A-3, the school: six buildings searched by Unit 2 this morning
         structure(0, 'A-3', 'Main building', 30.2708, -97.7410, { occupants: 'none', water_cm: 20, damage: 'affected', searched_by: U.unit2, searched_at: ago(70), created_by: U.unit2, created_at: ago(70), updated_at: ago(70) }),
@@ -300,6 +304,9 @@
     ev(60, U.ops, 'msg', 'Operations to everyone: Shelter is open at the high school gym, send anyone who needs it there', 'ic_messages', MSG[0]);
     ev(59, U.unit1, 'msg', 'Unit 1 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
     ev(58, U.unit2, 'msg', 'Unit 2 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
+    ev(150, U.unit2, 'help', 'EMERGENCY, Unit 2 needs help in B-1: in the water · needs boat', 'ic_alerts', AL1);
+    ev(149, U.ops, 'help', 'Operations acknowledged the emergency from Unit 2', 'ic_alerts', AL1);
+    ev(140, U.unit2, 'help', 'Unit 2 stood down, all OK', 'ic_alerts', AL1);
     ev(20, U.unit3, 'hazard', 'Hazard in A-2: downed power line (Line across the park entrance), reported by Unit 3', 'ic_hazards', H1);
     ev(15, U.ops, 'msg', 'Operations to Unit 3: Watch the power line at the park entrance, the utility crew is 20 minutes out', 'ic_messages', MSG[1]);
     ev(9, U.unit3, 'clear', 'Structure cleared in A-2 (6 of 18)', 'ic_zones', Z['A-2']);
@@ -359,7 +366,7 @@
     ic_photos: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, heading: null, note: '', public_ok: false, public_caption: '', public_checked_by: null, public_checked_at: null, taken_at: now(), created_at: now() }),
     ic_tracks: () => ({ id: eventId(), heading: null, at: now() }),   // unique across tabs, as ic_events
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, urgency: '', acked_at: null, acked_by: null, created_at: now(), resolved_at: null }),
-    ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, note: '', created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
+    ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, note: '', wrong: [], needs: [], created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
     ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
     ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now(), scanned: null }),
@@ -429,6 +436,10 @@
     const chk = (name) => dbError(`new row for relation "${table}" violates check constraint "${name}"`, '23514');
     const nn = (col) => dbError(`null value in column "${col}" of relation "${table}" violates not-null constraint`, '23502');
     if (table === 'ic_hazards' && !['', 'now', 'nightfall', 'tomorrow', 'blocking'].includes(r.urgency ?? '')) throw chk('ic_hazards_urgency_check');
+    if (table === 'ic_alerts') {   // what's wrong, what you need (v68): the codes of ALERT_WRONG / ALERT_NEEDS in rules.js
+      if (!(r.wrong || []).every((c) => ['in_water', 'trapped', 'injured', 'cut_off', 'unsafe_structure', 'missing'].includes(c))) throw chk('ic_alerts_wrong_check');
+      if (!(r.needs || []).every((c) => ['boat', 'medic', 'rope', 'hands'].includes(c))) throw chk('ic_alerts_needs_check');
+    }
     if (table === 'ic_zones') {
       if (!r.code) throw nn('code');
       if (!r.polygon) throw nn('polygon');
@@ -816,7 +827,7 @@
       const z = r.zone_id && tables.ic_zones.find((x) => x.id === r.zone_id);
       if (z && !z.hazard) updateRow('ic_zones', z, { hazard: true }, uid, changes, true);
     }
-    if (table === 'ic_alerts') log(changes, r.incident_id, r.user_id, 'help', `EMERGENCY, ${label(r.incident_id, r.user_id)} needs help in ${zoneCode(r.zone_id)}${r.note ? ': ' + r.note : ''}`, 'ic_alerts', r.id);
+    if (table === 'ic_alerts') log(changes, r.incident_id, r.user_id, 'help', `EMERGENCY, ${label(r.incident_id, r.user_id)} needs help in ${zoneCode(r.zone_id)}${R.alertWords(r) ? ': ' + R.alertWords(r) : ''}`, 'ic_alerts', r.id);   // the chips' words, then the PAR's note (v68)
     if (table === 'ic_objectives' && !quiet) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} set: ${r.text}`, 'ic_objectives', r.id);
     if (table === 'ic_messages') {
       const kind = r.kind === 'safety' ? 'safety' : r.kind === 'par' ? 'par' : 'msg';
@@ -987,6 +998,11 @@
     if (table === 'ic_alerts') {
       if (r.stood_down_at && !old.stood_down_at) log(changes, r.incident_id, r.user_id, 'help', `${label(r.incident_id, r.user_id)} stood down, all OK`, 'ic_alerts', r.id);
       else if (r.acknowledged_at && !old.acknowledged_at) log(changes, r.incident_id, r.acknowledged_by, 'help', `Operations acknowledged the emergency from ${label(r.incident_id, r.user_id)}`, 'ic_alerts', r.id);
+      else if (JSON.stringify(r.wrong || []) !== JSON.stringify(old.wrong || []) || JSON.stringify(r.needs || []) !== JSON.stringify(old.needs || [])) {   // a chip tapped on Alert sent (v68)
+        const c = R.alertChange(old, r);
+        if (c.added) log(changes, r.incident_id, r.user_id, 'help', `${label(r.incident_id, r.user_id)} adds: ${c.added}`, 'ic_alerts', r.id);
+        if (c.gone) log(changes, r.incident_id, r.user_id, 'help', `${label(r.incident_id, r.user_id)} takes back: ${c.gone}`, 'ic_alerts', r.id);
+      }
     }
     if (table === 'ic_incidents') {
       if (JSON.stringify(r.boundary ?? null) !== JSON.stringify(old.boundary ?? null)) log(changes, r.id, uid, 'ops', 'Incident boundary redrawn');
@@ -1044,6 +1060,13 @@
     afterInsert(table, row, uid, changes);
     return row;
   }
+  // ic_alert_before (v68): the chips change only by the unit that raised the alert, never once it is stood down
+  function alertBefore(next, old, uid) {
+    const same = (a, b) => JSON.stringify([...(a || [])].sort()) === JSON.stringify([...(b || [])].sort());
+    if (same(next.wrong, old.wrong) && same(next.needs, old.needs)) return;
+    if (old.user_id !== uid) throw dbError('Only the unit that raised the alert says what is wrong');
+    if (old.stood_down_at) throw dbError('the alert was stood down');
+  }
   function updateRow(table, r, patch, uid, changes, system) {
     const old = copy(r);
     const next = { ...r };
@@ -1057,6 +1080,7 @@
     if (table === 'ic_tags') tagBefore(next, old, uid);
     if (table === 'ic_invites') inviteBefore(next, old, uid);
     if (table === 'ic_seen') throw dbError('a scan is never changed');
+    if (table === 'ic_alerts') alertBefore(next, old, uid);
     Object.assign(r, next);
     if (table === 'ic_zones') {
       r.updated_at = now();   // ic_touch

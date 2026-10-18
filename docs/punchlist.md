@@ -13,8 +13,8 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v67**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v69**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0037**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -886,6 +886,45 @@ map.js, `#place-card` in index.html; the mock mirrors the trigger and seeds a tu
 `layers` suite covers the flow (25 checks); `dev/test-layers.mjs` and `dev/test-exif.mjs` are new. Migration 0035 is
 applied to the real database and all 21 rule tests pass there (`corners.sql` 10 of 10); full run 749 of 749 with
 main's v62 merged in.
+
+## 27. v68 Need help now: what's wrong and what you need
+
+**Why.** Todd, on the phone's Need help now sheet at v62 on 18 October: "I think on this screen we should be able to
+add better context, either what kind of help or the nature of the danger? What do you recommend?" Drawn first as
+`try/mockups/mayday.html` (four phones at 375 px on one shared state, the base's alarm line, unit panel and 214
+following them, the data note, the decisions), then built as drawn.
+
+**Built.** Two rows of chips on the sheet, under the Will be sent card and above the buttons, optional and
+multi-select, 52 px tall, two to a row: **What's wrong** (In the water · Trapped · Injured · Cut off · Unsafe
+structure · Someone missing) and **What you need** (Boat · Medic · Rope · More hands). Send alert is the same button
+in the same place: a press with nothing chosen sends today's alert, word for word. The words ride on the alert: the
+alarm line reads "EMERGENCY · Unit 3 needs help in A-2 · trapped, injured · needs boat · sent 17:46" (the words before
+the clock, so they survive the cut), the unit panel's badge the same words, the 214 "EMERGENCY, Unit 3 needs help in
+A-2: trapped, injured · needs boat", the briefing's Needs attention too. The chips stay live on Alert sent, because
+the first press is a reflex and the detail comes a breath later: each tap updates the open alert and writes its own
+line ("Unit 3 adds: needs medic"; a lit chip tapped again, "Unit 3 takes back: medic", because gloves slip). The
+words are read in the lists' order, never the tap's. No free-text box; the sheet's sentence is shorter ("Goes to
+Operations and every unit, with your position."). The PAR's missing report still sends its note and no chips, and
+the note reads after the chips.
+
+*Decided:* the lists changed from the first recommendation ("Person in the water" and "Vehicle in water" became one
+chip, the car being a detail that the Boat chip and the position cover; "Lost" became "Cut off", what a flood does to
+a crew; "Someone missing" added, the button a lead presses before any PAR); codes in two array columns
+(`ic_alerts.wrong` / `needs`), not the note, so the line after a tap says what was added in one array expression and
+the note stays the PAR's; the chips change only by the unit that raised the alert, never after a stand-down; no
+second chime for a change of words. Not built, each in the mock-up's Yours to decide: a "Tools" chip, Operations
+setting the chips from the base, the chips only after the send.
+
+**Shipped** 18 October 2026 as `Need help now: what's wrong and what you need (v68)`: migration
+`0036_alert_words.sql` (the two columns and their checks, `ic_alert_labels` / `ic_alert_text` / `ic_alert_list`,
+`ic_alert_before`, `ic_log_alert` from 0021's body with the words on the insert line and the adds / takes back
+branch); `ALERT_WRONG`, `ALERT_NEEDS`, `alertWords`, `alertCodes` and `alertChange` in rules.js (`dev/test-rules.mjs`);
+`data.setAlertWords` and the codes on `raiseAlert`; the phone's `alertAskHtml` / `drawHelpAsk` / `tapAlertChip`, the
+`alert-chip` action and outbox kind `alertWords`, `#help-ask` and `#helpsent-ask` in field/index.html, `.alert-ask` in
+field.css; `maydayHtml`, `unitHtml` and the briefing's attention line on the base; the mock's columns, checks,
+`alertBefore`, both lines and the morning's stood-down alert in the seed (`SEED_VERSION` 34); the `emergency` smoke
+suite extended with the phone (12 new checks); rule test `supabase/tests/alertwords.sql` (18 checks). Full run 798 of 798 across 39 suites (on v67); check and test pass; every rule test 22 of 22 files (359 checks). Migration 0036 applied
+on 18 October, before the push, since the apps read the two columns on start.
 
 ## Done before this list
 

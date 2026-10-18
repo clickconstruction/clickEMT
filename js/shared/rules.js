@@ -96,6 +96,34 @@ export function hazardWords(h) {
   const tail = k.split(/[\s,]+/).filter(Boolean).slice(-2).join(' ');
   return n.includes(k) || (tail && n.includes(tail)) ? note : kind + ', ' + note;
 }
+
+// What's wrong and what you need on an emergency alert (v68): two rows of chips on the phone's Need help now and
+// Alert sent sheets, optional, multi-select, kept as codes in ic_alerts.wrong / needs (the SQL checks must match
+// these lists). alertWords reads them in the lists' order, never the tap's, lower case: "trapped, injured · needs
+// boat, medic", then the PAR's note ("Missing: Okafor") after a colon; ic_alert_text in SQL says the same words.
+export const ALERT_WRONG = [['in_water', 'In the water'], ['trapped', 'Trapped'], ['injured', 'Injured'], ['cut_off', 'Cut off'], ['unsafe_structure', 'Unsafe structure'], ['missing', 'Someone missing']];
+export const ALERT_NEEDS = [['boat', 'Boat'], ['medic', 'Medic'], ['rope', 'Rope'], ['hands', 'More hands']];
+function alertLabels(list, codes) { const set = new Set(Array.isArray(codes) ? codes : []); return list.filter(([c]) => set.has(c)).map(([, l]) => l.toLowerCase()); }
+export function alertCodes(list, codes) { const set = new Set(Array.isArray(codes) ? codes : []); return list.map(([c]) => c).filter((c) => set.has(c)); }   // the codes given, in the list's order, nothing else
+export function alertWords(a) {
+  const w = alertLabels(ALERT_WRONG, a && a.wrong), n = alertLabels(ALERT_NEEDS, a && a.needs);
+  const parts = [];
+  if (w.length) parts.push(w.join(', '));
+  if (n.length) parts.push('needs ' + n.join(', '));
+  const s = parts.join(' · '), note = a && a.note ? String(a.note).trim() : '';
+  return note ? (s ? s + ': ' + note : note) : s;
+}
+// the line after a tap on Alert sent (ic_log_alert writes the same): what the codes now say that they did not
+// before, "Unit 2 adds: in the water · needs boat", and what they no longer say, "Unit 2 takes back: rope"
+export function alertChange(before, after) {
+  const diff = (a, b) => (Array.isArray(a) ? a : []).filter((c) => !(Array.isArray(b) ? b : []).includes(c));
+  const added = { wrong: diff(after && after.wrong, before && before.wrong), needs: diff(after && after.needs, before && before.needs) };
+  const gone = { wrong: diff(before && before.wrong, after && after.wrong), needs: diff(before && before.needs, after && after.needs) };
+  return {
+    added: added.wrong.length || added.needs.length ? alertWords(added) : '',
+    gone: alertLabels(ALERT_WRONG, gone.wrong).concat(alertLabels(ALERT_NEEDS, gone.needs)).join(', '),
+  };
+}
 // Hazards left in a zone when it is marked clear, with the code painted on the search marking.
 export const CLEAR_HAZARDS = [['Power', 'ELEC'], ['Gas', 'GAS'], ['Structural', 'STRUC'], ['Water', 'H2O']];
 // Half-angle of the wedge drawn in front of a photo pin, degrees.

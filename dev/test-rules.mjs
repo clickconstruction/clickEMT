@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -280,6 +280,21 @@ t('a hazard\'s words on one line (v53): the note alone when it restates the kind
   assert.equal(hazardWords({ kind: 'Tree down, road blocked', note: 'Across Pecan Ln' }), 'Tree down, road blocked, Across Pecan Ln');
   assert.equal(hazardWords({ kind: 'Tree down, road blocked', note: 'Tree down, road blocked at the fairgrounds gate' }), 'Tree down, road blocked at the fairgrounds gate');
   assert.equal(hazardWords({ kind: 'Gas smell', note: '' }), 'Gas smell');
+});
+
+t('what\'s wrong, what you need on an alert (v68): the lists\' order, the note last, the line after a tap', () => {
+  assert.equal(ALERT_WRONG.length, 6); assert.equal(ALERT_NEEDS.length, 4);
+  assert.equal(alertWords({ wrong: ['injured', 'trapped'], needs: ['medic', 'boat'] }), 'trapped, injured · needs boat, medic');
+  assert.equal(alertWords({ wrong: [], needs: ['hands'] }), 'needs more hands');
+  assert.equal(alertWords({ wrong: ['in_water'], needs: [], note: '' }), 'in the water');
+  assert.equal(alertWords({ note: 'Missing: Okafor' }), 'Missing: Okafor');
+  assert.equal(alertWords({ wrong: ['trapped'], note: 'Missing: Okafor' }), 'trapped: Missing: Okafor');
+  assert.equal(alertWords({}), ''); assert.equal(alertWords(null), '');
+  assert.deepEqual(alertCodes(ALERT_WRONG, ['missing', 'in_water', 'made_up']), ['in_water', 'missing']);
+  assert.deepEqual(alertChange({ wrong: [], needs: [] }, { wrong: ['in_water'], needs: ['boat'] }), { added: 'in the water · needs boat', gone: '' });
+  assert.deepEqual(alertChange({ wrong: ['trapped', 'injured'], needs: ['rope'] }, { wrong: ['trapped'], needs: [] }), { added: '', gone: 'injured, rope' });
+  assert.deepEqual(alertChange({ wrong: ['trapped'], needs: [] }, { wrong: ['trapped'], needs: ['medic'] }), { added: 'needs medic', gone: '' });
+  assert.deepEqual(alertChange(null, { wrong: ['cut_off'] }), { added: 'cut off', gone: '' });
 });
 
 t('small items from the re-walks (v48): hazards by urgency, the current stretch, the revisit\'s words', () => {

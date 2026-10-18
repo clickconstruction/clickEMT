@@ -282,3 +282,9 @@ dialog.confirm::backdrop { background: rgba(0,0,0,.45); }
 dialog.confirm h3 { margin: 0 0 6px; font-size: 16px; }
 dialog.confirm .confirm-text { font-size: 14px; color: var(--ink-2); line-height: 1.45; }
 dialog.confirm .row-btns { margin-top: 14px; }
+
+/* What's wrong, what you need (v68): the two rows of chips on Need help now and Alert sent, two to a row, glove-sized */
+.alert-ask { display: flex; flex-direction: column; gap: 8px; }
+.alert-ask .chips { gap: 8px; }
+.alert-ask .chip { flex: 1 1 calc(50% - 4px); min-height: 52px; justify-content: center; font-size: 16px; font-weight: 600; border-radius: 12px; padding: 8px 10px; }
+.alert-ask .small { color: var(--muted); }

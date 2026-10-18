@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
+import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -1216,7 +1216,7 @@ function unitHtml(data, m, state) {
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${esc(unitWithKind(m))} <span>${esc(m.crew || '')}</span></div>
     ${m.removed_at ? `<div class="d-row"><span class="badge haz">Removed from the incident ${hhmm(m.removed_at)} by Operations</span>${data.me() && data.me().role === 'ops' ? `<button class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : ''}<button class="btn sm" data-action="people" data-tab="members">Members</button></div>` : ''}
-    ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · needs help${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
+    ${alert ? `<div class="badge" style="background:var(--danger);color:#fff">EMERGENCY · ${esc(alertWords(alert) || 'needs help')}${alert.acknowledged_at ? ' · acknowledged ' + hhmm(alert.acknowledged_at) : ''}</div>` : ''}
     <div class="d-row"><span class="badge st-${esc(m.status)}">${statusDetail(data, m)}</span><span class="muted" style="font-size:12px">since ${hhmm(m.status_at)}</span></div>
     <div class="kv">
       <span class="k">Agency</span><span>${esc(m.agency) || 'not set'}</span>
@@ -1450,7 +1450,7 @@ export function briefingSections(data) {
   if (data.transports(true).length) S[S.length - 1].lines.push(transportsLine(data.transports(), data.evacuees()));   // v54
   const channels = data.channels();
   S.push({ title: 'Communications (ICS 205)', lines: channels.length ? channels.map((c) => `${c.use}: ${c.channel}${c.notes ? ' · ' + c.notes : ''}`) : ['No plan set'] });
-  const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
+  const attention = alerts.map((a) => `EMERGENCY from ${unitLabel(data.member(a.user_id))} at ${hhmm(a.created_at)}${alertWords(a) ? ': ' + alertWords(a) : ''}${a.acknowledged_at ? ', acknowledged' : ', NOT acknowledged'}`)
     .concat(waiting.map((m) => `${m.kind === 'par' ? 'PAR' : 'Safety message'} from ${hhmm(m.created_at)} still waiting on ${data.waitingOn(m).map((u) => unitLabel(data.member(u))).join(', ')}`))
     .concat(orgTree(data).warnings.map((w) => `${w}: past the span of control ICS-100 recommends (one to ${SPAN_MAX} at most). See the organization chart.`))
     .concat(sceneLines(data));   // who is on scene too long (v47)
@@ -1739,7 +1739,8 @@ export function maydayHtml(data) {
   return alerts.map((a) => {
     const who = unitLabel(data.member(a.user_id));
     const zone = a.zone_id ? data.zone(a.zone_id) : null;
-    return barItem(`EMERGENCY · ${who} needs help${zone ? ' in ' + zone.code : ''} · sent ${hhmm(a.created_at)}${a.acknowledged_at ? ' · acknowledged ' + hhmm(a.acknowledged_at) : ''}`, '',
+    const words = alertWords(a);   // what's wrong, what you need, the PAR's note (v68)
+    return barItem(`EMERGENCY · ${who} needs help${zone ? ' in ' + zone.code : ''}${words ? ' · ' + words : ''} · sent ${hhmm(a.created_at)}${a.acknowledged_at ? ' · acknowledged ' + hhmm(a.acknowledged_at) : ''}`, '',
       (a.acknowledged_at ? '' : `<button class="btn sm" data-action="ack-alert" data-id="${a.id}">Acknowledge</button>`) +
       `<button class="btn sm" data-action="select-unit" data-id="${a.user_id}">Show unit</button>`);
   }).join('');

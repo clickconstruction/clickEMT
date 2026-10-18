@@ -23,13 +23,13 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v66**, "Went to and On which run as chips" (after v65, the People board: cards and a drawer, the bar, the Members tab). The service worker reads `v66`.
+- `main` is at **v68**, "Need help now: what's wrong and what you need" (after v67, A picture by its corners). The service worker reads `v68`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0034` in
-  `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
+  `supabase/migrations/` are all applied, and so is `0036_alert_words.sql` (v68, 18 October). They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
-  (`joincount.sql` 10 of 10, `invites.sql` 32 of 32, `tags.sql` 28 of 28, `transports.sql` 33 of 33, `rewalks.sql` 10 of 10, `scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
-  10 of 10, `ics100.sql` 33 of 33, `people.sql` 28 of 28), all twenty files run on 18 October at v57, v58, v59, v60, v61, v62, v63, v64, v65 and v66. At v55 and v56
+  (`alertwords.sql` 18 of 18, `joincount.sql` 10 of 10, `invites.sql` 32 of 32, `tags.sql` 28 of 28, `transports.sql` 33 of 33, `rewalks.sql` 10 of 10, `scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
+  10 of 10, `ics100.sql` 33 of 33, `people.sql` 28 of 28), all twenty files run on 18 October at v57, v58, v59, v60, v61, v62, v63, v64, v65, v66, v67 and v68, now twenty-two files with `alertwords.sql` (18 of 18) and `corners.sql`. At v55 and v56
   `parbyname.sql` and `people.sql` failed on the real database (section 16 of the punchlist) without anyone
   noticing: run every rule test before a release is called done. v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
@@ -49,10 +49,10 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   that 0032 and 0033 had lost; v58 is Show me around, a label over each part of the base on a device's first open; v59 moved the header's
   pills to the end of the buttons row and made the clock swap between local and UTC; v60 took eight marks from Todd's
   walk of the base (shorter labels, the codes behind the pill, the connection's card, the head count, the drawing
-  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section; v62 made every confirmation a dialog of the app's own and gave a band's link on a signed-out phone its door; v63 gave Replay a time you name, every range starting at the first position, and a speed in words; v64 put the pages in windows over the dimmed map, with Expand to full screen; v65 redrew the People board as cards and a drawer, with the tabs first in its bar and the Members tab as two groups; v66 made the house record's Went to and On which run chip rows, with the base's arriving rows the same. v49 was the front door's redesign. Each release has its section
-  in [punchlist.md](punchlist.md) (1 to 14, 16 to 25) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section; v62 made every confirmation a dialog of the app's own and gave a band's link on a signed-out phone its door; v63 gave Replay a time you name, every range starting at the first position, and a speed in words; v64 put the pages in windows over the dimmed map, with Expand to full screen; v65 redrew the People board as cards and a drawer, with the tabs first in its bar and the Members tab as two groups; v66 made the house record's Went to and On which run chip rows, with the base's arriving rows the same; v68 gave Need help now two rows of chips, what's wrong and what you need. v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14, 16 to 25, 27) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
 - **Open, not yet ranked: the rest of Todd's walk.** Todd walked the base at v59 on 18 October and kept marking
-  things; v60 took eight, v61 the units section, v62 the confirmations and the band door, v63 the Replay bar, v64 the pages as windows, v65 the People board and v66 the house record's two drop-downs. The rest are in punchlist section 15 ("From Todd's walk at v59"),
+  things; v60 took eight, v61 the units section, v62 the confirmations and the band door, v63 the Replay bar, v64 the pages as windows, v65 the People board, v66 the house record's two drop-downs and v68 the chips on Need help now (what's wrong, what you need). The rest are in punchlist section 15 ("From Todd's walk at v59"),
   most with a mock-up: Replay's time picker, imagery placed
   by its corners, a transport on the map, the 211 as a table. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
   "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on

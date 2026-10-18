@@ -3,7 +3,7 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc } from './ui.js';
-import { whenText, dateText, nextZoneCode, hhmm, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch } from '../shared/rules.js';
+import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, boundsOk, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -226,6 +226,7 @@ async function openIncident(id) {
   setGoogleKey(data.settings().maps_key);   // the Google layers come from the incident's settings (v28)
   localStorage.setItem(LAST_INCIDENT, id);
   state.selected = null; state.newZone = null; state.pendingPolygon = null;
+  state.liveSeen = false;   // v59: this open has not been live yet
   show('app');
   if (LOG_ONLY) document.title = 'Activity log · ' + inc.name;
   if (!map && !LOG_ONLY) {
@@ -344,7 +345,7 @@ function drawAll() {
   $('#inc-name').textContent = inc.name;
   const cur = data.currentPeriod();
   $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`, data.hazards().length ? `${data.hazards().length} hazard${data.hazards().length === 1 ? '' : 's'} open` : null].filter(Boolean).join(' · ');
-  $('#inc-code').textContent = 'Join code ' + inc.code;
+  $('#inc-code').textContent = inc.code;   // v59: the code alone; the words are in its title, and the home panel has it large
   drawLog();
   drawLegend();
   drawLayers();
@@ -772,7 +773,13 @@ document.addEventListener('input', (e) => {
 function drawLive() {
   const ok = data.realtime === 'SUBSCRIBED';
   $('#live-dot').className = 'dot ' + (ok ? 'on' : (data.realtime === 'off' ? '' : 'bad'));
-  $('#live-text').textContent = ok ? 'live' : (data.realtime === 'off' ? 'not connected' : String(data.realtime).toLowerCase().replace(/_/g, ' '));
+  // v59: until this open has been live once, "off" is still connecting, not a loss; the dot stays alone while live or
+  // connecting, and the words show only when a connection that was there has gone
+  if (ok) state.liveSeen = true;
+  const quiet = ok || !state.liveSeen;
+  $('#live-text').textContent = ok ? 'live' : !state.liveSeen ? 'connecting' : (data.realtime === 'off' ? 'not connected' : String(data.realtime).toLowerCase().replace(/_/g, ' '));
+  $('#live-pill').classList.toggle('quiet', quiet);
+  $('#live-pill').title = ok ? 'Live: updates arrive as they happen' : quiet ? 'Connecting' : 'Not connected: the base shows what it last received and reconnects by itself (' + $('#live-text').textContent + ')';
 }
 
 async function loadPhoto(id) {
@@ -941,6 +948,7 @@ document.addEventListener('click', async (e) => {
       case 'replay-play': if (state.replay && state.replay.playing) { stopReplayPlay(); drawReplay(); } else playReplay(); break;
       case 'replay-close': closeReplay(); break;
       case 'theme': toggleTheme(); drawTheme(); queueDraw(); break;
+      case 'clock': clockUtcOn = !clockUtcOn; try { localStorage.setItem(CLOCK_KEY, clockUtcOn ? 'utc' : 'local'); } catch (err) { /* storage blocked */ } drawClock(); break;   // v59
       case 'log-toggle': if (LOG_ONLY) break; state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
       case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
       case 'log-since-seen': markSince(); if (state.log.group === 'new') state.log.group = 'all'; saveLogPrefs(); drawLog(); break;
@@ -1375,11 +1383,20 @@ $('#note-form').addEventListener('submit', async (e) => {
 });
 
 // the clock and "ago" texts
+// the header clock (v59): local with the zone's short name, or UTC; a click swaps, kept per device. The log and
+// the forms stay local, as ICS has them.
+const CLOCK_KEY = 'ic.base.clock';
+let clockUtcOn = (() => { try { return localStorage.getItem(CLOCK_KEY) === 'utc'; } catch (e) { return false; } })();
+function drawClock() {
+  const now = new Date(), el = $('#clock'), z = zoneShort(now);
+  el.textContent = clockUtcOn ? hhmmUtc(now) + ' UTC' : (hhmm(now) + ' ' + z).trim();
+  el.title = clockUtcOn ? 'UTC. Click for the local time; the log and the forms stay local.' : 'Local time' + (z ? ' (' + z + ')' : '') + '. Click for UTC.';
+}
 setInterval(() => {
-  $('#clock').textContent = hhmm(new Date());
+  drawClock();
   if (!$('#app').hidden && data.incident) queueDraw();
 }, 15000);
-$('#clock').textContent = hhmm(new Date());
+drawClock();
 
 // New versions: the signed-out front door reloads itself once when a new worker takes over; a signed-in
 // base gets the chip instead. The front door's footer says which version is on screen, with Reload.

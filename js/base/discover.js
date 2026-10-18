@@ -4,8 +4,9 @@
 // clears, the next one works). Clear all or Escape clears the rest; Settings → Show me around brings them back.
 // Per device, like the theme: nothing goes to the database and the mock needs nothing. The alarm line is never
 // tinted while something is open on it, and main.js clears every label the moment an emergency arrives.
-// The labels are placed from the parts' rectangles on every draw, resize and scroll; a part scrolled out of the
-// side panel, or not on the panel showing, waits: its label hides until it is in view and the pill counts it as
+// The labels are placed from the parts' rectangles on every draw, resize and scroll, and whenever a part changes
+// size without a draw (the header losing a row as "connecting" becomes "live", a font arriving); a part scrolled
+// out of the side panel, or not on the panel showing, waits: its label hides until it is in view and the pill counts it as
 // out of view. DOM only, no data: main.js wires it (the first open, the Settings button, Escape, the emergency).
 export const AROUND_KEY = 'ic.base.around';   // '1' once this device has been shown around
 
@@ -14,7 +15,7 @@ const CARD_W = 272;
 // part's width and height; past 1 is below it), and the words. `quiet`: tinted only while the alarm line is quiet.
 const LABELS = [
   { key: 'head', targets: ['.top-main'], at: [0.14, 0], title: 'The incident in one line', text: 'Command, the operational period, the units in, how far the search has got, what is open. Read it first whenever you come back. Find a person looks up a responder, a family or a band.' },
-  { key: 'btns', targets: ['.top-btns'], at: [0.5, 0], title: 'The sheets, the boards and the forms', text: 'Period and Briefing are this period\'s sheet and the shift briefing. People, Transports and Public are boards. Org chart, Sitrep and IAP are the ICS forms, filled in from the map. Replay plays the day back.' },
+  { key: 'btns', targets: ['.top-btns'], at: [0.5, 0], title: 'The sheets, the boards and the forms', text: 'Period and Briefing are this period\'s sheet and the shift briefing. People, Transports and Public are boards. Org chart, Sitrep and IAP are the ICS forms, filled in from the map. Replay plays the day back. At the row\'s end: the join code, whether the base is live, and the clock, which a click swaps to UTC.' },
   { key: 'bars', targets: ['#bars'], at: [0, 1.1], quiet: true, title: 'The alarm line', text: 'Red when a crew presses Need help now, yellow for a safety message or a head count still waiting on an answer. Quiet is good. Click the page once so the base can ring.' },
   { key: 'tools', targets: ['.tools'], at: [0.35, 1.1], title: 'Start here', text: 'Draw the incident boundary, then the divisions inside it: click points on the map, Finish closes the shape. Layers swaps the map underneath and shows imagery.' },
   { key: 'map', targets: ['#map'], at: [0.3, 0.42], title: 'The map is the truth', text: 'Divisions coloured by status, units where their phones say they are, photo pins facing the way the camera did, hazards as triangles, facilities as letters. Click anything to open it; right-click a division for its card.' },
@@ -53,6 +54,11 @@ export function startAround({ onDone } = {}) {
   });
   window.addEventListener('resize', layoutAround);
   document.addEventListener('scroll', layoutAround, true);   // the side panel's scroll does not bubble; capture sees it
+  if (window.ResizeObserver) {   // a part that grows or shrinks between draws moves everything under it
+    on.ro = new ResizeObserver(() => layoutAround());
+    for (const sel of ['body', '.top', '.side'].concat(labels.flatMap((l) => l.targets))) { const el = document.querySelector(sel); if (el) on.ro.observe(el); }
+  }
+  on.timer = setInterval(layoutAround, 500);   // a hidden pane gets no frames, so observers wait with them; this does not (see queueDraw)
   layoutAround();
 }
 
@@ -69,6 +75,8 @@ export function clearAround(reason) { if (on) finish(reason || 'cleared'); }
 function end() {
   window.removeEventListener('resize', layoutAround);
   document.removeEventListener('scroll', layoutAround, true);
+  if (on.ro) on.ro.disconnect();
+  clearInterval(on.timer);
   on.root.remove();
   on = null;
 }

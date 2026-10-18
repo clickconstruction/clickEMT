@@ -3,16 +3,17 @@
 The work on clickEMT, release by release. Everything here has shipped: the walk at v37's list as v38 to v48 (sections 1
 to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "Invite by email, a transport board, and
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
-back on the real database (section 16), and v58, Show me around (section 17). **Nothing ranked is open** (18 October
-2026, v58): the next step is a fresh walk at v58, and section 15 lists the candidates already known for it. Written
-17 October 2026, after v37 (`c89a929`), brought up to date at v58. Each numbered release below is written to be picked
+back on the real database (section 16), v58, Show me around (section 17), and v59, the header's right end and a clock
+that swaps to UTC (section 18). **Nothing ranked is open** (18 October 2026, v59): the next step is a fresh walk at
+v59, and section 15 lists the candidates already known for it. Written 17 October 2026, after v37 (`c89a929`),
+brought up to date at v59. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v59**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v60**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -32,9 +33,10 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 12 | v54 A transport board (shipped 18 October) | medium | v53 | Marcus, the desk, the crews, a driver |
 | 13 | v55 People and tags, phase 1: QR bands (shipped 18 October) | medium to large | v54 | everyone: Ana, Rosa, the desk, Marcus, Priya |
 | 14 | v56 Invite by email, the app's first server code (shipped 18 October) | medium | v55 | Ana, the administrator, Marcus |
-| 15 | Known candidates for the walk at v58 (open, not ranked) | small to medium | v58 | see the section |
+| 15 | Known candidates for the walk at v59 (open, not ranked) | small to medium | v59 | see the section |
 | 16 | v57 The check-in head count put back on the real database (shipped 18 October) | small | v56 | every unit with more people than names, Marcus's PAR |
 | 17 | v58 Show me around: a label over each part of the base on a device's first open (shipped 18 October) | small to medium | v57 | Marcus's relief, the IC, the clerk, anyone new at the base |
+| 18 | v59 The header's right end, and a clock that swaps to UTC (shipped 18 October) | small | v58 | Marcus, the IC, the clerk, mutual aid on Zulu time |
 
 ---
 
@@ -449,10 +451,10 @@ season's roster to invite in one press. The app's first server code.
    *Shipped 18 October 2026 as `Invite by email (v56)`; rule test `supabase/tests/invites.sql` (32), smoke suite
    `invite` (18).*
 
-## 15. Known candidates for the walk at v58 (open, not ranked)
+## 15. Known candidates for the walk at v59 (open, not ranked)
 
 Nothing here is decided. These are the "Still bites" items of the re-walks after v50 to v56 in
-[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v58 starts from them.
+[walkthroughs.md](walkthroughs.md), and a few things seen in passing, gathered so the walk at v59 starts from them.
 Walk first, then rank, as before.
 
 - **Verify the first real invitation email** (Marcus, Ana). The Edge Function is deployed but no email has been sent
@@ -476,6 +478,8 @@ Walk first, then rank, as before.
 - **A unit's invitation opened on a laptop** lands on the base as a unit (v56). The link sends units to the field app.
 - **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided.
 - **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes.
+- **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes.
+- **Every time in UTC** (v59): only the header clock swaps; the log, the 214 and the forms stay local. A device setting that swaps them all is the next cut if Zulu-time agencies ask.
 - **The labels on the public demo** (v58): /try/ frames the base with its own tours, so the labels stay off it; they could show there on the first open as well, before the tours.
 - **Seen by the walkers, not product:** the mock's seeded period reads "22:48 to 19:00" (its start three hours before
   the clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty seconds to give a new phone a
@@ -545,6 +549,33 @@ the demo (section 15).
 **Shipped** 18 October 2026 as `Show me around (v58)`: `js/base/discover.js`, the styles at the foot of base.css, the
 Settings dialog's This device line, the `around` smoke suite (13 checks); full run 715 of 715 across 38 suites; every rule
 test 20 of 20 files; the re-walk after v58 in walkthroughs.md. No migration; the mock needed nothing.
+
+## 18. v59 The header's right end, and a clock that swaps to UTC
+
+**Why.** On the base at v58 the header's top row carried the incident's name and line, Find a person, then three
+pills (Join code CEDAR7, live, the clock), and the thirteen buttons wrapped to a second row that ended short, with
+empty space under the pills (Todd, 18 October, with a picture of the two). The clock said `14:57` with nothing about
+which time it was, and a mutual-aid agency on Zulu time had no UTC anywhere.
+
+**Built.** The three pills are the header's last group, pushed to its right end: on a wide screen the whole header is
+one row; at 1280 they sit at the end of the buttons' row, where the empty corner was. The connection is a green dot
+alone while live or still connecting, its words only when a connection that was there has gone, so the row is quiet
+when all is well and never jumps as an open comes live. The join code pill reads the code alone, `CEDAR7`, its
+words in the hover text; the home panel has the code large with the QR. The clock is a button: `14:57 CDT`, and a
+click swaps it to `19:57 UTC` and back, the choice kept per device (`ic.base.clock`) like the theme; its hover text
+says which it is and what a click gives. Only the header clock swaps: the log, the 214 and every form stay in local
+time, as ICS has them (section 15 has "every time in UTC" as a candidate). `hhmmUtc` and `zoneShort` in rules.js,
+tested in `dev/test-rules.mjs`; label 2 of Show me around names the pills at the row's end.
+
+*Decided:* local first, a click for UTC (Todd, 18 October): every timestamp on the screen is local, and a UTC clock
+beside a local log would make the clerk do arithmetic.
+
+**Shipped** 18 October 2026 as `The header's right end, and a clock that swaps to UTC (v59)`: index.html, the header's
+styles in base.css, `drawClock` / `drawLive` in main.js, `hhmmUtc` / `zoneShort` in rules.js (`dev/test-rules.mjs`), the
+`seeded` smoke suite extended (the pills' place, the clock both ways); full run 719 of 719 across 38 suites; check and
+test pass; every rule test 20 of 20 files. No migration. On the way: the labels of v58 were placed from a stale layout
+when the header lost a row after they were drawn, so discover.js re-lays them on a `ResizeObserver` and a 500 ms tick
+(a hidden pane gets no frames), and the `around` suite's check now names the part that is off.
 
 ## Done before this list
 

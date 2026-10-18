@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -307,4 +307,11 @@ t('bands (v55): what a scan or a typed box gives, the band on a person, last see
   assert.equal(seenGuess({ zone: { code: 'A-2' } }), 'enter');
   assert.equal(seenGuess({ par: true, desk: true }), 'par');
   assert.equal(seenGuess({}), 'check_in');
+});
+
+t('the header clock reads UTC from the same moment, and the zone has a short name (v59)', () => {
+  assert.equal(hhmmUtc('2026-10-18T19:57:00Z'), '19:57');
+  assert.equal(hhmmUtc(new Date('2026-10-18T00:05:00Z')), '00:05');
+  assert.equal(hhmmUtc(''), '');
+  assert.equal(typeof zoneShort(new Date()), 'string');
 });

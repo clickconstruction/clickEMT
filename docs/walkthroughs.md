@@ -1286,3 +1286,20 @@ Show me around: Marcus's relief at the base for the first time, Dana coming to t
 - **At 800 px tall the side panel scrolls**, and a label whose part is scrolled out of view waits there; the pill says "· 1 out of view". A new user may not know to scroll the side panel.
 - **The header row** is still thirteen buttons; label 2 explains it in one sentence (punchlist section 15, the grouped row).
 - **The demo has no labels**: its tours do the showing around, by design; a visitor who opens `/try/base/` full-screen sees the base bare.
+
+---
+
+## Re-walk after v59
+
+The header's right end: Marcus at the base, the clerk, and a mutual-aid captain used to Zulu time, walked on 2026-10-18 in the mock at 1280 × 800 (the pane hidden on this computer; the places and words read through the `seeded` suite and the page's own text).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The top row | Marcus | At 1280: the incident's name and line, then Find a person, and nothing else; the buttons' row below runs to the right edge and ends with `CEDAR7` · `●` · `14:57 CDT`, the connection a green dot alone (hover: "Live: updates arrive as they happen"; the words come back in the pill when it is not). The empty corner under the pills is gone, and the header is no taller. On a wide screen the whole header is one row. | Clear |
+| The code | Marcus | `CEDAR7` alone in the pill; hovering it reads "Join code for field phones; the home panel has it large, with the QR". | Clear |
+| The clock | The clerk, Reyes | `14:57 CDT`, hover "Local time (CDT). Click for UTC."; one click, `19:57 UTC`, hover "UTC. Click for the local time; the log and the forms stay local."; the choice holds across a reload on this screen. The log's lines stay `14:51`, `14:50`, as the 214 is written. | Clear |
+
+**Still bites, small:**
+
+- **Only the clock swaps.** A captain who thinks in Zulu reads the log in local time; "every time in UTC" is in punchlist section 15.
+- **The front door's screenshots** still show the header as it was at v33.

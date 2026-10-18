@@ -83,6 +83,17 @@ async function seeded(check) {
   check('the home panel lists the three units with their assignments', has('#panel', 'unit 1', 'assigned to a-1', 'unit 2', 'assigned to b-1', 'unit 3', 'assigned to a-2'), text('#panel'));
   check('the log has the morning in it, newest first', logTexts().length >= 12 && /shelter open/i.test(logTexts()[0]) && /incident opened/i.test(logTexts()[logTexts().length - 1]), logTexts()[0]);
   check('live updates say live', has('#live-text', 'live') && base.realtime === 'SUBSCRIBED', text('#live-text'));
+  // the header's right end (v59): the three pills at the end of the buttons row, the code alone, the clock local then UTC
+  check('the join code, the connection and the clock are the header\'s last group, at its right end, the code pill reading the code alone and the connection a quiet dot while live', !!$('.top > .top-pills #inc-code') && $('#inc-code').textContent === 'CEDAR7' && /join code/i.test($('#inc-code').title) && $('#live-pill').classList.contains('quiet') && /live/i.test($('#live-pill').title) && !!$('.top-pills button#clock') && (() => { const p = $('.top-pills').getBoundingClientRect(), t = $('.top').getBoundingClientRect(); return Math.abs(p.right - (t.right - 16)) < 3 && p.bottom <= t.bottom; })(), $('#inc-code').textContent + ' | ' + $('#live-pill').className);
+  const clk = () => $('#clock').textContent.trim();
+  if (/UTC$/.test(clk())) $('[data-action="clock"]').click();
+  const nowLocal = () => [0, 60000].map((ms) => new Date(Date.now() - ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
+  const nowUtc = () => [0, 60000].map((ms) => { const x = new Date(Date.now() - ms); return String(x.getUTCHours()).padStart(2, '0') + ':' + String(x.getUTCMinutes()).padStart(2, '0'); });
+  check('the clock reads the local time with the zone\'s short name, and says a click gives UTC', /^\d\d:\d\d( \S+)?$/.test(clk()) && !/UTC$/.test(clk()) && nowLocal().includes(clk().slice(0, 5)) && /click for utc/i.test($('#clock').title), clk());
+  $('[data-action="clock"]').click();
+  check('a click swaps it to UTC, the right hour, kept for this device', /^\d\d:\d\d UTC$/.test(clk()) && nowUtc().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'utc' && /local/i.test($('#clock').title), clk() + ' | ' + nowUtc().join('/'));
+  $('[data-action="clock"]').click();
+  check('and back to local', !/UTC$/.test(clk()) && nowLocal().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'local', clk());
   check('the field client is Unit 3, assigned A-2', field.user.id === USERS().unit3 && field.me().unit_name === 'Unit 3' && field.myZones().map((z) => z.code).join() === 'A-2');
 }
 
@@ -2008,12 +2019,13 @@ async function around(check) {
   const zone = (k) => $(`#around .around-zone[data-around-key="${k}"]`);
   const mark = () => { try { return localStorage.getItem('ic.base.around'); } catch (e) { return null; } };
   const reopen = () => { const b = document.createElement('button'); b.dataset.action = 'open-incident'; b.dataset.id = INC(); b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); };
-  const over = (k, sel) => { const z = zone(k), t = $(sel); if (!z || z.hidden || !t) return false; const a = z.getBoundingClientRect(), b = t.getBoundingClientRect(); return Math.abs(a.left - b.left) < 3 && Math.abs(a.top - b.top) < 3 && Math.abs(a.width - b.width) < 3; };
+  const over = (k, sel) => { const z = zone(k), t = $(sel); if (!z || z.hidden || !t) return k + ': no tint'; const a = z.getBoundingClientRect(), b = t.getBoundingClientRect(); return Math.abs(a.left - b.left) < 3 && Math.abs(a.top - b.top) < 3 && Math.abs(a.width - b.width) < 3 ? '' : `${k}: tint ${[a.left, a.top, a.width].map(Math.round)} part ${[b.left, b.top, b.width].map(Math.round)}`; };
   // ---- the first open on a device that has not seen the base
   try { localStorage.removeItem('ic.base.around'); } catch (e) { /* storage blocked */ }
   reopen();
   check('the first open on this device shows ten labels, numbered in order, each a name and a sentence, and the pill counts them', await until(() => cards().length === 10 && !!$('#around .around-pill')) && cards().every((c, i) => c.querySelector('.n').textContent === String(i + 1) && c.querySelector('b').textContent.length > 3 && c.querySelector('p').textContent.length > 20) && has('#around .around-pill', 'showing you around', '10 to read'), cards().length + ' | ' + text('#around .around-pill'));
-  check('each tint sits over its part: the map, the tools, the log, the alarm line', over('map', '#map') && over('tools', '.tools') && over('log', '#logbox') && over('bars', '#bars'));
+  const offs = [over('map', '#map'), over('tools', '.tools'), over('log', '#logbox'), over('bars', '#bars')].filter(Boolean);
+  check('each tint sits over its part: the map, the tools, the log, the alarm line', offs.length === 0, offs.join(' | '));
   check('the join code and the Operations code have labels of their own; the log\'s is the tenth', !!card('join') && !!card('ops') && card('ops').querySelector('.n').textContent === '9' && card('log').querySelector('.n').textContent === '10');
   check('every card is on the screen and none sits on another', (() => { const rs = cards().filter((c) => !c.hidden).map((c) => c.getBoundingClientRect()); const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight; if (!rs.every((r) => r.left >= 0 && r.top >= 0 && r.right <= vw + 1 && r.bottom <= vh + 1)) return false; for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i], b = rs[j]; if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) return false; } return true; })(), cards().filter((c) => !c.hidden).map((c) => c.dataset.aroundKey + ':' + Math.round(c.getBoundingClientRect().top)).join(' '));
   // ---- one click clears one label; the device is not marked until the last goes

@@ -20,6 +20,14 @@
 .top h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top .muted { font-size: 12.5px; }
 .top-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* The pills (v59): the join code, the connection and the clock, last in the header and pushed to its right end, so a
+   wide screen has the header on one row and 1280 has them at the end of the buttons' row. The connection is a dot
+   alone while live or still connecting; its words show only when a connection that was there has gone. */
+.top-pills { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+.pill.clock { border: 0; cursor: pointer; font-size: 12px; line-height: inherit; }   /* a button: a click swaps local and UTC */
+#live-pill.quiet { padding: 3px 7px; }
+#live-pill.quiet #live-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   /* still there for a screen reader and the suites */
+.pill.clock:hover { background: var(--hover); }
 /* The bars' slot under the header: always one row tall, so an emergency, a safety message or a PAR
    appearing moves nothing below it (the clerk's Print 214 stayed under the pointer). With nothing open it
    says so. Each open thing is one cell on the row, cut short on screen, whole on hover. */

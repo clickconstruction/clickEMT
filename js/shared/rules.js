@@ -299,6 +299,15 @@ export function sinceSummary(events) {
 // A day and a time in one form everywhere (v40): "17 Oct 2026 21:58", never the browser's locale with seconds.
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function dateText(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+// the header clock (v59): the same moment in UTC, and the zone's short name, so each reading says which it is
+export function hhmmUtc(iso) {
+  if (!iso) return '';
+  const d = iso instanceof Date ? iso : new Date(iso);
+  return isNaN(d) ? '' : String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+}
+export function zoneShort(d = new Date()) {
+  try { const part = new Intl.DateTimeFormat([], { timeZoneName: 'short' }).formatToParts(d).find((p) => p.type === 'timeZoneName'); return part ? part.value : ''; } catch (e) { return ''; }
+}
 export function whenText(iso) { const d = new Date(iso); return isNaN(d) ? '' : dateText(d) + ' ' + hhmm(d); }
 // The period against the clock (v40): closed, overdue (its planned end has passed and it is still open), or open.
 export function periodState(p, now = Date.now()) {

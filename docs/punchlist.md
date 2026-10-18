@@ -1,222 +1,281 @@
 # Punchlist
 
-The open work on clickEMT as of 17 October 2026, after v26 (`e84c308`, shelter and evacuee records). Each
-numbered release below is written to be picked up cold: why it matters, what to build, what was already decided,
-and how to know it is done. Read [handoff.md](handoff.md) first for how to run, test and ship.
+The open work on clickEMT as of 17 October 2026, after v37 (`c89a929`, the public demo, the front door, new
+versions, the 404 page). Each numbered release below is written to be picked up cold: why it matters, what to build,
+what was already decided, and how to know it is done. Read [handoff.md](handoff.md) first for how to run, test and
+ship.
 
-Take them in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v27**, and each new migration
-takes the next free number in `supabase/migrations/`, so the next is **0019**. Most of this work came out of the
-persona walkthroughs in [walkthroughs.md](walkthroughs.md); after each release, walk the screens it touched again as
-the personas who hit them, and add a "Re-walk after vN" section there, as v25 did.
+Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
+all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
+person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v38**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0023**. After each release, walk the screens it touched
+again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
-| # | What | Size | After | Found by |
+| # | What | Size | After | Serves |
 |---|---|---|---|---|
-| 1 | Write the re-walk after v26 (done 17 October, `docs: re-walk after v26`) | an hour | now | the v26 release, cut short |
-| 2 | v27 Members and roles, and personal records that clear by rule (shipped 17 October) | medium | 1 | the agency administrator (3 jobs he could not do) |
-| 3 | v28 Time in the water, incident settings, the public photo set, and v25's four leftovers (shipped 17 October) | medium | v27 | Rosa (boat crew), Priya (Safety), the administrator, the PIO |
-| 4 | v29 Accountability by name (shipped 17 October) | small to medium | v28 | the people release's follow-ups, Rosa's PAR |
-| 5 | Small fixes, any time (done 17 October, v30) | small | — | testing and hand-over notes |
-| 6 | Decisions only Grace can make (answered 17 October; the Deputy seat shipped as v31) | — | — | testing and hand-over notes |
+| 1 | v38 One head count at a time, and a missing person who is found | small to medium | now | Marcus, Priya, Dana, Ana, Rosa, Moreno, every phone |
+| 2 | v39 The newcomer's door | small | v38 | the newcomer, Reyes, Moreno, the shelter desk, the administrator |
+| 3 | v40 A period that has ended says so, and times and dates in one form | small | v39 | the IC, Marcus, the clerk, the PIO, the administrator, every briefing |
+| 4 | v41 A hazard that says how urgent it is, and the open hazards where Safety looks | medium | v40 | Moreno, the newcomer, Priya, Dana, Marcus, Rosa |
+| 5 | v42 The phone's sheets: Save on screen, Assigned before In progress, the briefing for a unit with no division | small to medium | v41 | Ana, Rosa, Reyes, Moreno, the desk, the newcomer, Marcus |
+| 6 | v43 Paper that leaves the base: signatures, the sitrep by email, the join card | small | v42 | the IC, the clerk, Reyes, the administrator |
+| 7 | v44 Small words and buttons | small | any time | one or two personas each |
+| 8 | Later: since you last looked; on scene too long | medium | v44 | the IC, Marcus's relief, Priya |
+| 9 | Decisions only Grace can make | — | — | — |
 
 ---
 
-## 1. Write the re-walk after v26
+## 1. v38 One head count at a time, and a missing person who is found
 
-v26 shipped complete (migration 0018 applied, its rule test `supabase/tests/evacuees.sql` passes 28 of 28, Node
-tests green), but its session was stopped while re-walking. Five screenshots were saved and are committed under
-`docs/walkthroughs/rewalk-v26-*.jpg`; the written section is missing.
-
-- Walk the shelter desk volunteer's six jobs (persona 10 in [personas.md](personas.md)) and Rosa's intake job
-  (persona 4) on the phone at 375 px wide, reading only what is on screen, as [walkthroughs.md](walkthroughs.md)
-  describes.
-- Append "Re-walk after v26" to `docs/walkthroughs.md` with a table (item, who, what they saw, verdict), using the
-  saved screenshots where they fit, and a "Still bites" list.
-- Commit as `docs: re-walk after v26`.
-
-**Done** 17 October 2026: the section is in [walkthroughs.md](walkthroughs.md). Its "Still bites" list is six small things (the toast over a sheet's buttons, the house record's save below the fold, the desk's briefing and quick chips, a street in Find a person, the briefing re-shown on a shared phone) that belong with item 5, and two dev notes (a redraw that waits for a frame that never comes in a hidden pane; the mock's accounts are per tab).
-
-## 2. v27 Members and roles, and personal records that clear by rule
-
-**Why.** Anyone holding the printed join card can join as Operations and run the incident. Nobody can see or
-manage who is a member. Licence numbers, dates of birth, home addresses and licence photos (and, since v26,
-evacuees' names) are kept forever.
+**Why.** Operations pressed Start PAR twice ten minutes apart. The first PAR never closed: it stayed on the bar as
+"0 of 3 answered … 10 min ago", it could never complete because units that joined after it were not asked, and every
+phone's takeover carried two head counts (three cards with the safety message). With an emergency and a missing person
+as well, the bar under the header held five things at 256 px each. When Rosa's missing person turned up and she stood
+the alert down, "MISSING · Patel (Unit 2)" stayed on the bar and Patel's row stayed red: nothing clears a missing
+report but the next PAR.
 
 **Build.**
 
-1. The join code joins as a unit only. Remove "Join as Operations" with the join code from the incident picker.
-2. An Operations code: `ic_incidents.ops_code`, generated, shown only on the Operations home panel with Copy and New
-   code (logged), never printed and never on the join card. Joining with it makes the member Operations. The person
-   who opened the incident is always Operations and cannot be demoted.
-3. A Members tab on the People board: who, agency, role, identity state (verified, not verified, name and phone
-   only), with Make Operations / Make a unit, Remove, and removed members listed with Restore. Remove archives the
-   membership; the phone shows "You were removed from <incident> by Operations" with Sign out on its next sync. Log
-   every role change, removal, restore and new code.
-4. Personal records clear on a date. `ic_incidents.clear_personal_at` is set to the close time plus 30 days when an
-   incident closes. A SQL function `ic_clear_personal(incident)` blanks the licence number, date of birth, address
-   and licence photo on `ic_profiles` (removing the file from the `ic-ids` bucket) for members who are in no open
-   incident, reduces `ic_evacuees` to labels without names (keep counts, needs and "family of N"), and stamps when
-   it ran. Run it nightly with `pg_cron` if the project has it, otherwise from the base on its next open after the
-   date. The closed incident's card shows the date with **Clear now** and **Keep 30 more days**, then "cleared
-   <date> by rule", and one line goes in the 214.
+1. **A new PAR closes the one before it.** `ic_messages.superseded_by` (uuid, null) and `superseded_at`. Inserting a
+   PAR message sets both on the open PAR(s) of the incident (a trigger, `ic_par_supersede`), and logs "PAR superseded
+   by the one started at 22:12; waiting on Unit 2, Unit 3 when it closed". A superseded PAR is not open: the bar, the
+   Accountability panel and the phone's takeover ignore it; its acks stay in the log and in the Messages list ("closed,
+   superseded 22:12"). `ic_quiet` is not involved; the line is wanted.
+2. **The bar shows what is open now.** `openPars()` in `data.js` returns the one open PAR; `barItem`s are the
+   emergency, the missing people, the one PAR and the open safety messages. Keep the fixed 40 px slot; with four or
+   more cells the words are cut with the whole on hover, as now.
+3. **Found.** A missing report is an ack row with `missing` names (v29). Add `ic_message_acks.found_at` and
+   `found_by` and `ic_mark_found(p_ack, p_person)` (the reporting unit or Operations), which stamps the row's missing
+   entry `{id, name, found_at, found_by}` and logs "Patel found, reported by Unit 2" (kind `par`, notable). The base's
+   MISSING line gets a **Found** button per name; the phone's alert screen and its PAR card get **Found** per name
+   while the report is open. `missingNow()` skips found entries. The stand-down alone does not clear a missing person
+   (someone has to say they are found).
+4. **One card on the phone.** The takeover draws the open PAR once, newest first, then the safety messages. Answering
+   the newest PAR is the answer; nothing else to tap for the old one.
+5. Mirror all of it in `dev/mock-supabase.js` (SEED_VERSION up), seed an old superseded PAR so the Messages list shows
+   the words, and a rule test `supabase/tests/par.sql`: a second PAR supersedes the first and logs it; a superseded PAR
+   is not open; Found stamps and logs; a unit may mark its own report found, Operations any.
 
-**Already decided.**
+**Already decided.** A PAR asks "is everyone accounted for now", so the newer one is the question; the older answers
+are kept, never deleted. "Found" is an explicit act by the unit or Operations, logged and notable, never inferred
+from a stand-down.
 
-- Promotion alone is not enough: at 03:00 the relief Operations chief may have nobody awake to promote them, so
-  the Operations code exists, and New code retires one that leaked.
-- Removing a member while their phone is offline must not lose what the crew already sent. The policy accepts rows
-  the phone created before the membership was archived and refuses new ones after.
-- Clearing personal records is the one deletion in the app, for personal data only, never for work product. It is
-  a visible date with Clear now and Keep longer, not a button someone has to remember.
-- Invite-by-email accounts are out: they need server-side auth (an edge function with the service key). The
-  Members list and the Operations code close the hole without it.
+**Done when.** Migration 0023 applied and kept; `par.sql` passes and rolls back; the mock mirrors it; the `parbyname`
+smoke suite gains: a second PAR closes the first on the bar and on the phone, Found clears the MISSING line and the
+red row and writes the line; the full run is green at 1280 wide; `npm test` and `npm run check` pass; `VERSION` v38;
+README and CLAUDE.md lines. Commit: `One head count at a time, and a missing person who is found (v38)`. Re-walk
+Marcus's PAR job and Rosa's missing job.
 
-**Done when.** The migration is applied and kept in `supabase/migrations/`, with a rule test in `supabase/tests/`
-(rolled back) covering the Operations code, a removal with a queued row, and the clearing; the mock mirror and its
-seed are updated; a smoke suite `members` passes and the full smoke run is green at 1280 wide; `npm test` and
-`npm run check` pass; `VERSION` is v27; README and CLAUDE.md say what changed (CLAUDE.md's "Nothing is deleted"
-rule names this one exception); items 8 and 10 in `docs/walkthroughs.md` are marked built. Commit:
-`Members and roles, and personal records that clear by rule (v27)`.
+**Start in.** `supabase/migrations/0021_accountability_by_name.sql` (the ack trigger, `ic_missing_names`),
+`js/base/ui.js` (`safetyHtml`, `barItem`, the PAR panel), `js/field/main.js` (`parCardHtml`, `answerPar`, the
+takeover), `js/shared/rules.js` (`missingNames`, `missingOnPar`), `js/shared/data.js` (`missingNow`,
+`missingPerson`).
 
-**Start in.** `js/base/ui.js` (the People board), `js/base/main.js` (the incident picker), `js/shared/data.js`,
-`supabase/migrations/0013_people.sql` and `0017_walkthrough_fixes.sql` (`ic_join`, `ic_profiles`),
-`dev/mock-supabase.js`.
+## 2. v39 The newcomer's door
 
-**Shipped** 17 October 2026 as `Members and roles, and personal records that clear by rule (v27)`, migration `0019_members.sql`, rule test `supabase/tests/members.sql` (44 of 44), smoke suite `members`. One change from the plan: Supabase refuses a SQL delete on `storage.objects`, so the licence photos are queued (`ic_id_purge`) and removed through the Storage API by the base the next time Operations opens it, right after Clear now included.
-
-## 3. v28 Time in the water, incident settings, the public photo set, and v25's four leftovers
-
-**Why.** A boat crew has no way to show how long it has been in the water, and the Safety Officer cannot see who is
-past the rotation. The administrator has nowhere to put the Google Maps key. The PIO cannot write a public caption or
-record that a photo was checked. Four small things still bite after v25.
+**Why.** A volunteer handed a phone at the check-in table typed the join code on the front door and landed on "Sign in
+with the account your agency gave you", with nothing saying the code had arrived and Create account a second button on
+the same form. The second and third new accounts on the same phone were not shown Identify yourself (the sheet opens
+once per page load) and were sent back in red when they pressed Check in. "Your unit" asks for a unit a volunteer does
+not have. The code's sentence is a toast that is gone in seconds.
 
 **Build.**
 
-1. **Time in the water, per unit.** `ic_members.in_water_since`. One tap in and one out, from the phone's menu and
-   the home screen's unit line, through the outbox so it works with no signal. `ic_periods.rotation_minutes`
-   (default 45, carried into the next period, 0 turns the nudge off), set on the period sheet's Safety line and
-   printed on the 208 and every 204. Past the minutes the phone shows one small banner (never a takeover) and asks
-   again at each further rotation; checking out ends the clock; past three rotations the base shows "probably left
-   running" instead of a number. The base's accountability rows and unit panel show the time (orange past the
-   rotation), and the briefing and situation report list who is in the water. Log in and out with the minutes.
-2. **Incident settings.** `ic_incidents.settings` (jsonb, Operations writes) and a Settings sheet from the header's
-   incident menu with: the Google Maps browser key and a Test button that opens a Map Tiles session and says whether
-   it worked; the personal-records retention days (30, 60 or 90, used by v27's `clear_personal_at`); the default
-   rotation minutes. `js/shared/layers.js` reads the key from the settings instead of `config.js`. Settings carry
-   into the next incident the same account opens. The log says "Bell set the Google Maps key", never the key.
-3. **The public photo set.** `ic_photos.public_caption`, and `public_checked_by` / `public_checked_at`, edited on the
-   photo panel by the PIO or Operations ("Checked: no face, no plate, no house number in the frame"). v25's
-   "Download cleared photos" becomes "Download the public set": checked photos only, each named by time and place,
-   with `captions.txt` carrying the time, the place to the street and the public caption, never coordinates or the
-   unit's own note; cleared photos not yet checked are listed as missing. The Public information list shows each
-   photo's caption and check, and the situation report counts cleared and checked.
-4. **v25's four leftovers** (see "Re-walk after v25" in `docs/walkthroughs.md`):
-   - The Agency box's grey placeholder ("Cedar Fork Fire Department") reads like a filled-in answer. Use a plain
-     example ("e.g. Red Cross, county sheriff").
-   - Half-typed words in a base sidebar form are lost when the panel redraws after focus leaves it. `drawSide` in
-     `js/base/main.js` could carry typed values (`value !== defaultValue`) across the redraw.
-   - With the safety bar and the PAR bar both open, the safety message's own words are cut off ("…at the park
-     entranc…" with only four units waiting). Put the message's words before the waiting list, and shorten the list
-     to "waiting on 4" with the names on hover.
-   - A boat crew's briefing names only staging under Work area; name the nearest boat ramp (`js/shared/briefings.js`).
-5. **A dev fix.** The smoke check "the phone's decoder reads the join link out of the base's QR" hard-codes
-   `http://localhost:8766`, so it fails on any other port. Build the expected URL from `location.origin`.
+1. The phone's sign-in screen, when a code is pending (`pendingJoin()`): the heading "Code CEDAR7 is ready" and the
+   words "Sign in, or make an account with any email and a password: it takes a minute, and only this incident's
+   Operations sees who you are." Create account becomes a full button beside Sign in, always; its hint moves above
+   the boxes.
+2. `state.identShown` is reset by Sign out, and the sheet opens whenever `profileReady()` is false on `showJoin()`.
+3. The join form: "Your unit" placeholder "Your callsign, or your own name if you are on your own"; a sentence under
+   the code box when it came from the link: "Code CEDAR7 came with the link; name your unit and check in." The toast
+   goes.
+4. A `volunteer` unit kind (`UNIT_KINDS`, the SQL check, `ic_kind_text`, the mock's check) so a single volunteer is
+   not "Other".
+5. The people rows at check-in are hidden until "How many with you, including you?" is more than 1 or a name is
+   typed; "Add a person" stays.
 
-**Already decided.**
+**Already decided.** Accounts stay self-made on the phone (no invite-by-email). A name and a phone are enough to
+check in (v25).
 
-- The water clock is per unit, not per person. Per-person clocks need trackers (the People and tags design); with a
-  head count of one the two are the same.
-- A crew that forgets to tap out must not show six hours in the water, hence the re-asking, the end at check-out and
-  "probably left running".
-- The Maps key is a browser key by design: every member's browser reads it. The sheet says it must be restricted in
-  Google Cloud to the site's address and to the Map Tiles API. Never put a key in `config.js`.
-- No EXIF stripping is needed: every phone photo is re-encoded through a canvas (`shrink()` in
-  `js/field/camera.js`) before upload, so GPS never reaches the server. A v25 zip was checked and has no EXIF block.
-- The PIO's check is a mark, not a second approval: clearing stays Operations' call.
+**Done when.** Migration 0024 (the kind) applied and kept, the mock mirrors it; the `checkIn` and `walkfix` smoke
+suites cover the sign-in words with a code, two new accounts in a row on one page both shown the sheet, and the
+volunteer kind; full run green; `VERSION` v39. Commit: `The newcomer's door (v39)`. Re-walk the newcomer from the
+front door at 375 wide.
 
-**Done when.** The migration is applied and kept, with a rule test; the mock mirror is updated (with a sample Maps
-key so the Layers suite sees Google listed); a smoke suite `safetyset` passes and the full run is green; `npm test`
-and `npm run check` pass; `VERSION` is v28; README and CLAUDE.md lines; items 4 and 9 and the PIO's third job in
-`docs/walkthroughs.md` marked built. Commit: `Time in the water, incident settings and the public set (v28)`. Then
-re-walk Rosa's rotation job, the administrator's key job and the PIO's three jobs.
+**Start in.** `js/field/main.js` (`showJoin`, `takeJoinLink`, the auth form, `openIdentify`), `field/index.html`
+(`#auth`, `#join-form`), `js/shared/rules.js` (`UNIT_KINDS`), `supabase/migrations/0016_ics100.sql` (the kind check).
 
-**Shipped** 17 October 2026 as `Time in the water, incident settings and the public set (v28)`, migration `0020_safetyset.sql`, rule test `supabase/tests/safetyset.sql` (23 of 23), smoke suite `safetyset`. The dev fix (5) had already gone in with v27.
+## 3. v40 A period that has ended says so, and times and dates in one form
 
-## 4. v29 Accountability by name
-
-**Why.** A PAR (personnel accountability report) answers with a number only, even when the unit's people are on
-record by name, so a missing person is reported as "someone". A unit that checks in without typing names has no head
-count at all, and its PAR then starts at 1, so "All accounted for" can be sent for one person when three are in the
-boat. A person's agency, role, qualifications and notes cannot be corrected after they are added.
+**Why.** At 22:00 the header read "OP 1 · 18:47 to 19:00" and the briefings "OP 1 until 19:00" / "This period ends
+19:00": the planned end was three hours past and nothing said so, so the IC, Marcus, the clerk and every crew read a
+plan that had expired. Every "prepared", "opened", "joined" and "taken" line, and the clearing date on the picker, are
+in the browser's locale with seconds ("Prepared 10/17/2026, 9:58:39 PM", "clear by rule on 11/16/2026") beside 21:58
+everywhere else.
 
 **Build.**
 
-1. **PAR by name, still one tap.** When the unit has people on record, the phone's PAR card lists the names checked in
-   as a reminder to look, with one button, "All 3 accounted for". "Someone's missing" replaces today's confirm box
-   with the list: tick who is missing, then Send. The answer stores the missing people (on `ic_message_acks`) with the
-   count, and the emergency alert names them. The base's yellow bar reads "MISSING · Okafor (Unit 1) · 14:05"; that
-   person's row on the People board and the unit panel turn red with the unit's last reported position; the 214 line
-   names them. A unit with no people on record keeps the − / + count.
-2. **The head count is never unknown.** The phone's check-in form gets "How many with you?" beside the names: typing
-   names raises it to at least the number of names, and it cannot go below them; with no names the number stands.
-   Extra unnamed people are kept as `ic_members.unnamed_count`, and `ic_member_before` (in
-   `supabase/migrations/0013_people.sql`) sets `crew_count` to the named people checked in plus the unnamed. A unit
-   with no count shows "head count unknown" in orange on the resources board and unit panel, and its PAR card asks for
-   the number before either button works. The base nudges "Name them for the PAR"; names stay optional.
-3. **Edit a person.** An Edit button on the People board row opens the add form filled in (name, rank or role,
-   agency, qualifications, notes) for Operations; the phone's "People on the unit" lets the unit lead do the same for
-   their own people. A blank agency means the unit's, shown only when different. Log the edits.
+1. `periodState(p, now)` in rules.js: `open`, `overdue` (past `ends_at`, not closed) with the hours over. The header
+   reads "OP 1 · 18:47 to 19:00 · overdue 3 h"; the Period sheet says "Planned end 19:00 has passed; start period 2
+   or move the end" with Start period lit; the briefing, the IAP and the sitrep say "ended 19:00 (planned); the next
+   period has not been started"; the phone's briefing's Shift line the same, with "stay on until Operations starts the
+   next period".
+2. `whenText(iso)` in rules.js: "17 Oct 2026 21:58" (the device's zone, no seconds), `dateText(iso)` "16 Nov 2026".
+   Use them for every prepared / made / opened / joined / taken / clear line in both views, on paper and in the
+   captions file (`photoCaption` keeps its own form if the PIO's set depends on it; check `dev/test-photo-export.mjs`).
 
-**Already decided.** Ticking every name in the rain is worse than today, so the common answer stays one tap and the
-names are only ticked for the exception.
+**Already decided.** The typed period label stays on the picker, the home panel and the phone's incident row (Grace,
+item 6 of the previous list).
 
-**Done when.** The migration is applied and kept, with a rule test covering the unnamed count and the missing people;
-the mock is updated; a smoke suite `parbyname` covers an all-accounted PAR, a missing-by-name PAR reaching the bar and
-the board, a check-in with a count and no names, the unknown-count block, and an edit on each view; the full run is
-green; `VERSION` is v29. Commit: `Accountability by name: the PAR names who is missing, the head count is never
-unknown (v29)`. Then re-walk Rosa's and Ana's PAR jobs.
+**Done when.** `dev/test-rules.mjs` covers `periodState`, `whenText`, `dateText`; the `periods` smoke suite checks the
+overdue words with the mock's clock; no `toLocaleString` / `toLocaleDateString` left in `js/` except inside those
+helpers; full run green; `VERSION` v40. Commit: `A period that has ended says so, and times in one form (v40)`.
 
-**Start in.** `js/field/main.js` (`parCount`, `answerPar`, the `par` row), `js/base/ui.js` (the yellow bar, the People
-board row), `supabase/migrations/0013_people.sql`.
+**Start in.** `js/base/ui.js` (`headerText`, `periodFormHtml`, the `prepared` lines), `js/shared/briefings.js`,
+`js/field/main.js` (the menu's period line, the briefing's Shift), `js/base/main.js` (`clearLineHtml`).
 
-**Shipped** 17 October 2026 as `Accountability by name: the PAR names who is missing, the head count is never unknown (v29)`, migration `0021_accountability_by_name.sql`, rule test `supabase/tests/parbyname.sql` (10 of 10), smoke suite `parbyname`. One rule added while building: a person named later on a unit that had unnamed people takes one off the unnamed, so the head count stays.
+## 4. v41 A hazard that says how urgent it is, and the open hazards where Safety looks
 
----
+**Why.** A car in the water with a person inside is three taps and typing with "Downed power line" preselected, and
+arrives on the base as a log line and a triangle with no urgency; the deputy's message about a closed road carried
+"Act on now" and a pin, the hazard did not. The toast "Briefed…" sat over the sheet's Cancel and Send. Safety has no
+list of open hazards of her own (the log, the map, the division panels and the briefing's section are where they
+are), and the IC's thirty seconds has no count of them.
 
-## 5. Small fixes, any time
+**Build.**
 
-Each is a few lines. Commit app fixes with a version bump; test-only fixes as `smoke:` or `dev:`.
+1. `ic_hazards.urgency` (the four words of `URGENCY`, or ''), `acked_at` / `acked_by`. The hazard sheet: no kind
+   preselected (Send waits for one); kinds gain "Person or car in the water" and "Tree down, road blocked"
+   (`HAZARD_KINDS` in rules.js, the SQL check, `ic_hazard_kind_text`, the mock); the urgency row from the message
+   sheet above "Anything else". `ic_log_hazard` says "(act on now)" like the message line.
+2. An act-on-now hazard is a bar item until Operations acknowledges it ("HAZARD · Person or car in the water · B-2 ·
+   22:12 · Acknowledge · Show on map"); the phone's toast says "Hazard sent, act on now; Operations will acknowledge".
+3. A "Hazards open · 3" section on the home panel above Messages: kind and words, division, when, who, Resolved,
+   Show on map; the header line gains "· 3 hazards open" when any are.
+4. Toasts: `#toast` sits above the sheet's foot (`bottom: 84px` on the phone when a sheet is open) and never over
+   Cancel / Send.
+5. Mock mirror, seed one urgent hazard, rule test `supabase/tests/hazards.sql` (the kind check, the urgency word,
+   the log line, acknowledge by ops only).
 
-**Done** 17 October 2026 in `Small fixes from the punchlist (v30)`: the medic's initial, the flaky check-in check, seeded addresses in A-1, B-1 and B-3 (A-2 keeps none: the smoke test watches its tap counter give way to its first record), the 207 printing the chart alone, the README's and CLAUDE.md's timing.
+**Already decided.** An urgent hazard is not an emergency: it does not take over every phone; it sits on the bar for
+Operations. Whether it should also page the base like an emergency is Grace's (item 9).
 
-- **"Medic: J" on the phone's home screen.** For a medic named "J. Ortiz", the Nearby row shows "Medic: J" because
-  the line is cut at the first ". " (`js/field/main.js`, the `hurt` row in Nearby). Cut at the end of the sentence,
-  not at an initial.
-- **A flaky smoke check.** In the `checkIn` suite, "the base sees Unit 4 join…" waits for the data and the log line
-  but reads `#panel` at once, before the next animation frame redraws it. Put `has('#panel', 'unit 4', 'available')`
-  inside the `until`.
-- **Empty printed maps in the mock.** The seed has no structures in A-1, A-2, B-1 or B-3, so their printed 204 maps
-  show only an outline. A few seeded addresses there would make the mock's 204s look real.
-- **The 207 repeats itself.** The organization chart overlay prints the chart's lines as text above the chart; on
-  paper the chart alone may do.
-- **The README's smoke timing.** It says the run takes about 40 seconds; the full run is now two to three minutes.
+**Done when.** Migration applied and kept; the `fieldReports` smoke suite covers a hazard with urgency reaching the bar
+and the new section; the `walkfix` suite checks the toast's place; full run green; `VERSION` v41. Commit: `A hazard
+that says how urgent it is (v41)`. Re-walk Moreno's car in the water and Priya's hazards job.
 
-## 6. Decisions only Grace can make
+**Start in.** `js/field/main.js` (the hazard sheet, `#s-hazard`), `js/base/ui.js` (`barItem`, `safetyHtml`, the
+home panel), `supabase/migrations/0005_hazards.sql` or wherever `ic_hazards` lives (`grep -l ic_hazards
+supabase/migrations/*`), `js/shared/rules.js` (`URGENCY`).
 
-Answered by Grace on 17 October 2026:
+## 5. v42 The phone's sheets
 
-- **The hazard outline after the last hazard is resolved.** Resolving a hazard does not clear the division's orange
-  outline. *Decided: keep it, as "a hazard was reported here". No change.*
-- **One division per unit, or several?** Pressing another unit under "Assigned to" adds it to the division rather than
-  moving it, so a unit can end up on two divisions (Unit 3 on A-2 and B-4 in a walkthrough). *Decided: several. A unit
-  may be on more than one division; adding rather than moving stands. No change.*
-- **The period's label.** The picker, the home panel and the phone's incident row show the period as typed ("07:00 to
-  19:00"); every report shows the real times ("03:33 to 19:00"). *Decided: keep the typed label where it is; the
-  reports keep the real times. No change.*
-- **A deputy seat.** ICS-100's other remedy for a span of control past seven is a deputy; the 207 warning suggests one
-  but the period has no seat for it. *Decided: yes. A Deputy seat on the period beside the IC, Safety, PIO and
-  Liaison, on the period sheet, carried into the next period, printed on the 203, drawn on the 207, with the
-  span-of-control warning pointing at it. Built and shipped the same day as `The Deputy seat (v31)`: migration
-  `0022_deputy.sql`, rule test `supabase/tests/deputy.sql`, the seat checked in the `ics100` smoke suite.*
+**Why.** "Searched, save" sits at 949 px on an 812 px screen (a scroll with gloves, hit by Ana, Rosa, Reyes and the
+newcomer, open since v24). A division reads "In progress" the moment Operations presses a unit's name, before the
+unit has accepted, and the phone's "New assignment … Accept" card never retires (Ana's showed for a division she had
+worked three hours). The briefing tells a bridge post, a desk and a lone volunteer to "wait at staging" and to "add
+your people"; the desk's Work area says "where you stand is on the map"; a unit with no division sees another unit's
+division card and search buttons.
+
+**Build.**
+
+1. The phone's sheet foot (`.sheet-foot`, Cancel / Save) is `position: sticky; bottom: 0` with the sheet's own
+   background, on every sheet: Address clear, Zone clear, Report hazard, Message Operations, Sign in a person, Check
+   out.
+2. `ic_zones.status` stays as it is; the words change: a division with a unit that has not accepted and has sent
+   nothing from it reads "Assigned, not accepted" on the base (the row, the panel, the briefing, the 204's header) and
+   "In progress" once `ic_members.accepted_zone_id` (new, set by Accept) or any report from the division exists. The
+   phone's Accept card is drawn only while that holds.
+3. The briefing (`briefings.js`): Your job for a unit with no division says "No assignment yet. Operations assigns
+   divisions from the base; stay where Operations put you" and names staging only when the unit is Available and
+   nowhere else is recorded; "add your people from the menu" only when `crew_count` is more than the names on record;
+   a shelter desk's Work area names the shelter and its address (from the facility's notes or position).
+4. The phone's home for a unit with no division: the "You are standing in" card and the five buttons give way to
+   "No assignment yet" with Report hazard, Message Operations and Need help now; the division card returns with the
+   assignment.
+
+**Already decided.** A unit may be on several divisions (Grace). Zone clear's whole-division words wait for Grace
+(item 9); the sheet's words say plainly what it sends meanwhile.
+
+**Done when.** Migration (the accepted column) applied, the mock mirrors it; the `walkfix` suite measures every sheet's
+Save inside the viewport at 375 × 812 and checks the briefing words for a lone unit and a desk; full run green;
+`VERSION` v42. Commit: `The phone's sheets: Save on screen, Assigned before In progress, a briefing for a unit with no
+division (v42)`. Re-walk Ana's Address clear, Moreno's briefing and the desk's briefing.
+
+**Start in.** `css/field.css` (`.sheet`, the foot), `js/field/main.js` (`drawHome`, the assignment card),
+`js/shared/briefings.js` (`fieldBriefing`), `js/shared/rules.js` (`zoneStatusText`), `js/base/ui.js` (the row words).
+
+## 6. v43 Paper that leaves the base
+
+**Why.** The IAP has no line to sign; the sitrep reaches the EOC by copy and paste; the join card's "Bring:" carries the
+safety message and "Getting there:" gives coordinates.
+
+**Build.**
+
+1. The IAP's first page ends with "Prepared by (Planning Section Chief): ____ · Approved by (Incident Commander): ____
+   · Date and time: ____", printed names from the period's seats where set; each report's "Prepared by" uses
+   `whenText`.
+2. Sitrep and briefing: **Send by email** opens `mailto:` with the subject "Cedar Fork Flooding · situation report ·
+   OP 1 · 17 Oct 2026 22:00" and the text in the body (the browser's mail app; nothing is sent by the app). The EOC
+   address, if Grace wants one kept, goes in the incident settings later.
+3. The join card: "Safety:" for the period's safety message; "Bring:" from a new period field `bring` (the Period
+   sheet, "What to bring: PPE, water, a radio…", carried into the next period like the notes), "not set" otherwise;
+   "Getting there:" with the facility's address when its notes hold one, else "open Directions from Nearby once you
+   have checked in".
+
+**Done when.** Migration (`ic_periods.bring`) applied and mirrored; `dev/test-briefings.mjs` or the `reports` suite
+checks the lines; full run green; `VERSION` v43. Commit: `Paper that leaves the base (v43)`.
+
+## 7. v44 Small words and buttons
+
+Each is a few lines; take them together.
+
+- The Hours table's ROLE column reads "Lt., swift_water, emt": use `qualsText` (the clerk).
+- The licence scan's refusal says "Type the code instead": "Type the licence number instead" for `pdf417` (Reyes).
+- "Nobody hurt, no equipment damaged" on the check-out is ticked by default; unticking is the exception (Reyes).
+- Reopen on the picker's closed row, beside Clear now (the administrator).
+- Make a unit asks the name in a sheet, not `prompt()` (the administrator).
+- The unit panel: where it is, what it is on and its last report first; Kind and Identity under them (Marcus).
+- The phone names the deputy on the menu's command line and in the briefing (v31's Still bites).
+- Nearby says "No boat ramp on the map yet; ask Operations where to put in" for a water crew when none is placed (Rosa).
+- Find a person on the desk: a street search offers "Looking for someone from Pecan" (the desk).
+- The desk's Message Operations chips: Nearly full, Need cots and blankets, Need a nurse (the desk).
+- The 207 warning's "add a deputy" links to the Period sheet (v31's Still bites).
+- The water row folds to one small button on a dry assignment once the unit has never used it (Rosa).
+- Take photo with no camera says "This phone gave no camera" instead of nothing (Ana; the pane only).
+
+## 8. Later
+
+- **Since you last looked** (the IC, Marcus's relief): a line at the top of the log, from `state.log.seenAt`: "Since
+  21:10: 2 hazards, 1 emergency (stood down), 1 missing person, 3 PAR answers, 4 messages" with **Show them** (the
+  log filtered to the new lines) and the notable ones first. Medium: `logHtml`, `drawLog`, a `sinceText` in rules.js.
+- **On scene too long** (Priya): `ic_periods.hours_limit` beside the rotation on the Period sheet; past it a person's
+  row is orange on the People board and the unit panel, and the briefing's Needs attention names them. Small.
+
+## 9. Decisions only Grace can make
+
+- **Zone clear for a part of a division.** Ana, with 9 of 24 marked, is asked to send the whole division. May a unit
+  close a division it has not finished (as now, with plainer words), or should the sheet offer "My part is done" as a
+  message to Operations and leave closing to the base?
+- **An urgent hazard and the base.** Should an act-on-now hazard also page the base like an emergency (sound, the red
+  slot), or only sit on the bar until acknowledged (v41 builds the latter)?
+- **The sitrep's address.** Should the incident keep an EOC email address in its settings so Send by email is one tap,
+  or is the mail app's own address book enough?
+- **A revisit that fires.** The resident's "revisit at 16:00" is a note; should it be a time on the house record that
+  shows on the division's panel and the next crew's 204, and nudges the unit in the division?
 - **Already decided not to build:** per-person "last seen" notes for boat crews (trackers instead), invite-by-email
-  accounts, a transport board ("who is on the next bus" is the shelter card's Expected line for now), NIMS resource
-  typing (Type 1 to 4) and strike team / task force labels.
+  accounts, a transport board, NIMS resource typing and strike team / task force labels. Decided earlier: the hazard
+  outline stays after the last hazard is resolved; a unit may be on several divisions; the typed period label stays on
+  the picker, the home panel and the phone.
+
+---
+
+## Done before this list
+
+The previous punchlist (items 1 to 6, from the v24 walkthroughs and the re-walks after v25 and v26) shipped on 17
+October 2026: the re-walk after v26 (`22db8c5`), Members and roles with personal records that clear by rule (v27,
+`0ea25c2`), Time in the water, incident settings and the public set (v28, `ffdc7a8`), Accountability by name (v29,
+`386586d`), Small fixes (v30, `9ec9782`), and Grace's four decisions with the Deputy seat (v31, `08b2156`). What each
+built is in the git log, the README's feature lines and the "Re-walk after vN" sections of
+[walkthroughs.md](walkthroughs.md).

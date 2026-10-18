@@ -510,3 +510,201 @@ The Deputy seat, walked on 2026-10-17 after migration 0022 in the mock through t
 
 - **The phone does not name the deputy.** Your briefing's "Operations: …" line and the menu's command line say who holds command, not the deputy; a unit that needs the deputy finds them on the printed 203.
 - **The warning's advice is in prose.** "add a deputy" is words in the orange box, not a link to the period sheet; the sheet is one click away on the home panel.
+
+---
+
+## Walk at v37: best we can do
+
+Every persona in `docs/personas.md` walked through the app again on 2026-10-17 at v37 (commit c89a929), with Grace's question for each job: is this the best we can do for this person? The mock (`?mock`) with the seeded Cedar Fork Flooding, the base at 1280 × 800 as Operations, the phone at 375 × 812, one phone handed from person to person (Unit 3, a newcomer, Reyes, Moreno, the shelter desk, Ana, Rosa, Unit 3 again). The Browser pane was hidden, so the walk read the screens' text and drove them through their own buttons; no screenshots. The camera is blocked in the pane and the pretend GPS stands every phone in A-2, as at v24. The mock's clock stood at 21:57 when the walk began; the seeded period runs 18:47 to 19:00.
+
+Severity as before: **LOST** = could not finish the job; **SLOWED** = finished after a wrong turn; **PUZZLED** = finished, but a word or layout meant nothing to them; **Clear** = the job went through without a wrong turn. The last column is the best version of that screen for that person, in one line, which is what the ranked list at the end is made from. The open items from the re-walks after v25 to v31 and the v24 items never taken up are folded into the tables where the persona met them again.
+
+A thirteenth person was added, as `personas.md` asked: someone handed a phone at a check-in table who has never seen the app, starting from clickemt.com's front door.
+
+### 13. The newcomer at the check-in table
+
+Phone. A volunteer, Kim Tran, handed a phone and told "check in with the app, the code is on the card". Walked as a new account from the front door at 375 wide, then the 404 page and the join card's link.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Find where to start | The front door at phone width: "Incident Map · clickEMT", three buttons (Try it, Sign in, How it is built), then "Part of an incident right now?" with the code box on the first screen (286 px from the top), "Join on this phone", and "No code? It is on the join card at the check-in table…". A five-letter code answered "A join code is six letters and numbers, like CEDAR7. It never has 0, O, 1 or I." The 404 page says "That page is not here … what you need is the six-letter join code, not the link" with the same box (446 px down). | Clear | As it is. |
+| Get in with the code | A good code opened the field app at a plain sign-in: "Sign in with the account your agency gave you. You will check in to the incident next." Email, Password, Sign in, and "Create account" as a second button on the same form. Nothing said the code had arrived (it is kept, silently); she has no agency account; pressing Create account with empty boxes said only "Enter an email and a password of at least 8 characters." | SLOWED | With a code waiting, the screen says "Code CEDAR7 is ready. Sign in, or make an account with any email: it takes a minute and only Operations sees who you are", and Create account is as big as Sign in. |
+| Say who she is | After Create account: the check-in form with the Identify yourself sheet over it, and a toast "Code CEDAR7 from the link. Name your unit and check in." that was gone in seconds. The sheet leads with "Scan the back of your licence" and "Photo of the front"; name and phone are under them; "No licence at all? Save with your name and phone." Saved: "Saved without a licence. Operations will check who you are in person." | Clear, with a scroll | Name and phone first, the licence under them as the optional extra; the code sentence on the form itself, not a toast. |
+| Check in | "Checking in as Kim Tran · 512 555 0190 · identity not given"; code CEDAR7 filled in; "Your unit" with the placeholder "Unit 3" (she has no unit; typed "Volunteer 4"); Agency "e.g. Red Cross, county sheriff"; eleven kind chips, none for a volunteer; two empty people rows; "How many with you, including you?". | PUZZLED | The unit box says "Your callsign, or your own name if you are on your own"; a Volunteer kind; the people rows hidden until the count is more than one. |
+| Know what to do now | The home screen was a search crew's: "YOU ARE STANDING IN A-2 · Pecan Mobile Home Park · Priority 1 · 18 structures", Take photo / Address clear / Zone clear / Report hazard / Need help now, Nearby, "No medic on Volunteer 4". Her briefing over it: "OP 1 until 19:00" (three hours past), "YOUR JOB No assignment yet … Wait at staging", "On Volunteer 4: nobody listed yet; add your people from the menu", "This period ends 19:00". | PUZZLED | A unit with no division sees "No assignment yet: stay where Operations put you" and the buttons for what it can do (Report hazard, Message Operations, Need help now), not another unit's division; the briefing never tells a one-person unit to add its people. |
+| Her first report | Report hazard: "Pinned where you stand … Operations sees it at once"; "Downed power line" already chosen; kinds Downed power line / Gas smell / Structure unsafe / Road under water / Loose animal / Other; the toast "Briefed. Your briefing stays in the menu." sat over the sheet as it opened. Chose Other, typed "Tree down across Pecan Ln", Send: "Hazard sent"; the base's log "Hazard in A-2: other (Tree down across Pecan Ln, road blocked), reported by Volunteer 4" and her row "Kind not set · Volunteer 4 · 1 Kim Tran · no ID · Available since 22:05 · live". | SLOWED | No kind chosen until she chooses; a Tree down / road blocked kind; toasts never over a sheet's buttons. |
+| The next person on the same phone | After Sign out, the next new account (Reyes, then Moreno, then the desk) was not shown Identify yourself: pressing Check in answered in red "Say who you are first: your name and your phone", and the Identify button was above the form. | SLOWED | The sheet opens for every account that has no name and phone, however many have used the phone since it was opened. |
+
+**What worked**: the front door and the 404 page put the code box first and say where a code comes from; the code survives sign-in and account creation; a name and a phone are enough; the base saw her at once with "no ID" for Operations to verify in person; the hazard reached the map and the log in one send.
+
+### 8. Capt. Reyes, mutual-aid captain
+
+Phone, and the base for the 204 and the join card. A new account, Brush 12, Bandera County FD, engine, Reyes (Capt.) and Ortiz (EMT), count 2.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Check in at staging | Identify yourself (opened by hand, see the newcomer's last row): "Scan the back of your licence" answered "Camera permission was refused. Type the code instead." (a licence has no code; the words are the QR scanner's). Typed the number under "No licence to hand? Type its number". "Checking in as Ray Reyes · 830 555 0177 · licence typed · Change". The code box was empty (no link this time) and pressing Check in with it empty showed only the browser's own bubble. | PUZZLED | The scan sheet says "Camera refused. Type the licence number instead"; an empty code answers in the app's words. |
+| Put the crew in | Two rows at check-in (name, rank or role, qualification chips), "How many with you, including you?" set to 2. Briefing: "On Brush 12: Reyes, Ortiz". Menu → Show a code to join: "Join this incident … CEDAR7 … the link" for his second crew. | Clear | As it is. |
+| His 204 and his channel | Base: B-2's 204 with "Division supervisor: not named · Operations Section Chief: Marcus Bell", the map with addresses, the off-map facilities with distances, the channels, the medical lines. Phone: "YOUR ZONE B-2 · Radio TAC 3 · Objective 2". | Clear | As it is. |
+| Accept the assignment | The base read "In progress · Brush 12 · 0 of 9" the moment Operations pressed his name, before he accepted; his phone: "NEW ASSIGNMENT FROM OPERATIONS · B-2 … · Accept" above "YOUR ZONE B-2 … In progress". | PUZZLED | A division reads "Assigned, not accepted" until the unit accepts or sends its first report from it. |
+| Hospital and staging | Nearby: staging 0.8 mi, shelter, hospital, each with Directions; If someone is hurt names the medic, the channel and the hospital. | Clear | As it is. |
+| Get released | "You are released. Return to staging, High school east lot, return the radio to Logistics, and check out on your phone. Thank you." Will do. Menu → Check out: six lines, three ticked for him; "Nobody hurt, no equipment damaged" unticked with the hint "untick to say what happened"; "3 items not ticked. They go to Operations with your check-out". Check out → "Checked out", back on the check-in page. | PUZZLED | "Nobody hurt, no equipment damaged" ticked by default; unticking it is the exception Finance needs. |
+| The join card he would be handed | "Bring: Swift water everywhere south of Mill Street…" (the safety message, not what to bring); "Getting there: High school east lot at 30.25560, -97.74000". | PUZZLED | "Safety:" for the message and "Bring:" for what to bring; "Getting there:" with the street address when the facility has one, else "open Directions from Nearby once you have checked in". |
+
+### 10. The shelter desk volunteer
+
+Phone. A new account, Gym desk, Red Cross, kind Shelter desk, count 1, name and phone only.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Get in | The third account on the phone: no Identify sheet until she found the button; "Say who you are first" in red when she pressed Check in. | SLOWED | See the newcomer. |
+| Know her job | Her briefing's Your job is hers: "People here at High school gym. Sign in everyone who arrives… Now: 9 of 60 beds, 1 record on the way, expected Bus 2…". But "WHO YOU WORK WITH On Gym desk: nobody listed yet; add your people from the menu" and "WORK AREA Where you stand is on the map." Home: People here with the count against the beds, the needs, the expected line, Find a person, Arriving from crews with They're here, Sign in a person, Here now. | PUZZLED | Work area names the shelter and its address; "add your people" only when the count says there are more. |
+| Who is on the next bus | "expected: Bus 2 from Pecan Park, 12 people, 17:30. Operations sees this count live on the shelter's card." and "ARRIVING FROM CREWS · family of 4 from 112 Pecan Ln · Unit 3, 21:43 · pets · wet, cold, a dog · They're here". | Clear | As it is. |
+| Sign in a family | "WHO · HOW MANY · NEEDS (Oxygen, Insulin, Wheelchair, Infant, Pets, Other) · FROM · WHERE NOW · NOTE · Only "Who" is needed". Garcia family, 3, insulin and pets → "Garcia family signed in"; the header "10 of 60 · 4 records · 1 oxygen · 1 insulin · 1 infant · 2 pets". They're here on the arriving family → "Signed in: family of 4 · High school gym since 22:14 · Unit 3 sent them from 112 Pecan Ln… add the name if you have it". | Clear | As it is. |
+| Oxygen, insulin, pets | The chips on the sheet and on the row. | Clear | As it is. |
+| Is my mother here | "Alvarez" → "Maria Alvarez, 78 · oxygen · Dell Seton Medical Center since 21:43 · from 112 Pecan Ln". "Pecan" → three records and "Not listed? Ask Operations to look · sends "Looking for Pecan" with your desk's number". | Clear, one odd ask | A street search offers "Looking for someone from Pecan", or no ask at all. |
+| We are nearly full | Message Operations: the urgency words, her own words, quick chips that are a search crew's (Need more hands, Water rising here, Road blocked, Done here, what next?). | PUZZLED | A desk's chips: Nearly full, Need cots and blankets, Need a nurse. |
+
+**On the base**: the shelter card read "14 of 60 · Expected … 0 on their way from crews (live…)", the needs, People here with Where now on every row, Print the list; the header's Find a person found "Garcia family · High school gym since 22:14 · signed in by Gym desk" at once.
+
+### 9. Dep. Luis Moreno, deputy at a closed bridge
+
+Phone. A new account, SO 14, Cedar County Sheriff's Office, Other, count 1.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Check in alone | Count 1 accepted; "identity not given" for Operations to verify. His briefing: "No assignment yet … Wait at staging, High school east lot" for a post at a bridge, and "On SO 14: nobody listed yet; add your people from the menu" though he said he is one. Home: the search crew's five buttons and "You are standing in A-2". | PUZZLED | A unit with no division sees "stay where Operations put you"; no "add your people" for a count of one. |
+| Car in the water, right here | Report hazard: pinned where he stands; "Downed power line" preselected; no kind for a car or a person in the water; Other, typed, Send: "Hazard sent". On the base a log line and a triangle, no urgency. Three taps and typing. | SLOWED | A "Person in the water / car in the water" kind, nothing preselected, and an "Act on now" word on the hazard that puts it on the base's bar until Operations acknowledges. |
+| Answer the head count | "Head count (PAR) · People with you − 1 + · All accounted for · Missing someone": his count of 1 was already there; one tap; "All 1 accounted for, sent"; the base "SO 14 · All accounted for (1) · 22:12". | Clear | As it is. |
+| The road is closed | Inbox → Message Operations: "HOW URGENT Act on now …", his words, the Road blocked chip, Attach my location, Send → "Sent to Operations"; the inbox "You to Operations · Act on now · location attached · … · Waiting on Operations"; the base's log "SO 14 to Operations (act on now): Road closed … · location attached" with Acknowledge and Show on map. Five taps and typing. | Clear | As it is; the hazard above should carry the same urgency word so a car in the water is not the quieter of the two. |
+| When can I stand down | Operations' release message with Will do (seen with Reyes). | Clear | As it is. |
+
+### 4. Rosa Alvarez, swift-water boat operator
+
+Phone, as the seeded Unit 2 (Travis County Rescue, Nguyen and Patel, B-1).
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Open her incident | "Incidents you are already in" first; then the takeover "Safety message and head count" with three cards: a PAR from 22:12, the safety message from 22:02, a PAR from 22:02, each wanting an answer. | SLOWED | One head count at a time: a new PAR closes the one before it, and the phone shows one card. |
+| Someone is missing | "Someone's missing" on the newest card → "WHO IS MISSING? TICK THEM · Nguyen · Patel · Back · Send: nobody missing" → ticked Patel → "Send: 1 missing" → "Alert sent 22:16 · WAITING FOR OPERATIONS · Your location keeps sending", then "OPERATIONS ACKNOWLEDGED AT 22:17 · Stay put if you can", then Stand down → "Stood down". | Clear | As it is. |
+| When Patel turns up | After the stand-down the base still read "MISSING · Patel (Unit 2) · 22:16 · 1 accounted for" and Patel's row "MISSING since 22:16 · Unit 2 last at …". Nothing on her phone says "found". | SLOWED | A "Found" answer on the phone and a Found button on the base's MISSING line, logged. |
+| Time in the water | "Not in the water · In the water" is the first row; one tap → "In the water · the clock runs until you tap out", "In the water 0 min · rotation 45 min · Out of the water"; out → "Out of the water after 1 min". The base's unit panel "in the water 1 min · since 22:17". | Clear | As it is (the row could fold to a button on a dry assignment). |
+| The boat ramp | Nearby listed staging, the shelter and the hospital; nothing said there is no ramp on the map yet (her briefing says so). | PUZZLED | Nearby says "No boat ramp on the map yet; ask Operations where to put in" when none is placed. |
+| Log who we pulled out | Address clear → "Add who and where they went": a row with Went to High school gym (shelter) / Went to Dell Seton (hospital) / With family / Own transport / Not known. The save is below the fold with the rows added. | Clear, with a scroll | The sheet's foot buttons stay on screen. |
+| Her people | Menu → People on the unit: "2 on the unit. Operations counts them from here. · Nguyen Capt. · swift water, boat · since 19:09 · 3 h 8 min on scene · with Patel · Edit · Check out" and Patel. | Clear | As it is; per-person tracking is the tags work. |
+
+### 2. Marcus Bell, Operations Section Chief
+
+Base at 1280 × 800.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Draw a division | The toolbar one row: "Draw boundary · Draw division · Finish · Remove last point · Cancel · Click the map to outline the division, then press Finish." | Clear | As it is. |
+| Assign and move a unit | A-1's panel: "ASSIGNED TO Unit 1 Unit 2 Unit 3 …" (a press adds, by decision); the division turned "In progress · Brush 12 · 0 of 9" at the press, before the unit accepted. | PUZZLED | "Assigned" until the unit accepts or reports. |
+| Photos as they come | A photo's panel: "Facing S 180° · TAKEN BY Unit 3 · TIME 10/17/2026, 9:45:58 PM · ZONE · POSITION · NOTE · PUBLIC · Clear for public information". | Clear, one odd time | The time as 21:45, like every other time on the base. |
+| Run a PAR | Start PAR → "PAR · 0 of 3 answered · waiting on 3 units · started 22:02 to everyone". A second Start PAR ten minutes later, before everyone had answered, put a second PAR on the bar; the first stayed open ("0 of 3 answered … 10 min ago") and could never complete for the units that joined after it. With an emergency and a missing person as well, the bar held five things in its one row, each cut to 256 px with the whole on hover. The panel under Accountability lists only the newest. | SLOWED | A new PAR closes the one before it (logged as superseded); the bar holds one PAR, one safety message and what is open now. |
+| Answer the radio | U1's marker → the unit panel: Kind chips (eleven) and Identity first, then requests, the water clock, status, agency, head count, assigned, standing in, position, heading, last report, photos, "JOINED 10/17/2026, 7:07:58 PM", people, message. The answer to "where is Unit 1" is a screen down. | PUZZLED | Where it is, what it is on and its last report first; kind and identity under them. |
+| Hand the map to the relief | Briefing (one sheet), Pop out for the log, Start period 2 on the Period sheet. | Clear | As it is; a "since you last looked" would serve the relief too. |
+
+### 1. Dana Ruiz, Incident Commander
+
+Base at 1280 × 800.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Thirty seconds | Header "OP 1 · 18:47 to 19:00, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared"; the bar "No emergency open · no safety message or PAR waiting on an answer"; the legend's counts. It was 21:57: the period's planned end was three hours past and nothing said so, here or on the Period sheet or in the briefing ("OP 1 until 19:00"). No count of open hazards or people needing help at the top; the briefing has "HAZARDS STILL OPEN" and the sitrep "Hazards open: 1 · emergencies open: 0". | PUZZLED | The header says "ends 19:00 · overdue 3 h" and the Period sheet offers the next period; a hazards count on the header line. |
+| Sign the IAP | 202, 203 (with the Deputy seat), 207, every 204, 205, 206, 208; "Prepared 10/17/2026, 9:58:39 PM"; Copy as text / Print / Close. No Prepared by / Approved by line. | PUZZLED | "Prepared by (Planning) · Approved by (Incident Commander) · date and time" lines on the IAP's first page, and "Prepared by" on each report, in the app's own time form. |
+| Brief the shift change | One sheet: seats (Deputy not set), representatives, the safety message, objectives, divisions, resources, hazards still open, facilities, who is in the water. | Clear | As it is. |
+| Unified command, transfer | The Period sheet with the Deputy beside her, the unified box, representatives, the transfer rule in words. (Walked at v24 and v31.) | Clear | As it is. |
+| Who is in which seat | The 207 with the span of control on every box and the Deputy box under hers. | Clear | As it is. |
+| What changed while I was away | After an hour of events the log's header read "33 new" with the chips "All 102 · Notable 2 · From the field 26 · Messages 20 · Operations 53 · Notes 1". The nearest thing. | PUZZLED | A "since you last looked" line at the top of the log: 2 hazards, 1 emergency (stood down), 1 missing person, 3 PAR answers, with Show them. |
+
+### 3. Lt. Ana Ramirez, unit lead on foot
+
+Phone, as the seeded Unit 1 (engine, Ramirez and Okafor, A-1).
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Open her incident | "Incidents you are already in · Cedar Fork Flooding · OP 1 · 07:00 to 19:00 · you are Unit 1" first (by decision, the typed label). Then the three-card takeover: PAR 22:12, safety 22:02, PAR 22:02; three taps, each with a toast. | SLOWED | One head count at a time. |
+| Her home | "NEW ASSIGNMENT FROM OPERATIONS · A-1 … · Accept" for the division she has worked since 19:17; nothing retires an unaccepted card. | PUZZLED | The card folds once the unit has reported from the division. |
+| Address clear | The house record (filed under A-2 by the pretend GPS): address, occupants, people needing help with "Add who and where they went", water, damage, hazards, notes; "Searched, save" at 949 px on an 812 px screen. | SLOWED | The foot buttons stay on screen (sticky), so one tap, type, one tap. |
+| Take photo | The tap did nothing and said nothing (no camera in the pane). | PUZZLED | On a phone the camera opens; when it cannot, one line says so. |
+| Zone clear | "Finish the search of A-1 · Sends A-1 to Operations · WHICH SEARCH IS COMPLETE Primary search done / Secondary search done, zone clear · PEOPLE FOUND · HAZARDS STILL IN THE ZONE · SEARCH MARKING TO PAINT (22:15 / U1 / none / 0)". She had 9 of 24: the whole division, or her part? | PUZZLED | The sheet says plainly it sends the whole division (9 of 24 marked so far) and offers "My part is done" as a message to Operations instead; whether a unit may close a division it has not finished is Grace's call. |
+| Mayday, the PAR | Need help now then Send alert; the PAR one tap with her two names. | Clear | As it is. |
+
+### 5. Priya Natarajan, Safety Officer
+
+Base to send and watch, the phone to read.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| A safety message | Message the field: everyone, the "Safety" tick, the words, Send → "SAFETY · Walk test: … · waiting on 3 units · sent 22:02 by Operations" on the bar; every phone's takeover headed "Safety message and head count". | Clear | As it is. |
+| Who has not acknowledged | The bar "waiting on Unit 3", the Messages list "Waiting on Unit 2, Unit 3 · Unit 1: Acknowledged". | Clear | As it is. |
+| Hazards as they come in | Log lines ("Hazard in A-2: other (Car in the water at the low crossing, one person inside), reported by SO 14"), a triangle, the division's "hazard" word, the zone card's list, the briefing's "HAZARDS STILL OPEN". No list of its own on the base, no urgency on any of them. | SLOWED | A "Hazards open" section on the home panel (kind, division, when, who, Resolved) and the urgent ones on the bar. |
+| On scene too long | People board "On scene 3 h 8 min, since 19:09"; the water clock orange past the rotation; Hours totals; nothing warns at a threshold. | PUZZLED | A threshold on the Period sheet beside the rotation ("flag people past 12 h on scene"), orange on the board and a line in the briefing. |
+| The period's safety message and rotation | On the Period sheet; printed on every 204 and the 208; read in every briefing. | Clear | As it is. |
+
+### 6. The Documentation Unit
+
+Base.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Print the 214 | "2 NOTABLE ENTRIES" first, then "102 ENTRIES, OLDEST FIRST" (every event, checked against the data); "Prepared by Operations, 10/17/2026, 10:00:37 PM". | Clear, one odd time | The time in the app's form. |
+| Print the 211 | Every unit with who checked it in, verified or not, each person's times. | Clear | As it is. |
+| The situation report | Three boxes and Save the words; the assembled 209 (progress, people sheltered, hazards open, resources, needs, outlook, facilities, public information); Copy as text / Print. Getting it to the EOC is still copy and paste. | PUZZLED | "Send by email" opens the mail app with the report in the body (and an EOC address on the incident's settings, if Grace wants one kept). |
+| Replay | Play, Last hour / This period / Whole incident, 10× / 60× / 600×, the line of the moment. | Clear | As it is. |
+| Who said what at 10:40 | Find in the log "Bus barn" → "21:15 A-3: Bus barn · water waist deep · major damage · hazards ELEC · Open structure". | Clear | As it is. |
+| Hours | "Lt., swift_water, emt" with underscores in the ROLE column; rows counted to now marked. | PUZZLED | The qualification words as everywhere else. |
+| The period | Header 18:47 to 19:00 three hours past; the picker and the phone "07:00 to 19:00" (by decision). | PUZZLED | The overdue period said so. |
+
+### 7. The Public Information Officer
+
+Base.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Which photos are cleared | Public information at the foot of the home panel: "1 photo cleared for the public, 0 checked … · Download the public set · 0 of 1; the rest wait for a check." | Clear, far down | The section nearer the top for whoever is seated as PIO, or a header button. |
+| Check one | The cleared photo's panel: "Cleared for public information · not checked yet, so not in the public set", the Public caption box, "Checked: no face, no plate, no house number", Save caption, Withdraw from public. | Clear | As it is. |
+| Get the files | Download the public set (walked at v28). | Clear | As it is. |
+| Am I named | The Period sheet, the 203, the 207 and the sitrep's last section name her. | Clear | As it is. |
+
+### 11. The agency administrator
+
+Base.
+
+| Job | What they saw | Severity | The best version |
+|---|---|---|---|
+| Who is a member | People → Members: "4 members · 1 Operations", each with role, licence state, Open / Make Operations / Remove; "The six-letter join code makes a unit; the Operations code on the home panel makes Operations." Make a unit asks the name in the browser's own prompt. | Clear, one odd prompt | A small sheet for the name. |
+| The two codes | Join code with Copy, Print a join card, Copy the link; the Operations code with Copy and New code and its warning. | Clear | As it is. |
+| The Maps key | Settings: the key with Test, the retention days, the default rotation. | Clear | As it is. |
+| Close and clear | Close incident asks in plain words; the picker's row "closed · Personal records clear by rule on 11/16/2026 … · Clear now · Keep 30 more days"; the home panel of a closed incident "Closed · … · Reopen incident". The picker's row does not say it can be reopened; the date is in the browser's short form. | PUZZLED | Reopen on the picker's row too; the date as "16 Nov 2026". |
+| Start the season | Open a new incident on the picker, Period for the seats, Print a join card. | Clear | As it is. |
+
+### 12. The resident who refused to leave
+
+Not a user. The house record still carries "Refused to leave", the people needing help, the hazards, the marking and "Notes for the next crew"; the revisit is a note, not a reminder that fires. The best version: a "revisit at" time on the record that shows on the division's panel and the next crew's 204.
+
+---
+
+### What to do first
+
+Ranked by how many personas it serves and how badly it bites, each with the smallest change that would do it. The first nine are the releases; the rest are small words and buttons to take in one release, and two that wait for Grace.
+
+1. **One head count at a time, and a missing person who is found.** Seven personas (Marcus, Priya, Dana, Ana, Rosa, Moreno, every unit's phone). A second PAR stacks on the first, the old one can never complete for units that joined later, the phone shows two or three cards, the bar holds five things, and MISSING stays after the stand-down. *Smallest change:* Start PAR closes the PAR before it (its unanswered units are asked again by the new one; the log says "PAR superseded"); the bar and the phone show one PAR; a Found button on the base's MISSING line and a "Found" answer on the phone, both logged, clear the missing report.
+2. **The newcomer's door.** Five personas (the newcomer, Reyes, Moreno, the desk, the administrator). *Smallest change:* with a code waiting, the sign-in screen says so and offers Create account as a first-class button with the words a volunteer needs; the Identify yourself sheet opens for every account without a name and phone, not once per page; "Your unit" says "your callsign, or your own name if you are on your own"; the code sentence sits on the form, not in a toast.
+3. **A period that ended three hours ago says so.** Nine personas read the period (the IC, Marcus, the clerk and every phone's briefing). *Smallest change:* past `ends_at` the header reads "ends 19:00 · overdue 3 h", the briefing and the phone's briefing say "ended 19:00; the next period has not been started", and the Period sheet's Start period button is lit.
+4. **Times and dates in one form.** Six personas (the IC, Marcus, the clerk, the PIO, the administrator, Reyes). "Prepared 10/17/2026, 9:58:39 PM", "JOINED 10/17/2026, 7:07:58 PM", "clear by rule on 11/16/2026" beside 21:58 everywhere else. *Smallest change:* one `whenText()` in rules.js ("17 Oct 2026 21:58") used by every prepared / opened / joined / taken / clear line in both views and on paper.
+5. **A hazard that says how urgent it is.** Five personas (Moreno, the newcomer, Priya, Rosa, the desk for the toast). *Smallest change:* no kind preselected (Send waits for one); new kinds "Person or car in the water" and "Tree down, road blocked"; the message's four urgency words on the hazard sheet, and an act-on-now hazard on the base's bar with Acknowledge; toasts drawn above a sheet's foot buttons.
+6. **Open hazards where Safety and the IC look.** Three personas (Priya, Dana, Marcus). *Smallest change:* a "Hazards open" section on the home panel (kind, division, when, who, Resolved) and the count on the header line.
+7. **The house record's Save on screen.** Four personas (Ana, Rosa, Reyes, the newcomer). *Smallest change:* the sheet's foot buttons are sticky at the bottom of the screen.
+8. **Assigned is not In progress, and the Accept card retires.** Four personas (Ana, Rosa, Reyes, Marcus). *Smallest change:* a division reads "Assigned" until the unit accepts or sends its first report from it, then "In progress"; the phone's Accept card folds once the unit has reported from the division.
+9. **The briefing for a unit with no division.** Four personas (Moreno, the desk, the newcomer, Reyes). *Smallest change:* Your job says "No assignment yet: stay where Operations put you" (staging named only when Operations has not placed the unit elsewhere); "add your people" only when the count is more than the names; a desk's Work area names the shelter and its address; a unit with no division gets Report hazard, Message Operations and Need help now, not another unit's division card.
+10. **Paper that leaves the base.** The IC and the clerk: "Prepared by (Planning Section Chief) · Approved by (Incident Commander) · date and time" lines on the IAP, "Prepared by" on each report; Send the sitrep by email (the mail app with the text in the body); Reyes and the administrator: the join card's "Safety:" and "Bring:" told apart, "Getting there:" with the address.
+11. **Small words and buttons**, one release: the Hours table's underscores; the licence scan's "Type the code instead"; "Nobody hurt, no equipment damaged" ticked by default; Reopen on the picker's closed row; a sheet instead of prompt() for Make a unit; the unit panel's order (where it is first); the phone naming the deputy; Nearby saying "no boat ramp on the map yet"; Find a person's street ask; the desk's quick chips; the 207 warning's "add a deputy" as a link to the Period sheet; the water row folded on a dry assignment; a Volunteer unit kind.
+12. **What changed while I was away** (the IC, Marcus's relief): a "since you last looked" line at the top of the log with the counts by kind and Show them. Medium; after the above.
+13. **On scene too long** (Priya): a threshold of hours beside the rotation on the Period sheet; orange on the board and a line in the briefing. Small; with 11 or after.
+
+**For Grace:** whether a unit may close a division it has not finished (Ana's Zone clear: the sheet can say what it sends either way); whether a hazard's urgency should also page the base like an emergency does, or only sit on the bar; whether the sitrep's email address is kept on the incident; a "revisit at" time on the house record (the resident).
+
+**Seen by the walker, not a persona:** once, right after a phone already on the incident opened a join link for it and then signed out, the log got "Hale (swift water, EMT) updated on Unit 3, Lt." by that unit's account; it did not recur when the same steps were walked again without the link.

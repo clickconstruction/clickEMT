@@ -71,6 +71,10 @@ export function structureSummary(s) {
 // How urgent a message from the field is: the four words Operations acts on, not a number.
 export const URGENCY = [['now', 'Act on now'], ['nightfall', 'Before nightfall'], ['tomorrow', 'Can wait until tomorrow'], ['blocking', 'Blocks further operations']];
 export function urgencyLabel(u) { const r = URGENCY.find((x) => x[0] === u); return r ? r[1] : ''; }
+// the order the base lists hazards in (v48): act on now, blocks further operations, before nightfall, can wait, no word
+const URGENCY_RANK = { now: 0, blocking: 1, nightfall: 2, tomorrow: 3 };
+export function urgencyRank(u) { return u in URGENCY_RANK ? URGENCY_RANK[u] : 4; }
+export function sortHazards(list) { return [...list].sort((a, b) => urgencyRank(a.urgency) - urgencyRank(b.urgency) || (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)); }
 
 // A unit's resource status, as ICS names it.
 export const STATUS_LABEL = { assigned: 'Assigned', available: 'Available', out_of_service: 'Out of service', checked_out: 'Checked out' };
@@ -366,7 +370,11 @@ export function onSceneText(p, now = Date.now()) {
 // board and the unit panel, and the briefing, the sitrep and the 208 name them. The minutes count from the person's
 // check-in, as onSceneText does; a person whose unit has checked out is off scene whatever their own row says.
 export const SCENE_HOURS_DEFAULT = 12;
-export function sceneMinutes(p, now = Date.now()) { return Math.max(0, Math.round((now - new Date(p.checked_in_at).getTime()) / 60000)); }
+// the start of the person's current stretch (v48): stint_at once they have checked out and come back, else the check-in;
+// the board, the briefing and the threshold read it, the Hours and the 211 keep every stretch from checked_in_at
+export function sceneStart(p) { return p.stint_at || p.checked_in_at; }
+export function stintText(p, now = Date.now()) { return onSceneText({ checked_in_at: sceneStart(p), checked_out_at: p.checked_out_at }, now); }
+export function sceneMinutes(p, now = Date.now()) { return Math.max(0, Math.round((now - new Date(sceneStart(p)).getTime()) / 60000)); }
 export function sceneOver(p, hours, now = Date.now()) { const h = Math.max(0, Number(hours) || 0); return h > 0 && personOn(p) && sceneMinutes(p, now) >= h * 60; }
 export function sceneText(hours) { const h = Math.max(0, Number(hours) || 0); return h > 0 ? 'Safety is told past ' + h + ' hours on scene' : 'no hours-on-scene threshold set'; }
 // everyone past the threshold, longest first: people on scene whose unit is still on the incident
@@ -603,5 +611,15 @@ export function parAnswerText(ack) {
   if (open.length || found.length) return (open.length ? 'Missing: ' + open.join(', ') : '') + (found.length ? (open.length ? ' · ' : '') + found.join(', ') + ' found' : '') + (ack.count != null ? ' · ' + ack.count + ' accounted for' : '');
   return ack.reply + (ack.count != null ? ' (' + ack.count + ')' : '');
 }
+// a revisit's words (v48): "16:00" today, "tomorrow 06:00" when the moment is on the next day; due once it has passed.
+// revisitHhmm is what the phone sends with the record (ic_structures.revisit_hhmm), the clock time as typed, 'tomorrow ' first when it is.
+export function revisitWords(iso, now = Date.now()) {
+  if (!iso) return null;
+  const d = new Date(iso), n = new Date(now);
+  if (isNaN(d)) return null;
+  const tomorrow = d.getTime() > n.getTime() && d.toDateString() !== n.toDateString();
+  return { hhmm: hhmm(d), tomorrow, due: d.getTime() <= n.getTime(), text: (tomorrow ? 'tomorrow ' : '') + hhmm(d) };
+}
+export function revisitHhmm(iso, typed, now = Date.now()) { const w = revisitWords(iso, now); return w ? (w.tomorrow ? 'tomorrow ' : '') + String(typed || w.hhmm).trim().slice(0, 5) : ''; }
 // a PAR closed by a newer one (v38) is not open: the bar, the panel and the phone show the newest
 export function parOpen(m) { return !!m && m.kind === 'par' && !m.superseded_by; }

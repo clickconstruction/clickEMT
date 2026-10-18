@@ -6,6 +6,7 @@ import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
 import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
+import { revisitWords, revisitHhmm } from '../shared/rules.js';   // a revisit already past today means tomorrow (v48)
 
 const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
@@ -27,7 +28,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null };
+const state = { screen: 'home', pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null };
 function blankPerson() { return { name: '', role: '', quals: new Set() }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -244,6 +245,7 @@ document.addEventListener('input', (e) => {
   toggleJoinPeople();
 });
 $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
+$('#structure-revisit').addEventListener('input', drawRevisitHint);   // v48
 
 // The people on the unit at check-in: a row per person, name and rank or role typed, what they are
 // qualified for tapped. The rows live in state.joinPeople; the inputs are read back before a redraw.
@@ -487,6 +489,7 @@ function missingCardHtml() {
   if (!mine.length) return '';
   return `<div class="card" id="missing-card" style="border-color:var(--danger)"><div class="k" style="color:var(--danger)">Reported missing at ${hhmm(mine[0].ack.acked_at)}</div>
     ${mine.map((x) => `<div class="mrow-btns" style="align-items:center;justify-content:space-between"><span style="font-weight:600">${esc(x.name || 'Someone on the unit')}</span><button class="btn green" data-action="found" data-message="${x.ack.message_id}" data-user="${x.ack.user_id}" data-person="${x.id || ''}" data-name="${esc(x.name || '')}">Found</button></div>`).join('')}
+    ${mine.length > 1 ? `<div class="mrow-btns"><button class="btn green" data-action="found" data-message="${mine[0].ack.message_id}" data-user="${mine[0].ack.user_id}" data-all="1">They're all found</button></div>` : ''}
     <div class="muted small">Operations sees them as missing until you or the base press Found.</div></div>`;
 }
 async function markFound(ds) {
@@ -499,7 +502,7 @@ async function markFound(ds) {
   data.local('ic_message_acks', Object.assign({}, ack, { missing: entries }));
   await outbox.add('found', { messageId: ds.message, userId: ds.user, personId: ds.person || null, name: ds.name || null });
   state.lastSentAt = Date.now();
-  toast((ds.name || 'The missing person') + ' marked found');
+  toast((ds.all ? 'Everyone' : ds.name || 'The missing person') + ' marked found');
   queueDraw();
 }
 async function answerPar(id, allAccounted, missingIds = []) {
@@ -819,6 +822,7 @@ function drawAll() {
   } else if (state.screen === 'helpsent') screen('home');
   setHtml($('#helpsent-missing'), al ? missingCardHtml() : '');
   setHtml($('#missing'), al ? '' : missingCardHtml());
+  drawMyHazards();
 
   const p = sensors.pos;
   $('#foot-left').textContent = state.outbox ? `${state.outbox} waiting to send${state.outboxError ? ' (retrying)' : ''}` : (state.lastSentAt ? 'Last sent ' + hhmm(state.lastSentAt) : 'Nothing sent yet');
@@ -1334,9 +1338,16 @@ function openStructure(id) {
   $('#structure-sub').textContent = (zone ? zone.code + (nextPass(zone) === 'secondary' ? ', secondary search' : '') : 'Outside the divisions') + (state.st.lat != null ? ' · ' + latLngText(state.st.lat, state.st.lng) : ' · no GPS fix yet') + '. Save marks it searched and counts it for the zone.';
   $('#structure-label').value = existing ? existing.label : '';
   $('#structure-revisit').value = existing && existing.revisit_at ? hhmm(existing.revisit_at) : '';
+  drawRevisitHint();
   $('#structure-notes').value = existing ? existing.notes : '';
   screen('structure');
   drawStructure();
+}
+// "That is tomorrow 06:00" under the box when the time typed has passed today (v48)
+function drawRevisitHint() {
+  const el = $('#structure-revisit-hint'); if (!el) return;
+  const w = revisitWords(revisitIso($('#structure-revisit').value));
+  el.textContent = !w ? '' : w.tomorrow ? 'That is tomorrow ' + w.hhmm + '; the next crew sees it on the division and the 204.' : 'Today at ' + w.hhmm + '.';
 }
 function drawStructure() {
   const st = state.st;
@@ -1364,7 +1375,7 @@ async function saveStructure() {
     marking: markingFor(unitLabel(me).replace(/^Unit /, 'U'), now, codes, st.help), notes: $('#structure-notes').value.trim(),
     searched_by: data.user.id, searched_at: now.toISOString(),
     revisit_at: revisitIso($('#structure-revisit').value),   // v46: when the next crew should go back
-    revisit_hhmm: revisitIso($('#structure-revisit').value) ? $('#structure-revisit').value.trim().slice(0, 5) : ''   // v47: the clock time as typed, for the 214 line (the server has no time zone)
+    revisit_hhmm: revisitHhmm(revisitIso($('#structure-revisit').value), $('#structure-revisit').value)   // v47: the clock time as typed, for the 214 line (the server has no time zone); 'tomorrow ' first when it is (v48)
   };
   const id = st.id || uuid();
   const existing = st.id ? data.structure(st.id) : null;
@@ -1451,6 +1462,15 @@ async function confirmClear() {
 // "Address clear": one structure record at the unit's position
 async function addrClear() { openStructure(null); }
 
+// ---- the unit's own hazards (v48): what it sent in the last three hours, and whether Operations has acknowledged it;
+// a toast the moment an acknowledgement arrives, as the alert screen does for an emergency
+function drawMyHazards() {
+  const mine = data.incident ? data.myHazards().filter((h) => !h.resolved_at && Date.now() - new Date(h.created_at).getTime() < 3 * 3600000).slice(0, 3) : [];
+  const acked = mine.filter((h) => h.acked_at).map((h) => h.id);
+  if (state.hazAckSeen === null) state.hazAckSeen = new Set(acked);   // what was already acknowledged when the screen opened is not news
+  else for (const h of mine) if (h.acked_at && !state.hazAckSeen.has(h.id)) { state.hazAckSeen.add(h.id); toast('Operations acknowledged your hazard: ' + h.kind.toLowerCase() + (h.zone_id && data.zone(h.zone_id) ? ' in ' + data.zone(h.zone_id).code : '') + ' at ' + hhmm(h.acked_at)); }
+  setHtml($('#myhaz'), mine.length ? `<div class="card"><div class="k">Your hazards</div>${mine.map((h) => `<div class="small">${hhmm(h.created_at)} · ${esc(h.kind)}${h.zone_id && data.zone(h.zone_id) ? ' · ' + esc(data.zone(h.zone_id).code) : ''} · <span class="${h.acked_at ? '' : 'muted'}" style="${h.acked_at ? 'color:var(--cleared)' : ''}">${h.acked_at ? 'acknowledged by Operations ' + hhmm(h.acked_at) : h.urgency === 'now' ? 'waiting for Operations to acknowledge' : 'sent to Operations'}</span></div>`).join('')}</div>` : '');
+}
 // ---- hazard and help
 function openHazard() {
   state.hazI = -1; state.hazU = '';   // nothing chosen until the crew chooses (v41)

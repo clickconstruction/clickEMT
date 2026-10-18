@@ -13,7 +13,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 29;
+  const SEED_VERSION = 30;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -194,9 +194,9 @@
       ],
       ic_facilities: [
         { id: FAC[0], incident_id: INC, kind: 'icp', name: 'Cedar Fork High School, front office', lat: 30.2562, lng: -97.7415, notes: 'Incident command post, enter from Mill Street', contact: 'CMD 1', created_by: U.ops, created_at: ago(189), updated_at: ago(189), closed_at: null },
-        { id: FAC[1], incident_id: INC, kind: 'staging', name: 'High school east lot', lat: 30.2556, lng: -97.7400, notes: 'Units wait here between assignments', contact: 'CMD 1', created_by: U.ops, created_at: ago(188), updated_at: ago(188), closed_at: null },
-        { id: FAC[2], incident_id: INC, kind: 'shelter', name: 'High school gym', lat: 30.2566, lng: -97.7426, notes: 'Red Cross on site, pets in the ag barn', contact: 'Red Cross desk 512 555 0142', created_by: U.ops, created_at: ago(150), updated_at: ago(30), closed_at: null, beds: 60, expected: 'Bus 2 from Pecan Park, 12 people, 17:30' },
-        { id: FAC[3], incident_id: INC, kind: 'hospital', name: 'Dell Seton Medical Center', lat: 30.2780, lng: -97.7338, notes: 'Trauma center, 12 minutes from the base', contact: '512 555 0100', created_by: U.ops, created_at: ago(187), updated_at: ago(187), closed_at: null },
+        { id: FAC[1], incident_id: INC, kind: 'staging', name: 'High school east lot', lat: 30.2556, lng: -97.7400, address: '1200 Mill St, east lot', notes: 'Units wait here between assignments', contact: 'CMD 1', created_by: U.ops, created_at: ago(188), updated_at: ago(188), closed_at: null },
+        { id: FAC[2], incident_id: INC, kind: 'shelter', name: 'High school gym', lat: 30.2566, lng: -97.7426, address: '1200 Mill St, gym entrance', notes: 'Red Cross on site, pets in the ag barn', contact: 'Red Cross desk 512 555 0142', created_by: U.ops, created_at: ago(150), updated_at: ago(30), closed_at: null, beds: 60, expected: 'Bus 2 from Pecan Park, 12 people, 17:30' },
+        { id: FAC[3], incident_id: INC, kind: 'hospital', name: 'Dell Seton Medical Center', lat: 30.2780, lng: -97.7338, address: '1500 Red River St', notes: 'Trauma center, 12 minutes from the base', contact: '512 555 0100', created_by: U.ops, created_at: ago(187), updated_at: ago(187), closed_at: null },
         { id: FAC[4], incident_id: INC, kind: 'pod', name: 'Fairgrounds gate', lat: 30.2588, lng: -97.7352, notes: 'Water and ice from 14:00', contact: '', created_by: U.ops, created_at: ago(100), updated_at: ago(100), closed_at: null }
       ],
       // people sheltered and moved: three records signed in at the gym by Operations before a desk was there,
@@ -295,11 +295,11 @@
     ic_incidents: () => ({ id: uuid(), period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null, settings: {} }),
     ic_ops_codes: () => ({ created_at: now(), created_by: null }),
     ic_id_purge: () => ({ id: eventId(), queued_at: now(), done_at: null }),
-    ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
+    ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', address: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
     ic_evacuees: () => ({ id: uuid(), label: '', count: 1, needs: [], note: '', structure_id: null, from_text: '', status: 'here', facility_id: null, prev_facility_id: null, status_at: now(), logged_by: null, signed_in_by: null, signed_in_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
-    ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, stint_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, scene_hours: 12, deputy: '', bring: '', created_at: now() }),
     ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
@@ -404,7 +404,7 @@
     if (table === 'ic_message_acks' && !r.message_id) throw nn('message_id');
     if (table === 'ic_objectives') { if (r.text == null) throw nn('text'); if (!r.period_id) throw nn('period_id'); if (r.number == null) throw nn('number'); }
     if (table === 'ic_periods') { if (r.number == null) throw nn('number'); if (r.rotation_minutes != null && !(r.rotation_minutes >= 0 && r.rotation_minutes <= 600)) throw chk('ic_periods_rotation_minutes_check'); if (r.scene_hours != null && !(r.scene_hours >= 0 && r.scene_hours <= 72)) throw chk('ic_periods_scene_hours_check'); }
-    if (table === 'ic_structures' && r.revisit_hhmm && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.revisit_hhmm)) throw chk('ic_structures_revisit_hhmm_check');
+    if (table === 'ic_structures' && r.revisit_hhmm && !/^(tomorrow )?([01]\d|2[0-3]):[0-5]\d$/.test(r.revisit_hhmm)) throw chk('ic_structures_revisit_hhmm_check');   // 'tomorrow ' first since v48
     if (table === 'ic_period_agencies') { if (!String(r.agency || '').trim()) throw dbError('name the agency'); if (!r.period_id) throw nn('period_id'); }
     if (table === 'ic_commands' && !r.ic_name) throw nn('ic_name');
     if (table === 'ic_requests') {
@@ -476,7 +476,7 @@
       ].filter(Boolean).join(' · ');
       log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · ${what}`, 'ic_structures', r.id);
     }
-    if (r.revisit_at && (!old || r.revisit_at !== old.revisit_at)) log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · revisit ${r.revisit_hhmm ? 'at ' + r.revisit_hhmm : 'requested'}${r.notes ? ' (' + r.notes + ')' : ''}`, 'ic_structures', r.id);   // v46; the clock time the phone typed since v47
+    if (r.revisit_at && (!old || r.revisit_at !== old.revisit_at)) log(changes, r.incident_id, uid, 'clear', `${z ? z.code : 'Outside the divisions'}: ${r.label || 'a structure'} · revisit ${/^tomorrow /.test(r.revisit_hhmm || '') ? 'tomorrow at ' + r.revisit_hhmm.slice(9) : r.revisit_hhmm ? 'at ' + r.revisit_hhmm : 'requested'}${r.notes ? ' (' + r.notes + ')' : ''}`, 'ic_structures', r.id);   // v46; the clock time the phone typed since v47, tomorrow since v48
   }
   // ic_track_position: every reported position is kept, except a repeat of the same spot within a minute
   function trackPosition(r, old, uid, changes) {
@@ -673,7 +673,7 @@
     if (table === 'ic_facilities') {
       if (r.closed_at && !old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' closed', 'ic_facilities', r.id);
       else if (!r.closed_at && old.closed_at) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' reopened', 'ic_facilities', r.id);
-      else if (r.name !== old.name || r.kind !== old.kind || r.contact !== old.contact) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' updated', 'ic_facilities', r.id);
+      else if (r.name !== old.name || r.kind !== old.kind || r.contact !== old.contact || (r.address || '') !== (old.address || '')) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' updated', 'ic_facilities', r.id);
       if ((r.beds ?? null) !== (old.beds ?? null)) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + (r.beds == null ? ' beds not set' : ' has ' + r.beds + (r.beds === 1 ? ' bed' : ' beds')), 'ic_facilities', r.id);
       if ((r.expected || '') !== (old.expected || '')) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' expecting ' + (r.expected || 'nobody now'), 'ic_facilities', r.id);
     }
@@ -859,7 +859,7 @@
     if (table === 'ic_overlays') r.updated_at = now();   // ic_overlay_before
     if (table === 'ic_requests') { r.updated_at = now(); r.what = String(r.what || '').trim(); if (r.status !== old.status || r.answer !== old.answer) { r.status_by = uid; r.status_at = now(); } }   // ic_request_before
     if (table === 'ic_period_agencies') { r.updated_at = now(); r.name = String(r.name || '').trim(); r.phone = String(r.phone || '').trim(); }   // ic_period_agency_before
-    if (table === 'ic_people') personBefore(r, old);
+    if (table === 'ic_people') { personBefore(r, old); if (!r.checked_out_at && old.checked_out_at) r.stint_at = now(); }   // ic_person_stint (v48): back on, the current stretch starts now; the check-in stays
     if (table === 'ic_structures') {   // ic_structure_before
       r.updated_at = now();
       if (r.status === 'searched' && (old.status !== 'searched' || !r.searched_at)) { r.searched_at = r.searched_at || now(); r.searched_by = r.searched_by || uid; }

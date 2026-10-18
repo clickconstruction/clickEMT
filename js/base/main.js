@@ -22,7 +22,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null };
+const state = { selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, layersUpload: false, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addUnit: null, tab: 'people', edit: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -277,6 +277,16 @@ function queueDraw() {
 // The base's sound (v46): a short chime when an emergency or an act-on-now hazard arrives, never for what
 // was already there when the page opened. Web Audio, no file; the browser lets it sound after the first click.
 let audioCtx = null;
+// the browser lets a page ring only after a click or a key: the first one arms the sound, and until then the bar's quiet
+// line says so (v48)
+function armAudio(e) {
+  if (e && !e.isTrusted) return;   // only a real click or key unlocks the browser's audio; a script's event does not
+  document.removeEventListener('pointerdown', armAudio, true); document.removeEventListener('keydown', armAudio, true);
+  try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {}); state.armed = true; } catch (e2) { state.armed = true; }
+  queueDraw();
+}
+document.addEventListener('pointerdown', armAudio, true);
+document.addEventListener('keydown', armAudio, true);
 function chime(kind) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -328,6 +338,8 @@ function drawAll() {
   sf.hidden = !sh;
   if (sf.__html !== sh) { sf.__html = sh; sf.innerHTML = sh; }
   $('#bars-quiet').hidden = !!(mh || sh);
+  $('#bars-quiet').textContent = 'No emergency open · no safety message or PAR waiting on an answer' + (state.armed ? '' : ' · click anywhere once so the base can ring');   // v48
+  $('#bars').title = state.armed ? '' : 'Click anywhere once so the base can ring for an emergency or an urgent hazard';
 }
 
 // The sidebar: the divisions and the panel, redrawn on every live update, but only where the words
@@ -953,6 +965,7 @@ document.addEventListener('click', async (e) => {
       case 'reopen-zone': { const z = data.zone(id); if (z) await data.updateZone(id, { status: z.assigned_to ? 'active' : 'open', marking: null }); break; }
       case 'ack-alert': await data.ackAlert(id); break;
       case 'org-period': $('[data-action="close-briefing"]').click(); $('[data-action="period"]').click(); break;   // the 207 warning's link (v44)
+      case 'mark-all-found': await data.markFound(btn.dataset.message, btn.dataset.user, {}); toast('Everyone marked found'); queueDraw(); break;   // one line in the log (v48)
       case 'mark-found': await data.markFound(btn.dataset.message, btn.dataset.user, { personId: btn.dataset.person || null, name: btn.dataset.name || null }); toast((btn.dataset.name || 'The missing person') + ' marked found'); break;
       case 'ack-message': await data.ackMessage(id, btn.dataset.reply || 'Copy'); break;
       case 'set-status': {
@@ -1109,7 +1122,7 @@ document.addEventListener('submit', async (e) => {
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       drawBriefing();
     } else if (form.dataset.form === 'facility-edit') {
-      const patch = { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim() };
+      const patch = { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim(), address: form.address ? form.address.value.trim() : '' };
       if (form.beds) patch.beds = form.beds.value === '' ? null : Math.max(0, Math.round(Number(form.beds.value)));
       if (form.expected) patch.expected = form.expected.value.trim();
       await data.updateFacility(form.dataset.id, patch);

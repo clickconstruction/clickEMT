@@ -726,7 +726,7 @@ Item 1 of "What to do first" is clear: the bar holds one head count, the phone o
 
 **Still bites, small:**
 
-- **Found is per person.** A crew whose whole boat was out of contact presses Found once per name; "all found" would be one tap.
+- **Found is per person.** A crew whose whole boat was out of contact presses Found once per name; "all found" would be one tap. *Built in v48.*
 - **A superseded PAR keeps its "never answered" words for ever** in the Messages list; that is the record, but on a long incident the list of closed PARs grows under the open one. The list shows eight messages; older ones are in the 214.
 - **A safety message still stacks with a PAR** on the phone's takeover (two cards, each one tap), by design: a safety message is not superseded by a head count.
 
@@ -747,7 +747,7 @@ Item 2 of "What to do first" is clear. Her briefing still says "Wait at staging"
 
 **Still bites, small:**
 
-- **The base's front door still says "the account your agency gave you"** under Running the base?; that is Operations' screen and reads right for them, but a volunteer who scrolls past the code box reads it too.
+- **The base's front door still says "the account your agency gave you"** under Running the base?; that is Operations' screen and reads right for them, but a volunteer who scrolls past the code box reads it too. *Built in v48.*
 - **A code typed with a wrong letter** (0 for O) is refused on the door with the rule; the field app's own code box, for a code typed by hand, answers only with the database's "No active incident has the code".
 
 ---
@@ -788,8 +788,8 @@ Items 5 and 6 of "What to do first" are clear. The toast now sits under the head
 **Still bites, small:**
 
 - **The bar's words repeat themselves** when the crew's note restates the kind ("Person or car in the water, Car in the water at the low crossing"); the kind could be dropped from the bar when the note starts with the same words.
-- **Acknowledge is the base's word, not the crew's**: the phone says "Operations will acknowledge" but shows nothing when they do. A line on the phone's home ("Operations saw your hazard at 23:31") would close the loop.
-- **Before nightfall and the other three words** do nothing yet on the base beyond the badge; only Act on now reaches the bar, by design.
+- **Acknowledge is the base's word, not the crew's**: the phone says "Operations will acknowledge" but shows nothing when they do. A line on the phone's home ("Operations saw your hazard at 23:31") would close the loop. *Built in v48.*
+- **Before nightfall and the other three words** do nothing yet on the base beyond the badge; only Act on now reaches the bar, by design. *Built in v48.*
 
 ---
 
@@ -828,7 +828,7 @@ Item 10 of "What to do first" is clear.
 
 **Still bites, small:**
 
-- **A facility has no street address field**, so Getting there gives its notes and the coordinates "for a satnav"; an address line on the facility card would read better on paper.
+- **A facility has no street address field**, so Getting there gives its notes and the coordinates "for a satnav"; an address line on the facility card would read better on paper. *Built in v48.*
 - **Send by email is only as good as the mail app's URL limit**; a report over a few thousand characters may arrive cut short. A true send needs a server, which the app does not have.
 
 ---
@@ -894,8 +894,8 @@ Section 9 of the punchlist (Grace's decisions) is built in full. On scene too lo
 
 **Still bites, small:**
 
-- **The chime is silent until the first click**: a base opened and left untouched rings nothing for the first emergency; the bars still turn red or yellow at once.
-- **A revisit is a clock time, not a date**: the phone takes the next such moment, so a time already past today means tomorrow; the 204 says "at 02:51" and the next crew reads it against the day it is on.
+- **The chime is silent until the first click**: a base opened and left untouched rings nothing for the first emergency; the bars still turn red or yellow at once. *Built in v48.*
+- **A revisit is a clock time, not a date**: the phone takes the next such moment, so a time already past today means tomorrow; the 204 says "at 02:51" and the next crew reads it against the day it is on. *Built in v48.*
 - **My part is done is a message, not a mark**: the division does not say which part is done; the message's words ("1 of 18 marked") and the structure list are what Operations has.
 
 ---
@@ -919,6 +919,33 @@ Item 8 (Later) is built in full, so nothing on the punchlist is left; the Safety
 
 **Still bites, small:**
 
-- **A person checked out and back in counts from their first check-in**, on the board and in the briefing as in the Hours: a crew back for a second day reads as on scene since the first until Operations removes and re-adds them. Resetting the check-in time on "Back in" was tried and left out, because the Hours and the 211 would lose the earlier stretch; a second stamp for the current stretch is the honest fix, for a later release.
+- **A person checked out and back in counts from their first check-in**, on the board and in the briefing as in the Hours: a crew back for a second day reads as on scene since the first until Operations removes and re-adds them. Resetting the check-in time on "Back in" was tried and left out, because the Hours and the 211 would lose the earlier stretch; a second stamp for the current stretch is the honest fix, for a later release. *Built in v48.*
 - **The phone says it once, in the briefing**: no nudge like the water clock's, by design (Safety's threshold is Safety's to act on), so a crew that never reopens its briefing learns of it from Safety or Operations.
 - **A low threshold turns the whole board orange at once**, and the 208 lists everyone past it; with 12 hours that is the end of a long shift and a short list.
+
+---
+
+## Re-walk after v48
+
+Small items from the re-walks: the eight Still bites from the re-walks after v38 to v47, walked on 2026-10-18 after migration 0030 in the same mock, the base at 1280 × 900 as Operations and the phone at 375 × 780 in a frame beside it as Unit 3 (the pane was visible; the words were read from the screen).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| They're all found, on the base | Rosa's Operations | Two names missing on one answer: the bar reads "MISSING · Hale (Unit 3) · 01:56 · 0 accounted for · Found · They're all found" and the same for Dominguez. One press on They're all found: both lines gone, the log "Hale, Dominguez found, reported by Operations", starred as notable. | Clear |
+| They're all found, on the phone | Rosa | The card "REPORTED MISSING AT 01:56 · Hale Found · Dominguez Found · They're all found"; one tap, the toast "Everyone marked found", the log "Hale, Dominguez found, reported by Unit 3". | Clear |
+| The front door | The newcomer, the IC | "Sign in, or create an account with any email and a password. Whoever opens an incident is its Operations and decides who else runs the base, with the Operations code on the home panel; field units join with the six-letter code instead." | Clear |
+| A street address on a facility | Reyes, the IC | The staging card: "ADDRESS 1200 Mill St, east lot" above the position, a Street address box with "Getting there on the join card and the 204's Where to go read it before the coordinates". The join card: "Getting there: High school east lot · 1200 Mill St, east lot · Units wait here between assignments · for a satnav 30.25560, -97.74000 …"; A-1's 204: "Staging area: High school east lot · 1200 Mill St, east lot · CMD 1"; the hurt card's hospital line gives "1500 Red River St." after the distance. | Clear |
+| The softer urgency words | Priya | Hazards open: "Gas smell · Blocks further operations · B-2 · Unit 3" first, "Downed power line · across the lane · Before nightfall" second, the seeded line with no word last; B-2's panel chips "Hazard · Gas smell · Blocks further operations · Unit 3 at 01:56 · Resolved". | Clear |
+| Operations' acknowledgement on the phone | Moreno | A new card under the home screen: "YOUR HAZARDS · 01:56 · Tree down, road blocked · A-2 · waiting for Operations to acknowledge"; when the base pressed Acknowledge, the line turned green "acknowledged by Operations 01:56" and the toast said "Operations acknowledged your hazard: tree down, road blocked in A-2 at 01:56". Hazards sent without "act on now" read "sent to Operations". | Clear |
+| A revisit already past today | The resident's next crew | Under the Revisit at box: "Today at 22:56." for a time still ahead, "That is tomorrow 00:27; the next crew sees it on the division and the 204." for a time ninety minutes past; saved, the log "A-2: 122 Pecan Ln · revisit at 22:56 (gas off at the meter)" or "revisit tomorrow at 06:00 (gas off)", the division's list "revisit 22:56" or "revisit tomorrow 06:00". | Clear |
+| The chime's first click | The IC | The bar's quiet line: "No emergency open · no safety message or PAR waiting on an answer · click anywhere once so the base can ring"; the words stay until a real click or key, since a script's event cannot unlock the browser's sound. | Clear |
+| The current stretch | Priya, Finance | Nguyen checked out and back in: the board "On scene 0 min, since 01:56 · back in" (the check-in 23:07 unchanged); the 211 "Nguyen, Capt. · swift water, boat · checked in 23:07 · on scene 2 h 49 min", every stretch as before. | Clear |
+
+Nothing from the Still bites lists after v38 to v47 is left open, except the ones recorded there as by design.
+
+**Still bites, small:**
+
+- **They're all found is one line, one answer**: two units each reporting someone missing need a press each; the words name the unit.
+- **The address is one line of free text**: nothing checks it or maps it; the coordinates still drive Directions.
+- **The chime's note stays for a base that was opened and never touched**, which is the case it is for; on a base in use it goes at the first click and never returns.
+- **Your hazards keeps three hours**: an older hazard still open is on the base's list and the map, not on the phone's card.

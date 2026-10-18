@@ -645,6 +645,7 @@ export class Data {
     return data;
   }
   urgentHazards() { return this.hazards().filter(hazardUrgent); }
+  myHazards() { return this.user ? this.hazards(true).filter((h) => h.user_id === this.user.id) : []; }   // the phone's own reports, acknowledged or not (v48)
   // has the assigned unit accepted this division, or reported from it since (v42)
   zoneAccepted(zone) {
     const m = zone && zone.assigned_to ? this.member(zone.assigned_to) : null;

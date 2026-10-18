@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
+import { sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -246,4 +246,25 @@ t('on scene too long (v47): the threshold, who is past it, and the words', () =>
   assert.deepEqual(peopleOverScene(people, members, 2, now).map((x) => x.person.name), ['Okafor', 'Ramirez'], 'longest first');
   assert.equal(sceneText(12), 'Safety is told past 12 hours on scene');
   assert.equal(sceneText(0), 'no hours-on-scene threshold set');
+});
+
+t('small items from the re-walks (v48): hazards by urgency, the current stretch, the revisit\'s words', () => {
+  const H = [{ id: 'a', urgency: '', created_at: '2026-10-17T20:00:00Z' }, { id: 'b', urgency: 'nightfall', created_at: '2026-10-17T19:00:00Z' }, { id: 'c', urgency: 'blocking', created_at: '2026-10-17T18:00:00Z' }, { id: 'd', urgency: 'now', created_at: '2026-10-17T17:00:00Z' }, { id: 'e', urgency: 'tomorrow', created_at: '2026-10-17T21:00:00Z' }, { id: 'f', urgency: '', created_at: '2026-10-17T22:00:00Z' }];
+  assert.deepEqual(sortHazards(H).map((h) => h.id), ['d', 'c', 'b', 'e', 'f', 'a'], 'act on now, blocks, nightfall, can wait, then no word newest first');
+  assert.equal(urgencyRank('made up'), 4);
+  const now = new Date(2026, 9, 17, 22, 0).getTime();
+  const p = { checked_in_at: new Date(2026, 9, 17, 9, 0).toISOString(), checked_out_at: null, stint_at: new Date(2026, 9, 17, 20, 30).toISOString() };
+  assert.equal(sceneStart(p), p.stint_at);
+  assert.equal(stintText(p, now), '1 h 30 min', 'the current stretch, not the day');
+  assert.equal(sceneMinutes(p, now), 90);
+  assert.equal(sceneOver(p, 12, now), false, 'back in for ninety minutes is not past twelve hours');
+  assert.equal(sceneStart({ checked_in_at: p.checked_in_at, stint_at: null }), p.checked_in_at);
+  const today = new Date(2026, 9, 17, 23, 0).toISOString(), tomorrow = new Date(2026, 9, 18, 6, 0).toISOString(), past = new Date(2026, 9, 17, 16, 0).toISOString();
+  assert.deepEqual(revisitWords(today, now), { hhmm: '23:00', tomorrow: false, due: false, text: '23:00' });
+  assert.deepEqual(revisitWords(tomorrow, now), { hhmm: '06:00', tomorrow: true, due: false, text: 'tomorrow 06:00' });
+  assert.deepEqual(revisitWords(past, now), { hhmm: '16:00', tomorrow: false, due: true, text: '16:00' });
+  assert.equal(revisitWords(null, now), null);
+  assert.equal(revisitHhmm(tomorrow, '06:00', now), 'tomorrow 06:00');
+  assert.equal(revisitHhmm(today, '23:00', now), '23:00');
+  assert.equal(revisitHhmm(null, '23:00', now), '');
 });

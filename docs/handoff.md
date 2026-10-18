@@ -22,19 +22,20 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v47**, "On scene too long" (after v46, Grace's four decisions). The service worker reads `v47`.
-- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0029` in
+- `main` is at **v48**, "Small items from the re-walks" (after v47, on scene too long). The service worker reads `v48`.
+- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0030` in
   `supabase/migrations/` are all applied. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
 - **Tests on `main`:** `npm test` and `npm run check` pass. The SQL rule tests in `supabase/tests/` pass
-  (`scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
+  (`rewalks.sql` 10 of 10, `scene.sql` 9 of 9, `decisions.sql` 3 of 3, `bring.sql` 3 of 3, `accept.sql` 4 of 4, `hazards.sql` 5 of 5, `newcomer.sql` 3 of 3, `par.sql` 10 of 10, `deputy.sql` 5 of 5, `parbyname.sql` 10 of 10, `safetyset.sql` 23 of 23, `members.sql` 44 of 44, `evacuees.sql` 28 of 28, `walkfix.sql`
   10 of 10, `ics100.sql`, `people.sql`). v26 added an `evacuees` smoke suite, v27 `members`, v28 `safetyset`, v29
   `parbyname`; each release's notes in `docs/punchlist.md` say how its full run went.
 - **v25 was tested independently** on 17 October: every fix held up by hand at phone and desktop widths, and the
   cleared-photo download was opened and checked (no coordinates, no GPS data in the files).
 - **Open work:** the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do") ranked what still
   bites; [punchlist.md](punchlist.md) is that list. Releases v38 to v47 shipped on 17 and 18 October (v46 built Grace's four
-  decisions, v47 the last item, on scene too long); nothing on that list is left. The next work comes from a new walk.
+  decisions, v47 the last item, on scene too long, v48 the small items from the re-walks); nothing on that list is left.
+  The next work comes from the walk at v48 (walkthroughs.md), whose ranked list is the new punchlist.
 
 ## Read these first
 

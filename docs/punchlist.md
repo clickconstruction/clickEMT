@@ -23,6 +23,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 7 | v44 Small words and buttons (shipped 18 October) | small | any time | one or two personas each |
 | 8 | Later: since you last looked (shipped 18 October, v45); on scene too long (shipped 18 October, v47) | medium | v44 | the IC, Marcus's relief, Priya |
 | 9 | Decisions only Grace can make (answered 18 October; built as v46 The decisions) | small to medium | v45 | Ana, Reyes, Priya, the clerk, the resident |
+| 10 | v48 Small items from the re-walks (shipped 18 October) | small | v47 | Rosa, the newcomer, Reyes, Priya, Moreno, the resident, the IC, Finance |
 
 ---
 
@@ -314,6 +315,22 @@ last looked" before the answers arrived).
   accounts, a transport board, NIMS resource typing and strike team / task force labels. Decided earlier: the hazard
   outline stays after the last hazard is resolved; a unit may be on several divisions; the typed period label stays on
   the picker, the home panel and the phone.
+
+## 10. v48 Small items from the re-walks
+
+The eight Still bites from the re-walks after v38 to v47, swept together.
+
+- **They're all found** beside the per-name Found (the base's MISSING line, the phone's card), one line in the 214.
+- **The front door's sign-in card** says what is true: sign in or create an account; whoever opens an incident is its Operations.
+- **A street address on a facility** (`ic_facilities.address`), on the card, used by Getting there and the 204 before the coordinates.
+- **The softer urgency words on a hazard**: Hazards open in urgency order, the word on the division panel's chip.
+- **The phone shows Operations' acknowledgement** of its hazard: a Your hazards card and a toast.
+- **A revisit already past today means tomorrow**: "tomorrow 06:00" on the sheet, the list, the 204 and in the 214.
+- **The chime's first click** is said on the bar's quiet line until the page is clicked.
+- **A second stamp for the current stretch** (`ic_people.stint_at`): the board and the briefing count it, the Hours and the 211 keep every stretch.
+
+**Shipped** 18 October 2026 as `Small items from the re-walks (v48)`, migration `0030_rewalks.sql`, rule test
+`supabase/tests/rewalks.sql`, smoke suite `rewalks`; re-walk after v48 in walkthroughs.md.
 
 ---
 

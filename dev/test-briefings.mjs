@@ -200,6 +200,16 @@ t('a shelter desk\'s job is the people at its shelter, not staging (v26)', () =>
   assert.ok(S[3].text.startsWith('High school gym It is on the map.') || S[3].text.startsWith('High school gym · '), S[3].text);   // the desk's work area is its shelter (v42)
 });
 
+t('a facility\'s street address comes before the coordinates on the join card and in the hurt lines (v48)', () => {
+  const base = stub();
+  const F = base.facilities().map((f) => (f.kind === 'staging' ? { ...f, address: '1200 Mill St, east lot' } : f.kind === 'hospital' ? { ...f, address: '1500 Red River St' } : f));
+  const d = stub({ facilities: F });
+  const there = deploymentLines(d).find((l) => l[0] === 'Getting there')[1];
+  assert.ok(/^High school east lot · 1200 Mill St, east lot · /.test(there) && there.indexOf('1200 Mill St') < there.indexOf('for a satnav'), there);
+  const hosp = hurtLines(d, { unit: d.member(U.u1), at: [30.2674, -97.7384] })[2].text;
+  assert.ok(/^Nearest hospital: Dell Seton Medical Center, [\d.]+ mi\. 1500 Red River St\. /.test(hosp), hosp);
+});
+
 t('the deployment lines on the join card: incident, where to check in, assignment, when, how to get there, radio, bring', () => {
   const d = stub();
   const L = deploymentLines(d, new Date(at(0)));

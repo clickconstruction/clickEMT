@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
+import { sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -300,7 +300,7 @@ function zoneHtml(data, z, state) {
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">Division ${esc(z.code)} <span>${esc(z.name)}</span></div>
     <div class="d-row"><span class="badge ${statusCls}">${esc(zoneStatusText(z, assignedLabel(data, z), data.zoneAccepted(z)))}</span>${z.channel ? `<span class="badge">Radio ${esc(z.channel)}</span>` : ''}${z.supervisor ? `<span class="muted" style="font-size:12px">Supervisor ${esc(z.supervisor)}</span>` : ''}${z.branch ? `<span class="muted" style="font-size:12px">Branch ${esc(z.branch)}</span>` : ''}</div>
-    ${hazards.map((h) => `<div class="hazline">Hazard · ${esc(h.kind)}${h.note ? ' · ' + esc(h.note) : ''} · ${esc(unitLabel(data.member(h.user_id)))} at ${hhmm(h.created_at)}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>`).join('')}
+    ${sortHazards(hazards).map((h) => `<div class="hazline">Hazard · ${esc(h.kind)}${h.note ? ' · ' + esc(h.note) : ''}${h.urgency ? ` <span class="badge urg-${esc(h.urgency)}">${esc(urgencyLabel(h.urgency))}</span>` : ''} · ${esc(unitLabel(data.member(h.user_id)))} at ${hhmm(h.created_at)}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>`).join('')}
     <div class="d-row"><span class="k">Priority</span>
       ${[1, 2, 3].map((p) => `<button class="btn sm${z.priority === p ? ' on' : ''}" data-action="set-priority" data-id="${z.id}" data-p="${p}">Priority ${p}</button>`).join('')}
     </div>
@@ -344,7 +344,7 @@ function zoneHtml(data, z, state) {
         : `<button class="btn sm green" data-action="finish-pass" data-id="${z.id}" data-pass="primary">Primary search done</button><button class="btn sm" data-action="finish-pass" data-id="${z.id}" data-pass="secondary">Mark cleared</button>`}
     </div>
     <div class="d-row"><span class="k" style="width:auto;flex:1">Structures on record · ${structs.length}</span><button class="btn sm" data-action="place-structures" data-id="${z.id}">Place structures</button></div>
-    ${structs.length ? structs.slice(-8).reverse().map((s) => `<button class="plink" data-action="select-structure" data-id="${s.id}">${esc(s.label || 'Structure')} · ${STRUCTURE_STATUS[s.status] || s.status}${structureSummary(s) ? ' · ' + esc(structureSummary(s)) : ''}${s.searched_at ? ' · ' + hhmm(s.searched_at) : ''}${s.revisit_at ? ' · revisit ' + hhmm(s.revisit_at) + (new Date(s.revisit_at).getTime() < Date.now() ? ' (due)' : '') : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. The field adds one with every address it clears; you can place the ones you know in advance.</div>'}
+    ${structs.length ? structs.slice(-8).reverse().map((s) => `<button class="plink" data-action="select-structure" data-id="${s.id}">${esc(s.label || 'Structure')} · ${STRUCTURE_STATUS[s.status] || s.status}${structureSummary(s) ? ' · ' + esc(structureSummary(s)) : ''}${s.searched_at ? ' · ' + hhmm(s.searched_at) : ''}${s.revisit_at ? ' · revisit ' + revisitWords(s.revisit_at).text + (revisitWords(s.revisit_at).due ? ' (due)' : '') : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. The field adds one with every address it clears; you can place the ones you know in advance.</div>'}
     <div class="k">Photos from this zone</div>
     ${photos.length ? photos.map((p) => `<button class="plink" data-action="select-photo" data-id="${p.id}">${hhmm(p.taken_at)} · ${esc(unitLabel(data.member(p.user_id)))}${p.heading != null ? ' · facing ' + compass(p.heading) : ''}${p.note ? ' · ' + esc(p.note) : ''}${p.public_ok ? ' · public' : ''}</button>`).join('') : '<div class="muted" style="font-size:12.5px">None yet</div>'}
     ${z.assigned_to ? `<div class="k">Message ${esc(unitLabel(data.member(z.assigned_to)))} in ${esc(z.code)}</div>${composerHtml(data, 'zone:' + z.id)}${messagesHtml(data, (m) => m.to_zone === z.id, 4)}` : ''}`;
@@ -438,7 +438,7 @@ export function personRowHtml(data, p, { compact, now } = {}) {
   const state = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at) + (pos ? ' · ' + unitLabel(unit) + ' last at ' + latLngText(pos.lat, pos.lng) + ', ' + ago(pos.at, now) : ' · no position from ' + unitLabel(unit))
     : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
-    : (unitOut ? 'Unit checked out · ' : 'On scene ') + onSceneText(p, now) + ', since ' + hhmm(p.checked_in_at) + (over ? ' · past ' + data.sceneHours() + ' h' : '');
+    : (unitOut ? 'Unit checked out · ' : 'On scene ') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + data.sceneHours() + ' h' : '');   // the current stretch since v48
   const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
   const units = compact ? [] : data.members().filter((m) => m.status !== 'checked_out' || m.user_id === p.user_id).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   return `
@@ -639,6 +639,7 @@ function facilityHtml(data, f, state) {
       <span class="k">Expected</span><span>${f.expected ? esc(f.expected) + ' · ' : ''}<span class="ev-coming${c.arriving.length ? ' on' : ''}">${c.arrivingPeople} on ${c.arrivingPeople === 1 ? 'the' : 'their'} way from crews</span> <span class="muted">(live: records a crew sent here, not yet signed in at the desk)</span></span>
       <span class="k">Needs here</span><span>${c.needs.length ? esc(needsTotalsText(c.needs)) : 'none listed'}</span>
       <span class="k">Desk</span><span>${esc(data.units().filter((u) => u.kind === 'shelter_desk' && u.facility_id === f.id && u.status !== 'checked_out').map((u) => unitLabel(u)).join(', ') || 'no shelter desk checked in here yet')}</span>` : ''}
+      <span class="k">Address</span><span>${esc(f.address) || 'not set'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(f.lat, f.lng))}</span>
       <span class="k">Opened</span><span>${esc(whenText(f.created_at))}</span>
     </div>
@@ -647,6 +648,8 @@ function facilityHtml(data, f, state) {
         <label>Kind <select name="kind" class="sel">${FACILITY_KINDS.map(([v, label]) => `<option value="${v}"${v === f.kind ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></label>
         <label>Name <input name="name" value="${esc(f.name)}" placeholder="Where it is"></label>
       </div>
+      <label>Street address <input name="address" value="${esc(f.address || '')}" placeholder="1200 Mill St, east lot" maxlength="160"></label>
+      <div class="muted" style="font-size:12px;margin-top:-6px">Getting there on the join card and the 204's Where to go read it before the coordinates (v48).</div>
       <label>Contact <input name="contact" value="${esc(f.contact)}" placeholder="A channel or a phone number"></label>
       <label>Notes <input name="notes" value="${esc(f.notes)}" placeholder="What the field should know"></label>
       ${shelter ? `<div class="row-2">
@@ -771,7 +774,7 @@ function structureHtml(data, s) {
       <span class="k">Searched by</span><span>${s.searched_by ? esc(unitLabel(data.member(s.searched_by))) : 'nobody yet'}</span>
       <span class="k">Position</span><span class="mono">${esc(latLngText(s.lat, s.lng)) || 'unknown'}</span>
       ${s.marking ? `<span class="k">Marking</span><span>team ${esc(s.marking.team)} · out ${esc(s.marking.out)} · hazards ${esc(s.marking.haz)} · people ${esc(s.marking.victims)}</span>` : ''}
-      ${s.revisit_at ? `<span class="k">Revisit at</span><span>${hhmm(s.revisit_at)}${new Date(s.revisit_at).getTime() < Date.now() ? ' · due' : ''}</span>` : ''}
+      ${s.revisit_at ? `<span class="k">Revisit at</span><span>${esc(revisitWords(s.revisit_at).text)}${revisitWords(s.revisit_at).due ? ' · due' : ''}</span>` : ''}
       ${s.notes ? `<span class="k">Notes</span><span>${esc(s.notes)}</span>` : ''}
     </div>
     <form class="inline-form" data-form="structure-edit" data-id="${s.id}">
@@ -1184,10 +1187,10 @@ export function form204Sections(data, z) {
   S.push({ title: 'Communications', lines: ['Division channel: ' + (z.channel || 'not set')].concat(plan.length ? plan.map((c) => `${c.use}: ${c.channel}`) : ['No incident plan set']) });
   S.push({ title: 'Medical, ICS 206 · if someone is hurt', lines: hurtText(data, { unit, at: centroid(z.polygon) }).map((l, i) => (l.startsWith('! ') ? '! ' : '') + (i + 1) + '. ' + l.replace(/^! /, '')) });
   const places = data.facilities().filter((f) => ['staging', 'shelter', 'hospital', 'icp'].includes(f.kind));
-  S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });
+  S.push({ title: 'Where to go', lines: places.length ? places.map((f) => `${facilityLabel(f)}${f.address ? ' · ' + f.address : ''}${f.contact ? ' · ' + f.contact : ''}`) : ['No facilities set'] });   // the street address since v48
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '', data.zoneAccepted(z))].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
   const revisits = data.structures(z.id).filter((s) => s.revisit_at).sort((a, b) => (a.revisit_at < b.revisit_at ? -1 : 1));   // v46: the next crew's revisits
-  if (revisits.length) S.push({ title: 'Revisits', lines: revisits.map((s) => `${s.label || 'A structure'} at ${hhmm(s.revisit_at)}${new Date(s.revisit_at).getTime() < Date.now() ? ' (due)' : ''}${s.notes ? ' · ' + s.notes : ''}`) });
+  if (revisits.length) S.push({ title: 'Revisits', lines: revisits.map((s) => `${s.label || 'A structure'} at ${revisitWords(s.revisit_at).text}${revisitWords(s.revisit_at).due ? ' (due)' : ''}${s.notes ? ' · ' + s.notes : ''}`) });
   S.push({ title: 'Prepared', lines: ['By Operations, ' + whenText(new Date())] });
   return S;
 }
@@ -1513,7 +1516,7 @@ export function messagesHtml(data, filter, limit) {
 // Hazards open (v41): where Safety looks. Kind and words, division, when, who, the urgency word; Resolved and
 // Show on map on each; an act-on-now hazard waits on the bar above until Operations acknowledges it.
 export function hazardsHtml(data) {
-  const open = data.hazards();
+  const open = sortHazards(data.hazards());   // act on now first, then blocks further operations, before nightfall, can wait (v48)
   const row = (h) => `<div class="haz-row${hazardUrgent(h) ? ' urgent' : ''}" data-hazard="${h.id}">
       <div class="haz-top"><span class="t mono">${hhmm(h.created_at)}</span><strong>${esc(h.kind)}</strong>${h.note ? `<span class="muted">${esc(h.note)}</span>` : ''}${h.urgency ? `<span class="badge urg-${esc(h.urgency)}">${esc(urgencyLabel(h.urgency))}</span>` : ''}</div>
       <div class="haz-foot"><span class="muted">${h.zone_id && data.zone(h.zone_id) ? esc(data.zone(h.zone_id).code) + ' · ' : ''}${esc(unitLabel(data.member(h.user_id)))}${h.acked_at ? ' · acknowledged ' + hhmm(h.acked_at) : ''}</span>${hazardUrgent(h) ? `<button class="btn sm" data-action="ack-hazard" data-id="${h.id}">Acknowledge</button>` : ''}${h.lat != null && h.lng != null ? `<button class="btn sm" data-action="pan-to" data-lat="${h.lat}" data-lng="${h.lng}">Show on map</button>` : ''}<button class="btn sm" data-action="resolve-hazard" data-id="${h.id}">Resolved</button></div>
@@ -1536,7 +1539,7 @@ export function safetyHtml(data) {
   }
   const par = data.lastPar();
   for (const x of data.missingNow().slice().reverse()) parts.unshift(barItem(x.name ? `MISSING · ${x.name} (${unitLabel(x.unit)}) · ${hhmm(x.ack.acked_at)}${x.ack.count != null ? ' · ' + x.ack.count + ' accounted for' : ''}` : `MISSING · ${unitLabel(x.unit)} reports someone missing${x.ack.count != null ? ', ' + x.ack.count + ' accounted for' : ''} · ${hhmm(x.ack.acked_at)}`, 'missing',
-    `<button class="btn sm" data-action="mark-found" data-message="${x.ack.message_id}" data-user="${x.ack.user_id}" data-person="${x.id || ''}" data-name="${esc(x.name || '')}" title="${esc((x.name || 'The missing person') + ' is found: clears this line, logged as notable')}">Found</button>`));   // by name since v29, Found since v38
+    `<button class="btn sm" data-action="mark-found" data-message="${x.ack.message_id}" data-user="${x.ack.user_id}" data-person="${x.id || ''}" data-name="${esc(x.name || '')}" title="${esc((x.name || 'The missing person') + ' is found: clears this line, logged as notable')}">Found</button>` + (data.missingNow().filter((y) => y.ack === x.ack).length > 1 ? `<button class="btn sm" data-action="mark-all-found" data-message="${x.ack.message_id}" data-user="${x.ack.user_id}" title="Everyone ${esc(unitLabel(x.unit))} reported missing is found: one line in the log">They're all found</button>` : '')));   // by name since v29, Found since v38, all found since v48
   return parts.join('');
 }
 

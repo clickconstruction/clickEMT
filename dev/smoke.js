@@ -61,7 +61,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -758,7 +758,7 @@ async function reports(check) {
   await until(() => $('#briefing').hidden);
   $('[data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join'));
-  check('the join card tells Safety and Bring apart and gives the staging area with its notes and satnav coordinates (v43)', has('#briefing-page', 'safety: swift water everywhere south of mill street', 'bring: pfds and dry bags for water crews', 'getting there: high school east lot · units wait here between assignments · for a satnav 30.25560, -97.74000'), text('#briefing-page').slice(0, 900));
+  check('the join card tells Safety and Bring apart and gives the staging area with its notes and satnav coordinates (v43)', has('#briefing-page', 'safety: swift water everywhere south of mill street', 'bring: pfds and dry bags for water crews', 'getting there: high school east lot · 1200 mill st, east lot · units wait here between assignments · for a satnav 30.25560, -97.74000'), text('#briefing-page').slice(0, 900));
   $('[data-action="close-briefing"]').click();
   check('and it closes', $('#briefing').hidden);
 }
@@ -1470,7 +1470,7 @@ async function ics100(check) {
 
   // 5 · if someone is hurt
   const hl = hurtLines(field, { unit: field.me(), at: [30.2674, -97.7384] });
-  check('the hurt card names the medic on the unit, the emergency channel, the nearest hospital with its distance and directions, and the check-out reminder', hl.length === 4 && hl[0].text === 'Medic on your unit: Dominguez, paramedic. Hale is an EMT.' && hl[1].text.startsWith('Call it on TAC 9, emergency traffic') && /^Nearest hospital: Dell Seton Medical Center, 0\.8 mi\. Trauma center, 12 minutes from the base\. 512 555 0100\. No ambulance on scene/.test(hl[2].text) && hl[2].directions.includes('30.278') && hl[3].text.includes('Finance needs it for the claim'), hl.map((l) => l.text).join(' | '));
+  check('the hurt card names the medic on the unit, the emergency channel, the nearest hospital with its distance and directions, and the check-out reminder', hl.length === 4 && hl[0].text === 'Medic on your unit: Dominguez, paramedic. Hale is an EMT.' && hl[1].text.startsWith('Call it on TAC 9, emergency traffic') && /^Nearest hospital: Dell Seton Medical Center, 0\.8 mi\. 1500 Red River St\. Trauma center, 12 minutes from the base\. 512 555 0100\. No ambulance on scene/.test(hl[2].text) && hl[2].directions.includes('30.278') && hl[3].text.includes('Finance needs it for the claim'), hl.map((l) => l.text).join(' | '));
   const c4 = window.supabase.createClient();
   await c4.auth.signInWithPassword({ email: 'unit4@mock.local', password: 'any' });
   const d4 = new Data(c4); await d4.init();
@@ -1490,7 +1490,7 @@ async function ics100(check) {
   await until(() => $('#panel [data-action="print-join"]'));
   $('#panel [data-action="print-join"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
-  check('the join card carries the six deployment lines and what to bring, from the data, and when it was printed', has('#briefing-page', 'deployment briefing', 'incident: cedar fork flooding · lead agency cedar fork fire department · ic priya natarajan', 'check in at: staging, high school east lot · units wait here between assignments', 'your assignment: given at check-in by operations. the period', 'report by:', 'for the operational period 3 briefing at staging', 'getting there: high school east lot · units wait here between assignments · for a satnav 30.25560, -97.74000', 'radio: command cmd 1 · tactical, division a tac 2', 'safety:', 'bring: pfds and dry bags for water crews', 'who to ask for', 'staging: sam whitaker (logistics) · operations: jo castillo', 'printed') && has('#briefing-page', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 1400));
+  check('the join card carries the six deployment lines and what to bring, from the data, and when it was printed', has('#briefing-page', 'deployment briefing', 'incident: cedar fork flooding · lead agency cedar fork fire department · ic priya natarajan', 'check in at: staging, high school east lot · units wait here between assignments', 'your assignment: given at check-in by operations. the period', 'report by:', 'for the operational period 3 briefing at staging', 'getting there: high school east lot · 1200 mill st, east lot · units wait here between assignments · for a satnav 30.25560, -97.74000', 'radio: command cmd 1 · tactical, division a tac 2', 'safety:', 'bring: pfds and dry bags for water crews', 'who to ask for', 'staging: sam whitaker (logistics) · operations: jo castillo', 'printed') && has('#briefing-page', 'check in with your phone', 'scan the code, or open', 'anyone with this code can join'), text('#briefing-page').slice(0, 1400));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
 
@@ -1525,6 +1525,101 @@ async function ics100(check) {
   chip.click();
   const composer = $('#panel form[data-form="message"]');
   check('the "You are released" chip fills the message with the staging area and the radio', composer.text.value === 'You are released. Return to staging, High school east lot, return the radio to Logistics, and check out on your phone. Thank you.', composer.text.value);
+}
+
+// ---- small items from the re-walks (v48): the eight Still bites from the re-walks after v38 to v47, as the personas met them
+async function rewalks(check) {
+  const u = USERS(), b2 = ZONE('B-2'), PPL = M().ids.people;
+  // the front door's sign-in card says what is true (the card is hidden while signed in: read its text, not its screen)
+  check('the front door\'s sign-in card no longer promises an account from the agency', /Sign in, or create an account with any email and a password\. Whoever opens an incident is its Operations and decides who else runs the base/.test($('#auth').textContent) && !/account your agency gave you/.test($('#auth').textContent), $('#auth-form p.muted').textContent);
+  // the chime's first click: the quiet line says so until a real click or key arrives (the suite's events are synthetic, so it stays)
+  check('the bar\'s quiet line says to click once so the base can ring', has('#bars-quiet', 'no emergency open', 'click anywhere once so the base can ring'), text('#bars-quiet'));
+  // a street address on a facility: the card, the join card's Getting there and the 204's Where to go
+  const staging = M().ids.facilities[1];
+  const sel = document.createElement('button'); sel.dataset.action = 'select-facility'; sel.dataset.id = staging; sel.hidden = true; document.body.appendChild(sel); sel.click(); sel.remove();
+  const ff = await until(() => $('#panel form[data-form="facility-edit"]'));
+  check('the facility card has the seeded street address and a box for it', !!ff && ff.address.value === '1200 Mill St, east lot' && has('#panel', 'address', '1200 mill st, east lot'), ff && ff.address.value);
+  ff.address.value = '1200 Mill St, east lot, gate 3'; ff.requestSubmit();
+  await until(() => base.facility(staging).address === '1200 Mill St, east lot, gate 3');
+  check('a changed address is saved and logged as an update', base.facility(staging).address === '1200 Mill St, east lot, gate 3' && !!eventText(base, 'Staging area: High school east lot updated'), logTexts()[0]);
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => has('#panel', 'join code'));
+  $('[data-action="print-join"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', 'join card'));
+  const there = text('#briefing-page');
+  check('Getting there on the join card gives the address before the coordinates', /getting there:? high school east lot · 1200 mill st, east lot, gate 3 · units wait here between assignments · for a satnav/.test(there), there.slice(there.indexOf('getting there'), there.indexOf('getting there') + 160));
+  $('[data-action="close-briefing"]').click(); await until(() => $('#briefing').hidden);
+  $(`#zones .zr[data-id="${ZONE('A-1')}"]`).click();
+  await until(() => has('#panel .title', 'a-1'));
+  $$('#panel button').find((x) => /print the 204/i.test(x.innerText)).click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', '204'));
+  check('the 204\'s Where to go carries the address too', has('#briefing-page', 'where to go', 'staging area: high school east lot · 1200 mill st, east lot, gate 3 · cmd 1', 'shelter: high school gym · 1200 mill st, gym entrance'), text('#briefing-page').slice(text('#briefing-page').indexOf('where to go'), text('#briefing-page').indexOf('where to go') + 300));
+  $('[data-action="close-briefing"]').click(); await until(() => $('#briefing').hidden);
+  // the softer urgency words: the Hazards open list in urgency order, the words on the division panel's chip
+  const h1 = uuid(), h2 = uuid(), h3 = uuid();
+  await field.addHazard(h1, { kind: 'Downed power line', note: 'across the lane', urgency: 'nightfall', lat: 30.2590, lng: -97.7480, zoneId: b2 });
+  await field.addHazard(h2, { kind: 'Gas smell', urgency: 'blocking', lat: 30.2592, lng: -97.7470, zoneId: b2 });
+  await field.addHazard(h3, { kind: 'Loose animal', urgency: '', lat: 30.2594, lng: -97.7460, zoneId: b2 });
+  await until(() => base.hazards().length >= 4);
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => has('#panel', 'hazards open · 4'));
+  check('Hazards open lists blocks further operations first, then before nightfall, then the rest newest first', await until(() => $$('#panel .haz-row').map((r) => r.dataset.hazard).slice(0, 3).join() === [h2, h1, h3].join()), $$('#panel .haz-row').map((r) => r.dataset.hazard.slice(0, 4)).join(' '));
+  $(`#zones .zr[data-id="${b2}"]`).click();
+  await until(() => has('#panel .title', 'b-2'));
+  check('the division panel\'s hazard chips carry the urgency words', $$('#panel .hazline .badge').map((b) => b.textContent).join(' | ') === 'Blocks further operations | Before nightfall', $$('#panel .hazline').map((x) => x.innerText.replace(/\s+/g, ' ')).join(' || '));
+  // a revisit already past today means tomorrow, on the list and in the 214
+  const t = new Date(); t.setDate(t.getDate() + 1); t.setHours(6, 0, 0, 0);
+  const rid = uuid();
+  await field.addStructure(rid, { zone_id: b2, label: '115 Bee Creek Rd', status: 'not_searched', notes: 'gas off', revisit_at: t.toISOString(), revisit_hhmm: 'tomorrow 06:00' });
+  await until(() => base.structure(rid));
+  check('a revisit for tomorrow reads "tomorrow 06:00" on the division\'s list and in the log', await until(() => has('#panel', '115 bee creek rd · not searched · revisit tomorrow 06:00')) && !!eventText(base, 'B-2: 115 Bee Creek Rd · revisit tomorrow at 06:00 (gas off)'), text('#panel').slice(0, 400));
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => has('#panel', 'join code'));
+  // the current stretch: Nguyen checked out and back in
+  const ng = base.person(PPL[2]), was = ng.checked_in_at;
+  await base.checkOutPerson(PPL[2]);
+  await until(() => base.person(PPL[2]).checked_out_at);
+  await base.checkInPerson(PPL[2]);
+  await until(() => base.person(PPL[2]).stint_at && eventText(base, 'Nguyen (swift water, boat) checked back in with Unit 2'));
+  check('checked out and back in: the check-in stays, the stint stamp is now, and the log says so', base.person(PPL[2]).checked_in_at === was && !base.person(PPL[2]).checked_out_at && Date.now() - new Date(base.person(PPL[2]).stint_at).getTime() < 60000 && !!eventText(base, 'Nguyen (swift water, boat) checked back in with Unit 2'), `${base.person(PPL[2]).checked_in_at === was} ${base.person(PPL[2]).stint_at} | ${logTexts()[0]}`);
+  $('[data-action="people"]').click();
+  await until(() => !$('#people').hidden);
+  check('the board counts the current stretch: "On scene 0 min, since now · back in"', await until(() => /on scene 0 min, since \d\d:\d\d · back in/.test(text(`#people-page .pp-row[data-person="${PPL[2]}"]`))), text(`#people-page .pp-row[data-person="${PPL[2]}"]`));
+  $('[data-action="print-211"]').click();
+  await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
+  check('the 211 keeps every stretch: checked in at the first check-in', has('#briefing-page', 'nguyen, capt. · swift water, boat · checked in ' + new Date(was).toTimeString().slice(0, 5)), text('#briefing-page').slice(0, 500));
+  $('[data-action="close-briefing"]').click(); await until(() => $('#briefing').hidden);
+  $('[data-action="close-people"]').click(); await until(() => $('#people').hidden);
+  // they're all found: a crew whose whole boat was out of contact, one press on the base
+  const par = await base.startPar('all');
+  await field.answerPar(par.id, false, 0, [{ id: PPL[4], name: 'Hale' }, { id: PPL[5], name: 'Dominguez' }]);
+  await until(() => base.missingNow().length === 2 && $$('#safety [data-action="mark-all-found"]').length === 2);
+  check('two missing on one answer: Found per name and They\'re all found on each line', has('#safety', 'missing · hale (unit 3)', 'missing · dominguez (unit 3)') && $$('#safety [data-action="mark-found"]').length === 2 && $$('#safety [data-action="mark-all-found"]').length === 2, text('#safety'));
+  $('#safety [data-action="mark-all-found"]').click();
+  await until(() => base.missingNow().length === 0);
+  check('one press clears both lines and writes one notable line', !has('#safety', 'missing ·') && !!eventText(base, 'Hale, Dominguez found, reported by Operations') && eventText(base, 'Hale, Dominguez found, reported by Operations').notable, logTexts()[0]);
+  // the phone: Operations' acknowledgement of its hazard, and They're all found on its own card
+  let P = null;
+  try {
+    P = await phoneFrame();
+    check('the field app opens beside the base as Unit 3', !!P.ready, P.text('#me-name'));
+    if (P.$('#s-briefing') && !P.$('#s-briefing').hidden) await P.act('briefing-later');
+    const h4 = uuid();
+    await field.addHazard(h4, { kind: 'Tree down, road blocked', urgency: 'now', lat: 30.2674, lng: -97.7384, zoneId: ZONE('A-2') });
+    check('the phone lists its own hazard as waiting for Operations', await until(() => /tree down, road blocked · a-2 · waiting for operations to acknowledge/.test(P.text('#myhaz')), 30000), P.text('#myhaz'));
+    await base.ackHazard(h4);
+    check('when Operations acknowledges it the phone says so, with a toast', await until(() => /acknowledged by operations \d\d:\d\d/.test(P.text('#myhaz')), 30000) && await until(() => P.$('#toast') && !P.$('#toast').hidden && /Operations acknowledged your hazard: tree down, road blocked in A-2 at \d\d:\d\d/.test(P.$('#toast').textContent), 5000), P.text('#myhaz') + ' | ' + (P.$('#toast') ? P.$('#toast').textContent : ''));
+    const par2 = await base.startPar('all');
+    await until(() => P.$('#s-safety') && !P.$('#s-safety').hidden, 30000);
+    await field.answerPar(par2.id, false, 0, [{ id: PPL[4], name: 'Hale' }, { id: PPL[5], name: 'Dominguez' }]);
+    check('the phone\'s missing card offers They\'re all found beside Found per name', await until(() => P.$('#missing [data-all="1"]') || P.$('#helpsent-missing [data-all="1"]'), 30000) && /they're all found/.test(P.text('#missing') + P.text('#helpsent-missing')), P.text('#missing') + P.text('#helpsent-missing'));
+    (P.$('#missing [data-all="1"]') || P.$('#helpsent-missing [data-all="1"]')).click();
+    check('one tap on the phone clears both, and the log names them', await until(() => base.missingNow().length === 0, 70000) && await until(() => eventText(base, 'Hale, Dominguez found, reported by Unit 3'), 10000), logTexts()[0]);
+  } finally {
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    await wait(100);
+  }
 }
 
 // ---- the public demo (v32): ?demo loads the stand-in on any host, and /try/ frames both views on it.

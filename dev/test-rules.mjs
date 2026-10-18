@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -91,6 +91,32 @@ t('a replay finds the sample at a moment and the crumbs before it', () => {
   assert.equal(sampleAt(list, ms(15)).lat, 2);
   assert.equal(sampleAt(list, ms(99)).lat, 3);
   assert.deepEqual(samplesBefore(list, ms(30), 25000).map((s) => s.lat), [2, 3]);
+});
+
+t('the replay\'s ranges start at the first position, say so in the menu, and a pick outside them is refused', () => {
+  const H = 3600000, M = 60000, now = new Date(2026, 9, 18, 10, 5).getTime();   // local, so the words read as the base shows them
+  const day = { now, opened: now - 233 * M, periodStart: now - 125 * M, periodEnd: null, first: now - 205 * M + 37000 };   // opened 06:12, first position 06:40:37, period 2 from 08:00
+  assert.deepEqual(replayWindow('all', day), [day.first, now], 'the whole incident starts at the first position, not the opening');
+  assert.deepEqual(replayWindow('period', day), [day.periodStart, now], 'a period that started after it keeps its own start');
+  assert.deepEqual(replayWindow('hour', day), [now - H, now]);
+  assert.equal(replayWindow('all', { ...day, first: null }), null, 'nothing to replay before the first position');
+  assert.equal(replayWindow('period', { ...day, periodStart: now - 300 * M, periodEnd: now - 250 * M }), null, 'a closed period before the first position has nothing');
+  assert.equal(replayWindowLabel('all', replayWindow('all', day), now), 'Whole incident · from 06:40');
+  assert.equal(replayWindowLabel('period', replayWindow('period', day), now), 'This period · from 08:00');
+  assert.equal(replayWindowLabel('hour', replayWindow('hour', day), now), 'Last hour');
+  assert.equal(replayWindowLabel('hour', replayWindow('hour', { ...day, first: now - 20 * M }), now), 'Last hour · from 09:45', 'cut short, it says so');
+  assert.equal(replayWindowLabel('all', null, now), 'Whole incident · no positions yet');
+  assert.equal(dayHhmm(now - 24 * H, now), 'yesterday 10:05');
+  assert.equal(dayHhmm(now - 48 * H, now), '16 Oct 2026 10:05');
+  assert.deepEqual(replayPickCheck(now - 245 * M, day.first, now), { ok: false, words: '06:00 is before the first position, 06:40.' });
+  assert.equal(replayPickCheck(now - 205 * M, day.first, now).ok, true, 'the first position\'s own minute, 06:40, is allowed');
+  assert.equal(replayPickCheck(now - 206 * M, day.first, now).ok, false, 'the minute before it is not');
+  assert.deepEqual(replayPickCheck(now - 24 * H, day.first, now), { ok: false, words: 'Yesterday 10:05 is before the first position, 06:40.' });
+  assert.deepEqual(replayPickCheck(now + 55 * M, day.first, now), { ok: false, words: '11:00 has not happened yet.' });
+  assert.deepEqual(replayPickCheck(null, day.first, now), { ok: false, words: 'Type a date and a time.' });
+  assert.deepEqual(replayPickCheck(now - 35 * M, day.first, now), { ok: true, words: 'Positions run from 06:40 to now, 10:05.' });
+  assert.equal(replayPickCheck(now, null, now).ok, false, 'nothing to pick before the first position');
+  assert.equal(dayIso(now), '2026-10-18');
 });
 
 t('a name and a phone check in; a licence or its photo is the identity (v25)', () => {

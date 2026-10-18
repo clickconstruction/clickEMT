@@ -446,6 +446,48 @@ export function sampleAt(list, atMs) {
 export function samplesBefore(list, atMs, windowMs) {
   return list.filter((s) => { const t = new Date(s.at).getTime(); return t <= atMs && t >= atMs - windowMs; });
 }
+// The replay's ranges (v63): each starts no earlier than the incident's first position, so the slider never covers a
+// moment with nothing to show, and the menu's "from" is the slider's left end. `first` is the earliest ic_tracks
+// row's moment (ms), or null before any phone has reported; null back means nothing to replay in that range.
+export function replayWindow(kind, { now, opened, periodStart, periodEnd, first }) {
+  if (first == null) return null;
+  let from, to;
+  if (kind === 'hour') { from = now - 3600000; to = now; }
+  else if (kind === 'all') { from = opened; to = now; }
+  else { from = periodStart || opened; to = periodEnd || now; }
+  from = Math.max(from, first);
+  return from <= to ? [from, to] : null;
+}
+export const REPLAY_RANGE_NAMES = { hour: 'Last hour', period: 'This period', all: 'Whole incident' };
+export function replayWindowLabel(kind, win, now = Date.now()) {
+  const name = REPLAY_RANGE_NAMES[kind] || kind;
+  if (!win) return name + ' · no positions yet';
+  if (kind === 'hour' && win[0] <= now - 3600000 + 60000) return name;   // not cut short by the first position
+  return name + ' · from ' + dayHhmm(win[0], now);
+}
+// A moment said against today: "06:40", "yesterday 18:40", else "16 Oct 2026 18:40".
+export function dayHhmm(ms, now = Date.now()) {
+  const d = new Date(ms), n = new Date(now);
+  if (isNaN(d)) return '';
+  if (d.toDateString() === n.toDateString()) return hhmm(d);
+  const y = new Date(n); y.setDate(y.getDate() - 1);
+  return (d.toDateString() === y.toDateString() ? 'yesterday ' : dateText(d) + ' ') + hhmm(d);
+}
+// Pick a time: the moment typed must sit between the first position and now; the words are the sheet's sentence.
+// The boxes hold minutes, so the first position's own minute counts as it (16:16 typed for a first report at 16:16:37).
+export function replayPickCheck(t, first, now = Date.now()) {
+  const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+  if (first == null) return { ok: false, words: 'No positions yet: nothing to pick.' };
+  if (t == null || !Number.isFinite(t)) return { ok: false, words: 'Type a date and a time.' };
+  if (t < Math.floor(first / 60000) * 60000) return { ok: false, words: cap(dayHhmm(t, now)) + ' is before the first position, ' + dayHhmm(first, now) + '.' };
+  if (t > now) return { ok: false, words: cap(dayHhmm(t, now)) + ' has not happened yet.' };
+  return { ok: true, words: 'Positions run from ' + dayHhmm(first, now) + ' to now, ' + hhmm(new Date(now)) + '.' };
+}
+// The local day as a date box wants it, yyyy-mm-dd.
+export function dayIso(ms) {
+  const d = new Date(ms);
+  return isNaN(d) ? '' : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 
 // ---- resource requests (ICS 213RR) and the check-out list
 export const REQUEST_KINDS = [['people', 'More hands'], ['water', 'Boat or water team'], ['medical', 'Ambulance'], ['fuel', 'Fuel'], ['equipment', 'Pump, lights, equipment'], ['supplies', 'Food, water, supplies'], ['other', 'Other']];

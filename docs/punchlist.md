@@ -5,15 +5,15 @@ to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "I
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
 that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), v61, the units section
-(section 20), and v62, confirmations as the app's own dialogs and the band door (section 21). **Open and not yet ranked** (18 October 2026, v62): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
-Written 17 October 2026, after v37 (`c89a929`), brought up to date at v62. Each numbered release below is written to be picked
+(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), and v63, Replay with a time you name and a speed in words (section 22). **Open and not yet ranked** (18 October 2026, v63): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+Written 17 October 2026, after v37 (`c89a929`), brought up to date at v63. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
 
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v63**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v64**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0035**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -40,6 +40,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 19 | v60 A cleaner base: shorter labels, the codes behind the pill, the connection's card, the head count, the drawing buttons, the gear, Layers flipped, a division's hover card (shipped 18 October) | medium | v59 | Marcus, his relief, the IC, anyone new at the base |
 | 20 | v61 The units section, cleaner: one line per unit with where it is at the right, the PAR as one line (shipped 18 October) | small | v60 | Marcus, Dana, the clerk |
 | 21 | v62 Confirmations as the app's own dialogs, and the band door (shipped 18 October) | small | v61 | Marcus, Dana, Rosa, the desk, anyone handed a band |
+| 22 | v63 Replay: a time you name, and a speed in words (shipped 18 October) | small | v62 | Marcus, the clerk, Dana |
 
 ---
 
@@ -479,8 +480,9 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
   built.
 - **The People board, offered better** (`/try/mockups/people.html`, its own session): the six controls on every person's
   row crowd out the facts; two or three directions drawn.
-- **Replay: a time you name, and a speed in words** (`/try/mockups/replay.html`): Pick a time bounded by the first
-  record (the earliest `ic_tracks` row), the slider hatched before it, the speed menu saying what a second of play covers.
+- **Replay: a time you name, and a speed in words** (`/try/mockups/replay.html`): built as v63 (section 22), with the
+  run-up before the first position cut off rather than hatched; past periods in the menu and clicking the time to type a
+  moment are still to do.
 - **The pages as large modals, not full screens** (`/try/mockups/modals.html`): Briefing, People and the rest over the
   dimmed map with Expand to full screen; the alarm line, printing and the pop-out log thought through there.
 - **Placing aerial imagery by its corners** (`/try/mockups/imagery.html`): drag the picture to fit instead of typing four
@@ -691,6 +693,38 @@ stubs, the `seeded`, `members` and `tags` suites reading the dialogs and the doo
 check now waits for the home panel (Close redraws it on the next frame; with the pane visible the read came first,
 and the v61 runs had the pane hidden); full run 741 of 741 across 38 suites with the pane visible; check and test
 pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
+
+## 22. v63 Replay: a time you name, and a speed in words
+
+**Why.** Todd, walking the base at v59 on 18 October, opened Replay's range menu: "in this drop down menu there should
+also be the option to set a specific time and date, but it should be super clear when the boundaries of information
+was started to be collected so that someone can't click into nothingness". And of the speed menu's 10× / 60× / 600×:
+"I don't understand this menu at first glance."
+
+**Built.** Every range of the Replay starts no earlier than the incident's first position (the earliest `ic_tracks`
+row, read once when the bar opens through the members' select policy), so the slider never covers a moment with
+nothing to show, and the menu says where each begins: "This period · from 08:00", "Whole incident · from 06:40",
+"Last hour" bare unless the first position cuts it short. Pick a time… is the menu's fourth option: a date and a time
+on their own row inside the bar, bounded by the first position and now, with the bounds in one sentence ("Positions
+run from 06:40 to now, 10:05.") that turns orange with the reason while Go is off ("06:00 is before the first
+position, 06:40.", "11:00 has not happened yet."); a moment outside the open range reopens the whole incident at it.
+The speed menu reads Slow · 10 s a second, Normal · a minute a second, Fast · 10 min a second, the × in each option's
+hover title. An incident with no position yet gets the empty state: every range reads "no positions yet", Pick a
+time… is off, so are Play and the slider, and one line says "Nothing to replay yet: the first phone to check in
+starts the record." The mock-up (`try/mockups/replay.html`) drew three treatments of the run-up before the first
+position, hatched, dimmed and cut off; cut off was built as the most robust, since nothing can be clicked into and
+the native slider stays, and the minutes before the first phone are still in the log.
+
+*Decided:* the pick is bounded by now, never by the period's planned end; the boxes hold minutes, so the first
+position's own minute counts as it (the smoke suite caught 16:16 typed for a first report at 16:16:37 being refused);
+no migration and no function, since the first position is one ordered select through the policy that already exists;
+past periods in the menu and clicking the time to type a moment are left for later.
+
+**Shipped** 18 October 2026 as `Replay: a time you name, and a speed in words (v63)`: `replayWindow`,
+`replayWindowLabel`, `dayHhmm`, `replayPickCheck` and `dayIso` in rules.js, `data.replayFirst()`, the replay block of
+js/base/main.js, `#replay-pick` in index.html and its styles in base.css; the `replay` suite reads the menu's words,
+the speed words, the sheet's bounds and refusals, Go and Cancel; full run 748 of 748 across 38 suites on v62 plus this release alone (the shared tree, with the pages-as-windows work still open in it, ran 751 of 756, the five misses in that work);
+check and test pass; every rule test 20 of 20 files (331 checks). No migration; the mock needed nothing.
 
 ## Done before this list
 

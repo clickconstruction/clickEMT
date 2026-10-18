@@ -1363,3 +1363,20 @@ Confirmations as the app's own dialogs, and the band door: Marcus making his rel
 
 - **The Members tab's four command posts** (punchlist section 15): every unit's row still carries Make Operations as loud as Open and Remove; the question now says what changes, the grouping does not.
 - **The first button has focus when a question opens**, so Enter is the act; on the phone that is right, at the base a stray Enter on Remove is the one to watch.
+
+## Re-walk after v63
+
+Replay: a time you name, and a speed in words: Marcus looking for the morning, the clerk replaying the whole incident for the after-action review, Dana on the speed menu, and an incident whose first phone has not reported, walked on 2026-10-18 in the mock at 1280 × 800 (the pane hidden; the words read through the `replay` suite and the bar's own text).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| How far back | Marcus | The range menu reads "Last hour", "This period · from 16:39", "Whole incident · from 16:39", "Pick a time…"; the slider's left end is 16:39, the first phone's report, with that unit already on the map. Nothing before it to drag into. | Clear |
+| Pick a time | Marcus | The fourth option opens a row in the bar: Pick a time, the date, the time on the slider's moment, Go, Cancel, and "Positions run from 16:39 to now, 17:39." A time twenty minutes before the first position: "… is before the first position, 16:39." in orange, Go off. A time after now: "… has not happened yet." Thirty minutes after the first position: Go lands the slider there and the menu names the range again; Cancel puts the row away. | Clear |
+| The whole day | the clerk | "Whole incident · from 16:39" has the same left end as the period here (period 1 opened the incident); on a second day the date box runs from the first position's day to today and the words read "yesterday 18:40". | Clear |
+| The speed | Dana | Slow · 10 s a second, Normal · a minute a second, Fast · 10 min a second; hover gives the old ×. Play at Fast runs an hour in six seconds. | Clear |
+| No positions yet | Marcus, a new incident | Every range reads "· no positions yet", Pick a time… is greyed, Play and the slider are off, and the line says "Nothing to replay yet: the first phone to check in starts the record." | Clear |
+
+**Still bites, small:**
+
+- **Past periods are not in the menu**: on day two the clerk picks a time inside yesterday's period instead of choosing "Period 1" (punchlist section 15).
+- **Clicking the time to type a moment** would be one step shorter than the menu's option; the mock-up drew it, it is not built.

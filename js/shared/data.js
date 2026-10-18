@@ -619,6 +619,13 @@ export class Data {
     if (error) throw error;
     return data || [];
   }
+  // the incident's first position (v63): the earliest ic_tracks row, through the members' select policy, so the
+  // replay's ranges and Pick a time… start where there is something to show; null before any phone has reported
+  async replayFirst() {
+    const { data, error } = await this.sb.from('ic_tracks').select('at').eq('incident_id', this.store.incident.id).order('at', { ascending: true }).limit(1);
+    if (error) throw error;
+    return data && data.length ? data[0].at : null;
+  }
 
   // ---- messages (ICS 213): who was addressed is fixed on the message; acks are one row per recipient
   messages() { return [...this.store.messages.values()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }

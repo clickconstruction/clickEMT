@@ -255,16 +255,25 @@
         <button class="btn sm pri" data-action="replay-play" id="replay-play">Play</button>
         <input type="range" id="replay-slider" min="0" max="1000" value="0" step="1" aria-label="Moment to show">
         <span class="mono replay-time" id="replay-time">--:--</span>
-        <select class="sel" id="replay-range" aria-label="How far back to replay">
+        <select class="sel" id="replay-range" aria-label="How far back to replay" title="Each range starts where its positions begin">
           <option value="hour">Last hour</option>
           <option value="period" selected>This period</option>
           <option value="all">Whole incident</option>
+          <option value="pick">Pick a time…</option>
         </select>
-        <select class="sel" id="replay-speed" aria-label="Replay speed">
-          <option value="10">10×</option>
-          <option value="60" selected>60×</option>
-          <option value="600">600×</option>
+        <select class="sel" id="replay-speed" aria-label="Replay speed" title="How much of the day a second of play shows">
+          <option value="10" title="10×">Slow · 10 s a second</option>
+          <option value="60" selected title="60×">Normal · a minute a second</option>
+          <option value="600" title="600×">Fast · 10 min a second</option>
         </select>
+        <form class="replay-pick" id="replay-pick" hidden>
+          <b>Pick a time</b>
+          <input type="date" id="replay-date" aria-label="Date" required>
+          <input type="time" id="replay-clock" aria-label="Time" required>
+          <button class="btn sm pri" type="submit" id="replay-go">Go</button>
+          <button class="btn sm" type="button" data-action="replay-pick-cancel">Cancel</button>
+          <span class="why" id="replay-why"></span>
+        </form>
         <span class="hint" id="replay-log"></span>
         <button class="btn sm" data-action="replay-close">Close</button>
       </div>

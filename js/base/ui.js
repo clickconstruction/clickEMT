@@ -20,7 +20,7 @@ function assignedLabel(data, z) { return z.assigned_to ? unitLabel(data.member(z
 export function zonesHtml(data, state) {
   const sel = state.selected || {};
   const zones = data.zones();
-  if (!zones.length) return '<p class="muted" style="padding:8px 14px">No divisions yet. Press Draw division and click the map to outline one.</p>';
+  if (!zones.length) return `<p class="muted" data-empty style="padding:8px 14px">${data.incident && data.incident.boundary ? 'Boundary drawn. Now a division: an area for one unit.' : 'Nothing here yet. Draw the boundary, then divisions inside it.'}</p>`;   // v80: the next thing to do, in order
   return zones.map((z) => `
     <button class="zr${sel.type === 'zone' && sel.id === z.id ? ' sel' : ''}${state.highlight ? (z.status === state.highlight ? ' hl' : ' dim') : ''}" data-action="select-zone" data-id="${z.id}">
       <span class="pb p${z.priority}">${z.priority}</span>
@@ -140,25 +140,30 @@ export function parHtml(data) {
   return head + `<div class="muted" style="font-size:12.5px;margin:2px 0 6px">${hhmm(par.created_at)} to ${esc(par.to_label || 'everyone')} · ${line}</div><div class="par-chips">${chips}</div>`;
 }
 
+// A fresh incident starts emptier (v80): until the first phone joins, the codes' card leads the panel (the join code
+// with its QR, the join card, the bands), since getting phones in is the next thing after the boundary; the units
+// take over when one joins and the codes go back behind the CEDAR7 pill. A section with nothing in it waits for its
+// first row (Messages, Transports, Public information with the first photo, Map imagery; the PAR, Message the field and
+// Agencies for the first unit);
+// Hazards stays, since Safety looks there, and so do the sections whose only way in is their own form.
 function homeHtml(data, state) {
   const inc = data.incident;
+  const fresh = !data.units().length;
   return `
-    ${resourcesHtml(data, state)}
-    ${parHtml(data)}
+    ${fresh ? codesPopHtml(data, state) : resourcesHtml(data, state)}
+    ${fresh ? '' : parHtml(data)}
     ${toConfirmHtml(data)}
     ${requestsHtml(data)}
     ${hazardsHtml(data)}
-    <div class="k" style="margin-top:6px">Message the field</div>
-    ${composerHtml(data, 'all')}
-    <div class="k" style="margin-top:6px">Messages</div>
-    ${messagesHtml(data, null, 8)}
+    ${fresh ? '' : `<div class="k" style="margin-top:6px">Message the field</div>${composerHtml(data, 'all')}`}
+    ${data.messages().length ? `<div class="k" style="margin-top:6px">Messages</div>${messagesHtml(data, null, 8)}` : ''}
     ${facilitiesHtml(data)}
     ${shelteredHtml(data, state)}
-    ${transportsHtml(data)}
+    ${data.transports().length ? transportsHtml(data) : ''}
     ${channelsHtml(data)}
-    ${agenciesHtml(data)}
-    ${publicHtml(data)}
-    ${imageryHtml(data)}
+    ${fresh ? '' : agenciesHtml(data)}
+    ${data.photos().length ? publicHtml(data) : ''}
+    ${data.overlays(true).length ? imageryHtml(data) : ''}
     <div class="k" style="margin-top:6px">Incident</div>
     <div class="kv">
       <span class="k">Period</span><span>${esc(inc.period || 'not set')}</span>
@@ -371,7 +376,7 @@ function zoneHtml(data, z, state) {
       </select>
     </div>
     <div class="d-row"><span class="k">Assigned to</span>
-      ${units.length ? units.map((u) => `<button class="btn sm${z.assigned_to === u.user_id ? ' on' : ''}" data-action="assign" data-id="${z.id}" data-user="${u.user_id}">${esc(unitLabel(u))}</button>`).join('') : '<span class="muted">No units have joined yet</span>'}
+      ${units.length ? units.map((u) => `<button class="btn sm${z.assigned_to === u.user_id ? ' on' : ''}" data-action="assign" data-id="${z.id}" data-user="${u.user_id}">${esc(unitLabel(u))}</button>`).join('') : `<span class="muted">No units yet. Phones join with ${esc(data.incident.code)}.</span>`}
     </div>
     <form class="inline-form" data-form="zone-edit" data-id="${z.id}">
       <div class="row-2">
@@ -1756,6 +1761,7 @@ export function logFiltersHtml(data, state) {
   const events = data.events(), cur = (state.log && state.log.group) || 'all', sinceAt = state.log && state.log.sinceAt;
   return LOG_GROUPS.filter(([g]) => g !== 'new' || (sinceAt && events.some((e) => e.at > sinceAt))).map(([g, label]) => {
     const n = events.filter((e) => inGroup(e, g, sinceAt)).length;
+    if (!n && g !== 'all' && g !== cur) return '';   // v80: a chip with nothing behind it waits for its first line
     return `<button class="chip${cur === g ? ' on' : ''}" data-action="log-group" data-group="${g}">${label} <span class="n">${n}</span></button>`;
   }).join('');
 }

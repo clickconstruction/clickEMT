@@ -599,7 +599,7 @@ function drawLegend() {
     if (n) n.textContent = counts[st] ? String(counts[st]) : '';
   }
   const run = $('#legend-run');
-  if (run) run.hidden = !runsShown();   // v75: the entry goes with the runs when the Layers panel's box takes them off
+  if (run) run.hidden = !runsShown() || !data.mapRuns().length;   // v75: the entry goes with the runs when the Layers panel's box takes them off; v80: and until there is a run
   const hint = $('#legend-hint');
   if (hint) {
     const n = state.highlight ? (counts[state.highlight] || 0) : 0;
@@ -1323,7 +1323,7 @@ document.addEventListener('click', async (e) => {
       case 'inc-line': setIncOpen(state.incOpen === 'pinned' ? null : 'pinned'); break;   // v76: a click keeps the card; another lets it go
       case 'inc-divisions': select(null); requestAnimationFrame(() => { const z = $('#zones'); if (z) z.scrollIntoView({ block: 'start' }); }); break;   // the home panel's divisions list
       case 'inc-hazards': select(null); requestAnimationFrame(() => { const k = [...document.querySelectorAll('#panel .k')].find((x) => /^Hazards open/.test(x.textContent.trim())); if (k) k.scrollIntoView({ block: 'start' }); }); break;
-      case 'ops-show': state.opsShown = !state.opsShown; drawCodes(); break;   // v60
+      case 'ops-show': state.opsShown = !state.opsShown; drawCodes(); queueDraw(); break;   // v60; v80: the home panel carries the card too on a fresh incident
       case 'live': state.liveOpen = !state.liveOpen; state.codesOpen = false; drawLivePop(); drawCodes(); break;   // v60
       case 'reconnect': state.liveOpen = false; drawLivePop(); toast('Reconnecting…'); await openIncident(data.incident.id); break;   // v60
       case 'clock': clockUtcOn = !clockUtcOn; try { localStorage.setItem(CLOCK_KEY, clockUtcOn ? 'utc' : 'local'); } catch (err) { /* storage blocked */ } drawClock(); break;   // v59

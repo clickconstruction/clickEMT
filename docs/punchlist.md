@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v80**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v81**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0040**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -57,6 +57,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 36 | v77 Incident kinds and starter periods: two rows of buttons on the New incident sheet, a starter that writes period 1's lines as Operations' own, × hides an objective (built 19 October) | small to medium | v76 | a first-time Operations, Marcus, Dana, every phone's briefing |
 | 37 | v78 The centre by address: an Address box on the New incident sheet, Google Places suggestions as you type, one press sets the centre (built 19 October) | small | v77 | a first-time Operations, Marcus, the IC |
 | 38 | v79 The 214's water words as 45m: the one duration the database writes reads as the app does, `ic_duration_text` in SQL (built 19 October; migration 0039, applied) | small | v78 | the Safety Officer, the clerk, Rosa, anyone reading the 214 |
+| 39 | v80 The header in four groups, and a quieter first minute: a word over each group of buttons, the gear with the pills; a fresh incident leads with the codes and its empty sections wait (built 19 October) | small | v79 | Marcus, every base, a first-time Operations |
 
 ---
 
@@ -542,8 +543,8 @@ Walk first, then rank, as before.
   press sets the centre and fills an empty Base; the facility card's Street address box later; one muted line without
   the key in config.js (`window.GOOGLE_MAPS_KEY`, restricted to the site, with Places API (New) and Geocoding API
   enabled beside Map Tiles); no migration, its own release after the starters; four more decisions, one key first.
-- **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided. Mock-up `try/mockups/leftovers.html` (drawn 19 October at v76, with the three items below; not built): a labelled row, every button one press, a word over each group and a line between, the gear beside the pills; Forms as the one menu is the fallback, four menus set aside. The page proposes two releases: the header and the emptier start together, then UTC with the pictures.
-- **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes. On `leftovers.html`: the home panel leads with the codes' card until the first unit joins, the empty sections stay out until their first row (Hazards excepted), the list says "Nothing here yet. Draw the boundary, then divisions inside it." and, after the boundary, "Boundary drawn. Now a division: an area for one unit."; the labels keep their words; the legend and the log's chips hide their zeros.
+- **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided. Mock-up `try/mockups/leftovers.html` (drawn 19 October at v76, with the three items below): a labelled row, every button one press, a word over each group and a line between, the gear beside the pills; Forms as the one menu is the fallback, four menus set aside. The page proposes two releases: the header and the emptier start together, then UTC with the pictures. **Built as v80** (section 39).
+- **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes. On `leftovers.html`: the home panel leads with the codes' card until the first unit joins, the empty sections stay out until their first row (Hazards excepted), the list says "Nothing here yet. Draw the boundary, then divisions inside it." and, after the boundary, "Boundary drawn. Now a division: an area for one unit."; the labels keep their words; the legend and the log's chips hide their zeros. **Built as v80** (section 39).
 - **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes. On `leftovers.html`: one screenshot per picture from headless Chrome at 1280 × 800 and 2× (`Page.captureScreenshot` through `dev/smoke-headless.py`'s class, a small `dev/front-shots.py`), no html2canvas, no proxy, no heading fix; the hero with the incident card open and the runs on the map, step 1 the codes' card, step 3 the IAP's 204 as a window; the phone's home and PAR re-shot in the same pass, the three phone pictures on no page removed.
 - **Every time in UTC** (v59): only the header clock swaps; the log, the 214 and the forms stay local. A device setting that swaps them all is the next cut if Zulu-time agencies ask. On `leftovers.html`: the clock's click swaps every time on the screen (`ic.base.clock` grown, one setting, never a UTC clock over a local log), a Z on every UTC time, "Times local, CDT" or "Times UTC (Z)" in every form's head in both modes, the log's hour line carrying the date when the day changes; one flag in rules.js read by `hhmm`, `whenText`, `dateText` and `dayHhmm`, so the call sites do not change; the phone, the date and time boxes, the Hours CSV and the public set stay local.
 - **The labels on the public demo** (v58): /try/ frames the base with its own tours, so the labels stay off it; they could show there on the first open as well, before the tours.
@@ -1426,6 +1427,47 @@ the morning v77 and v78 had landed from branch `starters` and the CLI was logged
 **Built** 19 October 2026 as `The 214's water words as 45m (v79)` on branch `water-words`: migration 0039 applied on
 the real database with `dev/sbq.py`; every rule test on the real database, 25 files, 439 of 439 (`waterwords` 13, `safetyset` 23 with its two moved lines, the 23 others as at v74); `npm run check` and `npm test` pass; the `safetyset` suite
 headless (`dev/smoke-headless.py`) 39 of 39 alone, first time, on the rebased tree (served on 8768; before the rebase a first run had missed three at the phone half when the hidden frame's outbox landed its tap late, the known timing miss, and passed 39 of 39 alone on the next run).
+
+## 39. v80 The header in four groups, and a quieter first minute
+
+**Why.** Two of the four leftovers of Todd's walk at v59 (section 15). Thirteen buttons in one row was most of "too
+much going on"; v60 folded four into the gear and the row stayed one undivided run of nine. And a fresh incident
+said the seeded incident's words to someone with nothing drawn yet: "No divisions yet. Press Draw division" (a
+button renamed at v60, the boundary skipped), twelve headings with "none yet" under them, "No units have joined yet"
+over a join code behind a pill, a row of filter chips reading 0. Drawn on `try/mockups/leftovers.html` (the header
+live in four shapes at three widths, the base at four moments of a fresh incident beside today's) and every decision
+taken as recommended.
+
+**Built.** The header: the nine buttons in four groups with a word over each, This period (Period, Briefing), Boards
+(People, Transports, Public), Forms (Org chart, Sitrep, IAP) and The day (Replay), a thin line between, every button
+one press with its words and hover text as before; the gear moves to the right end beside the pills, so the row is
+the incident's work and the right end the device and the account. At 1280 the groups and the pills share the
+buttons' row as v60 placed them; under 1240 px the words go and the lines stay, under the phone width the lines go
+too. Label 2 of Show me around reads "Four groups: this period's sheets, the boards, the ICS forms, the day."
+The fresh incident: until the first phone joins, the home panel leads with the codes' card, the same drawing the
+CEDAR7 pill opens (the join code with its QR, Copy, Invited members only, Print a join card, Copy the link, Print
+bands, the Operations code as dots), then Requests, Hazards, Facilities with Place, the 205 and Incident; no units
+line, no PAR, no Message the field, no Agencies until a unit is in, and Messages, Transports, Public information
+(with the first photo) and Map imagery wait for their first row whatever the units. The divisions list says "Nothing here yet. Draw the
+boundary, then divisions inside it." and, after the boundary, "Boundary drawn. Now a division: an area for one
+unit."; a division with no unit says "No units yet. Phones join with CEDAR7."; the log's chips wait for a line
+each (All stays, and a pressed chip stays); the legend's Transport run entry waits for a run. The first unit's
+check-in makes the panel today's: Units lead and the codes go back behind the pill.
+
+*Decided:* a labelled row, not menus (every button one press; Forms as the one menu was the fallback, four menus
+set aside); the gear beside the pills; the first group named This period; the codes lead until the first unit joins;
+the empty sections stay out until their first row, Hazards excepted, and, a step past the page's list, so do the
+sections whose only way in is their own form (Requests, the 205, Facilities); the labels keep their words; no
+migration.
+
+**Built** 19 October 2026 as `The header in four groups, and a quieter first minute (v80)` on branch `leftovers`:
+index.html, base.css, discover.js's label 2, `homeHtml` / `zonesHtml` / `zoneHtml` / `logFiltersHtml` in ui.js,
+`drawLegend` and `ops-show` in main.js; the `seeded` suite's groups check, the `starters` suite's three
+fresh-incident checks; `npm run check` and `npm test` pass; the full smoke run headless (`dev/smoke-headless.py`, the worktree served on 8770) 918 of 921 across 42 suites,
+the three misses rerun alone: `periods` and `ics100` passing (the transfer and the briefing checks, timing), and `publicInfo`'s
+"the home panel says so" a real miss of the build, the Public information section keyed on cleared photos and so gone once a
+photo was un-cleared; keyed on any photo instead, after which `publicInfo` 11 of 11, `starters` and `seeded` alone (32 of 32 on
+its second run alone, the first missing the known half-second hover flake). No migration, no rule test.
 
 ## Done before this list
 

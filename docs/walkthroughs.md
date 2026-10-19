@@ -1719,6 +1719,33 @@ the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words 
 - **At the base's phone width** the card takes the screen's width under the header and its rows stack.
 
 
+## Re-walk after v80
+
+The header in four groups, and a quieter first minute: Marcus reading the base's row all day, his relief on a
+1200-wide laptop, a first-time Operations opening an incident with nothing drawn, and the clerk at the log, walked
+on 2026-10-19 in the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words through the `seeded`
+and `starters` suites and screenshots of the header at 1280, 1200 and 1000.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The row | Marcus | THIS PERIOD Period · Briefing, a line, BOARDS People · Transports · Public, a line, FORMS Org chart · Sitrep · IAP, a line, THE DAY Replay; CEDAR7, the dot, the clock and the gear at the right end. Four things to read instead of nine; every button where a press expects it. | Clear |
+| A press | Marcus | Period opens the Period panel, People the board, IAP the plan, as before; the hover text is the same. | Clear |
+| 1200 wide | his relief | The words go, the lines stay, the pills keep the end of the row; at 1000 the same. Nothing wraps to a third row. | Clear |
+| The first open | a first-time Operations | Label 2 reads "Four groups: this period's sheets, the boards, the ICS forms, the day." over the row; the other eight labels as at v60. | Clear |
+| Just opened | a first-time Operations | After the Period sheet (v77), Back to units: the join code large with its QR, Print a join card, Print bands, the Operations code as dots; Requests, Hazards (none reported), Facilities with Place, the 205, Incident. No "No units have joined yet", no PAR, no Message the field, no Messages, no Transports, no Public, no Map imagery. The list: "Nothing here yet. Draw the boundary, then divisions inside it." Boundary lit in the tools row. The log's chips: All and Operations (and Notes), none reading 0. The legend without numbers and without Transport run. | Clear |
+| The boundary drawn | a first-time Operations | The list: "Boundary drawn. Now a division: an area for one unit."; Division lit. | Clear |
+| The first division | a first-time Operations | Its row, Not started 1 in the legend, "1 division" on the line; the panel opens on it, "No units yet. Phones join with CEDAR7." under Assigned to. | Clear |
+| The first unit joins | Marcus | Units lead the panel, the PAR and Message the field appear, the codes are behind the pill again. | Clear |
+| The log's chips | the clerk | On the seeded incident every chip has a count and all are there; Since you looked comes and goes as before. | Clear |
+| Dark | Marcus | The labels are the small capitals of the panel headings, the lines the panel's rule; looked at once in dark on the mock-up page, not on the base this walk. | Not seen |
+
+**Still bites, small:**
+
+- **Requests, the 205 and Facilities stay on a fresh panel** with their forms, since nowhere else fills them; the page's list had the 205 waiting for its first row.
+- **The Operations code's dots** sit in the panel until the first unit joins, where someone could walk past them; Show is still a press.
+- **The words go under 1240 px**, a guess at the command post's screens; a window between 1200 and 1240 would still have had room for them.
+- **The first join swaps the panel** under the hand: the codes' card goes as Units arrive.
+
 ## Re-walk after v79
 
 The 214's water words: Rosa coming out of the water, the Safety Officer and the clerk reading the 214, walked on

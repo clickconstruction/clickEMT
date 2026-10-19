@@ -215,15 +215,28 @@
     </div>
     <button type="button" class="ppl" id="head-count" data-action="people" hidden></button>
     <span class="top-btns">
+    <span class="top-group"><span class="k tg-label" aria-hidden="true">This period</span>
     <button class="btn sm" data-action="period">Period</button>
     <button class="btn sm" data-action="briefing">Briefing</button>
-    <button class="btn sm" data-action="org" title="The organization chart, ICS 207: the seats, the branches and divisions, the units, with the span of control">Org chart</button>
+    </span><span class="tg-div" aria-hidden="true"></span>
+    <span class="top-group"><span class="k tg-label" aria-hidden="true">Boards</span>
     <button class="btn sm" data-action="people" title="Everyone on scene by name and unit: qualifications, status, hours on scene, and the check-in list (ICS 211)">People</button>
-    <button class="btn sm" data-action="public" title="Public information: the photos cleared for the public with their captions and checks, the public set to download, who is PIO">Public</button>
     <button class="btn sm" data-action="transports" title="The transport board: every bus, van, ambulance and boat run from a pickup to a shelter or a hospital, who is on it, where it is, one button for the next step">Transports</button>
+    <button class="btn sm" data-action="public" title="Public information: the photos cleared for the public with their captions and checks, the public set to download, who is PIO">Public</button>
+    </span><span class="tg-div" aria-hidden="true"></span>
+    <span class="top-group"><span class="k tg-label" aria-hidden="true">Forms</span>
+    <button class="btn sm" data-action="org" title="The organization chart, ICS 207: the seats, the branches and divisions, the units, with the span of control">Org chart</button>
     <button class="btn sm" data-action="sitrep" title="Incident status summary, ICS 209">Sitrep</button>
     <button class="btn sm" data-action="iap" title="The Incident Action Plan: objectives, organization, every division's 204, communications, medical, the safety message">IAP</button>
+    </span><span class="tg-div" aria-hidden="true"></span>
+    <span class="top-group"><span class="k tg-label" aria-hidden="true">The day</span>
     <button class="btn sm" data-action="replay" id="btn-replay" title="Play the day back: where every unit was, minute by minute">Replay</button>
+    </span>
+    </span>
+    <span class="top-pills">
+      <button type="button" class="pill mono" id="inc-code" data-action="codes" title="The join code for field phones. Click: the QR, the join card, the bands, the Operations code." aria-haspopup="dialog" aria-expanded="false" aria-controls="codes-pop">Join code</button>
+      <button type="button" class="pill" id="live-pill" data-action="live" title="Connecting" aria-haspopup="dialog" aria-expanded="false" aria-controls="live-pop"><span class="dot" id="live-dot"></span><span id="live-text">connecting</span></button>
+      <button type="button" class="pill mono clock" id="clock" data-action="clock" title="Local time; click for UTC"></button>
     <span class="gear-wrap">
       <button class="btn sm gear" data-action="gear" id="btn-gear" title="Settings, this screen, switch incident, sign out" aria-haspopup="menu" aria-expanded="false" aria-controls="gear-menu">&#9881;&#xFE0E;<span class="chev">&#9662;</span></button>
       <div class="menu" id="gear-menu" role="menu" hidden>
@@ -237,11 +250,6 @@
         <button class="menu-item" role="menuitem" data-action="sign-out">Sign out</button>
       </div>
     </span>
-    </span>
-    <span class="top-pills">
-      <button type="button" class="pill mono" id="inc-code" data-action="codes" title="The join code for field phones. Click: the QR, the join card, the bands, the Operations code." aria-haspopup="dialog" aria-expanded="false" aria-controls="codes-pop">Join code</button>
-      <button type="button" class="pill" id="live-pill" data-action="live" title="Connecting" aria-haspopup="dialog" aria-expanded="false" aria-controls="live-pop"><span class="dot" id="live-dot"></span><span id="live-text">connecting</span></button>
-      <button type="button" class="pill mono clock" id="clock" data-action="clock" title="Local time; click for UTC"></button>
       <div class="pop codes-pop" id="codes-pop" role="dialog" aria-label="The codes" hidden></div>
       <div class="pop live-pop" id="live-pop" role="dialog" aria-label="The connection" hidden></div>
     </span>

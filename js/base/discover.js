@@ -19,7 +19,7 @@ const THIN = 80;   // a part shorter than this gets its label hung under it, not
 // own name, then one line of twelve words at most. `quiet`: tinted only while the alarm line is quiet.
 const LABELS = [
   { key: 'head', targets: ['.top-main'], x: 0.02, title: 'The incident line', text: 'Period, units, divisions, hazards. Rest on it for the whole picture.' },
-  { key: 'btns', targets: ['.top-btns'], x: 0.4, title: 'The buttons', text: 'The period\'s sheets, the boards, the ICS forms, filled from the map.' },
+  { key: 'btns', targets: ['.top-btns'], x: 0.4, title: 'The buttons', text: 'Four groups: this period\'s sheets, the boards, the ICS forms, the day.' },
   { key: 'bars', targets: ['#bars'], x: 0.45, quiet: true, title: 'Emergency and alarms', text: 'Red: a crew in trouble. Yellow: a safety message or head count.' },
   { key: 'tools', targets: ['.tools'], x: 0.02, title: 'Draw · Boundary · Division · Layers', text: 'Start here: the boundary, then the divisions inside it.' },
   { key: 'map', targets: ['#map'], x: 0.3, y: 0.42, title: 'The map', text: 'Divisions by status, units, photos with their heading, hazards. Click anything.' },

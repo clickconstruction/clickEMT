@@ -44,6 +44,14 @@
 .ic-base { display: block; }
 @media (max-width: 720px) { .ic-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inc-pop { width: calc(100vw - 24px); } }
 .top-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* The buttons in four groups (v80): a word over each (This period · Boards · Forms · The day, as label 2 of Show me
+   around names them) and a thin line between; every button still one press. Under 1240 px the words go, so the pills
+   keep the end of the buttons' row; under the phone width the lines go too. The gear sits with the pills at the right. */
+.top-group { display: inline-flex; align-items: center; gap: 6px; }
+.tg-label { font-size: 10.5px; margin-right: 2px; white-space: nowrap; }
+.tg-div { width: 1px; height: 22px; background: var(--line); margin: 0 4px; flex: none; }
+@media (max-width: 1240px) { .tg-label { display: none; } }
+@media (max-width: 720px) { .tg-div { display: none; } }
 /* The pills (v59): the join code, the connection and the clock, last in the header and pushed to its right end, so a
    wide screen has the header on one row and 1280 has them at the end of the buttons' row. The connection is a dot
    alone while live or still connecting; its words show only when a connection that was there has gone. */
@@ -815,7 +823,7 @@ button.pill { border: 0; cursor: pointer; font: inherit; font-size: 12px; line-h
 .pop[hidden] { display: none; }
 .codes-pop { width: min(400px, calc(100vw - 24px)); }
 .codes-pop .join-box { margin-top: 4px; }
-.live-pop { width: min(320px, calc(100vw - 24px)); right: 44px; }
+.live-pop { width: min(320px, calc(100vw - 24px)); right: 94px; }   /* under the dot, the clock and the gear to its right (v80) */
 .lv-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line-soft); } .lv-row:first-child { border-top: 0; }
 .lv-row .ok { color: var(--cleared); } .lv-row .warn, .zh-row .warn { color: var(--hazard-ink); }
 .ppl { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 0 10px 0 8px; min-height: 30px; background: var(--soft); color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }

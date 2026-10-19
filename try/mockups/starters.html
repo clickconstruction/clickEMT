@@ -14,7 +14,10 @@
      it easy to configure. The New incident sheet as built, the same sheet with two rows of kind buttons (press a kind,
      its sub-kinds appear; press one and the Period sheet below fills from the starter), the Flood starter in full and
      sixteen more sketched, the thinking, the decisions with the recommended answer first, and what a build would
-     touch. Made-up data (the mock's Cedar Fork Flooding, opened at 19:58). Nothing here writes anywhere. -->
+     touch. Added the same day on the user's adjustment: the centre by address, an Address box above the map centre
+     with Google Places suggestions as you type (a made-up Cedar Fork list stands in here; nothing calls Google), the
+     sheet without the key, the facility card later, four more decisions. Made-up data (the mock's Cedar Fork
+     Flooding, opened at 19:58). Nothing here writes anywhere. -->
 <style>
   body { min-height: 100%; }
   .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
@@ -119,6 +122,20 @@
   ol.full { margin: 0; padding-left: 22px; } ol.full li { margin: 0 0 5px; }
   .full-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 24px; }
   .full-grid p { margin: 0; }
+  /* ---- the centre by address */
+  .states { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .states .btn.on { pointer-events: none; }
+  .addr-wrap { position: relative; }
+  .sugg { position: absolute; left: 0; right: 0; top: calc(100% - 4px); z-index: 6; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 4px; }
+  .sugg[hidden] { display: none; }
+  .sugg button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 6px; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+  .sugg button .sub { display: block; font-size: 12px; }
+  .sugg button.on, .sugg button:hover { background: var(--hover); }
+  .sugg .g { padding: 4px 10px 6px; font-size: 11px; color: var(--muted); text-align: right; }
+  .nokey { font-size: 13px; color: var(--muted); padding: 9px 10px; border: 1px dashed var(--control-border); border-radius: 8px; }
+  .later { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 1px 8px; background: var(--soft); color: var(--muted); vertical-align: 1px; text-transform: none; letter-spacing: 0; }
+  .fcard .title { font-size: 16px; font-weight: 600; } .fcard .title span { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+  .fcard .form select { border: 1px solid var(--control-border); border-radius: 8px; padding: 9px 10px; font: inherit; font-size: 15px; background: var(--control-bg); color: var(--ink); }
   @media (max-width: 720px) { .sheet { padding: 12px; } .obj { grid-template-columns: 22px auto minmax(0, 1fr) auto; } .obj .tag { display: none; } }
 </style>
 </head>
@@ -129,6 +146,7 @@
     <a href="#today">Today</a>
     <a href="#sheet">The sheet, live</a>
     <a href="#starters">The starters</a>
+    <a href="#address">The centre by address</a>
     <a href="#best">Best we can do?</a>
     <a href="#decide">Decide</a>
     <a href="#touch">What it touches</a>
@@ -266,6 +284,77 @@
   </div>
 </section>
 
+<section class="part" id="address">
+  <h2 class="sec">The centre by address <span class="sub">the adjustment of 19 October: an Address box above the map centre, suggestions as you type, one press sets the centre</span></h2>
+  <div class="states">Show it <button class="btn sm on" data-key="on" type="button">with the key in config.js</button><button class="btn sm" data-key="off" type="button">without it</button></div>
+  <div class="screens">
+    <div class="screen">
+      <div class="sheet" id="addr-sheet" aria-label="The New incident sheet with the Address box">
+        <h2>Open a new incident</h2>
+        <div class="form">
+          <label>Name <input id="aname" value="Cedar Fork Flooding" placeholder="Cedar Fork Flooding"></label>
+          <div class="hint">The Kind rows and the Operational period box as above, unchanged.</div>
+          <label>Base <input id="abase" placeholder="Cedar Fork High School"></label>
+          <div class="addr-wrap" id="addr-wrap"></div>
+          <div class="hint" id="addr-hint"></div>
+          <div class="row-2">
+            <label>Map center, latitude <input id="alat" placeholder="30.2672"></label>
+            <label>Longitude <input id="alng" placeholder="-97.7431"></label>
+          </div>
+          <div class="hint" id="centre-line">No centre yet: type an address above, or Use my location.</div>
+          <div class="row-btns"><button type="button" class="btn sm" data-where="your location into the two boxes, as today">Use my location</button><button type="button" class="btn pri" id="acreate">Create incident</button></div>
+        </div>
+      </div>
+      <div class="cap" style="max-width:720px"><b>One box above the two numbers.</b> Type a few letters of an address (try "mill" or "pecan") and the places that match are offered, nearest first; one press sets latitude and longitude, reads the pick back under them, and fills Base with the place's name when Base is empty. Enter with no pick looks the typed words up. Use my location stays as it is. The sheet has no map preview: the two numbers are the centre, as today, and the address words are not stored. Without the key in config.js the box is one muted line and the sheet is today's.</div>
+    </div>
+    <div class="screen">
+      <div class="panel fcard" aria-label="Place a facility, later">
+        <div class="k">Place a facility <span class="later">later</span> <span class="sub">· the facility card at v76, its Street address box offering the same suggestions</span></div>
+        <div class="title" style="margin:6px 0 8px">Command post <span>from the Flood starter's Place first</span></div>
+        <div class="form">
+          <div class="row-2"><label>Kind <select aria-label="Kind"><option>Command post</option><option>Staging area</option><option>Boat ramp</option><option>Shelter</option></select></label><label>Name <input placeholder="Where it is" value="Cedar Fork High School, front office"></label></div>
+          <div class="addr-wrap"><label>Street address <input id="faddr" placeholder="1200 Mill St, east lot" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="faddr-list" aria-autocomplete="list" maxlength="160"></label><div class="sugg" id="faddr-list" role="listbox" hidden></div></div>
+          <div class="hint">Getting there on the join card and the 204's Where to go read it before the coordinates (v48). A pick moves the pin.</div>
+          <label>Contact <input placeholder="A channel or a phone number" value="CMD 1"></label>
+          <label>Notes <input placeholder="What the field should know" value="Enter from Mill Street"></label>
+          <div class="hint">Position <span class="mono" id="fpos">30.2562, -97.7415</span> · from the click on the map, or from the address</div>
+          <div class="row-btns"><button type="button" class="btn sm" data-where="the map at the pin">Show on map</button><button type="button" class="btn sm" data-where="the home panel; the facility stays">Close</button><button type="button" class="btn pri sm" data-where="Save: the facility written with its address and its point">Save</button></div>
+        </div>
+      </div>
+      <div class="cap"><b>Later: the same box on the facility card.</b> Today a facility is one click on the map, then its card to name it; the Street address box is typed. With the lookup the box offers the same suggestions and a pick moves the pin, so a Place first chip from the starter can open the card by address with no click on the map. One screen, after the sheet.</div>
+    </div>
+  </div>
+  <div class="think" style="margin-top:20px">
+    <div class="panel">
+      <div class="k">The key</div>
+      <ul>
+        <li>The one config.js already carries for the Google layers, <span class="mono">window.GOOGLE_MAPS_KEY</span>. It is public, so it must be restricted in Google Cloud to the HTTP referrers <span class="mono">https://clickemt.com/*</span> and <span class="mono">http://localhost:8766/*</span>, with Places API (New) and Geocoding API enabled beside Map Tiles API.</li>
+        <li>The Incident settings key (gear) cannot serve this sheet: no incident exists yet when it is typed.</li>
+        <li>The settings' Test button (<span class="mono">testGoogleKey</span> in layers.js) opens a tile session today; it would also ask Places one word and say whether Places answers.</li>
+        <li>Todd makes the key himself, with the Maps tooling already used on clicktooling.com. Until it is in config.js the sheet is today's.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What goes to Google, and what never will</div>
+      <ul>
+        <li>The typed words go to Google as they are typed. For an incident's centre and a facility that is fine: a school, a bridge, a church.</li>
+        <li>That is also why no person's address will ever go through it: an evacuee's street, a licence's address and a house record stay typed, as today. The box is on two forms and no other.</li>
+        <li>Nothing on this page calls Google; the list here is nine made-up Cedar Fork places. The mock (dev/mock-supabase.js) gets a stand-in for the lookup so the smoke suite can type, pick and read the numbers.</li>
+        <li>The list says "powered by Google", which Google asks for when its suggestions are shown off a Google map.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">The calls, and the cost</div>
+      <ul>
+        <li><span class="mono">places:autocomplete</span> (Places API (New), REST, called with fetch and the key) with the typed words, a session token and a <span class="mono">locationBias</span> circle around the device's position; then <span class="mono">places/{id}</span> with <span class="mono">fields=location,displayName</span> for the pick, which ends the session.</li>
+        <li>Enter with nothing picked sends the words to the Geocoding API and the first answer sets the centre: a full address pasted in works too.</li>
+        <li>Billed per session token: one per address typed and picked. A handful of incidents a year is cents.</li>
+        <li>No migration: the centre is <span class="mono">center_lat</span> and <span class="mono">center_lng</span>, as today; the base's name is the Base box.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <section class="part" id="best">
   <h2 class="sec">Is this the best we can do? <span class="sub">what the sheet is for, what a starter is, what was set aside</span></h2>
   <div class="think">
@@ -330,6 +419,13 @@
       <li><b>3. Whether a starter seeds facilities on the map or only names them.</b> Recommended: <b>names only</b>: Place first on the Period sheet, a chip per kind, each a press into Place on the map, gone once one is placed; the starter does not know where the boat ramp is. The other way inserts four facilities at the map's centre, named by kind, to drag into place. <span class="open">open</span></li>
       <li><b>4. Whether the phone's briefing says the kind.</b> Recommended: <b>yes, one word</b> under the briefing's title ("Cedar Fork Flooding, a flood"), nowhere else on the phone: a unit arriving from another county learns what it is walking into before the safety line. The other way leaves the phone untouched, the name usually saying it. <span class="open">open</span></li>
     </ul>
+    <div class="k">The centre by address: yours to decide (recommended first)</div>
+    <ul class="decisions">
+      <li><b>5. One key or two.</b> Recommended: <b>one key for the layers and the lookup, in config.js</b> (<span class="mono">window.GOOGLE_MAPS_KEY</span>), restricted to this site with the three APIs enabled; the Test button checks it once for both. The other way is a second key for Places alone: one more thing to restrict, rotate and paste. <span class="open">open</span></li>
+      <li><b>6. The sheet first, facilities later.</b> Recommended: <b>the New incident sheet first</b>, the facility card's Street address box as a later step; the sheet is where a first-timer meets an empty map. The other way does both at once, which is small since the facility's box already exists. <span class="open">open</span></li>
+      <li><b>7. Suggestions biased to the region.</b> Recommended: <b>a locationBias around the device's position</b>, or the state when there is no fix, so "Mill St" means the one nearby. The other way is unbiased: every Mill Street in the country, the nearest not first. <span class="open">open</span></li>
+      <li><b>8. Its own release.</b> Recommended: <b>after the starters, as "The centre by address, vNN"</b>: no migration, one new module, a key to make; the starters' release carries a migration and is tested on its own. The other way folds it into the starters' release. <span class="open">open</span></li>
+    </ul>
   </div>
 </section>
 
@@ -350,6 +446,16 @@
           <li><b>The mock:</b> the column, the check, <span class="mono">archived_at</span>, the opening line, the seed's incident as a flood; <span class="mono">SEED_VERSION</span> up by one after 0039's.</li>
           <li><b>The suites:</b> <span class="mono">periods</span> opens an incident with a kind and reads the seven objectives, removes one, starts period 2 and reads six; <span class="mono">seeded</span> reads "a flood" on the card's head.</li>
           <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, the punchlist's section, "Built as vN" here, the re-walk as a first-time Operations; the discover label for the home panel unchanged.</li>
+        </ul>
+        <div class="k" style="margin-top:16px">The centre by address, its own release <span class="sub">· no migration; a v48-sized piece once the key exists</span></div>
+        <ul class="touch">
+          <li><b>js/shared/places.js</b> (fetch, no DOM): <span class="mono">suggest(words, { token, near })</span> posts to <span class="mono">places:autocomplete</span> with the key in <span class="mono">X-Goog-Api-Key</span>, a session token and a <span class="mono">locationBias</span> circle; <span class="mono">placeLocation(id, token)</span> reads <span class="mono">places/{id}</span> with <span class="mono">fields=location,displayName</span> and ends the session; <span class="mono">geocode(words)</span> for Enter with no pick; the key from <span class="mono">googleKey()</span> in layers.js. A Node test with fetch stubbed checks the request shape.</li>
+          <li><b>index.html and ui.js:</b> the Address box and its list above Map center on <span class="mono">#new-incident</span>, or the muted line when <span class="mono">googleKey()</span> is empty; <span class="mono">suggestionsHtml</span> draws the list with "powered by Google".</li>
+          <li><b>main.js:</b> the typing handler (a 250 ms wait, one session token per run of typing), the pick filling <span class="mono">lat</span>, <span class="mono">lng</span> and an empty Base, Enter, Escape; <span class="mono">use-my-location</span> unchanged.</li>
+          <li><b>layers.js:</b> <span class="mono">testGoogleKey</span> also asks <span class="mono">places:autocomplete</span> for one word and says whether Places answers.</li>
+          <li><b>The mock:</b> a stand-in for the two calls with a few Cedar Fork addresses, so the <span class="mono">seeded</span> or <span class="mono">join</span> suite can type "1200 Mill", pick, and read the two numbers.</li>
+          <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, config.js's comment naming Places API (New) and Geocoding API beside Map Tiles, the handoff's "What only Todd can set" (the key, its referrers, the three APIs).</li>
+          <li><b>Later:</b> the facility card's Street address box with the same list, a pick moving the pin; the Place first chips opening the card by address.</li>
         </ul>
       </div>
     </div>
@@ -490,6 +596,13 @@
     if (pb) { toast('Would open Place on the map for a ' + FAC[pb.dataset.place][0].toLowerCase() + ' (' + FAC[pb.dataset.place][1] + ')'); return; }
     const w = e.target.closest('[data-where]');
     if (w) { toast('Would open ' + w.dataset.where); return; }
+    const kk = e.target.closest('[data-key]');
+    if (kk) { keyOn = kk.dataset.key === 'on'; for (const x of document.querySelectorAll('[data-key]')) x.classList.toggle('on', x === kk); drawAddr(); return; }
+    if (e.target.closest('#acreate')) {
+      const name = $('aname').value.trim() || 'Cedar Fork Flooding', lat = $('alat').value.trim(), lng = $('alng').value.trim(), base = $('abase').value.trim();
+      toast(lat && lng ? 'Would open ' + name + ' centred on ' + lat + ', ' + lng + (base ? ', base ' + base : '') + '; the address words are not stored' : 'Would open ' + name + ' with no centre: the map opens where it was, as today');
+      return;
+    }
     if (e.target.closest('#create')) {
       const name = $('nname').value.trim() || 'Cedar Fork Flooding', n = per.objectives.length;
       const what = sub ? 'a ' + subLabel(sub).toLowerCase() : kind ? 'a ' + kindLabel(kind).toLowerCase() : 'no kind';
@@ -512,8 +625,64 @@
     per.objectives.push({ text: v, tag: 'yours' }); draw();
   });
 
+  // ---- the centre by address: nine made-up Cedar Fork places stand in for Google's suggestions
+  const PLACES = [
+    { name: 'Cedar Fork High School', addr: '1200 Mill St, Cedar Fork, TX', lat: 30.2562, lng: -97.7415 },
+    { name: 'Cedar Fork Fire Station 1', addr: '800 Main St, Cedar Fork, TX', lat: 30.2577, lng: -97.7433 },
+    { name: 'Cedar Fork Community Center', addr: '410 Main St, Cedar Fork, TX', lat: 30.2585, lng: -97.7440 },
+    { name: 'First Baptist Church', addr: '300 Cedar Fork Rd, Cedar Fork, TX', lat: 30.2688, lng: -97.7360 },
+    { name: 'Pecan Park', addr: '2 Pecan Park Dr, Cedar Fork, TX', lat: 30.2592, lng: -97.7471 },
+    { name: '', addr: '120 Pecan Ln, Cedar Fork, TX', lat: 30.2601, lng: -97.7388 },
+    { name: '', addr: '45 Riverside Dr, Cedar Fork, TX', lat: 30.2628, lng: -97.7451 },
+    { name: 'Mill Street Bridge', addr: 'Mill St at Cedar Fork Creek, Cedar Fork, TX', lat: 30.2612, lng: -97.7402 },
+    { name: 'Low Water Crossing boat ramp', addr: '1501 Low Water Crossing Rd, Cedar Fork, TX', lat: 30.2530, lng: -97.7490 }
+  ];
+  let keyOn = true;
+  const latLng = (p) => p.lat.toFixed(4) + ', ' + p.lng.toFixed(4);
+  function matches(q) {
+    const t = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    if (!t.length || q.trim().length < 2) return [];
+    return PLACES.filter((p) => { const s = (p.name + ' ' + p.addr).toLowerCase(); return t.every((w) => s.includes(w)); }).slice(0, 5);
+  }
+  function suggHtml(list, on) {
+    return list.length
+      ? list.map((p, i) => `<button type="button" role="option" aria-selected="${i === on}" class="${i === on ? 'on' : ''}" data-pick="${i}">${p.name ? esc(p.name) + '<span class="sub">' + esc(p.addr) + '</span>' : esc(p.addr)}</button>`).join('') + '<div class="g">powered by Google</div>'
+      : '<div class="g" style="text-align:left">No match; Enter looks the words up</div>';
+  }
+  // one autocomplete per box: the input, its list, and what a pick does (the build's handler in main.js, without the fetch)
+  function autocomplete(input, list, onPick) {
+    let items = [], on = -1;
+    const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); on = -1; };
+    const open = () => { items = matches(input.value); on = items.length ? 0 : -1; list.innerHTML = suggHtml(items, on); list.hidden = input.value.trim().length < 2; input.setAttribute('aria-expanded', String(!list.hidden)); };
+    const pick = (i) => { const p = items[i]; if (!p) return; input.value = p.addr; close(); onPick(p); };
+    input.addEventListener('input', open);
+    input.addEventListener('focus', () => { if (input.value.trim().length >= 2) open(); });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (list.hidden) open(); if (!items.length) return; e.preventDefault(); on = (on + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length; list.innerHTML = suggHtml(items, on); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (!list.hidden && on >= 0) pick(on); else { const m = matches(input.value); if (m.length === 1) { items = m; pick(0); } else { close(); toast('Would look "' + input.value.trim() + '" up (Geocoding API); the first answer sets the centre'); } } }
+      else if (e.key === 'Escape') close();
+    });
+    input.addEventListener('blur', () => setTimeout(close, 150));
+    list.addEventListener('mousedown', (e) => { const b = e.target.closest('[data-pick]'); if (b) { e.preventDefault(); pick(Number(b.dataset.pick)); } });
+  }
+  function drawAddr() {
+    const w = $('addr-wrap');
+    $('addr-hint').hidden = !keyOn;
+    if (!keyOn) { w.innerHTML = '<div class="nokey">Address lookup needs the Google Maps key in config.js.</div>'; return; }
+    w.innerHTML = `<label>Address <input id="addr" placeholder="1200 Mill St, Cedar Fork" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="addr-list" aria-autocomplete="list" maxlength="160"></label><div class="sugg" id="addr-list" role="listbox" hidden></div>`;
+    $('addr-hint').textContent = 'Suggestions as you type; one press sets the centre. Enter with no pick looks the typed words up. The words go to Google: an incident\u2019s centre, never a person\u2019s address.';
+    autocomplete($('addr'), $('addr-list'), (p) => {
+      $('alat').value = p.lat.toFixed(4); $('alng').value = p.lng.toFixed(4);
+      if (p.name && !$('abase').value.trim()) $('abase').value = p.name;
+      $('centre-line').textContent = 'Centre: ' + latLng(p) + ' · ' + (p.name ? p.name + ', ' : '') + p.addr;
+      toast('Would ask Google for the place’s location (the session token ends), fill the two boxes' + (p.name ? ' and an empty Base box' : ''));
+    });
+  }
+  autocomplete($('faddr'), $('faddr-list'), (p) => { $('fpos').textContent = latLng(p); toast('Would move the pin to ' + latLng(p) + ' and keep the address for Getting there'); });
+
   drawStarters();
   draw();
+  drawAddr();
 
   const themeNow = () => document.documentElement.dataset.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };

@@ -534,7 +534,11 @@ Walk first, then rank, as before.
   `ic_incidents.kind` and `ic_objectives.archived_at` (migration 0040, after 0039 on `water-words`), `STARTERS` in
   rules.js, the rows on the sheet, the writes into `ic_periods` and `ic_objectives` on open. Four decisions on the
   page, the recommended answers first: once at the opening; the seventeen sub-kinds drawn; facilities named, not
-  placed; one word on the phone's briefing.
+  placed; one word on the phone's briefing. The same page draws **the centre by address** (Todd's adjustment the same
+  day): an Address box above the map centre on the New incident sheet, Google Places suggestions as you type, one
+  press sets the centre and fills an empty Base; the facility card's Street address box later; one muted line without
+  the key in config.js (`window.GOOGLE_MAPS_KEY`, restricted to the site, with Places API (New) and Geocoding API
+  enabled beside Map Tiles); no migration, its own release after the starters; four more decisions, one key first.
 - **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided.
 - **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes.
 - **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes.

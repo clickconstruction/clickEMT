@@ -6,13 +6,13 @@ clickEMT is an incident map for floods: a base map for the command post and a ph
 
 ## Where it stands
 
-clickemt.com runs v82, released on 19 October 2026. Nothing is waiting on a branch, and no real incident has been run yet.
+clickemt.com runs v83, released on 19 October 2026. Nothing is waiting on a branch, and no real incident has been run yet.
 
 | Piece | State |
 | --- | --- |
-| The site | v82 live at [clickemt.com](https://clickemt.com) (the base) and [clickemt.com/field](https://clickemt.com/field/) (the phone). Pushing `main` deploys it through GitHub Pages in about a minute. |
+| The site | v83 live at [clickemt.com](https://clickemt.com) (the base) and [clickemt.com/field](https://clickemt.com/field/) (the phone). Pushing `main` deploys it through GitHub Pages in about a minute. |
 | The database | Supabase project charity-tooling (`cjwybuhogxyayjnuxpem`), shared with a separate charity app. Migrations 0001 to 0040 are applied by hand; the next free number is 0041. |
-| Tests | `npm run check` and `npm test` pass. The 26 rule-test files, 461 checks, pass on the real database. The browser smoke suite was 913 of 924 at v82, and every missed suite passed alone. |
+| Tests | `npm run check` and `npm test` pass. The 26 rule-test files, 461 checks, pass on the real database. The browser smoke suite was 930 of 932 at v83, and every missed suite passed alone. |
 | Google Maps | A browser key in `config.js`, limited to clickemt.com and localhost:8766. The Google map layers and the address box work. |
 | Sign-in by a code | Built (v73) but not live: the shared Supabase project still needs an SMS provider, the code in its email template, and real SMTP. |
 | Real use | No real incident, invitation email or sign-in code has run yet. |
@@ -21,6 +21,7 @@ What shipped on 19 October, newest first:
 
 | Version | What changed |
 | --- | --- |
+| v83 | The facility card's Street address box offers Google's suggestions; a pick fills the address and the point, Save moves the pin |
 | v82 | The incident's kind is a column of its own (migration 0040); the 214's opening line, an objective's removal and a change of kind come from the database |
 | v81 | Every time on the base can switch to UTC with one click on the clock; new front-door pictures |
 | v80 | The header's buttons in four labelled groups; a fresh incident opens quieter |
@@ -54,7 +55,7 @@ The first job is turning on real sign-in. The owner set this order on 19 October
 1. **Turn on sign-in by a code.** In the Supabase dashboard for charity-tooling, set three things: an SMS provider (Twilio Verify is the recommendation), the code `{{ .Token }}` in the Magic Link email template, and custom SMTP through the project's Resend account. Each setting reaches the charity app too, so each one needs the owner's yes. The click paths are under "Where things stand" in [docs/handoff.md](handoff.md#where-things-stand).
 2. **Run the first real incident by hand,** on a phone and a laptop. Open an incident on clickemt.com, invite yourself from the Members tab, and sign in with a code by email and by text. Then join a phone with the join code, clear a house, and read the activity log.
 3. **Walk every persona's jobs** at the live version, using [docs/personas.md](personas.md) and [docs/guides/](guides/README.md). Walks are where most new work has come from.
-4. **Smaller open items:** the sixteen thin incident starters, to be read by crews of each kind; the address box on the facility form; the leftovers in punchlist section 15.
+4. **Smaller open items:** the sixteen thin incident starters, to be read by crews of each kind; the leftovers in punchlist section 15.
 5. **An idea, not yet drawn:** a mass casualty module, with triage colours on the QR bands and a Medical Branch on the forms. It needs a mock-up first.
 
 ## How the work is run

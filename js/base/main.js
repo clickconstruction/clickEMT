@@ -11,7 +11,7 @@ import { incidentLine } from '../shared/rules.js';   // the incident line (v76)
 import { INCIDENT_KINDS, incidentKindText, starterFor, starterSummary } from '../shared/rules.js';   // incident kinds and starter periods (v77)
 import { setClockUtc } from '../shared/rules.js';   // every time in UTC (v81)
 import { placesReady, newSessionToken, suggest, placeLocation, searchPlace } from '../shared/places.js';   // the centre by address (v78)
-import { incidentPopHtml } from './ui.js';
+import { incidentPopHtml, facilityPickText } from './ui.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
 import { startAround, clearAround, layoutAround, aroundOn, aroundSeen } from './discover.js';
@@ -76,70 +76,128 @@ function drawNewKinds() {
 // a pick fills latitude and longitude and an empty Base with the place's name, Enter with no pick looks the words up
 // (Places Text Search); the box is one muted line without the key in config.js. The words go to Google: an incident's centre,
 // never a person's address.
-const addr = { token: '', items: [], on: -1, timer: null, seq: 0 };
+// ---- an address box (v78 on the New incident sheet; v83 on the facility card, design record
+// try/mockups/starters.html, decisions 9 to 13): Google Places suggestions as the words are typed, a pick for the
+// place's point, Enter with nothing picked looking the words up (Places Text Search), Escape putting the list away.
+// input() and list() find the box each time, since the side panel redraws its card; the suggestions live here, and the
+// panel holds still while the box has focus (drawSide). Nothing is asked without the key (decision 12).
+function addressBox({ input, list, near, onPick, onNone }) {
+  const a = { token: '', items: [], on: -1, timer: null, seq: 0 };
+  const draw = () => {
+    const el = list(), inp = input();
+    if (!el || !inp) return;
+    if (!a.items.length) { el.hidden = true; el.innerHTML = ''; inp.setAttribute('aria-expanded', 'false'); return; }
+    el.innerHTML = a.items.map((p, i) => `<button type="button" role="option" aria-selected="${i === a.on}" class="${i === a.on ? 'on' : ''}" data-pick="${i}">${p.main ? esc(p.main) + '<span class="sub">' + esc(p.secondary) + '</span>' : esc(p.text)}</button>`).join('') + '<div class="g">powered by Google</div>';
+    el.hidden = false; inp.setAttribute('aria-expanded', 'true');
+  };
+  const close = () => { a.items = []; a.on = -1; draw(); };
+  const ask = async () => {
+    const inp = input();
+    if (!inp) return;
+    const q = inp.value.trim();
+    if (q.length < 2 || !placesReady()) { close(); return; }
+    if (!a.token) a.token = newSessionToken();
+    const seq = ++a.seq;
+    try {
+      const items = await suggest(q, { token: a.token, near: near() });
+      if (seq !== a.seq) return;   // a newer run of typing is on its way
+      a.items = items; a.on = items.length ? 0 : -1; draw();
+    } catch (err) { if (seq === a.seq) { close(); toast(err.message || String(err), true); } }
+  };
+  const pick = async (p) => {
+    close();
+    try {
+      const place = p.id ? await placeLocation(p.id, { token: a.token }) : p;
+      a.token = '';   // the pick ends the session; the next typing starts another
+      onPick(place);
+    } catch (err) { toast(err.message || String(err), true); }
+  };
+  const lookUp = async () => {
+    const inp = input(), q = inp ? inp.value.trim() : '';
+    if (!q || !placesReady()) return;
+    try { const g = await searchPlace(q, { near: near() }); if (g) await pick(g); else onNone(q); }
+    catch (err) { toast(err.message || String(err), true); }
+  };
+  return {
+    reset: () => { a.token = ''; clearTimeout(a.timer); close(); },
+    onInput: () => { clearTimeout(a.timer); a.timer = setTimeout(ask, 250); },
+    onFocus: () => { const inp = input(); if (inp && inp.value.trim().length >= 2 && !a.items.length) ask(); },
+    onKey: (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!a.items.length) { ask(); return; } e.preventDefault(); a.on = (a.on + (e.key === 'ArrowDown' ? 1 : a.items.length - 1)) % a.items.length; draw(); }
+      else if (e.key === 'Enter') { e.preventDefault(); clearTimeout(a.timer); if (a.items.length && a.on >= 0) pick(a.items[a.on]); else lookUp(); }
+      else if (e.key === 'Escape' && a.items.length) { e.stopPropagation(); close(); }   // the list alone; the panel stays
+    },
+    onBlur: () => setTimeout(close, 150),
+    onListDown: (e) => { const b = e.target.closest('[data-pick]'); if (b) { e.preventDefault(); pick(a.items[Number(b.dataset.pick)]); } }
+  };
+}
 function drawNewAddress() {
   const wrap = $('#new-addr-wrap'), hint = $('#new-addr-hint');
   if (!wrap || !hint) return;
   const ready = placesReady();
   wrap.hidden = !ready;
-  hint.textContent = ready ? 'Suggestions as you type; one press sets the centre. Enter with no pick looks the words up. The words go to Google: an incident\u2019s centre, never a person\u2019s address.' : 'Address lookup needs the Google Maps key in config.js.';
+  hint.textContent = ready ? 'Suggestions as you type; one press sets the centre. Enter with no pick looks the words up. The words go to Google: an incident’s centre, never a person’s address.' : 'Address lookup needs the Google Maps key in config.js.';
 }
 function addrNear() {
   const f = $('#new-incident'), lat = Number(f.lat.value), lng = Number(f.lng.value);
   if (f.lat.value && f.lng.value && Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
   return lastCentre;
 }
-function drawAddrList() {
-  const list = $('#new-addr-list'), input = $('#new-address');
-  if (!list || !input) return;
-  if (!addr.items.length) { list.hidden = true; list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); return; }
-  list.innerHTML = addr.items.map((p, i) => `<button type="button" role="option" aria-selected="${i === addr.on}" class="${i === addr.on ? 'on' : ''}" data-pick="${i}">${p.main ? esc(p.main) + '<span class="sub">' + esc(p.secondary) + '</span>' : esc(p.text)}</button>`).join('') + '<div class="g">powered by Google</div>';
-  list.hidden = false; input.setAttribute('aria-expanded', 'true');
-}
-function closeAddrList() { addr.items = []; addr.on = -1; drawAddrList(); }
-async function askSuggestions() {
-  const q = $('#new-address').value.trim();
-  if (q.length < 2) { closeAddrList(); return; }
-  if (!addr.token) addr.token = newSessionToken();
-  const seq = ++addr.seq;
-  try {
-    const items = await suggest(q, { token: addr.token, near: addrNear() });
-    if (seq !== addr.seq) return;   // a newer run of typing is on its way
-    addr.items = items; addr.on = items.length ? 0 : -1; drawAddrList();
-  } catch (err) { if (seq === addr.seq) { closeAddrList(); toast(err.message || String(err), true); } }
-}
-async function pickAddress(p) {
-  const f = $('#new-incident');
-  closeAddrList();
-  try {
-    const place = p.id ? await placeLocation(p.id, { token: addr.token }) : p;
-    addr.token = '';   // the pick ends the session; the next typing starts another
+// the New incident sheet's box (v78): a pick fills latitude and longitude and an empty Base with the place's name
+const sheetAddr = addressBox({
+  input: () => $('#new-address'), list: () => $('#new-addr-list'), near: addrNear,
+  onPick: (place) => {
+    const f = $('#new-incident');
     if (place && place.lat != null) { f.lat.value = Number(place.lat).toFixed(5); f.lng.value = Number(place.lng).toFixed(5); }
     if (place && place.name && !f.base.value.trim()) f.base.value = place.name;
     if (place && place.address) f.address.value = place.address;
     const words = place ? [place.name, place.address].filter(Boolean).join(', ') : '';
-    $('#new-addr-hint').textContent = place && place.lat != null ? `Centre: ${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)} \u00b7 ${words}` : 'No point for that address; try another, or Use my location.';
-  } catch (err) { toast(err.message || String(err), true); }
-}
-async function lookUpTyped() {
-  const q = $('#new-address').value.trim();
-  if (!q) return;
-  try { const g = await searchPlace(q, { near: addrNear() }); if (g) await pickAddress(g); else $('#new-addr-hint').textContent = 'Nothing found for "' + q + '"; try the street and the town, or pick a suggestion.'; }
-  catch (err) { toast(err.message || String(err), true); }
-}
+    $('#new-addr-hint').textContent = place && place.lat != null ? `Centre: ${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)} · ${words}` : 'No point for that address; try another, or Use my location.';
+  },
+  onNone: (q) => { $('#new-addr-hint').textContent = 'Nothing found for "' + q + '"; try the street and the town, or pick a suggestion.'; }
+});
 (function wireNewAddress() {
   const input = $('#new-address'), list = $('#new-addr-list');
   if (!input || !list) return;
-  input.addEventListener('input', () => { clearTimeout(addr.timer); addr.timer = setTimeout(askSuggestions, 250); });
-  input.addEventListener('focus', () => { if (input.value.trim().length >= 2 && !addr.items.length) askSuggestions(); });
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!addr.items.length) { askSuggestions(); return; } e.preventDefault(); addr.on = (addr.on + (e.key === 'ArrowDown' ? 1 : addr.items.length - 1)) % addr.items.length; drawAddrList(); }
-    else if (e.key === 'Enter') { e.preventDefault(); clearTimeout(addr.timer); if (addr.items.length && addr.on >= 0) pickAddress(addr.items[addr.on]); else lookUpTyped(); }
-    else if (e.key === 'Escape') closeAddrList();
-  });
-  input.addEventListener('blur', () => setTimeout(closeAddrList, 150));
-  list.addEventListener('mousedown', (e) => { const b = e.target.closest('[data-pick]'); if (b) { e.preventDefault(); pickAddress(addr.items[Number(b.dataset.pick)]); } });
+  input.addEventListener('input', sheetAddr.onInput);
+  input.addEventListener('focus', sheetAddr.onFocus);
+  input.addEventListener('keydown', sheetAddr.onKey);
+  input.addEventListener('blur', sheetAddr.onBlur);
+  list.addEventListener('mousedown', sheetAddr.onListDown);
   drawNewAddress();
+})();
+// the facility card's box (v83): a pick stages the point in state.facPick, which the card draws back under the box (a
+// hidden input would not survive a redraw), fills the address and an empty Name (decision 11); Save writes the point
+// with the address and the pin moves then (decision 9). The suggestions lean on the incident's centre (decision 13).
+function facilityNear() {
+  const inc = data.incident, lat = inc ? Number(inc.center_lat) : NaN, lng = inc ? Number(inc.center_lng) : NaN;
+  if (inc && inc.center_lat != null && inc.center_lng != null && Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
+  const form = $('#panel form[data-form="facility-edit"]'), f = form ? data.facility(form.dataset.id) : null;
+  return f ? [f.lat, f.lng] : null;
+}
+const facAddr = addressBox({
+  input: () => $('#panel [data-addr="facility"] input[name="address"]'), list: () => $('#panel [data-addr="facility"] .sugg'), near: facilityNear,
+  onPick: (place) => {
+    const form = $('#panel form[data-form="facility-edit"]');
+    if (!form) return;
+    if (!place || place.lat == null) { toast('No point for that address; try another, or move the pin on the map.', true); return; }
+    state.facPick = { id: form.dataset.id, lat: Number(place.lat), lng: Number(place.lng), name: place.name || '' };
+    if (place.address) form.address.value = place.address;
+    if (place.name && !form.name.value.trim()) form.name.value = place.name;
+    const el = form.querySelector('[data-fac-pick]');
+    if (el) el.textContent = facilityPickText(state.facPick);
+  },
+  onNone: (q) => toast('Nothing found for "' + q + '"; try the street and the town, or pick a suggestion.', true)
+});
+(function wireFacilityAddress() {
+  const panel = $('#panel');
+  if (!panel) return;
+  const isBox = (t) => !!(t && t.matches && t.matches('[data-addr="facility"] input[name="address"]'));
+  panel.addEventListener('input', (e) => { if (isBox(e.target)) facAddr.onInput(); });
+  panel.addEventListener('focusin', (e) => { if (isBox(e.target)) facAddr.onFocus(); });
+  panel.addEventListener('focusout', (e) => { if (isBox(e.target)) facAddr.onBlur(); });
+  panel.addEventListener('keydown', (e) => { if (isBox(e.target)) facAddr.onKey(e); });
+  panel.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('[data-addr="facility"] .sugg')) facAddr.onListDown(e); });
 })();
 
 // ---- boot
@@ -349,7 +407,7 @@ $('#new-incident').addEventListener('submit', async (e) => {
     const lat = f.lat.value ? Number(f.lat.value) : null, lng = f.lng.value ? Number(f.lng.value) : null;
     const kind = f.kind.value, starter = starterFor(kind);   // v77: the kind pressed and what period 1 starts with
     const inc = await data.createIncident({ name: f.name.value, period: f.period.value, base: f.base.value, lat, lng, zoom: 14, kind, starter: starter && starter.from ? starter.code : '' });   // both on the row from the start (v82)
-    f.reset(); msg.textContent = ''; newKind = { group: '', sub: '' }; drawNewKinds(); addr.token = ''; closeAddrList(); drawNewAddress();
+    f.reset(); msg.textContent = ''; newKind = { group: '', sub: '' }; drawNewKinds(); sheetAddr.reset(); drawNewAddress();
     await openIncident(inc.id);
     await data.applyStarter(starter);   // period 1's lines as Operations' own; the kind and the starter are on the row already (v82)
     if (starter) { state.periodNext = false; select({ type: 'period' }); toast(starter.from ? `Period 1 from the ${starter.from} starter: ${starterSummary(starter)}` : 'Period 1 with the three standing objectives'); }
@@ -414,6 +472,7 @@ function showAround() { startAround({ onDone: (why) => toast(why === 'emergency'
 
 function select(sel) {
   if (sel && sel.type === 'people') { openPeople(); return; }   // the board is a page of its own, not a panel
+  if (state.facPick && !(sel && sel.type === 'facility' && sel.id === state.facPick.id)) state.facPick = null;   // a pick not saved goes with its card (v83)
   state.selected = sel;
   queueDraw();
   if (sel && sel.type === 'photo') loadPhoto(sel.id);
@@ -1637,8 +1696,11 @@ document.addEventListener('submit', async (e) => {
       const patch = { kind: form.kind.value, name: form.name.value.trim(), contact: form.contact.value.trim(), notes: form.notes.value.trim(), address: form.address ? form.address.value.trim() : '' };
       if (form.beds) patch.beds = form.beds.value === '' ? null : Math.max(0, Math.round(Number(form.beds.value)));
       if (form.expected) patch.expected = form.expected.value.trim();
+      const pick = state.facPick && state.facPick.id === form.dataset.id ? state.facPick : null;   // v83: the address box's pick moves the pin on Save
+      if (pick) { patch.lat = pick.lat; patch.lng = pick.lng; }
       await data.updateFacility(form.dataset.id, patch);
-      toast('Saved');
+      if (pick) state.facPick = null;
+      toast(pick ? 'Saved; the pin moved to the address' : 'Saved');
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'invite-send') {   // v56

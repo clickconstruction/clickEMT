@@ -8,6 +8,7 @@ import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
 import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { incidentKindText, starterFor, placeFirst, expectedUnits, kindOptions } from '../shared/rules.js';   // incident kinds and starter periods (v77)
+import { placesReady } from '../shared/places.js';   // the facility card's address box (v83)
 import { hourOf, timesLine, clockUtcOn } from '../shared/rules.js';   // every time in UTC (v81)
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 import { personQuals, qualChipText, qualsTextWith, credentialLabel, credentialExpired, credentialText } from '../shared/rules.js';   // claim a band, submit licences, Operations confirms (v69)
@@ -869,6 +870,8 @@ export function channelsHtml(data) {
     <form class="composer" data-form="channel-add"><div class="composer-row"><input name="use" placeholder="Use, e.g. Tactical, Division A" required maxlength="60"><input name="channel" placeholder="Channel" required maxlength="24" style="flex:0 1 110px"><button class="btn pri sm" type="submit">Add</button></div></form>`;
 }
 
+// the point a pick staged on the facility card, read back under the box until Save writes it (v83, decision 9)
+export function facilityPickText(pick) { return `Point: ${Number(pick.lat).toFixed(4)}, ${Number(pick.lng).toFixed(4)}${pick.name ? ' \u00b7 ' + pick.name : ''} \u00b7 the pin moves on Save`; }
 function facilityHtml(data, f, state) {
   const k = facilityKind(f.kind);
   const shelter = f.kind === 'shelter', people = PERSON_PLACES.includes(f.kind);
@@ -893,8 +896,8 @@ function facilityHtml(data, f, state) {
         <label>Kind <select name="kind" class="sel">${FACILITY_KINDS.map(([v, label]) => `<option value="${v}"${v === f.kind ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></label>
         <label>Name <input name="name" value="${esc(f.name)}" placeholder="Where it is"></label>
       </div>
-      <label>Street address <input name="address" value="${esc(f.address || '')}" placeholder="1200 Mill St, east lot" maxlength="160"></label>
-      <div class="muted" style="font-size:12px;margin-top:-6px">Getting there on the join card and the 204's Where to go read it before the coordinates (v48).</div>
+      <div class="addr-wrap" data-addr="facility"><label>Street address <input name="address" value="${esc(f.address || '')}" placeholder="1200 Mill St, east lot" maxlength="160" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="fac-addr-list" aria-autocomplete="list" spellcheck="false"></label><div class="sugg" id="fac-addr-list" role="listbox" hidden></div></div>
+      <div class="muted" style="font-size:12px;margin-top:-6px">Getting there on the join card and the 204's Where to go read it before the coordinates (v48).${placesReady() ? ' Suggestions as you type; a pick fills the point, Save moves the pin.' : ''} <span data-fac-pick>${state.facPick && state.facPick.id === f.id ? esc(facilityPickText(state.facPick)) : ''}</span></div>
       <label>Contact <input name="contact" value="${esc(f.contact)}" placeholder="A channel or a phone number"></label>
       <label>Notes <input name="notes" value="${esc(f.notes)}" placeholder="What the field should know"></label>
       ${shelter ? `<div class="row-2">

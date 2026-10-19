@@ -3,14 +3,14 @@
 For whoever picks up clickEMT next, on another computer. This says where things stand, how to get it running, how
 a change is shipped, how the work was run, and where the open work is, in order. The open work itself is in
 [punchlist.md](punchlist.md). New here? Read the one-page [handoff-brief.md](handoff-brief.md) first. Written 17 October 2026, brought up to date at v74 late on 18 October, and at v80
-on the afternoon of 19 October, at v81, for a hand-off to a new person, and at v82 later that afternoon.
+on the afternoon of 19 October, at v81, for a hand-off to a new person, and at v82 later that afternoon, and at v83 that evening.
 
 ## Start here
 
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
-- `main` is at **v82**, "The incident's kind as a column of its own", live since the afternoon of 19 October.
+- `main` is at **v83**, "The facility card's address box", live since the evening of 19 October.
   Nothing is waiting on a branch. The next piece is the first item under [Open work, in order](#open-work-in-order).
 - The first six things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
@@ -46,7 +46,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- **The code.** `main` is at v82; the service worker reads `v82`. Released on 19 October, each with its
+- **The code.** `main` is at v83; the service worker reads `v83`. Released on 19 October, each with its
   section in [punchlist.md](punchlist.md), its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md) and its
   mock-up page in `try/mockups/`:
   - v75 Runs that share a point: pills in a column clear of the heading arrow, rings one inside the next, a
@@ -67,6 +67,8 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   - v82 The incident's kind as a column: migration 0040 gives the kind and the starter their columns and an objective
     × removed its `archived_at`; the opening line, the removal and a change of kind come from the database (section
     41; no mock-up page of its own, the words were decided on `starters.html`).
+  - v83 The facility card's address box: the sheet's suggestions on every facility card, a pick filling the address,
+    the point and an empty Name, Save moving the pin (section 42, `starters.html` decisions 9 to 13; no migration).
   - Also that day: `dev/smoke-headless.py` (`npm run smoke`), and the Google Maps key in `config.js`.
 - **The database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0040` in
   `supabase/migrations/` are all applied, by hand with `dev/sbq.py`, and are **not** recorded in
@@ -75,12 +77,12 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   `ic_incident_kind_text('flood')` reads "a flood" on the real database. The next free migration number is **0041**.
 - **The live database holds no incident yet** (checked on 19 October: no row in `ic_incidents`). Everything so far
   was done in the mock and the suites. The first real incident, invitation email and sign-in code are still to happen.
-- **Tests at v82:** `npm run check` and `npm test` pass on `main`. The SQL rule tests, 26 files and 461 checks, all
+- **Tests at v83:** `npm run check` and `npm test` pass on `main`. The SQL rule tests, 26 files and 461 checks, all
   pass on the real database (19 October, after 0040): `accept` 4, `alertwords` 18, `bring` 3, `corners` 10,
   `credentials` 50, `decisions` 3, `deputy` 5, `evacuees` 28, `hazards` 5, `ics100` 33, `incidentkind` 22, `invites` 32, `joincount` 10,
   `members` 44, `newcomer` 3, `par` 10, `parbyname` 10, `people` 28, `rewalks` 10, `safetyset` 23, `scene` 9, `tags`
   28, `tellbase` 17, `transports` 33, `walkfix` 10, `waterwords` 13. The full smoke run, in headless Chrome, release
-  by release: v75 822 of 852, v76 817 of 836, v77 891 of 902, v78 913 of 917, v80 918 of 921, v81 914 of 923, v82 913 of 924. Every missed suite
+  by release: v75 822 of 852, v76 817 of 836, v77 891 of 902, v78 913 of 917, v80 918 of 921, v81 914 of 923, v82 913 of 924, v83 930 of 932. Every missed suite
   passed alone afterwards except one real miss at v80, fixed inside that release (the Public information section
   vanished once a photo was un-cleared). Run every rule test before a release is called done, not only the new one:
   at v55 and v56 two of them failed on the real database without anyone noticing (punchlist section 16).
@@ -175,8 +177,8 @@ The product owner set this order on 19 October.
 3. **The fresh walk** by Grace's routine, every persona and every job, at the version then live. Most new work has
    come from walks; see [walkthroughs.md](walkthroughs.md).
 4. **Smaller open items,** each in its punchlist section: the sixteen thin starters' words read by crews of their
-   kind (section 36; the kind's column came as v82, section 41); the address box on the facility card (37); and the
-   walk's remainders under [The walk of 18 October, and
+   kind (section 36; the kind's column came as v82, section 41, and the facility card's address box as v83, section 42);
+   and the walk's remainders under [The walk of 18 October, and
    what is open](#the-walk-of-18-october-and-what-is-open).
 5. **Talked through, not drawn:** a mass casualty module, with triage colours and tag numbers on the QR bands, a
    count by colour on the base, the Medical Branch on the 203 and the 207, hospital capacity, and a METHANE-style
@@ -380,7 +382,7 @@ know if the next person works the same way:
   loses nothing when a session stops.
 - **Branches on `origin` that can be deleted,** all merged into `main` or carried by it: `claude/credentials-61131d`,
   `claude/sleepy-rhodes-9aaea0`, `handoff`, `imagery`, `incident-line`, `mayday`, `passwordless`, `starters`,
-  `transports-stacks`, `water-words`, `worktree-transports-211`, `leftovers` (v81) and `kind-column` (v82).
+  `transports-stacks`, `water-words`, `worktree-transports-211`, `leftovers` (v81), `kind-column` (v82) and `facility-address` (v83).
 - **Todd types into a build session directly** when he wants to: he approved migration 0036 and the v66 push that
   way, and asked the audit session to start builds. A session's report may therefore carry his words that the
   coordinating chat never saw; read the report before relaying it, and take "Todd said" in it as his unless it

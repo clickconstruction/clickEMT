@@ -881,6 +881,56 @@ async function facilities(check) {
   $('#panel [data-action="reopen-facility"]').click();
   check('and it can be reopened', await until(() => !base.facility(f.id).closed_at) && !!eventText(base, 'Shelter: First Baptist hall reopened'));
 
+  // the address box on the card (v83; decisions 9 to 13 on try/mockups/starters.html): the sheet's suggestions, a pick
+  // fills the point and an empty Name, Save moves the pin, Escape closes the list alone, a pick not saved goes with the card
+  const fa = () => $('#panel form[data-form="facility-edit"]');
+  const typeAddr = (words) => { const i = fa().address; i.focus(); i.value = words; i.dispatchEvent(new Event('input', { bubbles: true })); };
+  const key = (k) => fa().address.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  check('the card\'s Street address box is a combobox with its list under it, and the line says what a pick does (v83)', fa().address.getAttribute('role') === 'combobox' && !!$('#panel [data-addr="facility"] .sugg') && has('#panel', 'suggestions as you type; a pick fills the point, save moves the pin'), text('#panel').slice(0, 240));
+  typeAddr('mill');
+  check('typing "mill" offers the two Mill Street places under the box, the first lit, powered by Google', await until(() => !$('#fac-addr-list').hidden && $$('#fac-addr-list [data-pick]').length === 2, 4000) && has('#fac-addr-list', 'cedar fork high school', 'mill street bridge', 'powered by google') && $('#fac-addr-list [data-pick="0"]').classList.contains('on') && fa().address.getAttribute('aria-expanded') === 'true', text('#fac-addr-list'));
+  const wasLat = base.facility(f.id).lat;
+  key('ArrowDown'); key('Enter');
+  check('arrow and Enter pick the bridge: the address fills, the point is read back under the box with "the pin moves on Save", the list goes; nothing is written yet and the typed name stays', await until(() => fa().address.value === 'Mill St at Cedar Fork Creek, Cedar Fork, TX', 4000) && await until(() => has('#panel [data-fac-pick]', 'point: 30.2612, -97.7402', 'mill street bridge', 'the pin moves on save'), 4000) && $('#fac-addr-list').hidden && base.facility(f.id).lat === wasLat && (base.facility(f.id).address || '') === '' && fa().name.value === 'First Baptist hall', text('#panel [data-fac-pick]') + ' | ' + fa().address.value);
+  fa().requestSubmit();
+  await until(() => base.facility(f.id).lat === 30.2612, 6000);
+  check('Save writes the address and the point together, one "updated" line as before, and the card reads the new position with no pick line', base.facility(f.id).lng === -97.7402 && base.facility(f.id).address === 'Mill St at Cedar Fork Creek, Cedar Fork, TX' && !!eventText(base, 'Shelter: First Baptist hall updated') && await until(() => has('#panel', 'position', '30.2612') && !has('#panel', 'the pin moves on save'), 6000) && $$('#map .fmark').length === 6, text('#panel').slice(0, 320));
+  // a new facility with no name yet: a press on a suggestion names it; Escape; Close without Save
+  $('[data-action="close-panel"]').click();
+  await until(() => $('#panel [data-action="place-facility"]'));
+  $('#facility-kind').value = 'pod';
+  $('#panel [data-action="place-facility"]').click();
+  mapClick(-40, 40);
+  await until(() => base.facilities().length === 7);
+  const pod = base.facilities()[6];
+  await until(() => fa() && fa().dataset.id === pod.id);
+  typeAddr('pecan');
+  await until(() => !$('#fac-addr-list').hidden && $$('#fac-addr-list [data-pick]').length >= 1, 4000);
+  $('#fac-addr-list [data-pick="0"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  check('a press on a suggestion fills an empty Name with the place\'s name and stages its point', await until(() => fa().name.value === 'Pecan Park', 4000) && fa().address.value === '2 Pecan Park Dr, Cedar Fork, TX' && has('#panel [data-fac-pick]', 'point: 30.2592, -97.7471', 'pecan park'), fa().name.value + ' | ' + fa().address.value);
+  typeAddr('main');
+  await until(() => !$('#fac-addr-list').hidden && $$('#fac-addr-list [data-pick]').length === 2, 4000);
+  key('Escape');
+  check('Escape puts the list away and leaves the card open', $('#fac-addr-list').hidden && !!fa() && fa().dataset.id === pod.id);
+  $('#panel [data-action="close-panel"]').click();
+  await until(() => !fa());
+  const openPod = () => { const b = document.createElement('button'); b.dataset.action = 'select-facility'; b.dataset.id = pod.id; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); };
+  openPod();
+  await until(() => fa() && fa().dataset.id === pod.id);
+  check('Close without Save drops the pick: the card opens again with no point line, the facility where the click put it, nothing saved', !has('#panel', 'the pin moves on save') && base.facility(pod.id).lat === pod.lat && (base.facility(pod.id).name || '') === '' && (base.facility(pod.id).address || '') === '', text('#panel').slice(0, 200));
+  // without the key the box is the typed box it was: no line about the key, no list (decision 12)
+  {
+    const L = await import('../js/shared/layers.js');
+    const hadKey = window.GOOGLE_MAPS_KEY, hadInc = L.googleKey();
+    try {
+      window.GOOGLE_MAPS_KEY = ''; L.setGoogleKey('');
+      $('#panel [data-action="close-panel"]').click(); await until(() => !fa());
+      openPod(); await until(() => fa() && fa().dataset.id === pod.id);
+      typeAddr('mill'); await new Promise((r) => setTimeout(r, 700));
+      check('without the key the card keeps its typed Street address box, says nothing about the key, and offers no list', !!fa().address && !has('#panel', 'suggestions as you type') && !has('#panel', 'google maps key') && $('#fac-addr-list').hidden, text('#panel').slice(0, 200));
+    } finally { window.GOOGLE_MAPS_KEY = hadKey; L.setGoogleKey(hadInc); }
+  }
+
   $('[data-action="close-panel"]').click();
   await until(() => $('#panel form[data-form="channel-add"]'));
   const cf = $('#panel form[data-form="channel-add"]');

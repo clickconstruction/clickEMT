@@ -1810,3 +1810,26 @@ applied.
 - **The removed objective's number keeps its gap on period 1** (1, 2, 4 …): the 214's lines carry the number, so the sheet does too.
 - **The kind's change line names who** ("Marcus Bell set the kind to a wildfire") while the lead agency's does not ("Lead agency: …"): the kind sits with the settings in Incident settings, whose lines all name who.
 - **"a utility failure"** was "an utility failure" since v77 on the card, the picker and the phone; fixed here, never seen on a real incident.
+
+## Re-walk after v83
+
+The facility card's address box: Marcus placing a shelter and naming it by address, a first-time Operations at the
+same card without the key, and the IC reading Getting there on the join card, walked on 2026-10-19 in the mock in
+headless Chrome (`dev/smoke-headless.py`) through the `facilities` suite.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The box | Marcus | The card's Street address box with "Suggestions as you type; a pick fills the point, Save moves the pin." under it; "mill" offers Cedar Fork High School and Mill Street Bridge, the first lit, powered by Google, as on the sheet. | Clear |
+| A pick | Marcus | Arrow, Enter: the address fills, "Point: 30.2612, -97.7402 · Mill Street Bridge · the pin moves on Save" under the box, the name he typed stays; the map's letter has not moved and nothing is in the 214 yet. | Clear |
+| Save | Marcus | The letter moves to the bridge, the Position row reads the new point, one line in the 214, "Shelter: First Baptist hall updated", as a typed address gave. | Clear |
+| A facility with no name | Marcus | A press on "Pecan Park" names it and fills the address; the point waits for Save. | Clear |
+| Escape | Marcus | With the list open, Escape closes the list and the card stays; the base's own Escape did not run. | Clear |
+| Close without Save | Marcus | The card opens again with no point line and the facility where his click put it. | Clear |
+| Without the key | a first-time Operations | The typed box it was, no line about the key, no list: the address still prints on Getting there and the 204. | Clear |
+| Getting there | the IC | The join card reads the facility's name, the picked address and the coordinates, as since v48. | Clear |
+
+**Still bites, small:**
+
+- **A pick whose address is already the stored one** moves the pin without a 214 line: `ic_facility_after` logs a change of name, kind, contact or address, not of the point.
+- **Place first by address** (decision 10) is still a later step: the chips on the Period sheet arm the map for one click.
+- **The card's hint is one short sentence** where the sheet's says what goes to Google; the words go to Google the same way.

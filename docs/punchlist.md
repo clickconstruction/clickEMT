@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v83**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v84**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0041**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -60,6 +60,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 39 | v80 The header in four groups, and a quieter first minute: a word over each group of buttons, the gear with the pills; a fresh incident leads with the codes and its empty sections wait (built 19 October) | small | v79 | Marcus, every base, a first-time Operations |
 | 40 | v81 Every time in UTC, and the front door's pictures: the clock's click swaps every time on the screen, a Z on each, the forms' heads say which; the five pictures shot from the mock by a script (built 19 October) | small | v80 | a mutual-aid clerk on Zulu time, the Documentation Unit, every visitor to the front door |
 | 41 | v82 The incident's kind as a column: migration 0040 gives the kind and the starter their columns and an objective × removed its `archived_at`; the opening line, the removal and a change of kind come from the database (built 19 October; migration 0040, applied) | small | v81 | a first-time Operations, Marcus, the clerk, anyone reading the 214 |
+| 42 | v83 The facility card's address box: the sheet's suggestions on every facility card, a pick filling the address, the point and an empty Name, Save moving the pin (built 19 October; no migration) | small | v82 | Marcus, a first-time Operations, the IC and every crew reading Getting there |
 
 ---
 
@@ -1377,7 +1378,7 @@ checking both; the New incident sheet first, the facility card's Street address 
 region, a 50 km circle around the two boxes when filled, else the newest incident's centre (no device position is asked
 for on focus; Use my location asks, as before); its own release after the starters.
 
-*Left open:* the facility card's Street address box with the same list, a pick moving the pin (later, as drawn); the
+*Left open* (the facility card's box came as v83, section 42): the
 address words are not stored (the sheet has no address column); a county whose first incident is far from the last
 one sees that one's neighbourhood first until the two boxes are filled; the lookup was verified against Google once, from a page on localhost:8766 (the key's other allowed address), inline
   with the same calls the module makes: `places:autocomplete` answered five places for "1100 Congress Ave" biased to
@@ -1567,6 +1568,38 @@ starters, periods and seeded, 95 of 95; log 23 of 23, transports 52 of 52, walkf
 36 of 37 then 37 of 37, its void-band line the race the handoff records at v75); every rule test on the real database after 0040 was applied, 26 files and 461 checks, all ok, and the same 26
 before the apply, each inside one rolled-back transaction with the migration, so the live database was untouched
 until the owner's word.
+
+## 42. v83 The facility card's address box
+
+**Why.** v78 put Google's suggestions on the New incident sheet and left the facility card's Street address box
+typed, by decision 6: the sheet first, facilities later. The card is where Operations names the command post, staging,
+the shelters and the hospitals that the join card's Getting there and every 204's Where to go print, and a typed
+address beside a pin clicked by eye is two chances to be off. Drawn on `try/mockups/starters.html` as the "Place a
+facility" panel with decisions 9 to 13, each answered as recommended on 19 October.
+
+**Built.** The Street address box on every facility card is a combobox with the sheet's list under it: two letters
+in, the places Google offers, nearest the incident's centre; arrow keys and Enter, or a press, pick one. A pick fills
+the address, stages the point and reads it back under the box ("Point: 30.2612, -97.7402 · Mill Street Bridge · the
+pin moves on Save"), and fills Name with the place's name while Name is empty; nothing is written until Save, which
+writes the address and the point together, so the map's letter moves then, with the one "updated" line the 214
+writes today. Enter with nothing picked looks the words up (Places Text Search); Escape puts the list away and leaves
+the card open; Close, or opening anything else, drops a pick not saved. Without the key in config.js the box is the
+typed box it was, with no line about the key. The base's two boxes share one controller now, `addressBox`, the sheet's
+wiring of v78 folded into it.
+
+*Decided (the page's, all as recommended):* 9, the pin moves on Save, not at the pick; 10, Place first by address is
+a later step; 11, an empty Name fills from the place; 12, no line about the key; 13, suggestions lean on the incident's
+centre; the same box on every kind of facility; the words go to Google as on the sheet, never a person's address.
+
+*Left open:* a pick whose address is already the stored one moves the pin without a 214 line (`ic_facility_after`
+logs a change of name, kind, contact or address, not of the point; a migration could add it); Place first by address
+(decision 10); the sheet's hint under its box says more than the card's, each written for its screen.
+
+**Built** 19 October 2026 as `The facility card's address box (v83)` on branch `facility-address`: `addressBox`,
+`sheetAddr`, `facAddr`, `facilityNear`, `wireFacilityAddress`, the pick in `select()` and the facility-edit submit in
+js/base/main.js; `facilityPickText` and the box, the list and the hint in `facilityHtml` in js/base/ui.js; `VERSION`
+v83; the `facilities` suite's eight checks. `npm run check` and `npm test` pass; the full smoke run in headless Chrome from the branch served on 8766, 930 of 932 across 42 suites, the two
+misses the `log` suite's star checks, 23 of 23 alone afterwards; `facilities` and `starters` 54 of 54 together first. No migration, no rule test.
 
 ## Done before this list
 

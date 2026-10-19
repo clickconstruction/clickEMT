@@ -1539,3 +1539,27 @@ the `people`, `rewalks`, `tags` and `credentials` suites).
 - **Seven columns at 870 px**: a long qualifications list or a long band line wraps to two lines in its cell; the page stays whole.
 - **A rider's row** (v69) is a person row under the unit, as on the board; nothing marks that the phone is theirs beyond "own account".
 - **No hours column**: On scene is the current stretch's words; the Hours sheet has the totals per person.
+
+## Re-walk after v72
+
+The 211 per the mock-up: the clerk printing the check-in list, Finance totalling it, Priya checking a band's last
+scan, Marcus with a checked-out unit, walked on 2026-10-18 in the mock at 1280 × 820 (the page in light and in dark,
+the print rules applied as a stylesheet on the page; the words through the `people`, `reports`, `sections`, `rewalks`,
+`tags`, `credentials` and `newcomer` suites).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The head | the clerk | Four facts in a grid: Incident, Period (with the overdue words when the period has run over), Command, Prepared by. | Clear |
+| A unit | the clerk | "Unit 1, engine" bold, "Cedar Fork Fire Department · checked in by Ana Ramirez, 512 555 0111, licence TX ···3746, verified", A-1 in a box at the right; then Name, Rank, Qualifications, Checked in, On scene, Band · last seen, Out. | Clear |
+| A person | Priya | "Ramirez" with "own account · with Okafor" under it, Lt., "Swift water, EMT ✓", the time in, 2 h 51 min, "001 · entering A-1 18:46"; Patel's "004 · at High school gym 17:26 · 2 h 21 min ago" in orange. | Clear |
+| No band | Priya | Hale and Dominguez read "no band" in grey. | Clear |
+| A checked-out unit | Marcus | The status in the division's place ("Checked out 02:10"), the Out column filled, "At check-out, not done: … · for the next crew: …" as the table's last line. | Clear |
+| The totals | Finance | "6 people checked in on 3 units · 6 on scene · 0 checked out", then By agency and On scene by qualification side by side, each with a People column, and the legend under them. | Clear |
+| The email | the clerk | Send by email and Copy as text are the lines as before; the table is the page and the paper only. | Clear |
+| The paper | the clerk | Print rules on the page: a unit's table whole where it fits, the header row repeated when one breaks, no row cut, the division a box, the stale scan black. | Clear |
+
+**Still bites, small:**
+
+- **Paper, not seen on paper**: the print rules were checked as a stylesheet on the page, not through a printer or a PDF.
+- **A long roster** breaks across pages with the header row repeated; the unit's one-line header is not repeated.
+- **The 203, 204 and 209** are still lines; the mock-up says they can follow the same way.

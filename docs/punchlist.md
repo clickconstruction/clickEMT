@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v72**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v73**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0038**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -49,6 +49,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 28 | v69 Claim a band, submit licences, Operations confirms: the band as the door, credentials on the account, pending until confirmed (built 18 October) | medium, v55-sized | v68 | Rosa, the newcomer, Reyes, Marcus, Priya, the clerk |
 | 29 | v70 A transport on the map: every open run as a dashed line and a pill, the bus where the driver's phone is (shipped 18 October) | small | v69 | Marcus, his relief, the IC, the desk, a driver |
 | 30 | v71 The 211 as a table: a table per unit, the totals as a small one, the text and the email keeping the lines (shipped 18 October) | small | v70 | the clerk, Priya, Marcus, the administrator |
+| 31 | v72 The 211 per the mock-up: the unit header line, the band as a number, the totals as two small tables (shipped 18 October) | small | v71 | the clerk, Finance, Priya |
 
 ---
 
@@ -1049,6 +1050,34 @@ signature line per person, a column for the hours (the Hours sheet has them).
 base.css; the Layers note in `layersPopHtml`; `row211` / `cells211` in dev/smoke.js, the `people`, `rewalks` and
 `credentials` suites' 211 checks reading the rows. Full run 838 of 838 across 40 suites; check and test pass; no
 migration.
+
+## 31. v72 The 211 per the mock-up
+
+**Why.** v71 (section 30) made the 211 tables from the punchlist's words, not from panel 10 of
+`try/mockups/index.html`, which Todd saw: the panel has a one-line unit header, the band column as a number and the
+totals as two small tables. Todd asked for the table as drawn.
+
+**Built.** As panel 10, from the stopped session's build of it (its `211-table.patch`, which had passed the seven
+suites that read the 211 and every rule test before the session was stopped): the head is four facts in a grid
+(Incident, Period, Command, Prepared by); each unit is one line, the unit and its kind in bold, the agency and
+"checked in by Ana Ramirez, 512 555 0111, licence TX ···3746, verified" beside it, the division in a box at the right,
+or the status when it holds none (Available, Out of service, Checked out 02:10); the table's columns are Name · Rank ·
+Qualifications · Checked in · On scene · Band · last seen · Out, with "own account", "with Okafor", the agency when not
+the unit's and the notes in small type under the name; the qualifications read "Swift water, EMT ✓"; the band column
+reads "001 · entering A-1 15:03", orange with "· 2 h 20 min ago" when the last scan is older than two hours, "no band"
+in grey; a unit with no names is one row saying so; what a unit left undone at check-out is the table's last line. The
+totals are a line ("8 people checked in on 3 units · 7 on scene · 1 checked out") over two small tables side by side,
+By agency and On scene by qualification, each with a People column, and the legend under them. On paper the division
+is a box and the stale scan black. Copy as text and Send by email are unchanged.
+
+*Decided:* taken from the patch rather than rewritten; v71's heading line, its "Band, last seen" words, its one totals
+table and its h2 on a figure-only section went; nothing else changes.
+
+**Shipped** 18 October 2026 as `The 211 per the mock-up (v72)`: `form211Sections` and `sectionsHtml` (a figureOnly
+section is its figure alone) in js/base/ui.js; `.f211-head`, `.uh`, `table.t211`, `.tot`, `.f211-legend` and the print
+rules in base.css; `row211` in dev/smoke.js and the `people`, `rewalks`, `tags` and `credentials` checks on the
+panel's words; "Built as v72" on the mock-up page. Full run 838 of 838 across 40 suites; check and test pass; every rule
+test on the real database, 23 files, 409 of 409; no migration.
 
 ## Done before this list
 

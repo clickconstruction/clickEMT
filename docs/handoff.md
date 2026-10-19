@@ -3,17 +3,15 @@
 For whoever picks up clickEMT next, on another computer. This says where things stand, how to get it running, how
 a change is shipped, how the work was run, and where the open work is, in order. The open work itself is in
 [punchlist.md](punchlist.md). Written 17 October 2026, brought up to date at v74 late on 18 October, and at v80
-around noon on 19 October for a hand-off to a new person.
+on the afternoon of 19 October, at v81, for a hand-off to a new person.
 
 ## Start here
 
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
-- `main` is at **v80**, "The header in four groups, and a quieter first minute", live since late morning on 19
-  October. **v81**, "Every time in UTC, and the front door's pictures", is built on branch `leftovers`, two commits
-  ahead of `main`, its full smoke run made and its pictures looked at; **not landed** until `main` is fast-forwarded. That is the first item under
-  [Open work, in order](#open-work-in-order).
+- `main` is at **v81**, "Every time in UTC, and the front door's pictures", live since the afternoon of 19 October.
+  Nothing is waiting on a branch. The next piece is the first item under [Open work, in order](#open-work-in-order).
 - The first six things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
      `http://localhost:8766/field/?mock` (the phone). No build, no `npm install`, no account.
@@ -48,7 +46,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- **The code.** `main` is at v80 (`6dcd081`); the service worker reads `v80`. Released on 19 October, each with its
+- **The code.** `main` is at v81; the service worker reads `v81`. Released on 19 October, each with its
   section in [punchlist.md](punchlist.md), its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md) and its
   mock-up page in `try/mockups/`:
   - v75 Runs that share a point: pills in a column clear of the heading arrow, rings one inside the next, a
@@ -63,13 +61,10 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   - v79 The 214's water words as 45m: migration 0039 (section 38).
   - v80 The header in four groups (This period · Boards · Forms · The day, the gear beside the pills) and a quieter
     first minute on a fresh incident (section 39, `leftovers.html`).
+  - v81 Every time in UTC on the clock's click, with Z, and the front door's pictures re-shot by
+    `dev/front-shots.py` (section 40, `leftovers.html`). Its build session stopped on a usage limit mid-release;
+    the coordinating chat committed its work, and the session finished it when it came back.
   - Also that day: `dev/smoke-headless.py` (`npm run smoke`), and the Google Maps key in `config.js`.
-- **Branch `leftovers`**, two commits ahead of `main`: v81, every time in UTC on the clock's click, with Z, and the front door's
-  pictures re-shot by `dev/front-shots.py`. Check and test pass; a targeted headless run was 290 of 292, the misses
-  the `log` suite's star checks, and `log` passed 23 of 23 alone. Its build session stopped on a usage limit, the
-  coordinating chat committed its work so it would survive, and the session then made the full headless run, 914 of
-  923, every missed suite passing alone (punchlist section 40), and anchored step 1's picture in a second commit.
-  Punchlist section 40 has the counts.
 - **The database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0039` in
   `supabase/migrations/` are all applied, by hand with `dev/sbq.py`, and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table, a column, a function) rather than
@@ -77,12 +72,12 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   the real database. The next free migration number is **0040**. Neither v80 nor v81 changes the database.
 - **The live database holds no incident yet** (checked on 19 October: no row in `ic_incidents`). Everything so far
   was done in the mock and the suites. The first real incident, invitation email and sign-in code are still to happen.
-- **Tests at v80:** `npm run check` and `npm test` pass on `main`. The SQL rule tests, 25 files and 439 checks, all
+- **Tests at v81:** `npm run check` and `npm test` pass on `main`. The SQL rule tests, 25 files and 439 checks, all
   pass on the real database (19 October, after 0039): `accept` 4, `alertwords` 18, `bring` 3, `corners` 10,
   `credentials` 50, `decisions` 3, `deputy` 5, `evacuees` 28, `hazards` 5, `ics100` 33, `invites` 32, `joincount` 10,
   `members` 44, `newcomer` 3, `par` 10, `parbyname` 10, `people` 28, `rewalks` 10, `safetyset` 23, `scene` 9, `tags`
   28, `tellbase` 17, `transports` 33, `walkfix` 10, `waterwords` 13. The full smoke run, in headless Chrome, release
-  by release: v75 822 of 852, v76 817 of 836, v77 891 of 902, v78 913 of 917, v80 918 of 921. Every missed suite
+  by release: v75 822 of 852, v76 817 of 836, v77 891 of 902, v78 913 of 917, v80 918 of 921, v81 914 of 923. Every missed suite
   passed alone afterwards except one real miss at v80, fixed inside that release (the Public information section
   vanished once a photo was un-cleared). Run every rule test before a release is called done, not only the new one:
   at v55 and v56 two of them failed on the real database without anyone noticing (punchlist section 16).
@@ -168,22 +163,19 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 The product owner set this order on 19 October.
 
-1. **Land v81.** Branch `leftovers` has had its full headless run, its reruns, the look at the five pictures and
-   section 40's counts. What is left: fast-forward `main` to it (`git merge --ff-only`), run check and test, push, and
-   confirm `https://clickemt.com/sw.js` reads `v81`. Then "main is at" here.
-2. **The sign-in settings** on the shared project, the list above: an SMS provider, `{{ .Token }}` in the Magic Link
+1. **The sign-in settings** on the shared project, the list above: an SMS provider, `{{ .Token }}` in the Magic Link
    template, custom SMTP. Each on the owner's word, in the Supabase dashboard with the owner signed in, and each
    written down here once changed.
-3. **The first real incident, invitation and code,** by hand on a phone and a laptop: open an incident on
+2. **The first real incident, invitation and code,** by hand on a phone and a laptop: open an incident on
    clickemt.com, invite yourself from the Members tab, sign in with a code by email and by text, join a phone with
    the code, clear a house, and read the 214.
-4. **The fresh walk** by Grace's routine, every persona and every job, at the version then live. Most new work has
+3. **The fresh walk** by Grace's routine, every persona and every job, at the version then live. Most new work has
    come from walks; see [walkthroughs.md](walkthroughs.md).
-5. **Smaller open items,** each in its punchlist section: the sixteen thin starters' words read by crews of their
+4. **Smaller open items,** each in its punchlist section: the sixteen thin starters' words read by crews of their
    kind, and the incident's kind as a real column with the 214 saying "a flood" (section 36; that needs migration
    0040); the address box on the facility card (37); and the walk's remainders under [The walk of 18 October, and
    what is open](#the-walk-of-18-october-and-what-is-open).
-6. **Talked through, not drawn:** a mass casualty module, with triage colours and tag numbers on the QR bands, a
+5. **Talked through, not drawn:** a mass casualty module, with triage colours and tag numbers on the QR bands, a
    count by colour on the base, the Medical Branch on the 203 and the 207, hospital capacity, and a METHANE-style
    declaration to every phone. It is a roadmap slice of its own, and wants a mock-up first.
 
@@ -319,7 +311,7 @@ own port with `PORT=8798 python3 dev/serve.py 8798`; the suites read whatever po
   console lines and the result; `--eval "<js>"` evaluates an expression on the page instead. A full run takes about
   twenty minutes headless and misses more on timing than a window does (between 3 and 30 checks a run on 19
   October), so rerun a missed suite alone before it counts, as the rule above says.
-- **The front door's pictures** (v81, on branch `leftovers` until it lands): `python3 dev/front-shots.py` shoots the
+- **The front door's pictures** (v81): `python3 dev/front-shots.py` shoots the
   five pictures in `images/front/` from the mock in headless Chrome. Redo them when a screen they show changes.
 - **SQL rule tests**, against the real database: `python3 dev/sbq.py supabase/tests/<file>.sql`. Each runs in one
   transaction that rolls back, so nothing is left behind, and returns rows that should all say `ok: true`. Run all
@@ -385,7 +377,7 @@ know if the next person works the same way:
   loses nothing when a session stops.
 - **Branches on `origin` that can be deleted,** all merged into `main` or carried by it: `claude/credentials-61131d`,
   `claude/sleepy-rhodes-9aaea0`, `handoff`, `imagery`, `incident-line`, `mayday`, `passwordless`, `starters`,
-  `transports-stacks`, `water-words`, `worktree-transports-211`. Keep `leftovers` until v81 lands.
+  `transports-stacks`, `water-words`, `worktree-transports-211`, and now `leftovers` (v81).
 - **Todd types into a build session directly** when he wants to: he approved migration 0036 and the v66 push that
   way, and asked the audit session to start builds. A session's report may therefore carry his words that the
   coordinating chat never saw; read the report before relaying it, and take "Todd said" in it as his unless it
@@ -415,7 +407,7 @@ Todd walked the base and the phone at v59 and kept sending notes; the audit in
   the app's own dialog at v62); about 110 toasts on the base and 77 on the phone remain for outcomes ("Boundary
   saved", "Hazard sent"). He has not said whether he meant those too.
 - **From punchlist section 15:** the header row grouped and a new incident starting emptier were built as v80;
-  every time in UTC and the front door's screenshots are built as v81 on branch `leftovers`, not landed. Still open:
+  every time in UTC and the front door's screenshots as v81. Still open:
   the labels on the public demo; Replay's past periods in the menu and clicking the time to type a moment; what
   happens to a division held by a unit made Operations. Section 15's
   "mocked up and waiting" list still carries pieces since built (each says so, except imagery, v67); tidy it when
@@ -485,7 +477,7 @@ to share any you need. The punchlist repeats every decision that matters, so you
 - `docs/`: this file, the punchlist, the walkthroughs, the personas, the audit of 18 October, `guides/` (a guide per
   persona, read raw by the demo); `images/front/`: the front door's screenshots.
 - `dev/`: the mock, the smoke suite, the Node tests, the dev server, `sbq.py`, `smoke-headless.py` (the smoke suite
-  in headless Chrome) and, with v81, `front-shots.py` (the front door's pictures).
+  in headless Chrome) and `front-shots.py` (the front door's pictures, v81).
 - `vendor/`: the QR code maker and readers, the licence barcode reader and supabase-js, with their licences in
   `vendor/LICENSES.md`. Leaflet loads from cdnjs.
 - `.claude/launch.json`: the Browser pane's two dev-server configs; `.claude/worktrees/`: the build sessions'
@@ -508,6 +500,6 @@ Facts that were true and are kept for the record.
   without his word.
 - PR #1 (imagery, v67), PR #2 (mayday, v68) and PR #3 (a transport on the map and the 211, v70 and v71) were merged
   as fast-forwards of `main`; every other release was a branch fast-forwarded without a pull request.
-- On 19 October the work moved to the product owner's Mac: v75 to v80 landed between early morning and noon, the
+- On 19 October the work moved to the product owner's Mac: v75 to v81 landed between early morning and afternoon, the
   owner's Supabase login made the rule tests and migration 0039 possible there, and the Google key was made in the
   owner's Google Cloud project with Claude driving the console in Chrome.

@@ -7,6 +7,7 @@ import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
 import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
+import { personQuals, qualChipText, qualsTextWith, credentialLabel, credentialExpired, credentialText } from '../shared/rules.js';   // claim a band, submit licences, Operations confirms (v69)
 
 export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // "live" is right for a position; for something sent, say "just now".
@@ -142,6 +143,7 @@ function homeHtml(data, state) {
   return `
     ${resourcesHtml(data, state)}
     ${parHtml(data)}
+    ${toConfirmHtml(data)}
     ${requestsHtml(data)}
     ${hazardsHtml(data)}
     <div class="k" style="margin-top:6px">Message the field</div>
@@ -478,7 +480,10 @@ export function zoneModalHtml(data, z) {
 
 // ---- people: a record per responder, riding with a unit
 
-function qualBadges(p) { return (p.qualifications || []).length ? `<span class="pp-quals">${QUALIFICATIONS.filter(([q]) => p.qualifications.includes(q)).map(([q, label]) => `<span class="badge q q-${q}">${esc(label)}</span>`).join('')}</span>` : '<span class="pp-quals muted">no qualifications listed</span>'; }
+// A person's chips (v69): the lead's typed words plain; for a person with their own account on the row, each kind's credential
+// as "EMT ✓" (confirmed by Operations), "EMT · pending" or "EMT ✗" (not accepted, the reason in the title)
+function qualChip(x) { const c = x.cred; const title = x.state === 'confirmed' ? 'confirmed by Operations ' + hhmm(c.confirmed_at) : x.state === 'pending' ? 'submitted ' + hhmm(c.created_at) + ', not yet confirmed' : x.state === 'rejected' ? 'not accepted' + (c.reason ? ': ' + c.reason : '') : 'the lead\'s word, no credential on record'; return `<span class="badge q q-${x.kind}${x.state === 'plain' ? '' : ' cred-' + x.state}" title="${esc(title)}">${esc(qualChipText(x))}</span>`; }
+function qualBadges(data, p) { const qs = personQuals(p, data.credentials()); return qs.length ? `<span class="pp-quals">${qs.map(qualChip).join('')}</span>` : '<span class="pp-quals muted">no qualifications listed</span>'; }
 
 // One person: who, what they are qualified for, where they stand, and what Operations can do about it.
 // Compact rows (the unit panel) leave out the unit and buddy pickers.
@@ -496,12 +501,12 @@ export function personRowHtml(data, p, { compact, now = Date.now() } = {}) {
   const tag = tagOf(data.tags(true), { personId: p.id }), seen = tag ? lastSeen(data.seen(), [tag.id]) : null, stale = seenStale(seen, now);   // the band and its last scan (v55)
   const seenHtml = tag ? `<span class="pp-seen${stale ? ' stale' : ''}">${esc(bandLabel(tag))} · ${esc(lastSeenText(seen, seenOpts(data)))}${stale ? ' (' + esc(durationText(Math.round((now - new Date(seen.at).getTime()) / 60000))) + ' ago)' : ''}</span>` : '<span class="pp-seen muted">no band</span>';
   const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
-  const units = compact ? [] : data.members().filter((m) => m.status !== 'checked_out' || m.user_id === p.user_id).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const units = compact ? [] : data.members().filter((m) => !m.rides_with && (m.status !== 'checked_out' || m.user_id === p.user_id)).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   return `
     <div class="pp-row${p.checked_out_at || unitOut ? ' out' : ''}${p.archived_at ? ' gone' : ''}${miss ? ' missing' : ''}${over ? ' over' : ''}" data-person="${p.id}">
       <span class="pp-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? `<span class="muted"> ${esc(p.role)}</span>` : ''}${p.agency && (!unit || p.agency !== unit.agency) ? `<span class="pp-agency muted">${esc(p.agency)}</span>` : ''}${p.notes ? `<span class="pp-agency muted">${esc(p.notes)}</span>` : ''}</span>
-      ${qualBadges(p)}
-      <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}${seenHtml}</span>
+      ${qualBadges(data, p)}
+      <span class="pp-state">${esc(state)}${buddy && compact ? `<span class="muted"> · with ${esc(buddy.name)}</span>` : ''}${seenHtml}${p.claimed_by ? (() => { const id = identityState(data, { user_id: p.claimed_by }); return `<span class="pp-seen pp-id">own account · <span class="badge ${id.cls}">${esc(id.text)}</span></span>`; })() : ''}</span>
       <span class="pp-act">${ops && !p.archived_at && tag ? `<button class="btn sm" data-action="band-void" data-id="${tag.id}" title="A lost band: voided, never reused; give a new one by scanning it">Void band</button>` : ''}${ops && !p.archived_at ? `
         ${compact ? '' : `<select class="sel" data-select="person-unit" data-id="${p.id}" aria-label="Unit" title="Move to another unit">${units.map((u) => `<option value="${u.user_id}"${u.user_id === p.user_id ? ' selected' : ''}>${esc(unitLabel(u))}</option>`).join('')}</select>
         <select class="sel" data-select="person-buddy" data-id="${p.id}" aria-label="Buddy" title="Who this person pairs with"><option value="">No buddy</option>${mates.map((x) => `<option value="${x.id}"${p.buddy_id === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`}
@@ -518,6 +523,29 @@ function unitPeopleHtml(data, m) {
     <div class="d-row"><span class="k" style="width:auto;flex:1">People on the unit · ${on.length}${rows.length > on.length ? ` <span style="font-weight:400">(${rows.length - on.length} checked out)</span>` : ''}</span><button class="btn sm" data-action="people">People board</button></div>
     ${rows.length ? `<div class="pp-list compact">${rows.map((p) => personRowHtml(data, p, { compact: true })).join('')}</div>`
       : `<div class="muted" style="font-size:12.5px">No names on record${m.crew ? `: crew "${esc(m.crew)}"${m.crew_count != null ? ', ' + m.crew_count + ' people' : ''} as typed at check-in` : ''}. The unit adds its people from its menu; you can add them on the People board.</div>`}`;
+}
+
+// To confirm (v69): every member's pending credentials, oldest first, each with its photo (a signed link) or the number's tail,
+// who submitted it from which unit, what it is, the expiry as the base reads it, Confirm and Not accepted (which asks why).
+export function toConfirmHtml(data, { always } = {}) {
+  const ops = !!data.me() && data.me().role === 'ops';
+  if (!ops) return '';
+  const rows = data.pendingCredentials();
+  if (!rows.length && !always) return '';
+  const now = Date.now();
+  const row = (c) => {
+    const m = data.member(c.user_id), p = data.profileOf(c.user_id);
+    const expired = credentialExpired(c, now);
+    return `<div class="cq-row" data-cred="${c.id}">
+      ${c.photo_path ? `<div class="cq-thumb photo" data-cred-photo="${esc(c.photo_path)}" title="The photo, from a signed link"><img alt="The card" hidden><span>photo</span></div>` : `<div class="cq-thumb num" title="Typed, no photo">${c.number ? '···' + esc(c.number.slice(-4)) : 'typed'}</div>`}
+      <div class="cq-who">${esc((p && p.full_name) || 'A member')} <span class="muted">· ${esc(unitLabel(m))}${m && m.rides_with ? ' · own account' : ''}</span></div>
+      <div class="cq-what"><b>${esc(credentialLabel(c))}</b>${c.issuer ? ' · ' + esc(c.issuer) : ''}${c.number ? ' · ' + esc(c.number) : ''}${c.expires_at ? ' · expires ' + esc(c.expires_at) + (expired ? ' <span class="warn">· expired</span>' : '') : ''} · ${hhmm(c.created_at)}</div>
+      <div class="cq-acts"><button class="btn sm green" data-action="cred-confirm" data-id="${c.id}" title="You have looked at it and it is this person's, in date">Confirm</button><button class="btn sm" data-action="cred-reject" data-id="${c.id}" title="Says why on their phone; they may submit again">Not accepted…</button>${c.photo_path ? `<a class="btn sm" data-cred-open="${esc(c.photo_path)}" href="#" target="_blank" rel="noopener" title="The photo, full size">Open the photo</a>` : ''}</div>
+    </div>`;
+  };
+  return `<div class="d-row" style="margin-top:14px"><span class="k" style="width:auto;flex:1">To confirm${rows.length ? ' · ' + rows.length : ''}</span></div>
+    ${rows.length ? `<div class="cq-list">${rows.map(row).join('')}</div>` : '<div class="muted" style="font-size:12.5px">Nothing to confirm. A licence a person adds from their phone shows here with its photo or number.</div>'}
+    ${rows.length ? '<div class="muted" style="font-size:12px;margin-top:4px">Confirm: you have looked at the card and it is this person\'s, in date. Not accepted: the reason goes to their phone, and they may submit again. Each is one 214 line.</div>' : ''}`;
 }
 
 // The chips in the board's bar: every qualification with how many people on scene carry it.
@@ -580,10 +608,12 @@ function membersHtml(data, state) {
   const row = (m) => {
     const p = data.profileOf(m.user_id), id = identityState(data, m), opener = m.user_id === inc.created_by, self = !!me && m.user_id === me.user_id;
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active') || data.zones().find((z) => z.assigned_to === m.user_id);
-    const who = m.role === 'unit'
+    const who = m.rides_with   // riding with a unit (v69): by name, with the unit
+      ? `${esc((p && p.full_name) || 'A member')}<span> · with ${esc(unitLabel(data.member(m.rides_with)))}</span> <span class="badge st-assigned">Crew, by band</span>`
+      : m.role === 'unit'
       ? `${esc(unitWithKind(m))} <span class="badge st-${esc(m.status)}">${STATUS_LABEL[m.status] || m.status}</span>${zone && m.status === 'assigned' ? ` <span class="pp-div">${esc(zone.code)}</span>` : ''}`
       : `${esc((p && p.full_name) || unitLabel(m))}<span> · ${opener ? 'opened the incident' : 'since ' + hhmm(m.joined_at)}</span>`;
-    const facts = (m.role === 'unit' ? [p && p.full_name, p && p.phone, m.agency] : [p && p.phone, m.agency]).filter(Boolean).map(esc).join(' · ') || 'agency not set';
+    const facts = (m.role === 'unit' && !m.rides_with ? [p && p.full_name, p && p.phone, m.agency] : [p && p.phone, m.agency]).filter(Boolean).map(esc).join(' · ') || 'agency not set';
     const ident = m.removed_at ? `<span class="idc">Removed ${hhmm(m.removed_at)}</span>`
       : `<span class="idc ${id.cls}">${esc(id.text)}</span>${ops && id.action === 'check' ? `<button type="button" class="btn sm" data-action="member-check" data-id="${m.user_id}" title="Opens the licence and the photo on the unit's panel, with Mark verified">Check</button>` : ''}${ops && id.action === 'person' ? `<button type="button" class="btn sm" data-action="verify-profile" data-id="${m.user_id}" title="You have checked in person who this is: an agency card, someone who knows them, a call to the number">Check in person</button>` : ''}`;
     const menu = ops && !opener && !m.removed_at ? `<button type="button" class="btn sm more" data-action="member-menu" data-id="${m.user_id}" aria-expanded="${ps.menu === m.user_id}" aria-haspopup="menu" aria-label="More for ${esc(unitLabel(m))}" title="${m.role === 'unit' ? 'Make Operations, remove' : 'Make a unit, remove'}">···</button>
@@ -597,7 +627,7 @@ function membersHtml(data, state) {
         <span class="mb-id">${ident}</span>
         <span class="mb-act">${m.removed_at
           ? (ops ? `<button type="button" class="btn sm" data-action="member-restore" data-id="${m.user_id}">Restore</button>` : '')
-          : `${m.role === 'unit' ? `<button type="button" class="btn sm" data-action="select-unit" data-id="${m.user_id}" title="The unit's panel: where it is, its people, its identity">Open</button>` : ''}${menu}`}</span>
+          : `${m.role === 'unit' ? `<button type="button" class="btn sm" data-action="select-unit" data-id="${m.rides_with || m.user_id}" title="${m.rides_with ? 'The unit they ride with: its panel' : 'The unit\'s panel: where it is, its people, its identity'}">Open</button>` : ''}${menu}`}</span>
       </div>`;
   };
   return `
@@ -643,7 +673,7 @@ function personLineHtml(data, p, ps, now) {
   const cls = ['pp-line', f.over ? 'over' : '', p.checked_out_at || f.unitOut ? 'out' : '', p.archived_at ? 'gone' : '', f.miss ? 'missing' : '', sel ? 'sel' : ''].filter(Boolean).join(' ');
   return `<button type="button" class="${cls}" data-person="${p.id}" data-action="person-open" data-id="${p.id}" aria-pressed="${sel}" title="Everything about ${esc(p.name)}, and what you can do">
       <span class="pp-l-who"><span class="pp-name">${esc(p.name)}</span>${p.role ? ` <span class="muted">${esc(p.role)}</span>` : ''}</span><span class="pp-l-on${f.over ? ' over' : ''}${f.miss ? ' miss' : ''}">${esc(f.short)}</span>
-      <span class="pp-seen${f.stale ? ' stale' : ''}${f.tag ? '' : ' muted'}">${esc(f.seenShort)}</span><span class="pp-l-q">${(p.qualifications || []).length ? qualBadges(p) : ''}</span>
+      <span class="pp-seen${f.stale ? ' stale' : ''}${f.tag ? '' : ' muted'}">${esc(f.seenShort)}${p.claimed_by ? ' <span class="pp-own" title="Their own account is on the row: they claimed a band, and their licences are theirs to submit">· own account</span>' : ''}</span><span class="pp-l-q">${personQuals(p, data.credentials()).length ? qualBadges(data, p) : ''}</span>
     </button>`;
 }
 // a unit's card: the header (unit, status, division, agency · kind · n on the unit), its lines, Add a person at the foot
@@ -667,7 +697,7 @@ function unitCardHtml(data, m, lines, ps, now) {
 }
 // the add or edit form (the same fields as before v65), drawn in the drawer; a card's Add a person fixes the unit
 function personFormHtml(data, { editing, unitId, fixed } = {}) {
-  const members = data.members().filter((m) => m.status !== 'checked_out').sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const members = data.members().filter((m) => m.status !== 'checked_out' && !m.rides_with).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   const unit = editing ? data.member(editing.user_id) : data.member(unitId) || members[0] || null;
   const uid = unit ? unit.user_id : '';
   return `
@@ -694,7 +724,7 @@ function personDrawerHtml(data, ps, now) {
   const buddy = p.buddy_id ? data.person(p.buddy_id) : null;
   const zone = unit ? data.zones().find((z) => z.assigned_to === unit.user_id && z.status === 'active') : null;
   const mates = data.unitPeople(p.user_id).filter((x) => x.id !== p.id && (!x.checked_out_at || x.id === p.buddy_id));
-  const others = data.members().filter((m) => m.user_id !== p.user_id && m.status !== 'checked_out').sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
+  const others = data.members().filter((m) => m.user_id !== p.user_id && m.status !== 'checked_out' && !m.rides_with).sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(p.name) + '(?![\\p{L}\\p{N}])', 'iu');
   const lines = data.events().filter((e) => re.test(e.text || '')).slice(0, 6);
   return `<aside class="pp-drawer" data-person="${p.id}">
@@ -703,7 +733,8 @@ function personDrawerHtml(data, ps, now) {
         <span class="k">On scene</span><span class="${f.miss ? 'pp-miss' : f.over ? 'pp-over' : ''}">${esc(f.long)}</span>
         <span class="k">Last seen</span><span class="${f.stale ? 'pp-over' : ''}">${esc(f.seenLong)}</span>
         <span class="k">With</span><span>${buddy && !buddy.archived_at ? esc(buddy.name) + (buddy.checked_out_at ? ' <span class="muted">· checked out</span>' : '') : '<span class="muted">nobody</span>'}</span>
-        <span class="k">Qualified</span><span>${(p.qualifications || []).length ? qualBadges(p) : '<span class="muted">nothing listed</span>'}</span>
+        <span class="k">Qualified</span><span>${personQuals(p, data.credentials()).length ? qualBadges(data, p) : '<span class="muted">nothing listed</span>'}</span>
+        ${p.claimed_by ? (() => { const id = identityState(data, { user_id: p.claimed_by }), ops2 = ops && !p.archived_at; return `<span class="k">Identity</span><span class="pp-own-id">own account · <span class="idc ${id.cls}">${esc(id.text)}</span>${ops2 && id.action === 'check' ? ` <button type="button" class="btn sm" data-action="member-check" data-id="${p.claimed_by}" title="Opens the licence and the photo on their panel, with Mark verified">Check</button>` : ''}${ops2 && id.action === 'person' ? ` <button type="button" class="btn sm" data-action="verify-profile" data-id="${p.claimed_by}" title="You have checked in person who this is">Check in person</button>` : ''}</span>`; })() : ''}
         ${p.notes ? `<span class="k">Notes</span><span>${esc(p.notes)}</span>` : ''}
       </div>
       ${ops ? `<div class="pp-dr-acts">${p.archived_at ? `<button type="button" class="btn" data-action="person-restore" data-id="${p.id}">Put back</button><span class="muted pp-dr-why">Back on the roster, checked in now.</span>` : `
@@ -729,11 +760,11 @@ export function peopleBoardHtml(data, state) {
   const count = narrowed ? `${shown.filter((p) => !p.archived_at).length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
     : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}${overScene.length ? ' · <span class="pp-over">' + overScene.length + ' past ' + data.sceneHours() + ' h on scene</span>' : ''}`;
   // a card for every unit on the incident, and for a member of any role or status with people on record
-  const members = data.members().filter((m) => (m.role === 'unit' && m.status !== 'checked_out') || data.unitPeople(m.user_id, true).length)
+  const members = data.members().filter((m) => !m.rides_with && ((m.role === 'unit' && m.status !== 'checked_out') || data.unitPeople(m.user_id, true).length))   // a rider (v69) is on the unit's roster, not a card
     .sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
   const cards = members.map((m) => unitCardHtml(data, m, shown.filter((p) => p.user_id === m.user_id).sort((a, b) => !!a.archived_at - !!b.archived_at), ps, now)).join('');
   const drawer = personDrawerHtml(data, ps, now);
-  return `
+  return toConfirmHtml(data, { always: true }) + `
     <div class="pp-top"><span class="pp-count">${count}</span></div>
     <div class="pp-body${drawer ? ' open' : ''}">
       <div class="pp-cards">${cards || '<p class="muted">No units have checked in yet. A unit adds its people by name when it checks in on the phone.</p>'}</div>
@@ -752,7 +783,9 @@ export function form211Sections(data) {
     commandText(inc, p) || null,
     'Prepared by Operations, ' + whenText(new Date())
   ].filter(Boolean) });
-  const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || '')).filter((m) => m.role === 'unit' || data.unitPeople(m.user_id).length);
+  const creds = data.credentials();
+  const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || '')).filter((m) => !m.rides_with && (m.role === 'unit' || data.unitPeople(m.user_id).length));
+  const personLine211 = (px) => { const q = qualsTextWith(px, creds); return px.name + (px.role ? ', ' + px.role : '') + (q ? ' · ' + q : '') + (px.claimed_by ? ' · own account' : ''); };
   for (const m of members) {
     const rows = data.unitPeople(m.user_id);
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
@@ -760,7 +793,7 @@ export function form211Sections(data) {
       lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${identityGiven(p) ? (p.verified_at ? ', verified' : ', not verified') : ', ' + NO_ID_TEXT + (p.verified_at ? ', verified in person' : ', not verified')}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
         const tg = tagOf(data.tags(true), { personId: px.id }), sn = tg ? lastSeen(data.seen(), [tg.id]) : null;   // v55
-        return `${personLine(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${tg ? ' · band ' + bandNumber(tg.number) + (sn ? ', ' + lastSeenText(sn, seenOpts(data)) : '') : ''}${px.notes ? ' · ' + px.notes : ''}`;
+        return `${personLine211(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${tg ? ' · band ' + bandNumber(tg.number) + (sn ? ', ' + lastSeenText(sn, seenOpts(data)) : '') : ''}${px.notes ? ' · ' + px.notes : ''}`;
       }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]) });
   }
   const on = data.peopleOn();
@@ -770,7 +803,8 @@ export function form211Sections(data) {
   S.push({ title: 'Totals', lines: [
     `${all.length} ${all.length === 1 ? 'person' : 'people'} checked in on ${data.units().length} unit${data.units().length === 1 ? '' : 's'} · ${on.length} on scene · ${all.length - on.length} checked out`,
     all.length ? 'By agency: ' + [...byAgency.entries()].sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a} ${n}`).join(' · ') : null,
-    quals.length ? 'On scene by qualification: ' + quals.map(([l, n]) => `${l} ${n}`).join(' · ') : null
+    quals.length ? 'On scene by qualification: ' + quals.map(([l, n]) => `${l} ${n}`).join(' · ') : null,
+    all.some((px) => px.claimed_by) ? '✓ confirmed by Operations · (pending) submitted, not yet confirmed · (not accepted) refused, the reason on the person\'s card · a plain word is the lead\'s' : null
   ].filter(Boolean) });
   return S;
 }
@@ -1891,6 +1925,7 @@ export function zoneHoverHtml(data, z, now = Date.now()) {
     <div class="zh-row"><span>Hazards open</span><b${haz.length ? ' class="warn"' : ''}>${haz.length ? haz.length + ' · ' + esc(hazardWords(haz[0])) : 'none'}</b></div>
     <div class="zh-row"><span>Last report</span><b>${last ? esc(ago(new Date(last).toISOString(), now)) : 'none'}</b></div>
     ${o ? `<div class="zh-row"><span>Objective ${o.number}</span><span>${esc(o.text)}</span></div>` : ''}
+    ${(() => { const ppl = tasked.flatMap((u) => data.unitPeople(u.user_id).filter((p) => !p.checked_out_at)); return ppl.length ? `<div class="zh-ql">${ppl.map((p) => `<span class="muted">${esc(p.name)}</span><span class="pp-quals">${personQuals(p, data.credentials()).map(qualChip).join('') || '<span class="muted">—</span>'}</span>`).join('')}</div>` : ''; })()}
     <div class="muted" style="font-size:11.5px;margin-top:6px">Click for the division; right-click for its card.</div>`;
 }
 

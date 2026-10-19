@@ -20,6 +20,7 @@ import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFr
 import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports, runCard, foldRuns } from '../shared/rules.js';   // the transport board (v54), the run cards (v66)
 import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, bandCodeNumber, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
 import { inviteFromSearch } from '../shared/rules.js';   // invitations by email (v56)
+import { CREDENTIAL_KINDS, credentialLabel, credentialState, idState, credentialOf } from '../shared/rules.js';   // claim a band, add your licences (v69)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
 const AGENCY_KEY = 'ic.field.agency.';   // + the account's id
@@ -31,7 +32,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', alertWrong: new Set(), alertNeeds: new Set(), pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null };
+const state = { screen: 'home', alertWrong: new Set(), alertNeeds: new Set(), pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null, claim: null, licType: null, licencesOnce: false };
 function blankPerson() { return { name: '', role: '', quals: new Set(), band: '' }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -89,7 +90,7 @@ function toTop(el) { if (el) el.scrollTop = 0; }
 function screen(name) {
   const was = state.screen;
   state.screen = name;
-  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt', 'person', 'band']) $('#s-' + s).hidden = name !== s;
+  for (const s of ['photo', 'clear', 'hazard', 'help', 'helpsent', 'menu', 'safety', 'inbox', 'compose', 'structure', 'showcode', 'ask', 'checkout', 'briefing', 'hurt', 'person', 'band', 'licences']) $('#s-' + s).hidden = name !== s;
   // A sheet opens at its top. The browser gives a sheet shown again the scroll it had when it was
   // hidden, so the briefing came back at its end, where Briefed was pressed last time.
   if (name !== was && name !== 'home') toTop($('#s-' + name));
@@ -121,7 +122,9 @@ const outbox = new Outbox({
   accept: (p) => data.updateMember(p.userId, { accepted_zone_id: p.zoneId }),
   transport: (p) => data.updateTransport(p.id, p.patch),   // a run's next step, from the desk or the driver (v54)
   seen: (p, _b, at) => data.addSeen(p.id, { ...p.fields, at }),   // a scan (v55)
-  band: (p) => data.giveBand(p.id, p.fields)                      // a band given by scanning it (v55)
+  band: (p) => data.giveBand(p.id, p.fields),                     // a band given by scanning it (v55)
+  credential: async (p, blob) => data.addCredential(p.id, Object.assign({}, p.fields, { photoPath: blob ? await data.uploadCredentialPhoto(p.id, blob) : null })),   // a licence or a card, with its photo (v69)
+  claim: (p) => data.claimBand(p.code, p.fields)                   // a member's own band, claimed from the band sheet (v69)
 }, (count, err) => { state.outbox = count; state.outboxError = err; queueDraw(); });
 
 // ---- sensors
@@ -132,7 +135,7 @@ const sensors = new Sensors(async (what) => {
 
 async function maybeSendPosition() {
   const p = sensors.pos;
-  if (!p || !data.incident || !navigator.onLine) return;
+  if (!p || !data.incident || !navigator.onLine || data.rider()) return;   // riding with a unit (v69): the unit's phone reports for it
   const now = Date.now();
   const moved = !state.lastPosSent || distance(state.lastPosSent, p) > POSITION_MIN_M;
   if (now - state.lastPosAt < POSITION_EVERY_MS && !(moved && now - state.lastPosAt > 3000)) return;
@@ -273,7 +276,8 @@ async function showJoin() {
   try { await data.myProfile(); } catch (e) { console.warn(e); }
   drawJoinInvite();   // an invitation waiting (v56)
   drawYouLine();
-  if (!data.profileReady() && !state.identShown) { state.identShown = true; openIdentify(); }
+  const claiming = await drawJoinBand();   // a band waiting (v69): the claim sheet takes the name and phone itself
+  if (!claiming && !data.profileReady() && !state.identShown) { state.identShown = true; openIdentify(); }
   drawJoinPeople();
   drawJoinKind();
   // The incidents this account is already in come first, above the form, and only when there are some:
@@ -313,6 +317,7 @@ function clearForms() {
   for (const id of ['id-name', 'id-phone', 'id-number', 'id-state']) $('#' + id).value = '';
   $('#join-mine').hidden = true; $('#join-list').innerHTML = ''; $('#join-title').textContent = 'Check in to an incident';
   closeIdentify();
+  closeClaim();
 }
 
 document.addEventListener('change', (e) => { const co = e.target.closest('[data-co]'); if (co) { state.coTicks[co.dataset.co] = co.checked; drawCheckout(); } });
@@ -343,6 +348,7 @@ document.addEventListener('input', (e) => {
   toggleJoinPeople();
 });
 $('#compose-text').addEventListener('input', () => { $('#compose-chips').hidden = $('#compose-text').value.trim() !== ''; });
+$('#claim-agency').addEventListener('input', () => pickClaimUnit());   // the agency's unit is picked until a pick is made by hand (v69)
 $('#structure-revisit').addEventListener('input', drawRevisitHint);   // v48
 
 // The people on the unit at check-in: a row per person, name and rank or role typed, what they are
@@ -422,7 +428,8 @@ async function openIncident(id) {
   const me = data.me();
   let briefedFor = null;
   try { briefedFor = localStorage.getItem(BRIEFED + id); } catch (e) { /* storage blocked */ }
-  if (me && me.role === 'unit' && (state.briefOnce || briefedFor !== me.joined_at)) { state.briefOnce = false; openBriefing(); }
+  if (state.licencesOnce) { state.licencesOnce = false; openLicences(); }   // just claimed a band (v69): the licences first, the briefing after
+  else if (me && me.role === 'unit' && (state.briefOnce || briefedFor !== me.joined_at)) { state.briefOnce = false; openBriefing(); }
   const pb = pendingBand();   // a band's link opens it now (v55)
   if (pb) { clearPendingBand(); setTimeout(() => { const err = bandRead(pb); if (err) toast(err, true); }, 300); }
 }
@@ -430,6 +437,11 @@ async function openIncident(id) {
 // ---- your briefing: ICS-100's briefing items for this unit, assembled from the data (js/shared/briefings.js),
 // shown once after check-in and kept in the menu. Live updates redraw it while it is open.
 function openBriefing() { screen('briefing'); drawBriefingSheet(); }
+function maybeBriefing() {   // once per check-in, as openIncident does
+  const me = data.me(); let briefedFor = null;
+  try { briefedFor = localStorage.getItem(BRIEFED + data.incident.id); } catch (e) { /* storage blocked */ }
+  if (me && me.role === 'unit' && briefedFor !== me.joined_at) openBriefing();
+}
 function drawBriefingSheet() {
   const me = data.me(), p = sensors.pos;
   $('#briefing-sub').textContent = unitWithKind(me) + ' · ' + hhmm(new Date());
@@ -861,9 +873,9 @@ function drawRemoved() {
 function drawAll() {
   drawRemoved();
   if (!data.incident || $('#app').hidden) return;
-  const me = data.me();
+  const me = data.me(), lead = data.rider();   // riding with a unit (v69): the unit's name, its division read-only, no search buttons, no Accept
   $('#me-name').textContent = unitLabel(me);
-  $('#me-crew').textContent = [me && crewNames(me, data.people()), me && STATUS_LABEL[me.status], data.incident.name].filter(Boolean).join(' · ');
+  $('#me-crew').textContent = lead ? [data.profile && data.profile.full_name, 'with ' + unitLabel(lead), data.incident.name].filter(Boolean).join(' · ') : [me && crewNames(me, data.people()), me && STATUS_LABEL[me.status], data.incident.name].filter(Boolean).join(' · ');
   setHtml($('#water-row'), me && me.status !== 'checked_out' && !isDesk() ? waterRowHtml(me) : '');
 
   const gps = $('#gps-pill');
@@ -888,7 +900,7 @@ function drawAll() {
   const zone = myZone();
   const assigned = data.myZones().filter((z) => z.status !== 'cleared')[0] || null;
   const banner = $('#banner');
-  if (assigned && !data.zoneAccepted(assigned)) {   // until the unit accepts or reports from it (v42)
+  if (assigned && !data.zoneAccepted(assigned) && !lead) {   // until the unit accepts or reports from it (v42); the unit's phone, not a rider's
     setHtml(banner, `<div class="banner"><div class="k">New assignment from Operations</div><div style="font-size:16px;font-weight:600">${esc(assigned.code)} · ${esc(assigned.name)} · priority ${assigned.priority}${assigned.structures ? ' · ' + assigned.structures + ' structures' : ''}</div><button class="btn" data-action="accept" data-id="${assigned.id}">Accept</button></div>`);
   } else setHtml(banner, '');
 
@@ -897,9 +909,9 @@ function drawAll() {
     const jc = state.justCleared;
     setCard(acard, 'card done-card', `<div class="big">${esc(jc.code)} ${jc.pass === 'secondary' ? 'marked clear' : 'primary search complete'}</div><div class="muted">Sent ${hhmm(jc.at)}. Operations sees the zone in green${jc.pass === 'secondary' ? '' : ', lighter until the secondary search'}. Waiting for your next assignment.</div>`);
   } else if (zone && (zone.assigned_to === data.user.id || assigned)) {
-    const isAssigned = zone.assigned_to === data.user.id;
+    const isAssigned = zone.assigned_to === (lead ? lead.user_id : data.user.id);
     setCard(acard, 'card', `
-      <div class="k">${isAssigned ? 'Your zone' : 'You are standing in'}</div>
+      <div class="k">${isAssigned ? (lead ? unitLabel(lead) + '\'s division' : 'Your zone') : 'You are standing in'}</div>
       <div class="zone-name">${esc(zone.code)} · ${esc(zone.name)}</div>
       <div class="badges"><span class="badge p${zone.priority}">Priority ${zone.priority}</span>${zone.structures ? `<span class="badge">${zone.structures} structures</span>` : ''}<span class="badge ${zone.status === 'cleared' ? 'cleared' : zone.status === 'primary' ? 'primary' : (zone.status === 'active' ? 'active' : '')}">${zone.status === 'cleared' ? 'Cleared ' + hhmm(zone.cleared_at) : zone.status === 'primary' ? 'Primary done ' + hhmm(zone.primary_done_at) + ', secondary next' : (zone.status === 'active' ? 'In progress' : 'Not started')}</span>${zone.hazard ? '<span class="badge haz">Hazard</span>' : ''}</div>
       ${zone.structures ? `<div class="bar"><div class="bar-fill" style="width:${pct(zone)}%"></div></div><div class="muted" style="font-size:12.5px">${zone.cleared} of ${zone.structures} structures cleared</div>` : '<div class="muted" style="font-size:12.5px">Operations has not set a structure count. Address clear still counts them up.</div>'}
@@ -912,8 +924,9 @@ function drawAll() {
     setCard(acard, 'card', `<div class="k">Your assignment</div><div class="zone-name">No assignment yet</div><div class="muted" style="font-size:12.5px">Operations assigns divisions from the base. Stay where Operations put you. From here you can take a photo, report a hazard, message Operations or call for help.${zone ? ' You are standing in ' + esc(zone.code) + (zone.assigned_to ? ', ' + esc(unitLabel(data.member(zone.assigned_to))) + '\'s division' : '') + '.' : ''}</div>`);
   }
   const noDivision = !assigned && !state.justCleared;
-  for (const a of ['addr-clear', 'zone-clear']) { const b = $(`.actions [data-action="${a}"]`); if (b) b.hidden = noDivision; }
-  { const c = $('#act-compose'); if (c) c.hidden = !noDivision; }
+  for (const a of ['addr-clear', 'zone-clear']) { const b = $(`.actions [data-action="${a}"]`); if (b) b.hidden = noDivision || !!lead; }
+  { const c = $('#act-compose'); if (c) c.hidden = !(noDivision || lead); }
+  drawYou();
 
   // a shelter desk is not a search crew: its home is People here, not the zone and the search buttons
   const desk = isDesk();
@@ -947,6 +960,7 @@ function drawAll() {
   if (state.screen === 'photo') drawPhotoFacts();
   if (state.screen === 'briefing') drawBriefingSheet();
   if (state.screen === 'hurt') drawHurt();
+  if (state.screen === 'licences') drawLicences();
 }
 
 function wedgeHtml(h) {
@@ -1137,11 +1151,13 @@ function drawBand() {
   if (!on) {
     const f = desk ? deskShelter() : null;
     const list = desk ? data.evacuees().filter((e) => !tagOf(data.tags(true), { evacueeId: e.id }) && f && e.facility_id === f.id) : data.unitPeople(me.user_id).filter((p) => !p.checked_out_at && !tagOf(data.tags(true), { personId: p.id }));
+    const mineAlready = data.people().some((p) => p.claimed_by === data.user.id);   // my own account on a row already (v69)
+    const meChip = !desk && data.profileReady() && !mineAlready ? `<button type="button" class="chip${b.me ? ' on' : ''}" data-action="band-who" data-me="1">Me · ${esc(data.profile.full_name)}</button>` : '';
     $('#band-hint').textContent = desk ? 'Whose band is this? A family here or on its way, or someone new.' : 'Whose band is this? The scan is their check-in.';
-    setHtml($('#band-who'), `<div class="chips">${list.map((x) => `<button type="button" class="chip${(desk ? b.evacueeId === x.id : b.personId === x.id) ? ' on' : ''}" data-action="band-who" data-${desk ? 'evacuee' : 'person'}="${x.id}">${esc(desk ? evacueeWho(x) : x.name)}</button>`).join('')}${desk ? `<button type="button" class="chip${b.newPerson ? ' on' : ''}" data-action="band-who" data-new="1">Someone new</button>` : ''}</div>${!list.length && !desk ? '<p class="muted small">Everyone on your unit has a band. Add a person from the menu first.</p>' : ''}`);
+    setHtml($('#band-who'), `<div class="chips">${list.map((x) => `<button type="button" class="chip${(desk ? b.evacueeId === x.id : b.personId === x.id) ? ' on' : ''}" data-action="band-who" data-${desk ? 'evacuee' : 'person'}="${x.id}">${esc(desk ? evacueeWho(x) : x.name)}</button>`).join('')}${meChip}${desk ? `<button type="button" class="chip${b.newPerson ? ' on' : ''}" data-action="band-who" data-new="1">Someone new</button>` : ''}</div>${!list.length && !desk && !meChip ? '<p class="muted small">Everyone on your unit has a band. Add a person from the menu first.</p>' : ''}`);
     setHtml($('#band-what'), '');
-    const who = desk ? (b.newPerson ? 'someone new' : (b.evacueeId && data.evacuee(b.evacueeId) ? evacueeWho(data.evacuee(b.evacueeId)) : '')) : (b.personId && data.person(b.personId) ? data.person(b.personId).name : '');
-    $('#band-save').textContent = who ? (b.newPerson ? 'Sign them in with ' + bandLabel(tag) : 'Give ' + bandLabel(tag) + ' to ' + who) : 'Pick whose band it is';
+    const who = desk ? (b.newPerson ? 'someone new' : (b.evacueeId && data.evacuee(b.evacueeId) ? evacueeWho(data.evacuee(b.evacueeId)) : '')) : b.me ? 'me' : (b.personId && data.person(b.personId) ? data.person(b.personId).name : '');
+    $('#band-save').textContent = who ? (b.newPerson ? 'Sign them in with ' + bandLabel(tag) : b.me ? 'It\'s mine · ' + bandLabel(tag) : 'Give ' + bandLabel(tag) + ' to ' + who) : 'Pick whose band it is';
     $('#band-save').disabled = !who;
   } else {
     setHtml($('#band-who'), '');
@@ -1164,6 +1180,14 @@ async function saveBand() {
   const on = !!(tag.person_id || tag.evacuee_id), f = isDesk() ? deskShelter() : null;
   if (!on) {
     if (b.newPerson) { state.band = null; openPerson('new'); if (state.ev) { state.ev.band = tag; drawEvBand(); } return; }
+    if (b.me) {   // my own band (v69): the claim through the outbox; the database puts me on the roster with my account
+      const me = data.me(), p = data.profile || {};
+      await outbox.add('claim', { code: tag.code, fields: { name: p.full_name, phone: p.phone, agency: me.agency || '', unit: me.rides_with || me.user_id } });
+      state.lastSentAt = Date.now();
+      toast(bandLabel(tag) + ' is yours; your licences are on your card');
+      state.band = null; screen('home'); queueDraw();
+      return;
+    }
     if (!b.personId && !b.evacueeId) return;
     data.local('ic_tags', Object.assign({}, tag, { person_id: b.personId || null, evacuee_id: b.evacueeId || null, kind: b.personId ? 'responder' : 'evacuee', issued_at: new Date().toISOString(), issued_by: data.user.id }));
     await outbox.add('band', { id: tag.id, fields: b.personId ? { personId: b.personId } : { evacueeId: b.evacueeId } });
@@ -1187,6 +1211,148 @@ function drawEvBand() {
   else if (ev.band) { line.textContent = bandLabel(ev.band) + ' · scanned ' + hhmm(new Date()) + '; it goes on this record when you save.'; btn.hidden = false; }
   else { line.textContent = 'No band yet. Scan one from the box for a walk-up; a family a crew banded comes up by its band.'; btn.hidden = false; }
 }
+
+// ---- claim a band (v69): a band's link on a phone not yet on the incident. The peek (ic_band_peek) says what the band is;
+// an unissued one opens "Is this your band?": the name and phone (the profile's, or typed once), the agency, the incident's
+// units to pick from, one button. It's mine is the check-in: the person is on the incident at once.
+async function drawJoinBand() {
+  const code = pendingBand(), note = $('#join-band-note');
+  if (note) { note.hidden = true; note.textContent = ''; }
+  if (!code) return false;
+  let peek = null;
+  try { peek = await data.bandPeek(code); } catch (e) { console.warn(e); return false; }
+  if (!peek) return false;
+  const label = peek.number != null ? bandLabel({ number: peek.number }) : 'That band';
+  if (peek.state === 'free' && !peek.member) { openClaim(code, peek); return true; }
+  if (peek.member && (peek.state === 'free' || peek.state === 'on_someone')) return false;   // already on the incident: the band sheet opens once it is open, as before (v55)
+  clearPendingBand();
+  if (note) {
+    note.hidden = false;
+    note.textContent = peek.state === 'voided' ? label + ' was voided; ask the table for another.' : peek.state === 'closed' ? label + ' belongs to an incident that is closed.' : peek.state === 'on_someone' ? label + ' is on someone already. Check in with the code, or hand the band back.' : 'That band is not on record; hand it back to the table.';
+  }
+  return false;
+}
+function openClaim(code, peek) {
+  const p = data.profile || {};
+  const agency = lastAgency();
+  state.claim = { code, peek, unit: '' };
+  $('#claim-title').textContent = bandLabel({ number: peek.number }) + ' · not on anyone yet';
+  $('#claim-sub').textContent = peek.incident || '';
+  $('#claim-name').value = p.full_name || '';
+  $('#claim-phone').value = p.phone || '';
+  $('#claim-agency').value = agency;
+  $('#claim-msg').textContent = '';
+  pickClaimUnit();
+  $('#s-claim').hidden = false;
+  toTop($('#s-claim'));
+  ($('#claim-name').value ? ($('#claim-phone').value ? $('#claim-go') : $('#claim-phone')) : $('#claim-name')).focus();
+}
+// the unit whose agency is the one typed, when the pick has not been made by hand
+function pickClaimUnit(force) {
+  const c = state.claim; if (!c) return;
+  if (force || !c.picked) {
+    const ag = $('#claim-agency').value.trim().toLowerCase();
+    const u = ag ? (c.peek.units || []).find((x) => (x.agency || '').trim().toLowerCase() === ag) : null;
+    c.unit = u ? u.user_id : '';
+  }
+  drawClaimUnits();
+}
+function drawClaimUnits() {
+  const c = state.claim; if (!c) return;
+  const units = c.peek.units || [];
+  setHtml($('#claim-units'), units.map((u) => `<button type="button" class="${c.unit === u.user_id ? 'on' : ''}" data-action="claim-unit" data-unit="${u.user_id}" aria-pressed="${c.unit === u.user_id}"><span class="r"></span><b>${esc(u.unit_name || 'A unit')}${kindText(u.kind) ? ' · ' + esc(kindText(u.kind)) : ''}</b><span class="s">${esc(u.agency || 'agency not set')}</span></button>`).join('')
+    + `<button type="button" class="${c.unit === '' ? 'on' : ''}" data-action="claim-unit" data-unit="" aria-pressed="${c.unit === ''}"><span class="r"></span><b>Not on a unit yet</b><span class="s">Operations puts you on one</span></button>`);
+  const u = units.find((x) => x.user_id === c.unit);
+  $('#claim-go').textContent = u ? 'It\'s mine · check in with ' + (u.unit_name || 'the unit') : 'It\'s mine';
+}
+function closeClaim() { $('#s-claim').hidden = true; state.claim = null; }
+async function claimBand() {
+  const c = state.claim; if (!c) return;
+  const name = $('#claim-name').value.trim(), phone = $('#claim-phone').value.trim(), agency = $('#claim-agency').value.trim(), msg = $('#claim-msg');
+  if (!name) { msg.textContent = 'Your name, as on your licence if you have one.'; $('#claim-name').focus(); return; }
+  if (!phone) { msg.textContent = 'A phone Operations can reach you on.'; $('#claim-phone').focus(); return; }
+  msg.textContent = 'Checking in…';
+  try {
+    const inc = await data.claimBand(c.code, { name, phone, agency, unit: c.unit || null });
+    clearPendingBand();
+    try { localStorage.setItem(AGENCY_KEY + data.user.id, agency); } catch (e) { /* storage blocked */ }
+    await data.myProfile().catch(() => {});
+    closeClaim(); clearJoinForm();
+    state.licencesOnce = true;   // Add your licences opens once the incident is open
+    toast(bandLabel({ number: c.peek.number }) + ' is yours · checked in' + (c.unit ? ' with ' + ((c.peek.units || []).find((x) => x.user_id === c.unit) || {}).unit_name : ''));
+    await openIncident(inc.id);
+  } catch (err) { msg.textContent = err.message || String(err); }
+}
+// ---- add your licences (v69): one fixed list, the driver's licence first (the ID, which stays the profile), Other last;
+// Camera or Type, each queued through the outbox and pending at once; the You card says each one's standing
+function openLicences() { state.licType = null; screen('licences'); drawLicences(); }
+function drawLicences() {
+  const cam = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>';
+  const mine = data.myCredentials();
+  const row = ([k, label, sub]) => {
+    if (k === 'licence') {
+      const st = idState(data.profile);
+      const right = st.state === 'none' ? `<div class="acts"><button type="button" class="btn" data-action="id-open">Add your ID</button></div>` : `<span class="st ${st.state}">${esc(st.text)}</span>`;
+      return `<div class="cred-row" data-kind="licence"><div class="nm">${esc(label)}<small>${esc(sub)}${st.state !== 'none' ? ' · ' + esc(st.words) : ''}</small></div><div>${right}</div></div>`;
+    }
+    const c = credentialOf(mine, k), typing = state.licType === k;
+    const cs = c ? credentialState(c) : null;
+    const right = c && !typing && c.status !== 'rejected' ? `<span class="st ${cs.state}">${esc(cs.short)}</span>`
+      : typing ? '' : `<div class="acts">${k === 'other' ? '' : `<button type="button" class="btn" data-action="lic-cam" data-kind="${k}" title="A photo of the card">${cam} Camera</button>`}<button type="button" class="btn" data-action="lic-type" data-kind="${k}">${c ? 'Submit again' : 'Type'}</button></div>`;
+    const under = c ? `<small>${esc(c.photo_path ? 'photo' : 'typed' + (c.number ? ' ' + c.number : ''))}${c.issuer ? ' · ' + esc(c.issuer) : ''}${c.expires_at ? ' · expires ' + esc(c.expires_at) : ''} · ${esc(cs.text)}</small>` : sub ? `<small>${esc(sub)}</small>` : '';
+    const form = typing ? `<div class="typing">
+        ${k === 'other' ? '<input class="input full" id="lic-title" placeholder="What is it? (e.g. Wilderness First Responder)" autocomplete="off" maxlength="80">' : ''}
+        <input class="input" id="lic-number" placeholder="Number" autocomplete="off" maxlength="60">
+        <input class="input" id="lic-issuer" placeholder="Issued by" autocomplete="off" maxlength="120">
+        <label class="full muted small">Expires <input class="input" id="lic-expires" type="date"></label>
+        <div class="row-btns"><button type="button" class="btn" data-action="lic-type-cancel">Cancel</button><button type="button" class="btn pri" data-action="lic-add" data-kind="${k}">Add</button></div>
+      </div>` : '';
+    return `<div class="cred-row" data-kind="${k}"><div class="nm">${esc(label)}${under}</div><div>${right}</div>${form}</div>`;
+  };
+  setHtml($('#licences-list'), CREDENTIAL_KINDS.map(row).join(''));
+  const n = mine.filter((c) => c.status === 'pending').length;
+  $('#licences-ok').textContent = n ? 'Done · ' + n + ' pending' : 'Done';
+}
+async function queueCredential(kind, fields, blob) {
+  const id = uuid(), at = new Date().toISOString();
+  const row = { id, user_id: data.user.id, kind, title: fields.title || '', number: (fields.number || '').toUpperCase(), issuer: fields.issuer || '', expires_at: fields.expiresAt || null, photo_path: blob ? data.credentialPhotoPath(id) : null, status: 'pending', reason: '', confirmed_by: null, confirmed_at: null, created_at: at, updated_at: at, archived_at: null };
+  data.local('ic_credentials', row);
+  await outbox.add('credential', { id, fields: { kind, title: row.title, number: row.number, issuer: row.issuer, expiresAt: row.expires_at } }, blob || null);
+  state.lastSentAt = Date.now();
+  toast(credentialLabel(row) + ': pending.' + (navigator.onLine ? ' Operations confirms when they can.' : ' It goes when there is signal.'));
+}
+async function addTypedCredential(kind) {
+  const title = $('#lic-title') ? $('#lic-title').value.trim() : '', number = $('#lic-number').value.trim(), issuer = $('#lic-issuer').value.trim(), expiresAt = $('#lic-expires').value || null;
+  if (kind === 'other' && !title) { toast('Say what it is', true); $('#lic-title').focus(); return; }
+  if (!number && !issuer) { toast('A number, or at least who issued it', true); $('#lic-number').focus(); return; }
+  state.licType = null;
+  await queueCredential(kind, { title, number, issuer, expiresAt }, null);
+  drawLicences(); queueDraw();
+}
+async function takeCredentialPhoto(kind) {
+  let file;
+  try { file = await pickPhoto($('#camera-input')); } catch (e) { return; }
+  try {
+    const blob = await shrink(file);
+    state.licType = null;
+    await queueCredential(kind, {}, blob);
+    drawLicences(); queueDraw();
+  } catch (err) { toast(err.message || String(err), true); }
+}
+// the You card (v69): the ID's standing, each licence with its own, Add a licence; on the home screen and in the menu
+function youCardHtml() {
+  const st = idState(data.profile), mine = data.myCredentials().filter((c) => c.kind !== 'licence').sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+  const lead = data.rider(), me = data.me();
+  const lines = mine.map((c) => { const cs = credentialState(c); return `<div class="line"><span><b>${esc(credentialLabel(c))}</b>${c.issuer ? ` <span class="muted small">· ${esc(c.issuer)}</span>` : ''}</span><span class="st ${cs.state}">${esc(cs.short)}</span><span class="w">${esc(cs.text)}</span></div>`; }).join('');
+  return `<div class="card you" id="you-card">
+    <div class="k">You${data.profile && data.profile.full_name ? ' · ' + esc(data.profile.full_name) : ''}</div>
+    <div class="line"><span><b>ID</b> <span class="muted small">· driver's licence</span></span><span class="st ${st.state}">${esc(st.text)}</span><span class="w">${esc(st.words)}</span></div>
+    ${lines || '<div class="line"><span class="muted">No licences on your account yet.</span><span></span></div>'}
+    ${lead && me ? `<div class="line"><span><b>With ${esc(unitLabel(lead))}</b>${kindText(lead.kind) ? ` <span class="muted small">· ${esc(kindText(lead.kind))}</span>` : ''}</span><span></span><span class="w">${esc(crewNames(lead, data.people()) || 'nobody else named yet')}</span></div>` : ''}
+    <button type="button" class="btn" data-action="licences">Add a licence</button>
+  </div>`;
+}
+function drawYou() { const html = youCardHtml(); setHtml($('#you'), html); if (state.screen === 'menu') setHtml($('#menu-you'), html); }
 
 // ---- Identify yourself: name, phone and licence, once per account
 function drawYouLine() {
@@ -1312,6 +1478,7 @@ function drawMenu() {
     <span class="k">Live updates</span><span>${data.realtime === 'SUBSCRIBED' ? 'connected' : esc(String(data.realtime).toLowerCase())}</span>
     <span class="k">Heading from</span><span>${sensors.headingSource === 'compass' ? 'the compass' : sensors.headingSource === 'gps' ? 'direction of travel' : 'nothing yet'}</span>`;
   setHtml($('#menu-kind'), kindChips(me ? me.kind : '', 'me-kind'));
+  setHtml($('#menu-you'), youCardHtml());
   const shelters = data.facilities().filter((f) => f.kind === 'shelter'), myShelter = isDesk() ? deskShelter() : null;
   $('#menu-shelter-box').hidden = !isDesk();
   setHtml($('#menu-shelter'), isDesk() ? (shelters.length ? shelters.map((f) => `<button class="chip${myShelter && myShelter.id === f.id ? ' on' : ''}" data-action="desk-shelter" data-id="${f.id}" aria-pressed="${!!myShelter && myShelter.id === f.id}">${esc(placeLabel(f))}</button>`).join('') : '<span class="muted small">No shelter on the map yet; Operations places one.</span>') : '');
@@ -1899,7 +2066,16 @@ document.addEventListener('click', async (e) => {
       case 'scan-band-desk': await openScan('band', { purpose: 'desk' }); break;
       case 'par-scan': await openScan('band', { purpose: 'par', messageId: btn.dataset.id }); break;
       case 'scan-typed': { const err = bandRead($('#scan-type').value); if (err) { $('#scan-msg').textContent = err; toast(err, true); } break; }
-      case 'band-who': { const b = state.band; if (!b) break; b.personId = btn.dataset.person || null; b.evacueeId = btn.dataset.evacuee || null; b.newPerson = !!btn.dataset.new; drawBand(); break; }
+      case 'band-who': { const b = state.band; if (!b) break; b.personId = btn.dataset.person || null; b.evacueeId = btn.dataset.evacuee || null; b.newPerson = !!btn.dataset.new; b.me = !!btn.dataset.me; drawBand(); break; }
+      case 'claim-unit': if (state.claim) { state.claim.unit = btn.dataset.unit || ''; state.claim.picked = true; drawClaimUnits(); } break;   // v69
+      case 'claim-go': await claimBand(); break;
+      case 'claim-cancel': clearPendingBand(); closeClaim(); toast('Hand the band back to the table; nothing was written'); if (!data.profileReady() && !state.identShown) { state.identShown = true; openIdentify(); } break;
+      case 'licences': openLicences(); break;
+      case 'licences-done': { const n = data.myCredentials().filter((c) => c.status === 'pending').length; screen('home'); queueDraw(); toast(n ? n + ' pending. Your card says when Operations confirms.' : 'Add a licence is on your card whenever you like.'); maybeBriefing(); break; }
+      case 'lic-cam': await takeCredentialPhoto(btn.dataset.kind); break;
+      case 'lic-type': state.licType = btn.dataset.kind; drawLicences(); { const el = $('#lic-title') || $('#lic-number'); if (el) el.focus(); } break;
+      case 'lic-type-cancel': state.licType = null; drawLicences(); break;
+      case 'lic-add': await addTypedCredential(btn.dataset.kind); break;
       case 'band-what': if (state.band) { state.band.kind = btn.dataset.kind; drawBand(); } break;
       case 'band-save': await saveBand(); break;
       case 'band-cancel': state.band = null; screen('home'); queueDraw(); break;

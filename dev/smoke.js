@@ -76,7 +76,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, credentials, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -602,7 +602,7 @@ async function people(check) {
 
   $('#people [data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'check-in list (ics 211)'));
-  check('Print 211 lists everyone by unit with when they checked in and out, and the totals', ['check-in list, ics 211', 'unit 1, engine · cedar fork fire department · assigned · a-1', 'ramirez, lt. · swift water, emt · checked in', 'on scene', 'smith, probie · rope · checked in', 'checked out', 'unit 2, boat crew · travis county rescue', 'nguyen, capt. · swift water, boat', 'with patel', 'new guy, driver · checked in', 'totals', '8 people checked in on 3 units · 7 on scene · 1 checked out', 'by agency: cedar fork fire department 6 · travis county rescue 2', 'on scene by qualification: swift water 3'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 900));
+  check('Print 211 lists everyone by unit with when they checked in and out, and the totals', ['check-in list, ics 211', 'unit 1, engine · cedar fork fire department · assigned · a-1', 'ramirez, lt. · swift water, emt ✓ · own account · checked in', 'on scene', 'smith, probie · rope · checked in', 'checked out', 'unit 2, boat crew · travis county rescue', 'nguyen, capt. · swift water, boat (pending) · own account', 'with patel', 'new guy, driver · checked in', 'totals', '8 people checked in on 3 units · 7 on scene · 1 checked out', 'by agency: cedar fork fire department 6 · travis county rescue 2', 'on scene by qualification: swift water 3'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 900));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('#people [data-action="close-people"]').click();
@@ -1771,7 +1771,7 @@ async function rewalks(check) {
   check('the board counts the current stretch: "0 min · back in" on the line, "0 min, since now · back in" in the drawer', await until(() => /0 min · back in/.test(text(`#people-page .pp-line[data-person="${PPL[2]}"]`))) && await (async () => { $(`#people-page .pp-line[data-person="${PPL[2]}"]`).click(); return until(() => /0 min, since \d\d:\d\d · back in/.test(text(`#people-page .pp-drawer[data-person="${PPL[2]}"]`))); })(), text(`#people-page .pp-line[data-person="${PPL[2]}"]`));
   $('[data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
-  check('the 211 keeps every stretch: checked in at the first check-in', has('#briefing-page', 'nguyen, capt. · swift water, boat · checked in ' + new Date(was).toTimeString().slice(0, 5)), text('#briefing-page').slice(0, 500));
+  check('the 211 keeps every stretch: checked in at the first check-in', has('#briefing-page', 'nguyen, capt. · swift water, boat (pending) · own account · checked in ' + new Date(was).toTimeString().slice(0, 5)), text('#briefing-page').slice(0, 500));
   $('[data-action="close-briefing"]').click(); await until(() => $('#briefing').hidden);
   $('[data-action="close-people"]').click(); await until(() => $('#people').hidden);
   // they're all found: a crew whose whole boat was out of contact, one press on the base
@@ -2009,7 +2009,7 @@ async function tags(check) {
     check('a code from another incident is refused', /not from this incident/.test(P.text('#scan-msg')), P.text('#scan-msg'));
     P.$('#scan-type').value = '25'; await P.act('scan-typed');
     await until(() => P.shown('#s-band'), 5000);
-    check('band 025 opens the band sheet: not on anyone yet, whose band is this, Hale and Dominguez to pick', /band 025 · not on anyone yet/.test(P.text('#band-title')) && P.$$('#band-who .chip').map((c) => c.textContent).join('|') === 'Hale|Dominguez' && P.$('#band-save').disabled, P.text('#band-title') + ' | ' + P.text('#band-who'));
+    check('band 025 opens the band sheet: not on anyone yet, whose band is this, Hale and Dominguez to pick, and Me (the lead\'s own account, v69)', /band 025 · not on anyone yet/.test(P.text('#band-title')) && P.$$('#band-who .chip').map((c) => c.textContent).join('|') === 'Hale|Dominguez|Me · Jordan Lee Hale' && P.$('#band-save').disabled, P.text('#band-title') + ' | ' + P.text('#band-who'));
     check('the band sheet is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
     P.$$('#band-who .chip').find((x) => x.textContent === 'Hale').click();
     check('Hale picked: Save says so', P.$('#band-save').textContent === 'Give Band 025 to Hale' && !P.$('#band-save').disabled, P.$('#band-save').textContent);
@@ -2130,6 +2130,120 @@ async function tags(check) {
     autoConfirm(false);
     if (P) P.frame.remove();
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
+    if (!$('#people').hidden) $('[data-action="close-people"]').click();
+    await wait(100);
+  }
+}
+
+// ---- claim a band, submit licences, Operations confirms (v69): the seed's chips and queue; Rosa's phone, signed out with
+// a band's link, signs up, claims the band on "Is this your band?", is on the incident at once as Unit 2's crew, types an
+// EMT and sees it pending; the base confirms it and refuses Nguyen's boat card with a reason; the chips, the 211, the hover
+// card and the 214 follow; a voided band is refused at the door.
+async function credentials(check) {
+  autoConfirm(true);
+  for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+  let P = null;
+  const PPL = M().ids.people, CR = M().ids.credentials, U = USERS();
+  const tagN = (n) => base.tags(true).find((t) => t.number === n) || null;
+  const row = (id) => $(`#people-page .pp-line[data-person="${id}"]`);
+  const chips = (id) => (row(id) ? [...row(id).querySelectorAll('.pp-quals .badge')].map((b) => b.textContent.trim()) : []);
+  const openBoard = async () => { if ($('#people').hidden) $('.top-btns [data-action="people"]').click(); await until(() => !$('#people').hidden); const ptab = $('#people [data-action="people-tab"][data-tab="people"]'); if (ptab && !ptab.classList.contains('on')) ptab.click(); await until(() => $$('#people-page .pp-line').length >= 6); };   // the People tab, whatever the suite before left
+  const drawer = async (id) => { const sel = `#people-page .pp-drawer[data-person="${id}"]`; if (!$(sel)) { row(id).click(); await until(() => $(sel)); } return $(sel); };
+  const closeBoard = () => { if (!$('#people').hidden) $('[data-action="close-people"]').click(); };
+  try {
+    check('seeded: Ramirez\'s EMT confirmed, Nguyen\'s boat card pending; the base reads every member\'s, a unit only its own', base.credentials().length === 2 && base.credential(CR[0]).status === 'confirmed' && base.credential(CR[1]).status === 'pending' && base.pendingCredentials().length === 1 && field.credentials().length === 0, base.credentials().length + ' on the base, ' + field.credentials().length + ' on Unit 3');
+    check('the home panel has To confirm · 1 with Nguyen\'s boat operator card: a photo thumb, who, the issuer, the expiry, Confirm and Not accepted…', has('#panel', 'to confirm · 1') && has('#panel .cq-row', 'minh nguyen', 'unit 2', 'boat operator', 'texas parks and wildlife', 'expires 2027-11-30') && !!$('#panel .cq-row [data-action="cred-confirm"]') && !!$('#panel .cq-row [data-action="cred-reject"]') && !!$('#panel .cq-row [data-cred-photo]'), text('#panel .cq-row'));
+    check('the queue\'s photo loads from a signed link', await until(() => $('#panel .cq-thumb img') && !$('#panel .cq-thumb img').hidden && $('#panel .cq-thumb img').src, 8000), ($('#panel .cq-thumb img') || {}).src);
+    await openBoard();
+    check('the People board reads the chips: Ramirez "Swift water" (the lead\'s word) and "EMT ✓", Nguyen "Boat · pending", Okafor plain', chips(PPL[0]).join('|') === 'Swift water|EMT ✓' && chips(PPL[2]).join('|') === 'Swift water|Boat · pending' && chips(PPL[1]).join('|') === 'Boat|Paramedic', chips(PPL[0]).join('|') + ' / ' + chips(PPL[2]).join('|'));
+    check('a person with their own account on the row says so on the line; the lead\'s word has no such mark', !!row(PPL[0]).querySelector('.pp-own') && !!row(PPL[2]).querySelector('.pp-own') && !row(PPL[1]).querySelector('.pp-own'), text(`#people-page .pp-line[data-person="${PPL[2]}"]`));
+    await drawer(PPL[2]);
+    check('the drawer carries the Identity row in the Members tab\'s words: Nguyen "ID given, not checked" with Check, and the chips with their states', has(`#people-page .pp-drawer[data-person="${PPL[2]}"] .pp-own-id`, 'own account', 'id given, not checked') && !!$(`#people-page .pp-drawer[data-person="${PPL[2]}"] .pp-own-id [data-action="member-check"]`) && has(`#people-page .pp-drawer[data-person="${PPL[2]}"] .pp-kv`, 'boat · pending'), text(`#people-page .pp-drawer[data-person="${PPL[2]}"] .pp-kv`));
+    $('#people-page .pp-drawer [data-action="person-close"]').click();
+    await until(() => !$('#people-page .pp-drawer'));
+    check('the board carries the queue too', has('#people-page', 'to confirm · 1') && !!$('#people-page .cq-row [data-action="cred-confirm"]'), text('#people-page .cq-row'));
+    closeBoard();
+
+    // ---- Rosa's phone: a band's link, signed out; she signs up and the claim sheet opens
+    const band = tagN(5);
+    P = await phoneFrame('&nobody&band=' + band.code, { signedOut: true });
+    Object.assign(P.frame.contentWindow.__mock.geo, { lat: 30.2616, lng: -97.7418, drift: false });   // her phone stands in B-1, Unit 2's division
+    check('the door says Band 005 is waiting (v62)', !!P.ready && P.shown('#auth-band') && /^band 005 is waiting/.test(P.text('#auth-band')), P.text('#auth-band'));
+    await phoneSignIn(P, 'rosa.alvarez@mock.local', true);
+    await until(() => P.shown('#s-claim'), 8000);
+    check('signed up, an unissued band opens Is this your band?: Band 005 · not on anyone yet, the incident\'s name, name and phone empty for a new account, the three units and Not on a unit yet', P.shown('#s-claim') && P.text('#claim-title') === 'band 005 · not on anyone yet' && P.text('#claim-sub') === 'cedar fork flooding' && P.$('#claim-name').value === '' && P.$$('#claim-units button').map((b) => b.querySelector('b').textContent).join('|') === 'Unit 1 · engine|Unit 2 · boat crew|Unit 3 · swift-water team|Not on a unit yet' && !P.shown('#s-identify'), P.$$('#claim-units button').map((b) => b.textContent).join('|'));
+    check('the claim sheet is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    await P.act('claim-go');
+    check('It\'s mine with no name says so', /your name/.test(P.text('#claim-msg')) && P.shown('#s-claim'), P.text('#claim-msg'));
+    P.$('#claim-name').value = 'Rosa Alvarez'; P.$('#claim-phone').value = '512 555 0177';
+    P.$('#claim-agency').value = 'Travis County Rescue'; P.$('#claim-agency').dispatchEvent(new Event('input', { bubbles: true }));
+    check('typing her agency picks its unit, Unit 2, and the button says so', P.$('#claim-units button.on') && /unit 2/i.test(P.$('#claim-units button.on').textContent) && /check in with unit 2/i.test(P.$('#claim-go').textContent), P.$('#claim-go').textContent);
+    await P.act('claim-go');
+    check('It\'s mine: the incident opens on her phone as Unit 2\'s crew, and Add your licences is first', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Unit 2', 15000) && await until(() => P.shown('#s-licences'), 8000) && /rosa alvarez · with unit 2/.test(P.text('#me-crew')), P.text('#me-crew'));
+    const rosaId = () => (base.members().find((m) => m.rides_with === U.unit2) || {}).user_id;
+    check('the base: she is a member riding with Unit 2, on no list of units of its own; Unit 2\'s roster has her, with her account on the row, band 005 on her, the scan is her check-in, Unit 2 is three', await until(() => rosaId(), 10000) && base.units().length === 3 && base.member(rosaId()).unit_name === 'Unit 2' && await until(() => base.people().some((p) => p.name === 'Rosa Alvarez' && p.user_id === U.unit2 && p.claimed_by === rosaId()), 10000) && await until(() => tagN(5).person_id === base.people().find((p) => p.name === 'Rosa Alvarez').id && tagN(5).kind === 'responder', 10000) && base.seen().some((s) => s.tag_id === tagN(5).id && s.kind === 'check_in') && await until(() => base.member(U.unit2).crew_count === 3, 10000), JSON.stringify([base.units().length, base.member(U.unit2).crew_count]));
+    check('one 214 line: Rosa Alvarez claimed Band 005 (Unit 2); no line for the band, the scan or the roster underneath', await until(() => eventText(base, 'Rosa Alvarez claimed Band 005 (Unit 2)'), 10000) && !base.events().some((e) => /^Band 005 given|Rosa Alvarez seen checking in|Rosa Alvarez checked in with/.test(e.text)), logTexts().slice(0, 3).join(' | '));
+    check('the units section still lists three units, Unit 2 once, with three people', has('#panel', 'unit 2') && $$('#panel [data-action="select-unit"]').length === 3 && await until(() => has(`#panel [data-action="select-unit"][data-id="${U.unit2}"]`, 'rosa alvarez'), 10000), text(`#panel [data-action="select-unit"][data-id="${U.unit2}"]`));
+    // ---- Add your licences: the ID row opens Identify yourself; an EMT typed is pending at once
+    check('the sheet lists the fixed kinds, the driver\'s licence first as the ID with Add your ID, Camera and Type on the rest, Other with Type alone', P.$$('#licences-list .cred-row').length === 10 && P.$('#licences-list .cred-row[data-kind="licence"] [data-action="id-open"]') && P.$('#licences-list .cred-row[data-kind="emt"] [data-action="lic-cam"]') && P.$('#licences-list .cred-row[data-kind="emt"] [data-action="lic-type"]') && !P.$('#licences-list .cred-row[data-kind="other"] [data-action="lic-cam"]') && P.$('#licences-ok').textContent === 'Done', P.$$('#licences-list .cred-row .nm').map((e) => e.textContent.trim()).join('|'));
+    check('the licences sheet is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#licences-list .cred-row[data-kind="emt"] [data-action="lic-type"]').click();
+    await until(() => P.$('#lic-number'), 3000);
+    P.$('#lic-number').value = 'emt-204471'; P.$('#lic-issuer').value = 'Texas DSHS'; P.$('#lic-expires').value = '2028-01-31';
+    await P.act('lic-add', { kind: 'emt' });
+    check('Add: the EMT reads pending at once with its words, and Done counts it', await until(() => P.$('#licences-list .cred-row[data-kind="emt"] .st.pending'), 3000) && /typed emt-204471 · texas dshs · expires 2028-01-31 · pending · sent \d\d:\d\d/.test(P.text('#licences-list .cred-row[data-kind="emt"]')) && P.$('#licences-ok').textContent === 'Done · 1 pending', P.text('#licences-list .cred-row[data-kind="emt"]'));
+    check('the base: the queue counts 2, Rosa\'s typed EMT with the number\'s tail, and the 214 says she submitted it', await until(() => base.pendingCredentials().length === 2, 70000) && await until(() => has('#panel', 'to confirm · 2') && has('#panel .cq-list', 'rosa alvarez', 'emt', '···4471'), 10000) && await until(() => eventText(base, 'Rosa Alvarez submitted EMT'), 10000), text('#panel .cq-list').slice(0, 300));
+    await P.act('licences-done');
+    await until(() => P.shown('#s-briefing'), 8000); await P.act('briefed');
+    await until(() => P.shown('#s-home'), 5000);
+    check('home: the You card reads the ID none and the EMT pending, with Add a licence and her unit; the unit\'s division is read-only (no Accept, no Address clear), Message Operations is offered, and her phone reports no position of its own', /id · driver's licence none/.test(P.text('#you-card')) && /emt · texas dshs pending/.test(P.text('#you-card')) && !!P.$('#you-card [data-action="licences"]') && /with unit 2 · boat crew/.test(P.text('#you-card')) && !P.$('#banner [data-action="accept"]') && P.$('.actions [data-action="addr-clear"]').hidden && P.$('.actions [data-action="zone-clear"]').hidden && !P.$('#act-compose').hidden && await until(() => /unit 2's division/.test(P.text('#assignment')) && /b-1/.test(P.text('#assignment')), 8000) && !base.position(rosaId()), P.text('#you-card') + ' | ' + P.text('#assignment').slice(0, 80));
+    await P.act('menu');
+    check('the menu carries the same card', await until(() => P.shown('#s-menu') && /emt/.test(P.text('#menu-you')), 3000) && /pending/.test(P.text('#menu-you')), P.text('#menu-you'));
+    await P.act('home');
+
+    // ---- the base confirms Rosa's EMT and refuses Nguyen's boat card with a reason
+    const rosaCred = () => base.credentials().find((c) => c.kind === 'emt' && c.user_id === rosaId());
+    $(`#panel .cq-row[data-cred="${rosaCred().id}"] [data-action="cred-confirm"]`).click();
+    check('Confirm: confirmed by Operations, one 214 line, the queue counts 1', await until(() => rosaCred().status === 'confirmed' && rosaCred().confirmed_by === U.ops, 8000) && await until(() => eventText(base, "Rosa Alvarez's EMT confirmed by Operations"), 8000) && await until(() => has('#panel', 'to confirm · 1'), 8000), logTexts()[0]);
+    check('her phone reads it: the You card says confirmed by Operations hh:mm', await until(() => /emt[^|]*confirmed ✓/.test(P.text('#you-card')) && /confirmed by operations \d\d:\d\d/.test(P.text('#you-card')), 15000), P.text('#you-card'));
+    autoConfirm(false);
+    $(`#panel .cq-row[data-cred="${CR[1]}"] [data-action="cred-reject"]`).click();
+    check('Not accepted… asks why in the app\'s own dialog: the card and the person named, four reasons as chips, a box for your own words', await until(() => $('#reason-dialog').open, 3000) && has('#reason-title', 'not accepted: boat operator, minh nguyen') && $$('#reason-chips .chip').map((c) => c.textContent).join('|') === 'Expired|Cannot read it|Not this person|Wrong kind' && !!$('#reason-input'), text('#reason-title') + ' | ' + $$('#reason-chips .chip').map((c) => c.textContent).join('|'));
+    $$('#reason-chips .chip').find((c) => c.textContent === 'Expired').click();
+    check('the chip decides: rejected with the reason, the line says why, the queue is empty', await until(() => base.credential(CR[1]).status === 'rejected' && base.credential(CR[1]).reason === 'expired', 8000) && !$('#reason-dialog').open && await until(() => eventText(base, "Minh Nguyen's boat operator not accepted: expired"), 8000) && await until(() => !has('#panel', 'to confirm'), 8000), logTexts()[0]);
+    autoConfirm(true);
+    await openBoard();
+    check('the board\'s chips follow: Rosa "EMT ✓" with own account on Unit 2\'s card, Nguyen "Boat ✗" with the reason in the title, and nothing to confirm', await until(() => { const r = base.people().find((p) => p.name === 'Rosa Alvarez'); return r && chips(r.id).join('|') === 'EMT ✓' && !!row(r.id).querySelector('.pp-own') && row(r.id).closest('.pp-card').dataset.unit === U.unit2; }, 10000) && chips(PPL[2]).join('|') === 'Swift water|Boat ✗' && row(PPL[2]).querySelector('.badge.cred-rejected').title === 'not accepted: expired' && has('#people-page', 'nothing to confirm'), chips(PPL[2]).join('|'));
+    $('#people .briefing-bar [data-action="print-211"]').click();
+    await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
+    check('the 211 prints the confirmed with a tick, the refused marked, a plain word the lead\'s, own account on her line, and the legend', has('#briefing-page', 'rosa alvarez · emt ✓ · own account') && has('#briefing-page', 'nguyen, capt. · swift water, boat (not accepted) · own account') && has('#briefing-page', 'okafor · boat, paramedic') && has('#briefing-page', '✓ confirmed by operations · (pending) submitted'), (text('#briefing-page').match(/rosa alvarez[^\n]{0,120}/) || [''])[0]);
+    $('[data-action="close-briefing"]').click();
+    closeBoard();
+    // the division's hover card gains who is qualified for what
+    const zr = $(`#zones .zr[data-id="${ZONE('B-1')}"]`);
+    zr.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    check('B-1\'s hover card lists Unit 2\'s people with their chips, the confirmed ticked', await until(() => !$('#zone-hover').hidden && $('#zone-hover .zh-ql'), 3000) && has('#zone-hover .zh-ql', 'nguyen', 'boat ✗', 'rosa alvarez', 'emt ✓'), text('#zone-hover .zh-ql'));
+    $('#zones').dispatchEvent(new MouseEvent('mouseleave'));
+    // the Members tab shows her as crew by band, with Unit 2
+    await openBoard();
+    $('#people [data-action="people-tab"][data-tab="members"]').click();
+    check('the Members tab: Rosa Alvarez · with Unit 2 · Crew, by band, her own Identity cell (No ID · Check in person), and Open goes to Unit 2', await until(() => has(`#people-page .mb-row[data-member="${rosaId()}"]`, 'rosa alvarez · with unit 2', 'crew, by band', 'no id'), 5000) && !!$(`#people-page .mb-row[data-member="${rosaId()}"] [data-action="verify-profile"]`) && $(`#people-page .mb-row[data-member="${rosaId()}"] [data-action="select-unit"]`).dataset.id === U.unit2, text(`#people-page .mb-row[data-member="${rosaId()}"]`));
+    $('#people [data-action="people-tab"][data-tab="people"]').click();
+    closeBoard();
+
+    // ---- a voided band at the door
+    await base.voidBand(tagN(6).id);
+    P.frame.remove(); P = null;
+    P = await phoneFrame('&nobody&band=' + tagN(6).code, { signedOut: true });
+    await phoneSignIn(P, 'rosa.alvarez@mock.local', false);
+    check('a voided band on a signed-out phone: after sign-in the check-in form says it was voided, no claim sheet', await until(() => P.shown('#join') && P.shown('#join-band-note'), 8000) && /band 006 was voided; ask the table for another/.test(P.text('#join-band-note')) && !P.shown('#s-claim'), P.text('#join-band-note'));
+    check('her incident is listed to reopen, as Unit 2', await until(() => /you are unit 2/.test(P.text('#join-list')), 5000), P.text('#join-list'));
+  } finally {
+    autoConfirm(false);
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    if ($('#reason-dialog') && $('#reason-dialog').open) $('#reason-dialog').close();
     if (!$('#briefing').hidden) $('[data-action="close-briefing"]').click();
     if (!$('#people').hidden) $('[data-action="close-people"]').click();
     await wait(100);
@@ -2988,7 +3102,7 @@ async function members(check) {
     check('Clear now blanks the licence, date of birth, address and photo of every member in no open incident, and keeps the names and phones', inc().personal_cleared_at && [U.ops, U.unit1, U.unit2, U.unit3].every((u) => prof(u).licence_number === '' && prof(u).photo_path == null && prof(u).date_of_birth == null && prof(u).address === '') && prof(U.unit1).full_name === 'Ana Ramirez' && prof(U.unit1).phone === '512 555 0111', JSON.stringify(prof(U.unit1)));
     check('the licence photos are removed through the Storage API and the queue is marked done', M().tables.ic_id_purge.length >= 4 && M().tables.ic_id_purge.every((q) => q.done_at) && !M().files.has(hadPhoto));
     check('the evacuee records keep counts, needs and where from, and lose the names and notes', M().tables.ic_evacuees.every((e) => e.note === '' && (e.label === '' || /^family of \d+$/.test(e.label))) && M().tables.ic_evacuees.some((e) => e.label === 'family of 5' && e.needs.includes('infant') && e.from_text === 'Riverside Drive'), JSON.stringify(M().tables.ic_evacuees.map((e) => e.label)));
-    check('one line in the 214 counts what was cleared', M().tables.ic_events.filter((e) => /^Personal records cleared by rule: 5 licence records, 5 sheltered people's names$/.test(e.text)).length === 1, (M().tables.ic_events.find((e) => /cleared by rule/.test(e.text)) || {}).text);
+    check('one line in the 214 counts what was cleared, the credentials too (v69)', M().tables.ic_events.filter((e) => /^Personal records cleared by rule: 5 licence records, 5 sheltered people's names, 2 credentials blanked$/.test(e.text)).length === 1, (M().tables.ic_events.find((e) => /cleared by rule/.test(e.text)) || {}).text);
     check('the picker now says cleared by rule', await until(() => has(`#pick-list [data-clear="${INC()}"]`, 'personal records cleared', 'by rule')), text(`#pick-list [data-clear="${INC()}"]`));
     // the nightly run clears what is due, called by anyone
     const closed = M().tables.ic_incidents.find((i) => i.id === INC());

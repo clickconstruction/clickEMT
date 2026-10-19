@@ -865,3 +865,46 @@ export function cornersOk(c) {
 export function boxCorners(b) { return [[Number(b.north), Number(b.west)], [Number(b.north), Number(b.east)], [Number(b.south), Number(b.east)], [Number(b.south), Number(b.west)]]; }
 // where an overlay's picture lies: its corners, else the corners of its bounds
 export function overlayCorners(o) { return cornersOk(o && o.corners) ? o.corners.map((p) => [Number(p[0]), Number(p[1])]) : boxCorners((o && o.bounds) || {}); }
+// ---- credentials (v69): a licence or a card belongs to the account (ic_credentials), its kind from one fixed list,
+// pending until Operations of an incident the owner is on confirms it or says why not; nothing is deleted. The kind's
+// words are ic_credential_kind_text in SQL. The driver's licence stays the profile (the ID); it is never a chip.
+export const CREDENTIAL_KINDS = [['licence', "Driver's licence", 'your ID'], ['emt', 'EMT', ''], ['paramedic', 'Paramedic', ''], ['swift_water', 'Swift water', ''], ['boat', 'Boat operator', ''], ['rope', 'Rope', ''], ['k9', 'K9', ''], ['hazmat', 'Hazmat', ''], ['drone', 'Drone', ''], ['other', 'Other', 'say what it is']];
+export const CREDENTIAL_STATUS = { pending: 'Pending', confirmed: 'Confirmed', rejected: 'Not accepted' };
+export const REJECT_REASONS = ['Expired', 'Cannot read it', 'Not this person', 'Wrong kind'];   // the four chips; or Operations' own words
+const CRED_TEXT = { licence: "driver's licence", emt: 'EMT', paramedic: 'paramedic', swift_water: 'swift water', boat: 'boat operator', rope: 'rope', k9: 'K9', hazmat: 'hazmat', drone: 'drone' };
+export function credentialKind(k) { return CREDENTIAL_KINDS.find((x) => x[0] === k) || null; }
+// "Boat operator", "EMT", or an other's title
+export function credentialLabel(c) { const k = credentialKind(c.kind); return c.kind === 'other' && (c.title || '').trim() ? c.title.trim() : k ? k[1] : c.kind; }
+// "EMT", "swift water", "boat operator", "driver's licence", an other's title (ic_credential_kind_text)
+export function credentialText(c) { return CRED_TEXT[c.kind] || (c.title || '').trim() || 'a credential'; }
+export function credentialExpired(c, now = Date.now()) { return !!c.expires_at && new Date(c.expires_at + 'T23:59:59').getTime() < now; }
+// the live credentials of an account, newest first
+export function credentialsOf(creds, userId) { return creds.filter((c) => c.user_id === userId && !c.archived_at).sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)); }
+// the newest live credential of a kind in a list already newest first
+export function credentialOf(creds, kind) { return creds.find((c) => c.kind === kind && !c.archived_at) || null; }
+export function pendingCredentials(creds) { return creds.filter((c) => c.status === 'pending' && !c.archived_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
+// one credential's standing: "pending · sent 14:06", "confirmed by Operations 14:12", "not accepted 14:12: expired"
+export function credentialState(c, now = Date.now()) {
+  const expired = credentialExpired(c, now);
+  if (c.status === 'confirmed') return { state: 'confirmed', short: 'confirmed ✓', text: 'confirmed by Operations ' + hhmm(c.confirmed_at) + (expired ? ' · expired' : ''), expired };
+  if (c.status === 'rejected') return { state: 'rejected', short: 'not accepted', text: 'not accepted' + (c.confirmed_at ? ' ' + hhmm(c.confirmed_at) : '') + (c.reason ? ': ' + c.reason : ''), expired };
+  return { state: 'pending', short: 'pending', text: 'pending · sent ' + hhmm(c.created_at) + (expired ? ' · expired' : ''), expired };
+}
+// the ID is the profile, never a credential: none, given (not checked), or checked by Operations (Mark verified) hh:mm
+export function idState(p) {
+  if (!p || !profileReady(p)) return { state: 'none', text: 'none', words: 'say who you are first' };
+  if (p.verified_at) return { state: 'checked', text: 'checked ✓ ' + hhmm(p.verified_at), words: (identityGiven(p) ? 'licence checked' : 'checked in person') + ' by Operations ' + hhmm(p.verified_at) };
+  if (identityGiven(p)) return { state: 'given', text: 'given, not checked', words: ({ scan: 'licence scanned', photo: 'front photographed', typed: 'licence typed' }[p.id_source] || 'licence on file') + ' · Operations checks it' };
+  return { state: 'none', text: 'none', words: 'name and phone only · Operations checks who you are in person' };
+}
+// A person's qualification chips: the lead's typed words, and for a person with their own account on the row (claimed_by)
+// the account's credential of each kind: confirmed → "EMT ✓", pending → "EMT · pending", not accepted → "EMT ✗"; a
+// credential the lead did not tap is added; a plain word is the lead's.
+export function personQuals(p, creds = []) {
+  const mine = p.claimed_by ? credentialsOf(creds, p.claimed_by) : [];
+  const kinds = QUALIFICATIONS.map(([q]) => q).filter((q) => (p.qualifications || []).includes(q) || mine.some((c) => c.kind === q));
+  return kinds.map((q) => { const c = credentialOf(mine, q); return { kind: q, label: qualLabel(q), state: c ? c.status : 'plain', cred: c }; });
+}
+export function qualChipText(x) { return x.state === 'confirmed' ? x.label + ' ✓' : x.state === 'pending' ? x.label + ' · pending' : x.state === 'rejected' ? x.label + ' ✗' : x.label; }
+// the 211's words: "swift water ✓, EMT (pending), boat (not accepted), rope"
+export function qualsTextWith(p, creds) { return personQuals(p, creds).map((x) => QUAL_TEXT[x.kind] + (x.state === 'confirmed' ? ' ✓' : x.state === 'pending' ? ' (pending)' : x.state === 'rejected' ? ' (not accepted)' : '')).join(', '); }

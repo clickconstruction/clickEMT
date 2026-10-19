@@ -799,3 +799,27 @@ button.pill { border: 0; cursor: pointer; font: inherit; font-size: 12px; line-h
 /* v62: the app's own questions (#confirm-dialog, askConfirm) in place of the browser's confirm() */
 .confirm-text { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; max-width: 440px; }
 .confirm-text p { margin: 0 0 6px; } .confirm-text p:last-child { margin-bottom: 0; } .confirm-text b { color: var(--ink); }
+
+/* ---- claim a band, submit licences, Operations confirms (v69): the To confirm queue, the chips' states, the hover card's block */
+.cq-list { display: flex; flex-direction: column; }
+.cq-row { display: grid; grid-template-columns: 44px 1fr; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--line-soft); align-items: start; font-size: 13px; }
+.cq-row:first-child { border-top: 0; }
+.cq-thumb { width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; grid-row: 1 / 4; overflow: hidden; background: var(--soft); color: var(--ink-2); }
+.cq-thumb.photo { background: var(--photo-bg); color: #fff; }
+.cq-thumb.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cq-thumb.num { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 11px; }
+.cq-who { font-weight: 600; }
+.cq-what { color: var(--ink-2); }
+.cq-what .warn { color: var(--hazard-ink); font-weight: 600; }
+.cq-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.badge.q.cred-confirmed { background: var(--tint-green); color: var(--cleared); }
+.badge.q.cred-pending { background: var(--tint-orange); color: var(--hazard-ink); }
+.badge.q.cred-rejected { background: var(--tint-red); color: var(--danger); }
+.pp-id .badge { font-size: 10.5px; padding: 0 6px; }
+.zh-ql { padding: 6px 0 2px; border-top: 1px solid var(--line-soft); display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 12.5px; align-items: center; }
+.zh-ql .pp-quals { gap: 3px; }
+#reason-dialog .chips .chip { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+#reason-dialog label { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+#reason-dialog label input { border: 1px solid var(--control-border); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 14px; background: var(--control-bg); color: var(--ink); }
+.pp-own { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+.pp-own-id { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

@@ -70,6 +70,7 @@
         <label>Incident code, from Operations <input name="code" required placeholder="ABC234" autocapitalize="characters" class="mono" style="letter-spacing:.1em"></label>
         <div class="row-btns" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="btn sm" data-action="scan-code">Scan a code</button><span class="muted small">Operations' screen, a printed card or another unit's phone shows one.</span></div>
         <p class="muted small" id="join-code-note" hidden></p>
+        <p class="muted small" id="join-band-note" hidden></p>
         <div class="row-2">
           <label>Your unit <input name="unit" required placeholder="Engine 3, Boat 1, or your name"></label>
           <label>Agency <input name="agency" placeholder="e.g. Red Cross, county sheriff"></label>
@@ -105,6 +106,22 @@
   <p class="muted small" id="id-none">No licence at all? Save with your name and phone. Operations sees "identity not given" beside your unit and checks who you are in person.</p>
   <p class="msg" id="id-msg" role="status"></p>
   <div class="sheet-btns"><button class="btn" data-action="id-cancel">Not now</button><button class="btn pri" data-action="id-save">Save</button></div>
+</div>
+
+<div id="s-claim" class="sheet sheet-fixed" hidden>
+  <div class="sheet-head"><h2 id="claim-title">Band</h2><span class="muted small" id="claim-sub"></span></div>
+  <h3 class="ask">Is this your band?</h3>
+  <p class="muted small">Say who you are, once. Operations of this incident sees it; nobody else does. The band is your check-in: you are on the incident the moment you press It's mine.</p>
+  <label class="k" for="claim-name">Your name</label>
+  <input id="claim-name" class="input" autocomplete="name" autocapitalize="words" maxlength="120">
+  <label class="k" for="claim-phone">Phone</label>
+  <input id="claim-phone" class="input" type="tel" autocomplete="tel" inputmode="tel" placeholder="512 555 0100" maxlength="30">
+  <label class="k" for="claim-agency">Agency</label>
+  <input id="claim-agency" class="input" placeholder="e.g. Travis County Rescue" autocomplete="off" maxlength="120">
+  <div class="k">Your unit <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">· your agency's is picked</span></div>
+  <div class="ulist" id="claim-units"></div>
+  <p class="msg" id="claim-msg" role="status"></p>
+  <div class="sheet-btns" style="flex-direction:column"><button class="btn pri big" data-action="claim-go" id="claim-go">It's mine</button><button class="btn link" data-action="claim-cancel">Not yours? Hand it back.</button></div>
 </div>
 
 <div id="s-removed" class="sheet sheet-fixed" hidden>
@@ -184,6 +201,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle><path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"></path></svg>
       Need help now
     </button>
+    <div id="you"></div>
     <div id="mini" class="mini" role="application" aria-label="Your zone"></div>
     <div id="nearby"></div>
     <div class="p-foot"><span id="foot-left"></span><span id="foot-right"></span></div>
@@ -348,6 +366,13 @@
     </div>
   </div>
 
+  <div id="s-licences" class="sheet" hidden>
+    <h2>Add your licences</h2>
+    <p class="muted small">Each shows pending until Operations confirms it, and stays on your account for the next incident. Skip any; Add a licence on your card brings this back.</p>
+    <div class="cred-list" id="licences-list"></div>
+    <div class="sheet-btns"><button class="btn" data-action="licences-done">Skip for now</button><button class="btn pri" data-action="licences-done" id="licences-ok" style="flex:2">Done</button></div>
+  </div>
+
   <div id="s-person" class="sheet" hidden>
     <div class="sheet-head"><h2 id="person-title">Sign in a person</h2><span class="muted small" id="person-sub"></span></div>
     <p class="muted small" id="person-hint"></p>
@@ -379,6 +404,8 @@
   <div id="s-menu" class="sheet" hidden>
     <h2>This incident</h2>
     <div class="kv" id="menu-facts"></div>
+    <div class="k">You</div>
+    <div id="menu-you"></div>
     <div class="row-btns" style="justify-content:flex-start"><button class="btn sm" data-action="briefing">Your briefing</button><button class="btn sm" data-action="hurt">If someone is hurt</button><button class="btn sm" data-action="show-code">Show a code to join</button><button class="btn sm" data-action="scan-band">Scan a band</button><button class="btn sm" data-action="id-open">Your identity</button></div>
     <div class="k">What the unit is</div>
     <div class="chips kind-chips" id="menu-kind"></div>

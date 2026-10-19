@@ -3,7 +3,7 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml, placeCardHtml } from './ui.js';
-import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, replayWindow as replayWindowRule, replayWindowLabel, replayPickCheck, dayIso, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners } from '../shared/rules.js';
+import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, replayWindow as replayWindowRule, replayWindowLabel, replayPickCheck, dayIso, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners, credentialLabel, REJECT_REASONS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -204,6 +204,21 @@ function askName(title, value) {
     form.addEventListener('submit', onSubmit); dlg.addEventListener('close', onClose);
     dlg.querySelector('[data-action="name-cancel"]').onclick = () => done(null);
     dlg.showModal(); input.focus(); input.select();
+  });
+}
+// Not accepted asks why (v69): four reasons as chips, or Operations' own words; null when the question is put away
+function askReason({ title, text, chips }) {
+  const dlg = $('#reason-dialog'), form = $('#reason-form'), input = $('#reason-input');
+  $('#reason-title').textContent = title; $('#reason-text').textContent = text; input.value = '';
+  $('#reason-chips').innerHTML = chips.map((r) => `<button type="button" class="chip" data-reason="${esc(r)}">${esc(r)}</button>`).join('');
+  return new Promise((resolve) => {
+    const done = (v) => { dlg.removeEventListener('close', onClose); form.removeEventListener('submit', onSubmit); dlg.removeEventListener('click', onChip); if (dlg.open) dlg.close(); resolve(v); };
+    const onSubmit = (e) => { e.preventDefault(); const v = input.value.trim(); if (!v) { input.focus(); return; } done(v); };
+    const onClose = () => done(null);
+    const onChip = (e) => { const b = e.target.closest('[data-reason]'); if (b) done(b.dataset.reason.toLowerCase()); };
+    form.addEventListener('submit', onSubmit); dlg.addEventListener('close', onClose); dlg.addEventListener('click', onChip);
+    dlg.querySelector('[data-action="reason-cancel"]').onclick = () => done(null);
+    dlg.showModal(); input.focus();
   });
 }
 function clearLineHtml(r) {
@@ -440,6 +455,7 @@ function drawSide() {
       }
       if (state.selected && state.selected.type === 'photo') loadPhoto(state.selected.id);
       loadIdPhoto();
+      loadCredPhotos();
       if (anchor) {
         const el = [...side.querySelectorAll(ANCHORS)].find((x) => anchorKey(x) === anchor.key);
         if (el) side.scrollTop += el.getBoundingClientRect().top - side.getBoundingClientRect().top - anchor.off;
@@ -680,6 +696,7 @@ function drawPeople() {
   $('#people-add').hidden = !ops || ps.add;
   const page = $('#people-page');
   const html = peopleBoardHtml(data, state);
+  setTimeout(loadCredPhotos, 0);
   const focused = document.activeElement && page.contains(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
   if (page.__html !== html && !focused) { page.__html = html; page.innerHTML = html; }
 }
@@ -1049,6 +1066,20 @@ async function loadIdPhoto() {
   } catch (err) { const wait = box.querySelector('[data-photo-wait]'); if (wait) wait.textContent = 'Could not load the licence: ' + (err.message || err); }
 }
 
+// the photo of a card in the To confirm queue (v69), from a signed link, wherever the queue is drawn
+function loadCredPhotos() {
+  for (const box of document.querySelectorAll('[data-cred-photo]')) {
+    if (box.__loaded) continue;
+    box.__loaded = true;
+    data.credentialPhotoUrl(box.dataset.credPhoto).then((url) => { const img = box.querySelector('img'); if (img) { img.src = url; img.hidden = false; } const w = box.querySelector('span'); if (w) w.hidden = true; }).catch(() => { box.__loaded = false; });
+  }
+  for (const a of document.querySelectorAll('a[data-cred-open]')) {
+    if (a.__loaded) continue;
+    a.__loaded = true;
+    data.credentialPhotoUrl(a.dataset.credOpen).then((url) => { a.href = url; }).catch(() => { a.__loaded = false; });
+  }
+}
+
 // ---- actions
 document.addEventListener('click', async (e) => {
   if (state.layersOpen && !e.target.closest('#layers-pop') && !e.target.closest('#btn-layers')) setLayersOpen(false);
@@ -1122,6 +1153,15 @@ document.addEventListener('click', async (e) => {
       case 'reopen-incident': await data.updateIncident({ status: 'active' }); toast('Incident reopened; the clearing clock stopped'); break;
       case 'reopen-pick': await data.reopenIncident(id); toast('Incident reopened; the clearing clock stopped'); await showPicker(); break;   // from the picker's closed row (v44)
       case 'verify-profile': await data.verifyProfile(id, true); toast('Marked verified'); break;
+      case 'cred-confirm': { const c = data.credential(id); await data.decideCredential(id, true); toast((c ? credentialLabel(c) : 'Credential') + ' confirmed'); queueDraw(); drawPeople(); break; }   // v69
+      case 'cred-reject': {
+        const c = data.credential(id); if (!c) break;
+        const p = data.profileOf(c.user_id);
+        const why = await askReason({ title: `Not accepted: ${credentialLabel(c)}${p && p.full_name ? ', ' + p.full_name : ''}`, text: 'The reason goes to their phone, and they may submit it again. The credential stays on record with the reason.', chips: REJECT_REASONS });
+        if (!why) break;
+        await data.decideCredential(id, false, why); toast(credentialLabel(c) + ' not accepted: ' + why); queueDraw(); drawPeople();
+        break;
+      }
       case 'unverify-profile': await data.verifyProfile(id, false); toast('Verification withdrawn'); break;
       case 'copy-join-link': await navigator.clipboard.writeText(fieldJoinUrl(data.incident.code)); toast('Join link copied'); break;
       case 'print-join': openOverlay('join'); break;

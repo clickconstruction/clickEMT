@@ -49,6 +49,7 @@
   const TG = Array.from({ length: 24 }, (_, i) => 'ac000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));   // the bands (ic_tags), 001 to 024
   const SN = Array.from({ length: 8 }, (_, i) => 'ad000000-0000-4000-8000-' + String(i + 1).padStart(12, '0'));    // the scans (ic_seen)
   const IV = [1, 2].map((n) => 'ae000000-0000-4000-8000-' + String(n).padStart(12, '0'));   // the invitations (ic_invites)
+  const CRED = [1, 2].map((n) => 'af000000-0000-4000-8000-' + String(n).padStart(12, '0'));   // the credentials (ic_credentials, v69)
   const OPS_CODE = 'MR7KQ2VD';   // the seeded incident's Operations code (ic_ops_codes), read by Operations alone
   const PEOPLE = [ID('6', 1), ID('6', 2), ID('6', 3), ID('6', 4), ID('6', 5), ID('6', 6)];
   let quiet = false;   // ic_quiet: carry-over inserts objectives without log lines
@@ -117,10 +118,10 @@
         { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), created_at: ago(186) }
       ],
       ic_members: [
-        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null },
-        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null },
-        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null },
-        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null }
+        { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null, rides_with: null },
+        { incident_id: INC, user_id: U.unit1, role: 'unit', unit_name: 'Unit 1', crew: 'Ramirez, Okafor', joined_at: ago(170), status: 'assigned', status_note: '', status_at: ago(160), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'engine', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null, rides_with: null },
+        { incident_id: INC, user_id: U.unit2, role: 'unit', unit_name: 'Unit 2', crew: 'Nguyen, Patel', joined_at: ago(168), status: 'assigned', status_note: '', status_at: ago(38), crew_count: 2, agency: 'Travis County Rescue', checked_out_at: null, kind: 'boat', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null, rides_with: null },
+        { incident_id: INC, user_id: U.unit3, role: 'unit', unit_name: 'Unit 3', crew: 'Hale, Dominguez', joined_at: ago(165), status: 'assigned', status_note: '', status_at: ago(158), crew_count: 2, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: 'swift_water', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null, rides_with: null }
       ],
       ic_zones: [
         zone(1, 'A-1', 'Riverside Drive, east', 1, 'active', U.unit1, 24, 9, { updated_at: ago(45), supervisor: 'Lt. Okafor', work_assignment: 'Primary search of every structure, paint the marking on each, report waterlines and anyone who refuses to leave', instructions: 'Stay out of moving water. The utility crew for the line at the park entrance is on its way.', polygon: ring([[30.2665, -97.7345], [30.2668, -97.7295], [30.2697, -97.7298], [30.2694, -97.7348]]) }),
@@ -147,12 +148,12 @@
       ),
       // the people on the three units, checked in with them this morning; buddies in pairs
       ic_people: [
-        { id: PEOPLE[0], incident_id: INC, user_id: U.unit1, name: 'Ramirez', role: 'Lt.', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[1], checked_in_at: ago(170), checked_out_at: null, notes: '', created_by: U.unit1, created_at: ago(170), updated_at: ago(170), archived_at: null },
-        { id: PEOPLE[1], incident_id: INC, user_id: U.unit1, name: 'Okafor', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic', 'boat'], buddy_id: PEOPLE[0], checked_in_at: ago(169.9), checked_out_at: null, notes: '', created_by: U.unit1, created_at: ago(169.9), updated_at: ago(169.9), archived_at: null },
-        { id: PEOPLE[2], incident_id: INC, user_id: U.unit2, name: 'Nguyen', role: 'Capt.', agency: 'Travis County Rescue', qualifications: ['boat', 'swift_water'], buddy_id: PEOPLE[3], checked_in_at: ago(168), checked_out_at: null, notes: 'Boat operator', created_by: U.unit2, created_at: ago(168), updated_at: ago(168), archived_at: null },
-        { id: PEOPLE[3], incident_id: INC, user_id: U.unit2, name: 'Patel', role: '', agency: 'Travis County Rescue', qualifications: ['emt', 'rope'], buddy_id: PEOPLE[2], checked_in_at: ago(167.9), checked_out_at: null, notes: '', created_by: U.unit2, created_at: ago(167.9), updated_at: ago(167.9), archived_at: null },
-        { id: PEOPLE[4], incident_id: INC, user_id: U.unit3, name: 'Hale', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[5], checked_in_at: ago(165), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(165), updated_at: ago(165), archived_at: null },
-        { id: PEOPLE[5], incident_id: INC, user_id: U.unit3, name: 'Dominguez', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic'], buddy_id: PEOPLE[4], checked_in_at: ago(164.9), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(164.9), updated_at: ago(164.9), archived_at: null }
+        { id: PEOPLE[0], incident_id: INC, user_id: U.unit1, claimed_by: U.unit1, name: 'Ramirez', role: 'Lt.', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[1], checked_in_at: ago(170), checked_out_at: null, notes: '', created_by: U.unit1, created_at: ago(170), updated_at: ago(170), archived_at: null },
+        { id: PEOPLE[1], incident_id: INC, user_id: U.unit1, claimed_by: null, name: 'Okafor', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic', 'boat'], buddy_id: PEOPLE[0], checked_in_at: ago(169.9), checked_out_at: null, notes: '', created_by: U.unit1, created_at: ago(169.9), updated_at: ago(169.9), archived_at: null },
+        { id: PEOPLE[2], incident_id: INC, user_id: U.unit2, claimed_by: U.unit2, name: 'Nguyen', role: 'Capt.', agency: 'Travis County Rescue', qualifications: ['boat', 'swift_water'], buddy_id: PEOPLE[3], checked_in_at: ago(168), checked_out_at: null, notes: 'Boat operator', created_by: U.unit2, created_at: ago(168), updated_at: ago(168), archived_at: null },
+        { id: PEOPLE[3], incident_id: INC, user_id: U.unit2, claimed_by: null, name: 'Patel', role: '', agency: 'Travis County Rescue', qualifications: ['emt', 'rope'], buddy_id: PEOPLE[2], checked_in_at: ago(167.9), checked_out_at: null, notes: '', created_by: U.unit2, created_at: ago(167.9), updated_at: ago(167.9), archived_at: null },
+        { id: PEOPLE[4], incident_id: INC, user_id: U.unit3, claimed_by: null, name: 'Hale', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['swift_water', 'emt'], buddy_id: PEOPLE[5], checked_in_at: ago(165), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(165), updated_at: ago(165), archived_at: null },
+        { id: PEOPLE[5], incident_id: INC, user_id: U.unit3, claimed_by: null, name: 'Dominguez', role: '', agency: 'Cedar Fork Fire Department', qualifications: ['paramedic'], buddy_id: PEOPLE[4], checked_in_at: ago(164.9), checked_out_at: null, notes: '', created_by: U.unit3, created_at: ago(164.9), updated_at: ago(164.9), archived_at: null }
       ],
       ic_requests: [
         { id: REQ[0], incident_id: INC, user_id: U.ops, zone_id: Z['B-2'], kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', note: 'Two houses with people on the roof', lat: null, lng: null, status: 'filled', answer: 'Boat 1, Travis County Rescue', status_by: U.ops, status_at: ago(130), created_at: ago(190), updated_at: ago(130), archived_at: null },
@@ -233,6 +234,11 @@
       ic_invites: [
         { id: IV[0], incident_id: INC, email: 'unit1@mock.local', role: 'unit', unit_name: 'Unit 1', token: 'MOCKINVITERAMIREZ0000001', invited_by: U.ops, user_id: U.unit1, created_at: ago(185), sent_at: ago(185), sends: 1, expires_at: ago(185 - 7 * 1440), accepted_at: ago(170), accepted_by: U.unit1, withdrawn_at: null, withdrawn_by: null, last_error: '' },
         { id: IV[1], incident_id: INC, email: 'j.ortiz@cedarfork.gov', role: 'unit', unit_name: 'Unit 4', token: 'MOCKINVITEORTIZ000000002', invited_by: U.ops, user_id: null, created_at: ago(30), sent_at: ago(30), sends: 1, expires_at: ago(30 - 7 * 1440), accepted_at: null, accepted_by: null, withdrawn_at: null, withdrawn_by: null, last_error: '' }
+      ],
+      // credentials (v69): Ana Ramirez's EMT, confirmed by Operations this morning; Minh Nguyen's boat operator card, photographed, still to confirm
+      ic_credentials: [
+        { id: CRED[0], user_id: U.unit1, kind: 'emt', title: '', number: 'EMT-118204', issuer: 'Texas DSHS', expires_at: '2028-06-30', photo_path: null, status: 'confirmed', reason: '', confirmed_by: U.ops, confirmed_at: ago(150), created_at: ago(166), updated_at: ago(150), archived_at: null },
+        { id: CRED[1], user_id: U.unit2, kind: 'boat', title: '', number: '', issuer: 'Texas Parks and Wildlife', expires_at: '2027-11-30', photo_path: U.unit2 + '/cred-' + CRED[1] + '.jpg', status: 'pending', reason: '', confirmed_by: null, confirmed_at: null, created_at: ago(90), updated_at: ago(90), archived_at: null }
       ],
       ic_evacuees: [
         evacuee(4, 'Okonkwo family', 5, ['infant', 'pets'], '', 'Riverside Drive', 'here', FAC[2], U.ops, 75, { signed_in_by: U.ops, signed_in_at: ago(75) }),
@@ -335,6 +341,8 @@
     ev(167.9, U.unit2, 'seen', 'Band 004 given to Patel (Unit 2) by Unit 2', 'ic_tags', TG[3]); ev(167.9, U.unit2, 'seen', 'Patel seen checking in with Unit 2', 'ic_seen', SN[3]);
     ev(60, U.unit1, 'seen', 'Ramirez (Unit 1) seen entering A-1, by Unit 1', 'ic_seen', SN[4]); ev(60, U.unit1, 'seen', 'Okafor (Unit 1) seen entering A-1, by Unit 1', 'ic_seen', SN[5]);
     ev(140, U.unit2, 'seen', 'Patel (Unit 2) seen at High school gym, by Unit 2', 'ic_seen', SN[6]);
+    ev(166, U.unit1, 'seen', 'Ana Ramirez submitted EMT', 'ic_credentials', CRED[0]); ev(150, U.ops, 'seen', "Ana Ramirez's EMT confirmed by Operations", 'ic_credentials', CRED[0]);
+    ev(90, U.unit2, 'seen', 'Minh Nguyen submitted boat operator', 'ic_credentials', CRED[1]);
     ev(5, U.ops, 'ops', 'Objective 3 done: Shelter open and staffed at the high school', 'ic_objectives', OBJ[2]);
     ev(5, U.ops, 'note', 'Shelter open at Cedar Fork High School gym, Red Cross on site');
     t.ic_events.sort((a, b) => (a.at < b.at ? -1 : 1)).forEach((e, i) => { e.id = i + 1; });
@@ -353,13 +361,13 @@
     ic_transports: () => ({ id: uuid(), kind: 'bus', label: '', from_facility_id: null, from_zone_id: null, from_text: '', to_facility_id: null, capacity: null, leaves_at: null, expected_at: null, status: 'planned', status_at: now(), left_at: null, arrived_at: null, driver_user_id: null, driver_text: '', notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_overlays: () => ({ id: uuid(), name: '', opacity: 0.8, taken_at: null, corners: null, created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_profiles: () => ({ full_name: '', phone: '', licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', id_source: '', photo_path: null, verified_at: null, verified_by: null, created_at: now(), updated_at: now() }),
-    ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, checked_in_at: now(), checked_out_at: null, stint_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_people: () => ({ id: uuid(), role: '', agency: '', qualifications: [], buddy_id: null, claimed_by: null, checked_in_at: now(), checked_out_at: null, stint_at: null, notes: '', created_by: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, scene_hours: 12, deputy: '', bring: '', created_at: now() }),
     ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
     ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
-    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null , accepted_zone_id: null }),
+    ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null , accepted_zone_id: null, rides_with: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now(), revisit_at: null, revisit_hhmm: '' }),
     ic_positions: () => ({ heading: null, accuracy: null, at: now() }),
@@ -372,7 +380,8 @@
     ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now(), scanned: null }),
     ic_invites: () => ({ id: uuid(), role: 'unit', unit_name: '', invited_by: null, user_id: null, created_at: now(), sent_at: null, sends: 0, expires_at: new Date(Date.now() + 7 * 86400000).toISOString(), accepted_at: null, accepted_by: null, withdrawn_at: null, withdrawn_by: null, last_error: '' }),
     ic_tags: () => ({ id: uuid(), kind: '', person_id: null, evacuee_id: null, issued_at: null, issued_by: null, voided_at: null, voided_by: null, created_by: null, created_at: now() }),
-    ic_seen: () => ({ id: uuid(), kind: '', at: now(), lat: null, lng: null, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: null, created_at: now() })
+    ic_seen: () => ({ id: uuid(), kind: '', at: now(), lat: null, lng: null, zone_id: null, facility_id: null, transport_id: null, message_id: null, seen_by: null, created_at: now() }),
+    ic_credentials: () => ({ id: uuid(), title: '', number: '', issuer: '', expires_at: null, photo_path: null, status: 'pending', reason: '', confirmed_by: null, confirmed_at: null, created_at: now(), updated_at: now(), archived_at: null })
   };
 
   function dbError(message, code) { const e = new Error(message); e.db = { message, code: code || 'P0001', details: null, hint: null }; return e; }
@@ -393,11 +402,13 @@
   // ic_is_desk: a shelter desk on the incident, not checked out, at that facility (or at none chosen yet)
   const isDesk = (inc, uid, fid) => { const m = member(inc, uid); return !!fid && !!m && m.kind === 'shelter_desk' && m.status !== 'checked_out' && (!m.facility_id || m.facility_id === fid); };
   const visible = (table, row, mine, uid) => (table === 'ic_profiles' ? seesProfile(row.user_id, uid)
+    : table === 'ic_credentials' ? row.user_id === uid || seesProfile(row.user_id, uid)   // the owner, and Operations of an incident the owner is on (v69)
     : table === 'ic_ops_codes' || table === 'ic_id_purge' ? isOps(row.incident_id, uid)   // Operations alone reads the code and the purge queue
     : table === 'ic_members' ? mine.has(row.incident_id) || row.user_id === uid   // a removed member still sees its own row
     : mine.has(table === 'ic_incidents' ? row.id : row.incident_id));
   function allowed(table, op, row, uid) {
     if (!uid) return false;
+    if (definer) return true;   // a security-definer function writing what the caller's own policies would refuse (ic_claim_band)
     switch (table) {
       case 'ic_incidents': return op === 'update' && isOps(row.id, uid);
       case 'ic_members': return op === 'update' && (row.user_id === uid || isOps(row.incident_id, uid));
@@ -429,6 +440,7 @@
       case 'ic_seen': return op === 'insert' && mayWrite(row.incident_id, uid, row.at);
       case 'ic_messages': return op === 'insert' && row.from_user === uid && mayWrite(row.incident_id, uid, row.created_at);
       case 'ic_message_acks': return op === 'insert' && row.user_id === uid && mayWrite(row.incident_id, uid, row.acked_at);
+      case 'ic_credentials': return row.user_id === uid;   // the owner inserts and changes; Operations decides through ic_decide_credential (v69)
       default: return false;
     }
   }
@@ -510,6 +522,11 @@
       if (!r.tag_id) throw nn('tag_id');
     }
     if (table === 'ic_message_acks' && r.scanned != null && !(r.scanned >= 0 && r.scanned <= 999)) throw chk('ic_message_acks_scanned_check');
+    if (table === 'ic_credentials') {
+      if (!CRED_KINDS.includes(r.kind)) throw chk('ic_credentials_kind_check');
+      if (!['pending', 'confirmed', 'rejected'].includes(r.status)) throw chk('ic_credentials_status_check');
+      if (!r.user_id) throw nn('user_id');
+    }
     if (table === 'ic_transports') {
       if (!['bus', 'van', 'ambulance', 'boat', 'high_water', 'other'].includes(r.kind)) throw chk('ic_transports_kind_check');
       if (!['planned', 'loading', 'en_route', 'arrived', 'done'].includes(r.status)) throw chk('ic_transports_status_check');
@@ -519,6 +536,7 @@
   }
   const NEED_KEYS = ['oxygen', 'insulin', 'wheelchair', 'infant', 'pets', 'other'];
   const QUALS = ['swift_water', 'boat', 'rope', 'emt', 'paramedic', 'k9', 'hazmat', 'drone'];
+  const CRED_KINDS = ['licence', 'emt', 'paramedic', 'swift_water', 'boat', 'rope', 'k9', 'hazmat', 'drone', 'other'];
   const FACILITY_TEXT = { icp: 'Command post', staging: 'Staging area', base: 'Base', camp: 'Camp', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', ramp: 'Boat ramp', helibase: 'Helibase', helispot: 'Helispot', other: 'Facility' };
   // ic_kind_text: the words for a unit's kind, as UNIT_KINDS in rules.js
   const KIND_TEXT = { engine: 'engine', boat: 'boat crew', swift_water: 'swift-water team', high_water: 'high-water vehicle', ambulance: 'ambulance', search: 'search team', k9: 'K9 team', drone: 'drone team', pump: 'pump crew', shelter_desk: 'shelter desk', volunteer: 'volunteer', other: 'other' };
@@ -715,7 +733,7 @@
       if (r.person_id) {
         const p = tables.ic_people.find((x) => x.id === r.person_id && x.incident_id === r.incident_id);
         if (!p) throw dbError('that person is not on this incident');
-        if (!(isOps(r.incident_id, uid) || p.user_id === uid || system)) throw dbError('Only the unit this person is on, or Operations, gives them a band');
+        if (!(isOps(r.incident_id, uid) || p.user_id === uid || p.claimed_by === uid || system)) throw dbError('Only the unit this person is on, or Operations, gives them a band');   // or the person's own account (a claim, v69)
         if (tables.ic_tags.some((t) => t.person_id === r.person_id && !t.voided_at && t.id !== r.id)) throw dbError(p.name + ' has a band already; void it first');
         r.kind = 'responder';
       } else {
@@ -753,6 +771,44 @@
     const p = r.kind === 'check_in' && t.person_id ? tables.ic_people.find((x) => x.id === t.person_id) : null;
     const who = p ? p.name : (tagWho(t) || bandLabel(t.number));
     log(changes, r.incident_id, uid, 'seen', `${who} seen ${seenWords(r)}${r.kind === 'check_in' ? ' with ' : ', by '}${label(r.incident_id, uid)}`, 'ic_seen', r.id);
+  }
+  // ---- credentials (v69): ic_credential_before / ic_credential_after; the decision and the claim are in rpc()
+  let deciding = false;   // ic.deciding: the status moves only through ic_decide_credential
+  let definer = false;    // a security-definer function (ic_claim_band) writing rows the caller's own policies would refuse
+  function credentialBefore(r, old, uid, sys) {
+    r.title = String(r.title ?? '').trim(); r.number = String(r.number ?? '').trim().toUpperCase(); r.issuer = String(r.issuer ?? '').trim(); r.reason = String(r.reason ?? '').trim();
+    r.updated_at = now();
+    if (!old) {
+      r.user_id = r.user_id || uid;
+      if (r.kind === 'other' && !r.title) throw dbError('Say what the credential is');
+      r.status = 'pending'; r.reason = ''; r.confirmed_by = null; r.confirmed_at = null; r.archived_at = null;
+      return;
+    }
+    if (r.user_id !== old.user_id || r.kind !== old.kind || r.created_at !== old.created_at) throw dbError('a credential keeps its owner and its kind');
+    if (!(deciding || sys || old.user_id === uid)) throw dbError('Only the owner changes a credential; Operations confirms or declines it');
+    if (r.status !== old.status && !deciding) throw dbError('Only Operations of an incident the owner is on confirms a credential');
+    if (((r.confirmed_by || null) !== (old.confirmed_by || null) || (r.confirmed_at || null) !== (old.confirmed_at || null)) && !deciding) throw dbError('Only Operations of an incident the owner is on confirms a credential');
+    const facts = (x) => JSON.stringify([x.number, x.issuer, x.expires_at || null, x.photo_path || null, x.title]);
+    const changed = facts(r) !== facts(old);
+    if (r.reason !== old.reason && !deciding && !changed) throw dbError("the reason is Operations' word");
+    if (!deciding && !sys && changed) { r.status = 'pending'; r.reason = ''; r.confirmed_by = null; r.confirmed_at = null; }   // what was confirmed has changed
+  }
+  // the 214 of every active incident the owner is on: submitted, confirmed by Operations, not accepted: why, withdrawn
+  function credentialLog(r, old, uid, changes) {
+    if (quiet) return;
+    const what = R.credentialText(r);
+    let line;
+    if (!old) line = '%s submitted ' + what;
+    else if (r.archived_at && !old.archived_at) line = '%s withdrew ' + what;
+    else if (r.archived_at) return;
+    else if (r.status === 'confirmed' && old.status !== 'confirmed') line = "%s's " + what + ' confirmed by Operations';
+    else if (r.status === 'rejected' && old.status !== 'rejected') line = "%s's " + what + ' not accepted' + (r.reason ? ': ' + r.reason : '');
+    else if (r.status === 'pending' && old.status !== 'pending') line = "%s's " + what + ' changed, pending again';
+    else return;
+    const pr = tables.ic_profiles.find((x) => x.user_id === r.user_id);
+    for (const m of tables.ic_members.filter((m) => m.user_id === r.user_id && !m.removed_at && (tables.ic_incidents.find((i) => i.id === m.incident_id) || {}).status === 'active')) {
+      log(changes, m.incident_id, uid, 'seen', line.replace('%s', (pr && pr.full_name) || label(m.incident_id, r.user_id)), 'ic_credentials', r.id);
+    }
   }
   // ---- the transport board (v54): ic_transport_before / ic_transport_after
   const placeText = (id) => { const f = id && tables.ic_facilities.find((x) => x.id === id); return f ? (f.name || FACILITY_TEXT[f.kind]) : null; };
@@ -806,6 +862,7 @@
     if (table === 'ic_transports') transportLog(r, null, uid, changes);
     if (table === 'ic_seen') seenLog(r, uid, changes);
     if (table === 'ic_invites') inviteLog(r, null, uid, changes);
+    if (table === 'ic_credentials') credentialLog(r, null, uid, changes);
     if (table === 'ic_people') {
       if (!r.archived_at && !quiet) log(changes, r.incident_id, uid, 'status', `${r.name}${personQuals(r)} checked in with ${label(r.incident_id, r.user_id)}`, 'ic_people', r.id);
       if (!r.archived_at && !joining) { const m = member(r.incident_id, r.user_id); if (m && m.unnamed_count > 0) updateRow('ic_members', m, { unnamed_count: m.unnamed_count - 1 }, uid, changes, true); }   // naming one of the unnamed keeps the count
@@ -869,6 +926,7 @@
     if (table === 'ic_evacuees') evacueeLog(r, old, uid, changes);
     if (table === 'ic_transports') transportLog(r, old, uid, changes);
     if (table === 'ic_tags') tagLog(r, old, uid, changes);
+    if (table === 'ic_credentials') credentialLog(r, old, uid, changes);
     if (table === 'ic_invites') inviteLog(r, old, uid, changes);
     if (table === 'ic_periods') periodCommand(r, old, uid, changes);
     if (table === 'ic_period_agencies' && !quiet && (r.name !== old.name || r.phone !== old.phone)) log(changes, r.incident_id, uid, 'ops', agencyRepLine(r));
@@ -1048,6 +1106,7 @@
     if (table === 'ic_transports') transportBefore(row, null, uid);
     if (table === 'ic_seen') seenBefore(row, uid);
     if (table === 'ic_invites') inviteBefore(row, null, uid);
+    if (table === 'ic_credentials') credentialBefore(row, null, uid, false);
     if (table === 'ic_structures') {   // ic_structure_before
       row.created_by = row.created_by || uid;
       if (row.status === 'searched') { row.searched_at = row.searched_at || now(); row.searched_by = row.searched_by || uid; }
@@ -1079,6 +1138,7 @@
     if (table === 'ic_transports') transportBefore(next, old, uid);
     if (table === 'ic_tags') tagBefore(next, old, uid);
     if (table === 'ic_invites') inviteBefore(next, old, uid);
+    if (table === 'ic_credentials') credentialBefore(next, old, uid, !!system);
     if (table === 'ic_seen') throw dbError('a scan is never changed');
     if (table === 'ic_alerts') alertBefore(next, old, uid);
     Object.assign(r, next);
@@ -1281,7 +1341,7 @@
     if (!system && !isOps(incId, uid)) throw dbError('Only Operations clears personal records');
     if (inc.status !== 'closed') throw dbError('Close the incident first; its personal records clear 30 days later, or sooner from the picker');
     if (inc.personal_cleared_at) return copy(inc);
-    let nLic = 0, nNames = 0;
+    let nLic = 0, nNames = 0, nCred = 0;
     const users = [...new Set(tables.ic_members.filter((m) => m.incident_id === incId).map((m) => m.user_id))]
       .filter((u) => !tables.ic_members.some((o) => o.user_id === u && !o.removed_at && (tables.ic_incidents.find((i) => i.id === o.incident_id) || {}).status === 'active'));
     for (const u of users) {
@@ -1294,6 +1354,14 @@
         updateRow('ic_profiles', pr, { licence_number: '', licence_state: '', licence_expires: null, date_of_birth: null, address: '', photo_path: null, id_source: '' }, uid, changes, true);
         nLic += 1;
       }
+      for (const c of tables.ic_credentials.filter((c) => c.user_id === u && (c.number || c.photo_path))) {   // the number and the photo go; the kind, the issuer, the expiry and the decision stay (v69)
+        if (c.photo_path && !tables.ic_id_purge.some((q) => q.incident_id === incId && q.path === c.photo_path)) {
+          const q = { ...DEFAULTS.ic_id_purge(), incident_id: incId, user_id: u, path: c.photo_path };
+          tables.ic_id_purge.push(q); changes.push(['INSERT', 'ic_id_purge', q, null]);
+        }
+        updateRow('ic_credentials', c, { number: '', photo_path: null }, uid, changes, true);
+        nCred += 1;
+      }
     }
     let nBands = 0;
     quiet = true; system = true;
@@ -1305,7 +1373,7 @@
       for (const t of tables.ic_tags.filter((t) => t.incident_id === incId && t.kind === 'evacuee' && !t.voided_at)) { updateRow('ic_tags', t, { voided_at: now() }, uid, changes, true); nBands += 1; }   // a sheltered person's band goes with their name (v55)
     } finally { quiet = false; system = false; }
     const old = copy(inc); inc.personal_cleared_at = now(); changes.push(['UPDATE', 'ic_incidents', inc, old]);
-    log(changes, incId, uid, 'ops', `Personal records cleared by rule: ${nLic} licence record${nLic === 1 ? '' : 's'}, ${nNames} sheltered ${nNames === 1 ? "person's name" : "people's names"}${nBands ? ', ' + nBands + (nBands === 1 ? ' band voided' : ' bands voided') : ''}`);
+    log(changes, incId, uid, 'ops', `Personal records cleared by rule: ${nLic} licence record${nLic === 1 ? '' : 's'}, ${nNames} sheltered ${nNames === 1 ? "person's name" : "people's names"}${nBands ? ', ' + nBands + (nBands === 1 ? ' band voided' : ' bands voided') : ''}${nCred ? ', ' + nCred + (nCred === 1 ? ' credential blanked' : ' credentials blanked') : ''}`);
     return copy(inc);
   }
   function rpc(client, name, a) {
@@ -1557,6 +1625,72 @@
         updateRow('ic_profiles', pr, { verified_at: a.p_ok ? now() : null, verified_by: a.p_ok ? uid : null }, uid, changes, true);
         log(changes, a.p_incident, uid, 'ops', label(a.p_incident, a.p_user) + ' (' + pr.full_name + ') ' + (a.p_ok ? 'identity verified by Operations' : 'identity verification withdrawn'));
         out = copy(pr);
+      } else if (name === 'ic_band_peek') {   // v69: what a band's link may know before the person is on the incident
+        if (!uid) throw dbError('not signed in');
+        const t = tables.ic_tags.find((x) => x.code === String(a.p_code || '').trim().toUpperCase());
+        if (!t) out = { state: 'missing' };
+        else {
+          const inc = tables.ic_incidents.find((i) => i.id === t.incident_id), mem = isMember(t.incident_id, uid);
+          if (t.voided_at) out = { state: 'voided', number: t.number, member: mem };
+          else if (!inc || inc.status !== 'active') out = { state: 'closed', number: t.number, member: mem };
+          else if (t.person_id || t.evacuee_id) out = { state: 'on_someone', number: t.number, member: mem };
+          else out = { state: 'free', number: t.number, incident: inc.name, incident_id: inc.id, member: mem, units: tables.ic_members.filter((m) => m.incident_id === inc.id && m.role === 'unit' && !m.removed_at && m.status !== 'checked_out' && !m.rides_with).sort((x, y) => (x.unit_name || '').localeCompare(y.unit_name || '')).map((m) => ({ user_id: m.user_id, unit_name: m.unit_name, kind: m.kind, agency: m.agency })) };
+        }
+      } else if (name === 'ic_claim_band') {   // v69: the band is the door
+        if (!uid) throw dbError('not signed in');
+        const nm = trim(a.p_name) || '', ph = trim(a.p_phone) || '', ag = trim(a.p_agency) || '';
+        if (!nm || !ph) throw dbError('Say who you are first: your name and your phone');
+        const t = tables.ic_tags.find((x) => x.code === String(a.p_code || '').trim().toUpperCase());
+        if (!t) throw dbError('That band is not on record; hand it back to the table');
+        if (t.voided_at) throw dbError(bandLabel(t.number) + ' was voided; ask for another');
+        if (t.person_id || t.evacuee_id) throw dbError(bandLabel(t.number) + ' is on someone already');
+        const inc = tables.ic_incidents.find((i) => i.id === t.incident_id);
+        if (!inc || inc.status !== 'active') throw dbError('That incident is closed');
+        let m = member(inc.id, uid);
+        if (m && m.removed_at) throw dbError('You were removed from ' + inc.name + ' by Operations. Only Operations can put you back.');
+        let lead = null;
+        if (a.p_unit && a.p_unit !== uid) {
+          lead = tables.ic_members.find((x) => x.incident_id === inc.id && x.user_id === a.p_unit && x.role === 'unit' && !x.removed_at && !x.rides_with) || null;
+          if (!lead) throw dbError('That unit is not on this incident');
+        }
+        const pr = tables.ic_profiles.find((x) => x.user_id === uid);   // who you are, as the Identify sheet writes it
+        if (pr) updateRow('ic_profiles', pr, { full_name: nm, phone: ph }, uid, changes); else insertRow('ic_profiles', { user_id: uid, full_name: nm, phone: ph }, uid, changes);
+        quiet = true; definer = true;   // the one line below says it all; the rows the caller's own policies would refuse
+        let p = null;
+        try {
+          if (!m) {
+            m = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: 'unit', unit_name: lead ? lead.unit_name : nm, agency: ag || (lead ? lead.agency : ''), rides_with: lead ? lead.user_id : null };
+            tables.ic_members.push(m); changes.push(['INSERT', 'ic_members', m, null]);
+          } else if (m.role === 'unit') {
+            updateRow('ic_members', m, { rides_with: lead ? lead.user_id : m.rides_with, unit_name: lead ? lead.unit_name : m.unit_name, agency: ag || m.agency, status: m.status === 'checked_out' ? 'available' : m.status, checked_out_at: null }, uid, changes, true);
+          }
+          const owner = lead ? lead.user_id : uid;
+          p = tables.ic_people.find((x) => x.incident_id === inc.id && x.claimed_by === uid && !x.archived_at) || null;   // your own row, the unit's unclaimed row of your name, else a new one
+          if (p) updateRow('ic_people', p, { user_id: owner, checked_out_at: null, agency: ag || p.agency }, uid, changes, true);
+          else {
+            const last = nm.replace(/^.*\s/, '').toLowerCase();
+            p = tables.ic_people.filter((x) => x.incident_id === inc.id && x.user_id === owner && !x.claimed_by && !x.archived_at && (x.name.toLowerCase() === nm.toLowerCase() || x.name.toLowerCase() === last)).sort((x, y) => (x.checked_in_at < y.checked_in_at ? 1 : -1))[0] || null;
+            if (p) updateRow('ic_people', p, { claimed_by: uid, checked_out_at: null, agency: ag || p.agency }, uid, changes, true);
+            else p = insertRow('ic_people', { incident_id: inc.id, user_id: owner, name: nm, agency: ag, claimed_by: uid }, uid, changes);   // not under ic.join: one of the people the lead counted but did not name, when there are any
+          }
+          const had = tables.ic_tags.find((x) => x.person_id === p.id && !x.voided_at);
+          if (had) throw dbError('You have ' + bandLabel(had.number) + ' already; ask Operations to void it first');
+          updateRow('ic_tags', t, { person_id: p.id }, uid, changes);
+          insertRow('ic_seen', { incident_id: inc.id, tag_id: t.id, kind: 'check_in' }, uid, changes);
+        } finally { quiet = false; definer = false; }
+        log(changes, inc.id, uid, 'seen', nm + ' claimed ' + bandLabel(t.number) + ' (' + (lead ? label(inc.id, lead.user_id) : 'not on a unit yet') + ')', 'ic_tags', t.id);
+        out = copy(inc);
+      } else if (name === 'ic_decide_credential') {   // v69: Operations confirms, or says why not
+        if (!isOps(a.p_incident, uid)) throw dbError('Only Operations confirms a credential');
+        const c = tables.ic_credentials.find((x) => x.id === a.p_id);
+        if (!c) throw dbError('No such credential');
+        if (!tables.ic_members.some((m) => m.incident_id === a.p_incident && m.user_id === c.user_id && !m.removed_at)) throw dbError('That person is not on this incident');
+        if (c.archived_at) throw dbError('That credential was withdrawn');
+        const why = trim(a.p_reason) || '';
+        if (!a.p_ok && !why) throw dbError('Say why it is not accepted');
+        deciding = true;
+        try { updateRow('ic_credentials', c, { status: a.p_ok ? 'confirmed' : 'rejected', reason: a.p_ok ? '' : why, confirmed_by: uid, confirmed_at: now() }, uid, changes, true); } finally { deciding = false; }
+        out = copy(c);
       } else if (name === 'ic_mark_found') {   // v38: the reporting unit or Operations says a missing person is found
         const ack = tables.ic_message_acks.find((x) => x.message_id === a.p_message && x.user_id === a.p_user);
         if (!ack) throw dbError('No such head count answer');
@@ -1621,12 +1755,27 @@
     g.font = '17px system-ui, -apple-system, sans-serif'; g.fillStyle = '#5C5A53'; g.fillText('Mock licence, drawn by dev/mock-supabase.js', 28, 510);
     return new Promise((resolve) => c.toBlob(resolve, 'image/jpeg', 0.85));
   }
+  function cardPlaceholder(c) {   // a credential's photo (v69): the card's words on a plain front
+    const cv = document.createElement('canvas');
+    cv.width = 860; cv.height = 540;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#F3EFE6'; g.fillRect(0, 0, 860, 540);
+    g.fillStyle = '#2E6B3A'; g.fillRect(0, 0, 860, 70);
+    g.fillStyle = '#fff'; g.font = 'bold 28px system-ui, -apple-system, sans-serif'; g.fillText((c.issuer || 'ISSUER').toUpperCase(), 28, 46);
+    const pr = tables.ic_profiles.find((x) => x.user_id === c.user_id);
+    g.fillStyle = '#1B1B18'; g.font = 'bold 30px system-ui, -apple-system, sans-serif'; g.fillText(R.credentialLabel(c).toUpperCase(), 28, 130);
+    g.font = '24px system-ui, -apple-system, sans-serif'; g.fillText((pr && pr.full_name) || '', 28, 190); g.fillText('No. ' + (c.number || '—'), 28, 240); g.fillText('Expires ' + (c.expires_at || '—'), 28, 290);
+    g.font = '17px system-ui, -apple-system, sans-serif'; g.fillStyle = '#5C5A53'; g.fillText('Mock card, drawn by dev/mock-supabase.js', 28, 510);
+    return new Promise((resolve) => cv.toBlob(resolve, 'image/jpeg', 0.85));
+  }
   async function urlFor(path) {
     if (urls.has(path)) return urls.get(path);
     let blob = files.get(path);
     if (!blob) {
       const pr = tables.ic_profiles.find((x) => x.photo_path === path);
       if (pr) { blob = await licencePlaceholder(pr); files.set(path, blob); const u = URL.createObjectURL(blob); urls.set(path, u); return u; }
+      const cr = tables.ic_credentials.find((x) => x.photo_path === path);
+      if (cr) { blob = await cardPlaceholder(cr); files.set(path, blob); const u = URL.createObjectURL(blob); urls.set(path, u); return u; }
       const o = tables.ic_overlays.find((x) => x.storage_path === path);
       if (o) { blob = await aerialPlaceholder(o.name || 'Imagery'); files.set(path, blob); const u = URL.createObjectURL(blob); urls.set(path, u); return u; }
       const p = tables.ic_photos.find((x) => x.storage_path === path);
@@ -1766,7 +1915,7 @@
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users,
-    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD, evacuees: EV, opsCode: OPS_CODE },
+    ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD, evacuees: EV, opsCode: OPS_CODE, credentials: CRED },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready
   };

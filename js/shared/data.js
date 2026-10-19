@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen', 'ic_invites'];
 const BUCKET = 'ic-photos';
@@ -11,7 +11,7 @@ const MESSAGES_LIMIT = 300;
 const SEEN_LIMIT = 3000;   // the newest scans (v55); last seen comes from them
 
 function fresh() {
-  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map(), tags: new Map(), seen: new Map(), invites: new Map() };
+  return { incident: null, members: new Map(), zones: new Map(), positions: new Map(), photos: new Map(), hazards: new Map(), alerts: new Map(), events: new Map(), messages: new Map(), message_acks: new Map(), periods: new Map(), objectives: new Map(), structures: new Map(), facilities: new Map(), overlays: new Map(), people: new Map(), profiles: new Map(), requests: new Map(), period_agencies: new Map(), commands: new Map(), evacuees: new Map(), ops_codes: new Map(), transports: new Map(), tags: new Map(), seen: new Map(), invites: new Map(), credentials: new Map() };
 }
 
 // a function's refusal, in its own words (supabase-js wraps the response)
@@ -183,6 +183,11 @@ export class Data {
       const { data: profs } = ids.length ? await this.sb.from('ic_profiles').select('*').in('user_id', ids) : { data: [] };
       put('ic_profiles', profs);
     } catch (e) { /* a client without the table */ }
+    try {   // the credentials of the incident's members (v69): Operations sees every one, a unit its own
+      const ids = (members.data || []).map((m) => m.user_id);
+      const { data: creds } = ids.length ? await this.sb.from('ic_credentials').select('*').in('user_id', ids) : { data: [] };
+      put('ic_credentials', creds);
+    } catch (e) { /* a client without the table (migration 0037) */ }
   }
   subscribe(id) {
     const ch = this.sb.channel('ic-' + id);
@@ -190,6 +195,7 @@ export class Data {
       ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: 'incident_id=eq.' + id }, (p) => this.apply(table, p));
     }
     ch.on('postgres_changes', { event: '*', schema: 'public', table: 'ic_profiles' }, (p) => { if (p.new && this.store.members.has(p.new.user_id)) this.apply('ic_profiles', p); });   // no incident column: RLS limits what arrives
+    ch.on('postgres_changes', { event: '*', schema: 'public', table: 'ic_credentials' }, (p) => { if (p.new && this.store.members.has(p.new.user_id)) this.apply('ic_credentials', p); });   // the same (v69)
     ch.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ic_incidents', filter: 'id=eq.' + id }, (p) => {
       this.store.incident = p.new; this.emit('change', { table: 'ic_incidents', row: p.new });
     });
@@ -211,6 +217,7 @@ export class Data {
       if (table === 'ic_events' && m.size > EVENTS_LIMIT * 2) this.trimEvents();
       if (table === 'ic_members' && !this.store.profiles.has(row.user_id)) {   // a new member: fetch who they are, if we may see it
         this.sb.from('ic_profiles').select('*').eq('user_id', row.user_id).maybeSingle().then(({ data: p }) => { if (p && !this.store.profiles.has(p.user_id)) this.apply('ic_profiles', { eventType: 'INSERT', new: p }); }).catch(() => {});
+        this.sb.from('ic_credentials').select('*').eq('user_id', row.user_id).then(({ data: cs }) => { for (const c of cs || []) if (!this.store.credentials.has(c.id)) this.apply('ic_credentials', { eventType: 'INSERT', new: c }); }).catch(() => {});   // and what they can do (v69)
       }
     }
     this.emit('change', { table, row: payload.new || payload.old, type });
@@ -241,7 +248,10 @@ export class Data {
   async setRole(userId, role, unitName) { return this.updateMember(userId, unitName ? { role, unit_name: unitName } : { role }); }
   async removeMember(userId) { return this.updateMember(userId, { removed_at: new Date().toISOString() }); }
   async restoreMember(userId) { return this.updateMember(userId, { removed_at: null }); }
-  units() { return this.members().filter((m) => m.role === 'unit').sort((a, b) => (a.unit_name || '').localeCompare(b.unit_name || '')); }
+  units() { return this.members().filter((m) => m.role === 'unit' && !m.rides_with).sort((a, b) => (a.unit_name || '').localeCompare(b.unit_name || '')); }
+  // a member riding with a unit (v69: claimed a band and chose the unit): on the unit's roster, on no list of units of its own
+  riders() { return this.members().filter((m) => m.rides_with); }
+  rider() { const me = this.me(); return me && me.rides_with ? this.member(me.rides_with) : null; }   // the unit this phone rides with, or null
   // units still on the incident: everyone but the checked out
   activeUnits() { return this.units().filter((u) => u.status !== 'checked_out'); }
   // people in the field: the head counts of units that are assigned or available
@@ -259,7 +269,7 @@ export class Data {
   hazards(all) { return [...this.store.hazards.values()].filter((h) => all || !h.resolved_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
   alerts(all) { return [...this.store.alerts.values()].filter((a) => all || !a.stood_down_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)); }
   events() { return [...this.store.events.values()].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : b.id - a.id)); }
-  myZones() { return this.user ? this.zones().filter((z) => z.assigned_to === this.user.id) : []; }
+  myZones() { if (!this.user) return []; const me = this.me(); const who = me && me.rides_with ? me.rides_with : this.user.id; return this.zones().filter((z) => z.assigned_to === who); }   // a rider's are its unit's (v69)
 
   // ---- structures: one record per address the field touches
   structures(zoneId) { return [...this.store.structures.values()].filter((s) => !zoneId || s.zone_id === zoneId).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); }
@@ -478,6 +488,54 @@ export class Data {
     const { data, error } = await this.sb.rpc('ic_verify_profile', { p_incident: this.store.incident.id, p_user: userId, p_ok: !!ok });
     if (error) throw error;
     this.local('ic_profiles', data);
+    return data;
+  }
+
+  // ---- credentials (v69, ic_credentials): a licence or a card belongs to the account, pending until Operations of an
+  // incident the owner is on confirms it or says why not. The base reads every member's through the select policy, as the
+  // profiles; the phone its own. Never deleted: withdrawn is archived; the clearing by rule blanks the number and the photo.
+  credentials(all) { return [...this.store.credentials.values()].filter((c) => all || !c.archived_at).sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)); }
+  credential(id) { return this.store.credentials.get(id) || null; }
+  credentialsOf(userId) { return credentialsOf(this.credentials(true), userId); }
+  myCredentials() { return this.user ? this.credentialsOf(this.user.id) : []; }
+  // the queue: every member's pending credentials, oldest first (Operations sees them all; a unit only its own)
+  pendingCredentials() { return pendingCredentials(this.credentials()).filter((c) => this.store.members.has(c.user_id) && !this.member(c.user_id).removed_at); }
+  credentialPhotoPath(id) { return this.user.id + '/cred-' + id + '.jpg'; }
+  async uploadCredentialPhoto(id, blob) {
+    const path = this.credentialPhotoPath(id);
+    const up = await this.sb.storage.from(ID_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) throw up.error;
+    this.urlCache.delete(ID_BUCKET + '/' + path);
+    return path;
+  }
+  async credentialPhotoUrl(path) { return this.signedUrl(ID_BUCKET, path); }
+  async addCredential(id, { kind, title, number, issuer, expiresAt, photoPath }) {
+    const row = { id, user_id: this.user.id, kind, title: (title || '').trim(), number: (number || '').trim(), issuer: (issuer || '').trim(), expires_at: expiresAt || null, photo_path: photoPath || null };
+    const { data, error } = await this.sb.from('ic_credentials').insert(row).select().single();
+    if (error && error.code !== '23505') throw error;
+    this.local('ic_credentials', data || Object.assign({ status: 'pending', reason: '', confirmed_by: null, confirmed_at: null, created_at: new Date().toISOString(), archived_at: null }, row));
+    return data || row;
+  }
+  async updateCredential(id, patch) {
+    const { data, error } = await this.sb.from('ic_credentials').update(patch).eq('id', id).select().single();
+    if (error) throw error;
+    this.local('ic_credentials', data);
+    return data;
+  }
+  async withdrawCredential(id) { return this.updateCredential(id, { archived_at: new Date().toISOString() }); }
+  // Operations confirms, or says why not; the database writes the line to every incident the owner is on
+  async decideCredential(id, ok, reason) {
+    const { data, error } = await this.sb.rpc('ic_decide_credential', { p_id: id, p_incident: this.store.incident.id, p_ok: !!ok, p_reason: reason || null });
+    if (error) throw error;
+    this.local('ic_credentials', data);
+    return data;
+  }
+  // a band's link on a phone not yet on the incident: what the band is, and the units to pick from (ic_band_peek)
+  async bandPeek(code) { const { data, error } = await this.sb.rpc('ic_band_peek', { p_code: code }); if (error) throw error; return data || null; }
+  // the claim: the band is the door (ic_claim_band); returns the incident, now open to this account
+  async claimBand(code, { name, phone, agency, unit }) {
+    const { data, error } = await this.sb.rpc('ic_claim_band', { p_code: code, p_name: name || '', p_phone: phone || '', p_agency: agency || null, p_unit: unit || null });
+    if (error) throw error;
     return data;
   }
 

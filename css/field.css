@@ -288,3 +288,35 @@ dialog.confirm .row-btns { margin-top: 14px; }
 .alert-ask .chips { gap: 8px; }
 .alert-ask .chip { flex: 1 1 calc(50% - 4px); min-height: 52px; justify-content: center; font-size: 16px; font-weight: 600; border-radius: 12px; padding: 8px 10px; }
 .alert-ask .small { color: var(--muted); }
+
+/* ---- claim a band, add your licences (v69): the claim sheet's unit list, the licences sheet, the state chips, the You card */
+.ask { margin: 2px 0 0; font-size: 17px; font-weight: 600; }
+.ulist { display: flex; flex-direction: column; gap: 6px; }
+.ulist button { display: grid; grid-template-columns: 18px 1fr; gap: 2px 10px; align-items: center; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); font: inherit; min-height: 48px; }
+.ulist button .r { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--control-border); grid-row: 1 / 3; }
+.ulist button.on { border-color: var(--accent); background: var(--sel-bg); }
+.ulist button.on .r { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+.ulist button b { font-size: 15px; } .ulist button .s { font-size: 12.5px; color: var(--muted); }
+.btn.link { background: none; border-color: transparent; color: var(--accent-text); text-decoration: underline; }
+.cred-list { display: flex; flex-direction: column; }
+.cred-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 9px 2px; border-top: 1px solid var(--line-soft); }
+.cred-row:first-child { border-top: 0; }
+.cred-row .nm { font-size: 15px; font-weight: 600; } .cred-row .nm small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+.cred-row .acts { display: flex; gap: 6px; }
+.cred-row .acts .btn { min-height: 36px; padding: 0 10px; font-size: 13px; }
+.cred-row .acts .btn svg { width: 16px; height: 16px; }
+.cred-row .typing { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 0 2px; }
+.cred-row .typing .input { min-height: 40px; font-size: 14px; padding: 7px 10px; }
+.cred-row .typing .full { grid-column: 1 / -1; }
+.cred-row .typing .row-btns { grid-column: 1 / -1; }
+.cred-row .typing .row-btns .btn { min-height: 40px; }
+.st { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 600; background: var(--soft); color: var(--ink-2); white-space: nowrap; }
+.st.pending { background: var(--tint-orange); color: var(--hazard-ink); }
+.st.given { background: var(--tint-blue); color: var(--active); }
+.st.confirmed, .st.checked { background: var(--tint-green); color: var(--cleared); }
+.st.rejected { background: var(--tint-red); color: var(--danger); }
+.you .line { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
+.you .line:first-of-type { border-top: 0; }
+.you .line .w { color: var(--muted); font-size: 12.5px; grid-column: 1 / -1; margin-top: -4px; }
+.you .line .st { justify-self: end; }
+.you .btn { width: 100%; margin-top: 4px; }

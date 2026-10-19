@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -397,3 +397,53 @@ t('a picture by its corners (v67): the box, what is a valid set of corners, and 
   assert.deepEqual(overlayCorners({ corners: null, bounds: { south: 1, west: 2, north: 3, east: 4 } }), [[3, 2], [3, 4], [1, 4], [1, 2]]);
 });
 
+t('credentials (v69): the fixed list, the words, a credential\'s standing, the ID\'s, and the chips a person\'s row reads', () => {
+  assert.deepEqual(CREDENTIAL_KINDS.map((k) => k[0]), ['licence', 'emt', 'paramedic', 'swift_water', 'boat', 'rope', 'k9', 'hazmat', 'drone', 'other'], 'the SQL check says the same');
+  assert.equal(REJECT_REASONS.length, 4);
+  assert.equal(credentialLabel({ kind: 'boat' }), 'Boat operator');
+  assert.equal(credentialLabel({ kind: 'other', title: 'Wilderness First Responder' }), 'Wilderness First Responder');
+  assert.equal(credentialLabel({ kind: 'other', title: '' }), 'Other');
+  assert.equal(credentialText({ kind: 'emt' }), 'EMT', 'ic_credential_kind_text says the same');
+  assert.equal(credentialText({ kind: 'swift_water' }), 'swift water');
+  assert.equal(credentialText({ kind: 'licence' }), "driver's licence");
+  assert.equal(credentialText({ kind: 'other', title: ' WFR ' }), 'WFR');
+  assert.equal(credentialText({ kind: 'other', title: '' }), 'a credential');
+  const now = new Date(2026, 9, 18, 14, 0).getTime();
+  assert.equal(credentialExpired({ expires_at: '2025-11-30' }, now), true);
+  assert.equal(credentialExpired({ expires_at: '2026-10-18' }, now), false, 'expires at the end of the day');
+  assert.equal(credentialExpired({ expires_at: null }, now), false);
+  const sent = new Date(2026, 9, 18, 14, 6).toISOString(), decided = new Date(2026, 9, 18, 14, 12).toISOString();
+  const creds = [
+    { id: 'c1', user_id: 'u1', kind: 'emt', status: 'confirmed', confirmed_at: decided, created_at: sent, reason: '', archived_at: null },
+    { id: 'c2', user_id: 'u1', kind: 'boat', status: 'rejected', confirmed_at: decided, created_at: sent, reason: 'expired', expires_at: '2025-11-30', archived_at: null },
+    { id: 'c3', user_id: 'u1', kind: 'swift_water', status: 'pending', created_at: new Date(2026, 9, 18, 14, 7).toISOString(), reason: '', archived_at: null },
+    { id: 'c4', user_id: 'u1', kind: 'rope', status: 'pending', created_at: sent, reason: '', archived_at: '2026-10-18T13:00:00Z' },
+    { id: 'c5', user_id: 'u2', kind: 'emt', status: 'pending', created_at: sent, reason: '', archived_at: null }
+  ];
+  assert.deepEqual(credentialsOf(creds, 'u1').map((c) => c.id), ['c3', 'c1', 'c2'], 'the live ones, newest first; the withdrawn one is gone');
+  assert.equal(credentialOf(credentialsOf(creds, 'u1'), 'emt').id, 'c1');
+  assert.equal(credentialOf(credentialsOf(creds, 'u1'), 'k9'), null);
+  assert.deepEqual(pendingCredentials(creds).map((c) => c.id), ['c5', 'c3'], 'the queue, oldest first, withdrawn left out');
+  assert.equal(credentialState(creds[0], now).state, 'confirmed');
+  assert.match(credentialState(creds[0], now).text, /^confirmed by Operations \d\d:\d\d$/);
+  assert.equal(credentialState(creds[1], now).text.replace(/\d\d:\d\d/, 'hh:mm'), 'not accepted hh:mm: expired');
+  assert.equal(credentialState(creds[1], now).expired, true);
+  assert.equal(credentialState(creds[2], now).text.replace(/\d\d:\d\d/, 'hh:mm'), 'pending · sent hh:mm');
+  assert.equal(credentialState(creds[2], now).short, 'pending');
+  assert.equal(idState(null).state, 'none');
+  assert.equal(idState({ full_name: 'Rosa', phone: '' }).state, 'none');
+  assert.deepEqual(idState({ full_name: 'Rosa', phone: '512', licence_number: '', photo_path: null, id_source: '' }).state, 'none');
+  const given = idState({ full_name: 'Rosa', phone: '512', licence_number: '', photo_path: 'u/licence.jpg', id_source: 'photo' });
+  assert.equal(given.state, 'given'); assert.equal(given.text, 'given, not checked'); assert.equal(given.words, 'front photographed · Operations checks it');
+  const checked = idState({ full_name: 'Rosa', phone: '512', licence_number: 'X1', photo_path: null, id_source: 'typed', verified_at: decided });
+  assert.equal(checked.state, 'checked'); assert.match(checked.text, /^checked ✓ \d\d:\d\d$/); assert.match(checked.words, /^licence checked by Operations/);
+  assert.match(idState({ full_name: 'Rosa', phone: '512', licence_number: '', photo_path: null, id_source: '', verified_at: decided }).words, /^checked in person by Operations/);
+  // the chips: the lead's words, the account's credentials of each kind, the ones the lead did not tap added
+  const typed = { qualifications: ['emt', 'rope'], claimed_by: null };
+  assert.deepEqual(personQuals(typed, creds).map(qualChipText), ['Rope', 'EMT'], 'no account on the row: the lead\'s words, plain, in the list\'s order');
+  const mine = { qualifications: ['emt', 'rope'], claimed_by: 'u1' };
+  assert.deepEqual(personQuals(mine, creds).map(qualChipText), ['Swift water · pending', 'Boat ✗', 'Rope', 'EMT ✓']);
+  assert.equal(personQuals(mine, creds).find((x) => x.kind === 'boat').cred.reason, 'expired', 'the reason rides on the chip');
+  assert.equal(qualsTextWith(mine, creds), 'swift water (pending), boat (not accepted), rope, EMT ✓', 'the 211\'s words');
+  assert.equal(qualsTextWith({ qualifications: [], claimed_by: 'u9' }, creds), '');
+});

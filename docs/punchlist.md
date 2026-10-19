@@ -13,8 +13,8 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v69**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0037**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v70**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0038**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -45,6 +45,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 24 | v65 The People board: cards and a drawer, the bar, the Members tab (shipped 18 October) | medium | v64 | Priya, Marcus, the Safety Officer, the clerk, the newcomer at the post, the administrator |
 | 25 | v66 Went to and On which run as chips on the house record, and the base's arriving rows the same (shipped 18 October) | small | v65 | Ana, every crew, the desk, Marcus |
 | 26 | v67 A picture by its corners: aerial photography dragged into place by its four corners (ready on branch `imagery`, PR #1) | medium | v66 | Marcus, Dana, Civil Air Patrol and drone pictures, every phone's mini map |
+| 28 | v69 Claim a band, submit licences, Operations confirms: the band as the door, credentials on the account, pending until confirmed (built 18 October) | medium, v55-sized | v68 | Rosa, the newcomer, Reyes, Marcus, Priya, the clerk |
 
 ---
 
@@ -925,6 +926,68 @@ field.css; `maydayHtml`, `unitHtml` and the briefing's attention line on the bas
 `alertBefore`, both lines and the morning's stood-down alert in the seed (`SEED_VERSION` 34); the `emergency` smoke
 suite extended with the phone (12 new checks); rule test `supabase/tests/alertwords.sql` (18 checks). Full run 798 of 798 across 39 suites (on v67); check and test pass; every rule test 22 of 22 files (359 checks). Migration 0036 applied
 on 18 October, before the push, since the apps read the two columns on start.
+## 28. v69 Claim a band, submit licences, Operations confirms
+
+**Why.** Todd, 18 October: "make it super easy for someone to scan a badge and then identify themselves to that badge
+and submit licenses for approval and then licenses show up on their account with either a pending status or confirmed
+status. That way people can know if they are verified or unverified, but they can get the badge right away." Until now
+a band was never a way in (it waited through sign-in and opened only once the incident was open), a crew member on
+their own phone had no row to pick and no right to give a band, and a qualification was a word the lead tapped: no
+proof, no approval, typed again at the next incident. Drawn first as `try/mockups/credentials.html` (the flow on
+Rosa's phone, the base's queue, the 214, the board's row, the hover card, a 211 excerpt, the data and the decisions),
+then built as drawn, with the decisions below.
+
+**Built.** The band is the door. A band's QR on a signed-out phone still says "Band 005 is waiting" (v62); signed in,
+or after Create account, an unissued band opens **Is this your band?**: the name and phone (the profile's, or typed
+once, as the Identify sheet does), the agency, the incident's units to pick from with the agency's picked, or "Not on
+a unit yet", and one button, **It's mine**. The phone asks the database only what a stranger may know
+(`ic_band_peek`: the number, the incident's name, whether the band is free, the units); a band on someone, a voided
+or a closed one says so on the check-in form and nothing more. It's mine (`ic_claim_band`) puts the person on the
+incident that moment: a member riding with the unit (`ic_members.rides_with`, the unit's name, so everything they
+send reads "Unit 2" and the base's lists see one Unit 2), a person on the unit's roster with their own account on the
+row (`ic_people.claimed_by`; the unit's unclaimed row of their name or surname is taken over, not doubled; else one of
+the people the lead counted but did not name), the band theirs, the check-in scan on record, one 214 line, "Rosa
+Alvarez claimed Band 005 (Unit 2)". With no unit chosen they are a unit of their own, named after them. A member
+scanning an unissued band from the menu gets a "Me · name" chip on the band sheet for the same claim. **Add your
+licences** opens next (before the briefing, and from Add a licence on the You card): the fixed list, the driver's
+licence first as the ID (which stays the profile: the row opens Identify yourself), EMT, paramedic, swift water, boat
+operator, rope, K9, hazmat, drone, other with its title; Camera or Type (a number, who issued it, when it expires), each
+through the outbox and **pending** at once; the credential belongs to the account and follows the person to the next
+incident. The **You card** on the home screen and in the menu says the ID's standing (none · given, not checked ·
+checked ✓ hh:mm) and each licence's (pending · sent hh:mm · confirmed by Operations hh:mm · not accepted hh:mm: why).
+The base: **To confirm · N** on the home panel after the PAR and at the top of the People board, each with the photo
+from a signed link or the number's tail, who and from which unit, the kind, the issuer, the expiry (expired in orange);
+**Confirm** is one press, **Not accepted…** asks why in the app's own dialog (Expired · Cannot read it · Not this
+person · Wrong kind, or your own words); each is one 214 line, written to every active incident the owner is on
+("Rosa Alvarez's EMT confirmed by Operations", "Minh Nguyen's boat operator not accepted: expired"). A person's chips
+read **EMT ✓**, **EMT · pending** or **Boat ✗** (the reason in the title) beside the lead's plain words, on the board, the
+unit panel and the division's hover card, which gains a "who is qualified for what" block; a person with their own
+account on the row says "own account" with the ID's state; the 211 prints the same words (✓, (pending), (not
+accepted)) with a legend. Nothing is deleted: a refused credential keeps its reason and the person submits again, a
+withdrawn one is archived, a changed number goes back to pending, and the 30-day clearing blanks the number and the
+photo while keeping the fact ("EMT, confirmed by Operations 18 Oct").
+
+*Decided:* a band alone is the door (Todd: "they can get the badge right away"; the found-band risk is on the 214 and
+Operations removes them); Operations of the incident confirms, from the queue; credentials belong to the account;
+the claim puts the person on the incident at once and approval is asynchronous; one fixed list shared by both views
+and the SQL check; nothing is deleted; the ID stays the profile, so the `licence` kind is in the list but the phone
+never writes it; a claimant is a member riding with the unit rather than a roster row alone (the policies, the
+realtime filters and the data module work unchanged, and `data.units()` keeps riders off every list of units) rather
+than a second unit; a rider's phone sends no position (the unit's phone does), shows the unit's division read-only with
+no Accept and no search buttons, and gets no PAR of its own; an other needs a title, so it offers Type alone; the
+decision stamps `confirmed_by` / `confirmed_at` for either answer. Not built: the Members tab's three-state Identity
+column (that is the People board mock-up, v65); messages, the PAR and positions for a rider's own phone; a credential
+withdrawn from the phone (the database allows it; the sheet offers Submit again on a refused one instead).
+
+**Shipped** as `Claim a band, submit licences, Operations confirms (v69)`: migration `0037_credentials.sql`
+(`ic_people.claimed_by`, `ic_members.rides_with`, `ic_tag_before`, `ic_band_peek`, `ic_claim_band`, `ic_credentials` with
+`ic_credential_before` / `ic_credential_after` / `ic_decide_credential` and its policies, `ic_clear_personal`), rules.js
+(`CREDENTIAL_KINDS` … `qualsTextWith`), data.js (`credentials` … `claimBand`, `units()` without riders, `myZones()` for a
+rider), the mock (`SEED_VERSION` 34), the phone's `#s-claim`, `#s-licences` and `#you`, the base's `toConfirmHtml`,
+`askReason` and the chips, the rule test `supabase/tests/credentials.sql` (50 checks) and the
+`credentials` smoke suite (31 checks); full run 830 of 830 across 40 suites on 18 October, rebased onto v68, at 1280 wide; check and test pass; 0037 applied
+from the main session on 18 October, and every rule test on the real database after it: 23 files, 409 of 409
+(`credentials.sql` 50 of 50).
 
 ## Done before this list
 

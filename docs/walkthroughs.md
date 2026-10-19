@@ -1464,3 +1464,30 @@ light and dark).
 
 - **Two open emergencies with words** share the 40 px line: at 1280 px each cell reads "EMERGENCY · Unit 2 needs help in B-1 · in the water · nee…", the rest on hover. The words come before the clock for that reason; a third open thing cuts them to the unit.
 - **The PAR's missing report** sends its note and no chips; "Missing: Okafor" reads after the chips once the unit adds some on Alert sent.
+
+## Re-walk after v69
+
+Claim a band, submit licences, Operations confirms: Rosa arriving late at staging and handed Band 005, Capt. Nguyen
+whose boat card is in the queue, Marcus at the base with two cards to confirm, Priya reading the chips on the People
+board, the clerk printing the 211, walked on 2026-10-18 in the mock at 1280 × 800 with the phone at 375 px in a frame
+beside the base (the pane in dark; the words and the places read through the `credentials` suite and the pane's own
+screenshots).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The door | Rosa | The band's QR on her signed-out phone: "Band 005 is waiting. Sign in and the scan goes through." (v62). She makes an account with her email. | Clear |
+| Is this your band? | Rosa | One sheet: Band 005 · not on anyone yet, Cedar Fork Flooding, her name and phone empty (a new account), the agency; typing Travis County Rescue lights Unit 2 · boat crew in the list, and the button reads "It's mine · check in with Unit 2". No Identify sheet in the way; the band is her check-in. | Clear |
+| On the incident | Rosa | Her phone opens as Unit 2 with "Rosa Alvarez · with Unit 2" under the name; Add your licences first, then the briefing. | Clear |
+| Add your licences | Rosa | Driver's licence first with Add your ID (the Identify sheet), then EMT … Other, Camera and Type on each (Type alone on Other, which needs its words). Type EMT: number, issued by, expires; Add → the row reads "typed EMT-204471 · Texas DSHS · expires 2028-01-31 · pending · sent 19:00" and Done counts "1 pending". | Clear |
+| The You card | Rosa | Under Need help now: "ID · driver's licence · none · name and phone only · Operations checks who you are in person", "EMT · Texas DSHS · pending", "With Unit 2 · boat crew · Nguyen, Patel, Rosa Alvarez", Add a licence; the same card in the menu. The unit's division B-1 is her card, read-only: no Accept, no Address clear or Zone clear, Message Operations offered. After Marcus confirms: "EMT · confirmed ✓ · confirmed by Operations 19:02". | Clear |
+| To confirm | Marcus | On the home panel after the PAR, "To confirm · 2": Nguyen's boat card with its photo, the issuer and the expiry, Confirm · Not accepted… · Open the photo; Rosa's EMT with "···4471", "own account". Confirm is one press; Not accepted… opens "Not accepted: Boat operator, Minh Nguyen" with Expired · Cannot read it · Not this person · Wrong kind and a box; the chip decides. The queue empties; the 214 says "Minh Nguyen's boat operator not accepted: expired". | Clear |
+| The board | Priya | The queue at the top of the People tab, above the cards; on Unit 1's card Ramirez's line reads "Swift water" (the lead's word) and "EMT ✓" with "· own account"; Nguyen's "Boat ✗" with "not accepted: expired" on hover; Rosa's line on Unit 2's card with "EMT ✓". Her drawer says Identity "No ID" with Check in person, Ramirez's "ID checked ✓ 16:15". The Members tab: "Rosa Alvarez · with Unit 2 · Crew, by band", her own Identity cell, Open goes to Unit 2. | Clear |
+| The 211 | the clerk | "Rosa Alvarez · EMT ✓ · own account", "Nguyen, Capt. · swift water, boat (not accepted) · own account", Okafor's plain words, and the legend line under the totals. | Clear |
+| The hover card | Marcus | B-1's card lists Nguyen, Patel and Rosa with their chips, the confirmed ticked. | Clear |
+| A voided band | the newcomer | Operations voided Band 006; the link on a signed-out phone, after sign-in: "Band 006 was voided; ask the table for another." on the check-in form, no sheet. | Clear |
+
+**Still bites, small:**
+
+- **A photo for an "other" credential**: the row offers Type alone, because the database needs the card's words first; a photo could be added once the title is typed.
+- **Withdrawing a licence from the phone**: the database allows it (archived, logged); the sheet offers Submit again on a refused one and nothing on a pending one. A wrong submission waits for Operations' Not accepted.
+- **A rider's own phone gets no PAR and no messages** (the unit's phone answers for the crew); a rider who wanders off is counted by the lead's answer, not their own. Positions too: the unit's dot is the lead's phone.

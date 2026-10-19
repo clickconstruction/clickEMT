@@ -1833,6 +1833,7 @@ async function rewalks(check) {
 async function transports(check) {
   autoConfirm(true);
   for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+  localStorage.removeItem('ic.map.runs');   // v75: a run cut short may have left the runs off this screen
   let P = null;
   const gym = M().ids.facilities[2], a2 = ZONE('A-2');
   const TR = M().tables.ic_transports.map((t) => t.id);
@@ -1851,6 +1852,12 @@ async function transports(check) {
     const at = (el) => el ? el.closest('.leaflet-marker-icon').style.transform : null;
     const u2mark = () => $$('#map .umark').find((m) => m.querySelector('.ulab').textContent === 'U2') || null;
     check('the three open runs are on the map: a pill and a dashed line each, Bus 2\'s pill on Unit 2\'s phone (its driver, en route), Bus 3\'s on its route (planned), Ambulance 1\'s (arrived); the pill\'s title is the run\'s line', $$('#map .tr-mark').length === 3 && $$('#map .tr-line').length === 3 && !!mark('Bus 2') && mark('Bus 2').classList.contains('veh') && mark('Bus 2').classList.contains('st-en_route') && at(mark('Bus 2')) === at(u2mark()) && !!mark('Bus 3') && mark('Bus 3').classList.contains('route') && mark('Bus 3').classList.contains('st-planned') && !!mark('Ambulance 1') && mark('Ambulance 1').classList.contains('st-arrived') && /^bus 2 · pecan park pickup → high school gym · left \d\d:\d\d · expected \d\d:\d\d · 4 of 40 · unit 2's phone \d\d:\d\d$/.test(mark('Bus 2').title.toLowerCase()), $$('#map .tr-mark').map((m) => m.className + ' ' + m.textContent).join(' | ') + ' · ' + (mark('Bus 2') ? mark('Bus 2').title : ''));
+    // ---- what shares a point (v75): the pill clear of the heading arrow, the rings on one shelter one inside the next
+    const dotY = () => { const r = u2mark().querySelector('.udot').getBoundingClientRect(); return r.top + r.height / 2; };
+    const tailTip = (el) => el.getBoundingClientRect().bottom + 7;   // the tail's point, 7 px under the pill (base.css)
+    check('the pill sits in a column clear of the phone\'s heading arrow: its tail stops short of the arrow\'s 17 px reach (v75)', mark('Bus 2').parentElement.classList.contains('tr-stack') && mark('Bus 2').parentElement.classList.contains('veh') && dotY() - tailTip(mark('Bus 2')) > 17, (dotY() - tailTip(mark('Bus 2'))).toFixed(1) + ' px between the tail and the dot');
+    const endsAt = (cls, attr) => { const by = {}; for (const p of $$('#map path.' + cls)) { const m = /^M([-\d.]+),([-\d.]+)a([\d.]+),/.exec(p.getAttribute('d') || ''); if (!m) continue; const r = +m[3], k = Math.round(+m[1] + r) + ',' + Math.round(+m[2]); (by[k] = by[k] || []).push(r + ':' + p.getAttribute(attr)); } return Object.values(by).map((l) => l.sort().join('/')).sort().join(' '); };
+    check('two runs to the gym are two rings on its mark, one inside the next: Bus 2 (under way, blue) 15 px inside, Bus 3 (planned, grey) 19 px outside; the hospital has Ambulance 1\'s alone', endsAt('tr-ring', 'stroke') === '15:#2E8B57 15:#2F6FB3/19:#8F8B82', endsAt('tr-ring', 'stroke'));
     const c2 = window.supabase.createClient();
     await mockSignIn(c2, 'unit2@mock.local');
     const boat = new Data(c2); await boat.init(); await boat.open(INC());
@@ -1863,6 +1870,21 @@ async function transports(check) {
     check('while Replay is on, the runs come off the map like the live units', $$('#map .tr-mark').length === 0 && $$('#map .tr-line').length === 0 && $$('#map .umark.ghost').length === 3, $$('#map .tr-mark').length + ' pills, ' + $$('#map .tr-line').length + ' lines');
     $('[data-action="replay-close"]').click();
     check('Close puts them back', await until(() => $('#replay').hidden && $$('#map .tr-mark').length === 3, 6000) && $$('#map .tr-line').length === 3, $$('#map .tr-mark').length + ' pills');
+    // ---- the Transport runs box in the Layers panel (v75): off takes every run off this screen; Show on map puts them back
+    const runsBox = () => $('#layers-pop [data-action="runs-toggle"]');
+    $('#btn-layers').click();
+    await until(() => !$('#layers-pop').hidden && runsBox());
+    check('the Layers panel has a Transport runs box under the imagery, on, counting the open runs (v75)', !!runsBox() && runsBox().checked && has('#layers-pop', 'transport runs', '3 open') && !$('#legend-run').hidden, text('#layers-pop').slice(0, 300));
+    runsBox().click();
+    check('off takes every run off this screen: no pills, lines or rings; the legend\'s entry goes; the device remembers', await until(() => $$('#map .tr-mark').length === 0 && $$('#map .tr-line').length === 0 && $$('#map path.tr-ring').length === 0) && $('#legend-run').hidden && localStorage.getItem('ic.map.runs') === 'off', $$('#map .tr-mark').length + ' pills, ' + $$('#map .tr-line').length + ' lines, ' + localStorage.getItem('ic.map.runs'));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await until(() => $('#layers-pop').hidden);
+    $(`#panel .tr-home [data-action="tr-show"][data-id="${run('Bus 3').id}"]`).click();
+    check('Show on map while they are off puts them all back, that run lit, and the box reads on again', await until(() => $$('#map .tr-mark').length === 3 && mark('Bus 3') && mark('Bus 3').classList.contains('lit')) && $$('#map .tr-line').length === 3 && localStorage.getItem('ic.map.runs') === 'on' && !$('#legend-run').hidden && (() => { $('#btn-layers').click(); return true; })() && await until(() => !$('#layers-pop').hidden && runsBox() && runsBox().checked), (runsBox() ? String(runsBox().checked) : 'no box') + ' · ' + localStorage.getItem('ic.map.runs') + ' · ' + $$('#map .tr-mark').length + ' pills');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));   // the panel first
+    await until(() => $('#layers-pop').hidden);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));   // then the light
+    await until(() => $$('#map .tr-mark.lit').length === 0);
     mark('Bus 3').click();
     check('a pill clicked opens the board on that run', await until(() => !$('#transports').hidden && $(`#transports-page .tr-row[data-id="${run('Bus 3').id}"].open`)), $$('#transports-page .tr-row.open').map((r) => r.dataset.id).join());
     $(`#transports-page .tr-row[data-id="${run('Bus 3').id}"] [data-action="tr-show"]`).click();
@@ -1890,11 +1912,21 @@ async function transports(check) {
     $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-step"]`).click();
     check('Loading is one press: the status, the stamp, the log line and the row moving up with the runs under way', await until(() => run('Van 4').status === 'loading') && await until(() => eventText(base, 'Van 4 loading at A-2 Pecan Mobile Home Park for High school gym')) && await until(() => $$('#transports-page .tr-row .tr-run strong').map((e) => e.textContent).join('|') === 'Bus 2|Van 4|Bus 3|Ambulance 1') && $(`#transports-page .tr-row[data-id="${van.id}"] [data-action="tr-step"]`).textContent === 'Leaving', logTexts()[0]);
     const amb = run('Ambulance 1');
+    // the ends are SVG paths, and Leaflet gives a circle off the view an empty path (M0 0); Show on map left the view tight
+    // on Bus 2 with every pickup outside it, so the board closes and the map zooms out for this one look (one step at a
+    // time: a zoom asked during the last one's animation is dropped), then the board comes back for Done
+    $('[data-action="close-transports"]').click();
+    await until(() => $('#transports').hidden);
+    for (let i = 0; i < 3; i++) { $('#map .leaflet-control-zoom-out').click(); await wait(600); }
+    check('two runs from A-2 share its pickup: Van 4\'s white dot (loading, first on the board) with Ambulance 1\'s ring around it; Bus 3\'s dot on A-1 alone (v75)', await until(() => endsAt('tr-dot', 'fill') === '5:#fff 5:#fff/8:none', 8000), endsAt('tr-dot', 'fill') + ' · ' + $$('#map path.tr-dot').length + ' dots: ' + $$('#map path.tr-dot').map((d) => (d.getAttribute('d') || '').slice(0, 24)).join(' | '));
+    $('.top-btns [data-action="transports"]').click();
+    await until(() => !$('#transports').hidden && $$('#transports-page .tr-row').length === 4);
     $(`#transports-page .tr-row[data-id="${amb.id}"] [data-action="tr-step"]`).click();
     check('Done on an arrived run is final, with who rode it in the log', await until(() => run('Ambulance 1').status === 'done') && await until(() => eventText(base, 'Ambulance 1 done at Dell Seton Medical Center, 1 person in 1 record')) && !$(`#transports-page .tr-row[data-id="${amb.id}"] [data-action="tr-step"]`), logTexts()[0]);
     const e1 = await (async () => { try { await base.updateTransport(amb.id, { status: 'en_route' }); return null; } catch (e) { return e; } })();
     check('a done run stays done', !!e1 && /done stays done/.test(e1.message) && run('Ambulance 1').status === 'done', e1 && e1.message);
     check('a done run comes off the map; the new run is on it, its pill on Unit 2\'s phone (it drives this one too)', await until(() => !mark('Ambulance 1') && !!mark('Van 4')) && $$('#map .tr-mark').length === 3 && mark('Van 4').classList.contains('veh') && mark('Van 4').classList.contains('st-loading'), $$('#map .tr-mark').map((m) => m.textContent).join());
+    check('two runs on one phone are one column of pills: Bus 2 (first on the board) lowest with the tail, Van 4 above it, each with its own words, the column still clear of the arrow (v75)', mark('Van 4').parentElement === mark('Bus 2').parentElement && mark('Bus 2').parentElement.classList.contains('tr-stack') && mark('Bus 2').parentElement.firstElementChild === mark('Bus 2') && mark('Van 4').getBoundingClientRect().bottom <= mark('Bus 2').getBoundingClientRect().top && $$('#map .tr-stack').length === 2 && /^van 4 · /.test(mark('Van 4').title.toLowerCase()) && dotY() - tailTip(mark('Bus 2')) > 17, $$('#map .tr-stack').map((s) => [...s.children].map((c) => c.textContent).join('+')).join(' | ') + ' · ' + (dotY() - tailTip(mark('Bus 2'))).toFixed(1) + ' px');
     $('[data-action="close-transports"]').click();
 
     // ---- the gym card: the typed Expected line gave way to the runs coming here; a record is put on a run from its row

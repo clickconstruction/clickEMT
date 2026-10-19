@@ -1,7 +1,7 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
-import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } from '../shared/layers.js';
+import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey, runsShown } from '../shared/layers.js';
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
@@ -213,12 +213,14 @@ export function layersPopHtml(data, state) {
   const cur = storedLayer() || 'streets';
   const hidden = hiddenOverlays();
   const active = data.overlays();
+  const runs = data.mapRuns ? data.mapRuns().length : 0;   // v75: the open runs, drawn unless this device's box is off
   return `
     <div class="lp-col">
       <div class="k">Overlays</div>
       ${active.length ? active.map((o) => `<div class="lp-ovl"><label class="lp-row"><input type="checkbox" data-action="overlay-toggle" data-id="${o.id}"${hidden.has(o.id) ? '' : ' checked'}><span class="lp-name">${esc(o.name || 'Imagery')}</span><span class="muted">${o.taken_at ? 'taken ' + hhmm(o.taken_at) : 'added ' + hhmm(o.created_at)}</span></label><input type="range" class="lp-range" min="0" max="1" step="0.05" value="${Number(o.opacity)}" data-range="overlay-opacity" data-id="${o.id}" aria-label="Opacity of ${esc(o.name || 'the imagery')}"></div>`).join('') : '<div class="muted lp-note">No imagery over the map yet.</div>'}
       ${overlayPickHtml()}
       <div class="muted lp-note">A picture lands on the map; drag it into place. Hiding is for this screen; opacity and the picture are for everyone. Adjust, remove or put back under Map imagery on the home panel.</div>
+      <label class="lp-row lp-runs" title="Takes every run off this screen only; Show on map puts them back"><input type="checkbox" data-action="runs-toggle"${runsShown() ? ' checked' : ''}><span class="lp-name">Transport runs</span><span class="muted">${runs ? runs + ' open' : 'none open'}</span></label>
     </div>    <div class="lp-col">
       <div class="k">Map underneath</div>
       ${availableLayers().map((l) => `<label class="lp-row"><input type="radio" name="base-layer" value="${l.id}" data-action="layer-pick" data-layer="${l.id}"${cur === l.id ? ' checked' : ''}><span class="lp-name">${esc(l.name)}</span><span class="muted">${esc(l.source || '')}</span></label>`).join('')}

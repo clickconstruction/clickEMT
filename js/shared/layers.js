@@ -7,6 +7,7 @@
 import { cornersOk, overlayCorners } from './rules.js';
 export const LAYER_KEY = 'ic.map.layer';
 export const HIDDEN_KEY = 'ic.map.hidden';   // imagery this device has hidden, by id
+export const RUNS_KEY = 'ic.map.runs';       // 'off' once this device's Layers panel took the transport runs off its map (v75)
 
 export const BASE_LAYERS = [
   { id: 'streets', name: 'Streets', source: 'OpenStreetMap', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19, dim: true },
@@ -43,6 +44,9 @@ export function setOverlayHidden(id, hidden) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...set])); } catch (e) { /* storage blocked */ }
   return set;
 }
+// the transport runs on this device's map (v75): on unless the Layers panel's box took them off; Show on map puts them back
+export function runsShown() { try { return localStorage.getItem(RUNS_KEY) !== 'off'; } catch (e) { return true; } }
+export function setRunsShown(on) { try { localStorage.setItem(RUNS_KEY, on ? 'on' : 'off'); } catch (e) { /* storage blocked */ } }
 
 // Google's Map Tiles API hands out a session per map type; the tiles are fetched with it.
 const sessions = new Map();

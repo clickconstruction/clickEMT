@@ -184,6 +184,7 @@ table.t211 tfoot td { color: var(--ink-2); font-size: 12px; border-bottom: 0; pa
 .lp-ovl { display: flex; flex-direction: column; gap: 0; }
 .lp-range { width: 100%; accent-color: var(--accent); margin: 0 0 4px 24px; width: calc(100% - 24px); }
 .lp-note { font-size: 12px; }
+.lp-runs { border-top: 1px solid var(--line-soft); margin-top: 4px; padding-top: 4px; }   /* the Transport runs box under the imagery (v75) */
 .tools .hint { font-size: 12.5px; color: var(--muted); }
 .map { flex: 1; min-height: 320px; background: var(--panel-2); }
 .leaflet-bar a, .leaflet-bar a:hover { background: var(--control-bg); color: var(--ink); border-bottom-color: var(--line); }
@@ -313,10 +314,15 @@ table.t211 tfoot td { color: var(--ink-2); font-size: 12px; border-bottom: 0; pa
 .umark.sos .udot { background: var(--danger); } .umark.sos .uhead::before { border-bottom-color: var(--danger); } .umark.sos .upulse { background: var(--danger); animation-duration: .9s; }
 .umark.sel .udot { border-color: var(--ink); border-width: 3px; }
 /* a run on the map (v70): the label as a pill, on the driver's phone (veh, a tail down to the dot) or on the route (route,
-   dashed), coloured by state; the run lit by Show on map gets a ring; the ends and the line take the same colour in map.js */
-.tr-mark { --run: #8F8B82; position: absolute; left: 0; top: 0; transform: translate(-50%, -100%) translateY(-22px); display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--run); color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); white-space: nowrap; cursor: pointer; }
-.tr-mark.veh::after { content: ''; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--run); filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
-.tr-mark.route { transform: translate(-50%, -50%); border-style: dashed; }
+   dashed), coloured by state; the run lit by Show on map gets a ring; the ends and the line take the same colour in map.js.
+   The pills at one spot are one column (v75, .tr-stack): the first the lowest, with the tail; on a phone the column's foot
+   is 32 px above the dot, so the tail's point (7 px under the pill) stops short of the heading arrow's 17 px reach */
+.tr-stack { position: absolute; left: 0; top: 0; display: flex; flex-direction: column-reverse; align-items: center; gap: 3px; }
+.tr-stack.veh { transform: translate(-50%, -100%) translateY(-32px); }
+.tr-stack.route { transform: translate(-50%, -50%); }
+.tr-mark { --run: #8F8B82; position: relative; display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--run); color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); white-space: nowrap; cursor: pointer; }
+.tr-stack.veh .tr-mark:first-child::after { content: ''; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--run); filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
+.tr-mark.route { border-style: dashed; }
 .tr-mark.st-loading { --run: #6B5DBF; } .tr-mark.st-en_route { --run: #2F6FB3; } .tr-mark.st-arrived { --run: #2E8B57; } .tr-mark.st-late { --run: #D9822B; color: #1B1B18; }
 .tr-mark.lit { box-shadow: 0 0 0 3px var(--accent), 0 1px 3px rgba(0,0,0,.4); }
 .tr-line.lit { filter: drop-shadow(0 0 3px rgba(0,0,0,.45)); }

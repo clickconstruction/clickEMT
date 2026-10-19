@@ -1619,3 +1619,29 @@ and `seeded` suites and the rule test `tellbase.sql` on the real database.
 - **The base's own request form** has the three steps and No rush but no stuck flag: Operations asks for itself, so none was drawn.
 - **The pin's colour** follows the step chosen before the map was drawn and on the next redraw; a step pressed after dragging the pin recolours it on the next draw, not under the finger.
 - **The spot on a request** cannot be moved: it is the phone's fix, and the division is the place Logistics reads.
+
+## Re-walk after v75
+
+Runs that share a point: Marcus at the base with Unit 2 driving two runs, his relief thinning a busy screen, the
+driver of Bus 2, the desk at the gym with three runs coming and the clerk at Replay, walked on 2026-10-18 in the mock
+at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`: the pane was not on a screen for this walk, so no
+screenshots; the places and the words are read through the `transports` suite and the drawn page, the geometry its
+numbers).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The arrow | the driver | Bus 2's pill rides above U2 with its tail pointing at the dot and the heading arrow whole between them, 25 px from the tail's point to the dot's centre; the arrow turns through north without touching it. | Clear |
+| Two on one phone | Marcus | Van 4 loading on Unit 2's phone: one column, Bus 2 (under way longer, first on the board) lowest with the tail, Van 4 purple above it. Hover reads each; a click on either opens the board on that one. | Clear |
+| Two to one shelter | the desk | The gym's S wears two rings, Bus 2's blue inside and Bus 3's grey outside; Van 4 makes a third. Show on map on one thickens its ring instead of growing it, so the neighbours stay apart. | Clear |
+| Two from one division | Marcus | A-2's white dot is Van 4's, with Ambulance 1's green ring around it until Done takes it off. | Learned once |
+| The box | his relief | Layers → Transport runs, "3 open", at the foot of the Overlays column. Off: no pills, no lines, no rings, and the legend's Transport run entry goes; the device remembers across a reload. Show on map on the home panel brings everything back lit on that run, the box on again. | Clear |
+| Replay | the clerk | The runs still come off with the live units and come back with Close; the box is untouched by it. | Clear |
+
+**Still bites, small:**
+
+- **A column of three or more pills** grows upward and can cover a division's label or another unit above the phone.
+- **A pickup typed in words** still has no dot, so a run from "Pecan Park pickup" starts its line at the vehicle; a pickup clicked on the map is still section 15's item from v54.
+- **Which ring is whose** on a shelter with three runs is told by colour and hover only; a count on the mark was not drawn.
+- **The box is per device:** a second laptop at the base shows the runs until its own box is pressed, as with a hidden picture.
+- **A run to a closed facility** still draws to it.
+

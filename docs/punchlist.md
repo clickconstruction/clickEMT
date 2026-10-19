@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v75**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v76**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0039**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -52,6 +52,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 31 | v72 The 211 per the mock-up: the unit header line, the band as a number, the totals as two small tables (shipped 18 October) | small | v71 | the clerk, Finance, Priya |
 | 32 | v73 Sign in by a code, no password: an email or a mobile number, Send code, the six digits or the email's link (shipped 18 October; the project's SMS provider, email template and SMTP still to set) | small to medium | v71 | everyone at a door: the newcomer, Rosa, Ana, Marcus, the administrator |
 | 33 | v74 Tell the base: Message Operations and Ask for something as one anatomy, urgency as a scale of three steps, a stuck flag, fewer words (shipped 18 October) | medium | v72 | Rosa, Ana, Moreno, the desk, Marcus, Logistics |
+| 34 | v75 Runs that share a point: the pills in a column clear of the heading arrow, the rings one inside the next, the Transport runs box in the Layers panel (built 18 October) | small | v74 | Marcus, his relief, a driver, the desk |
 
 ---
 
@@ -1167,6 +1168,48 @@ defaults, check, lines and a seeded stuck message (`SEED_VERSION` 36); rule test
 words; "Built as v74" on the mock-up page. Every rule test on the real database, 24 files, 426 of 426.
 
 Rebased onto v73 (the handoff rewrite on top) and rerun on 18 October before landing: `npm run check` and `npm test` pass; the full smoke run 868 of 869 across 42 suites at 1280 wide, the one miss the `seeded` hover card's half-second, 24 of 24 alone; every rule test on the real database, 24 files, 426 of 426.
+
+## 34. v75 Runs that share a point: the pills in a column, the rings one inside the next, the Transport runs box
+
+**Why.** The re-walk after v70 (walkthroughs.md) found three things the first draw of the runs got wrong once two
+runs met: the pill on the driver's phone sat 22 px above the dot, over the unit's heading arrow (17 px); two runs on
+one phone (Unit 2 driving Bus 2 and Van 4 in the suite) put two pills on one spot, the second read on hover only; two
+runs to one shelter put two rings of one size on its mark, the colours fighting. The mock-up's first open item, a Runs
+box in the Layers panel, was recommended "after a walk on a busy day"; it is the one piece of the four that is a
+choice, and it came along because a base with twenty runs needs a way to see the map under them.
+
+**Built.** `runStacks` in rules.js reads every open run's geometry in the board's order and says where each stands
+among the runs that share its point. The pills at one spot are one column (`.tr-stack`): the first on the board
+lowest, with the tail, the rest above it, each its own pill with its own colour, words and click; on a phone the
+column's foot sits 32 px above the dot, so the tail's point stops 8 px short of the heading arrow's reach. The rings
+on one destination sit one inside the next, 15, 19, 23 px, the first on the board innermost; Show on map's lit ring is
+heavier, not wider, so it never lands on its neighbour. The dots on one pickup likewise: the first the white dot, each
+further run a ring around it. The Layers panel's Overlays column ends with a **Transport runs** box ("3 open"): off
+takes every run off this screen only, the device remembers (`ic.map.runs`) and the legend's Transport run entry goes
+with them; Show on map on the board or the home panel turns the box back on, since Show means show. No migration, no
+change on the phone.
+
+*Decided:* the first on the board is the lowest pill and the innermost ring (the run under way is the one Operations
+is watching); the column grows upward rather than sideways (a phone's label is under its dot, the arrow above, so up
+is the free side); a ring per run on a shelter rather than one ring with a count (the colours are the states, and a
+count would need its own words); the box is per device, like hiding a picture, not a setting for everyone (one
+operator thinning their own screen must not blank the other's); it does not survive Show on map.
+
+*Left open, the page's recommendations standing:* a pickup clicked on the map, so a run typed in words gets a dot
+(section 15, from v54); the run on the phone's mini map; a trail behind the bus. A column of three or more pills can
+cover a division's label above the phone. A run to a closed facility still draws to it.
+
+**Built** 18 October 2026 as `Runs that share a point: the pills in a column, the rings one inside the next (v75)`:
+`runStacks` in rules.js (Node test in `dev/test-rules.mjs`); `renderRuns` in js/base/map.js (`RING_R`, `RING_STEP`,
+`DOT_R`, `DOT_STEP`, one marker per stack, `.tr-ring` and `.tr-dot` on the ends); `.tr-stack` in base.css; `runsShown`
+/ `setRunsShown` in layers.js; the box in `layersPopHtml` (ui.js), `runs-toggle`, `tr-show` and `drawLegend` in
+main.js; `#legend-run` in index.html; `VERSION` v75; the `transports` suite's seven v75 checks; "Built as v75" on the
+mock-up page. `npm run check` and `npm test` pass (the Node tests gained `runStacks`). The full smoke run, in headless
+Chrome by `dev/smoke-headless.py` because the Browser pane was off screen: 822 of 852 across 42 suites with every v75
+check passing, the 30 misses in six suites that never touch runs; alone, `ics100`, `walkfix`, `evacuees` and
+`members` passed, `tags` passed on its second run, and `fieldReports`'s two revisit checks missed the same way on
+`main` at v74 (the suite's after-22:00 flake, handoff.md under Known misses). No migration, so no new rule test; the
+Supabase CLI is not logged in on this Mac, and the rule tests on the real database were not run for this release.
 
 ## Done before this list
 

@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS } from '../js/shared/rules.js';
+import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS, runStacks } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -540,4 +540,22 @@ t('credentials (v69): the fixed list, the words, a credential\'s standing, the I
   assert.equal(personQuals(mine, creds).find((x) => x.kind === 'boat').cred.reason, 'expired', 'the reason rides on the chip');
   assert.equal(qualsTextWith(mine, creds), 'swift water (pending), boat (not accepted), rope, EMT ✓', 'the 211\'s words');
   assert.equal(qualsTextWith({ qualifications: [], claimed_by: 'u9' }, creds), '');
+});
+
+t('runs that share a point stack: the pills at one spot, the rings on one destination, the dots on one pickup (v75)', () => {
+  const gym = [30.2566, -97.7426], a2 = [30.2673, -97.7384], phone = [30.259, -97.7424], er = [30.2497, -97.7342];
+  const geos = [
+    { vehicle: phone, label: phone, from: null, to: gym },              // Bus 2 on Unit 2's phone, a pickup in words
+    { vehicle: phone, label: phone, from: a2, to: gym },                // Van 4 on the same phone, from A-2
+    { vehicle: null, label: [30.258, -97.741], from: a2, to: gym },     // Bus 3 on its route, from A-2 as well
+    { vehicle: null, label: [30.258, -97.736], from: a2, to: er },      // Ambulance 1 from A-2 to the hospital
+    { vehicle: null, label: er, from: null, to: er }                    // a run with no pickup point and no vehicle sits on its destination
+  ];
+  const s = runStacks(geos);
+  assert.deepEqual(s.map((x) => x.pill), [0, 1, 0, 0, 0], 'Bus 2 the lowest pill on the phone, Van 4 above it, the rest alone');
+  assert.equal(s[0].stack, s[1].stack, 'the two on the phone share a column');
+  assert.notEqual(s[1].stack, s[2].stack);
+  assert.deepEqual(s.map((x) => x.ring), [0, 1, 2, 0, 1], 'three rings on the gym, one inside the next; two on the hospital');
+  assert.deepEqual(s.map((x) => x.dot), [0, 0, 1, 2, 0], 'the dot on A-2 is Van 4\'s, Bus 3 and Ambulance 1 ring it; words have no dot');
+  assert.deepEqual(runStacks([]), []);
 });

@@ -6,7 +6,7 @@ import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersH
 import { signInAddress, codeSentText, codeErrorText, phoneDisplay } from '../shared/rules.js';   // sign in by a code (v73)
 import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, replayWindow as replayWindowRule, replayWindowLabel, replayPickCheck, dayIso, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners, credentialLabel, REJECT_REASONS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
-import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey } from '../shared/layers.js';
+import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey, runsShown, setRunsShown } from '../shared/layers.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
 import { startAround, clearAround, layoutAround, aroundOn, aroundSeen } from './discover.js';
@@ -502,6 +502,8 @@ function drawLegend() {
     const n = b.querySelector('[data-legend-count]');
     if (n) n.textContent = counts[st] ? String(counts[st]) : '';
   }
+  const run = $('#legend-run');
+  if (run) run.hidden = !runsShown();   // v75: the entry goes with the runs when the Layers panel's box takes them off
   const hint = $('#legend-hint');
   if (hint) {
     const n = state.highlight ? (counts[state.highlight] || 0) : 0;
@@ -1242,6 +1244,7 @@ document.addEventListener('click', async (e) => {
         const g = data.runOnMap(t);
         if (!g.label) { toast('Nothing to show yet: the run has no destination on the map.'); break; }
         if (!$('#transports').hidden) closeTransports();
+        if (!runsShown()) setRunsShown(true);   // v75: the Layers panel's box had taken them off; Show means show
         state.runLit = t.id; map.fitRun([g.from, g.to, g.vehicle]); queueDraw(); break;
       }
       case 'tr-gone-toggle': state.tr.gone = !state.tr.gone; drawTransports(); break;
@@ -1372,6 +1375,7 @@ document.addEventListener('click', async (e) => {
       case 'layers': setLayersOpen(!state.layersOpen); break;
       case 'layer-pick': { const want = btn.dataset.layer; const got = await map.setBaseLayer(want); if (got !== want) drawLayers(); break; }
       case 'overlay-toggle': setOverlayHidden(id, !btn.checked); queueDraw(); break;
+      case 'runs-toggle': setRunsShown(btn.checked); queueDraw(); break;   // v75: the runs off this screen, remembered on the device
       case 'overlay-adjust': await adjustOverlay(id); break;
       case 'place-save': await savePlacing(); break;
       case 'place-undo': if (state.placing) { state.placing.ctl.undo(); btn.disabled = !state.placing.ctl.canUndo(); } break;

@@ -92,7 +92,7 @@
 <div class="intro">
   <h1>A transport on the map</h1>
   Todd, 18 October, of the transport board at v54: <q>For transports we should make it easy to expose a transport on the map view.</q>
-  A run was a row on the board and a line on the shelter card; the map, which is what Operations watches, showed nothing of it. This page is the record of what was built, drawn after the build: every open run on the base's map, the bus where the driver's phone is. <b>Built as v70</b> (docs/punchlist.md, section 29; the re-walk in docs/walkthroughs.md). Made-up data; nothing here moves.
+  A run was a row on the board and a line on the shelter card; the map, which is what Operations watches, showed nothing of it. This page is the record of what was built, drawn after the build: every open run on the base's map, the bus where the driver's phone is. <b>Built as v70</b> (docs/punchlist.md, section 29; the re-walk in docs/walkthroughs.md); the re-walk's three and the Runs box <b>built as v75</b> (section 34). Made-up data; nothing here moves.
 </div>
 
 <!-- ============================================================ THE MAP -->
@@ -208,16 +208,16 @@
     </ul>
     <div class="k">Yours to decide (what to do next, recommended first)</div>
     <ul class="decisions">
-      <li><b>A Runs box in the Layers panel's overlays column?</b> Not built: the runs are few and come off when done. <span class="open">open</span> Recommended: wait for a walk on a busy day; it would be a per-device box like the overlays' show box, one line in the panel and one in <span class="mono">renderRuns</span>.</li>
+      <li><b>A Runs box in the Layers panel's overlays column?</b> Not built: the runs are few and come off when done. <span class="chosen">built as v75</span> A Transport runs box at the foot of the Overlays column, per device (<span class="mono">ic.map.runs</span>): off takes every run off this screen and the legend's entry with them; Show on map puts them back.</li>
       <li><b>A pickup clicked on the map</b> (punchlist section 15, from v54), so a run has a point of its own and the dot and the line start where the bus loads. <span class="open">open</span> Recommended: next, when the crews ask; it is a column and a map mode.</li>
       <li><b>The run on the phone's mini map</b>, so the driver sees the line to the destination. <span class="open">open</span> Recommended: not yet; the driver has the You are Bus 2 card and the satnav link.</li>
       <li><b>A trail behind the bus.</b> <span class="open">open</span> Recommended: no; the unit's breadcrumbs already show.</li>
     </ul>
     <div class="k">Seen in the re-walk (docs/walkthroughs.md, after v70)</div>
     <ul class="decisions">
-      <li><b>The pill covers the unit's heading arrow</b> when the same phone is the bus (the pill sits 22 px above the dot, the arrow 17).</li>
-      <li><b>Two runs on one phone</b> stack two pills; the second reads on hover.</li>
-      <li><b>Two runs to one shelter</b> stack two rings on its mark; the colours and the hover tell them apart.</li>
+      <li><b>The pill covers the unit's heading arrow</b> when the same phone is the bus (the pill sits 22 px above the dot, the arrow 17). <span class="chosen">built as v75</span> The column's foot is 32 px above the dot; the tail's point stops 8 px short of the arrow.</li>
+      <li><b>Two runs on one phone</b> stack two pills; the second reads on hover. <span class="chosen">built as v75</span> One column, the first on the board lowest with the tail, each pill its own colour, words and click.</li>
+      <li><b>Two runs to one shelter</b> stack two rings on its mark; the colours and the hover tell them apart. <span class="chosen">built as v75</span> Rings one inside the next, 15, 19, 23 px, the first on the board innermost; two runs from one division likewise, a dot with a ring around it.</li>
       <li><b>A run to a closed facility</b> still draws to it.</li>
     </ul>
   </div>

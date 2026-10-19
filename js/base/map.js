@@ -1,8 +1,8 @@
 // The base map: Leaflet over OpenStreetMap tiles, with the incident boundary, the zones and their
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
-import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyWords, sampleAt, samplesBefore, transportLabel, runLine, hhmm } from '../shared/rules.js';
-import { layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay, hiddenOverlays } from '../shared/layers.js';
+import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyWords, sampleAt, samplesBefore, transportLabel, runLine, sortTransports, runStacks, hhmm } from '../shared/rules.js';
+import { layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay, hiddenOverlays, runsShown } from '../shared/layers.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
 const TRAIL = 12;                 // positions kept per unit for the breadcrumb trail
@@ -17,6 +17,8 @@ const ZONE_STYLE = {
 const STRUCTURE_COLOR = { searched: '#2E8B57', in_progress: '#D9822B', not_searched: '#8F8B82' };
 // a run's colour by state (v70): planned grey, loading purple, en route blue, arrived green, late orange (the pill's CSS says the same)
 const RUN_COLOR = { planned: '#8F8B82', loading: '#6B5DBF', en_route: '#2F6FB3', arrived: '#2E8B57', late: '#D9822B' };
+const RING_R = 15, RING_STEP = 4;   // a run's ring on its destination, and how much wider each further run's ring to the same place is (v75)
+const DOT_R = 5, DOT_STEP = 3;      // the dot on its pickup, and the ring around it for each further run from the same place
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -225,28 +227,44 @@ export class BaseMap {
   // has no point), a dot at the pickup, a ring at the destination, and the run's label as a pill on the driver's phone
   // while its position is fresh (veh, with a tail), else on the route (route, dashed). The colour is the state; the run
   // Show on map lit stands out. A click on any of it opens the board on the run. While replaying, the runs come off.
+  // Runs that share a point stack (v75, runStacks in rules.js): the pills at one spot are one column (.tr-stack, the
+  // first the lowest with the tail, the column clear of the unit's heading arrow), the rings on one destination sit one
+  // inside the next, the dots on one pickup likewise; the Layers panel's box takes them all off this screen (runsShown).
   renderRuns(data, state) {
     const g = this.layers.runs;
     g.clearLayers();
-    if (this.replay || !data.mapRuns) return;
+    if (this.replay || !data.mapRuns || !runsShown()) return;
     const ev = data.evacuees();
     const opts = { facilityOf: (id) => data.facility(id), zoneOf: (id) => data.zone(id) };
-    for (const t of data.mapRuns()) {
-      const geo = data.runOnMap(t);
-      if (!geo.label) continue;   // no destination on the map yet: nothing to draw
+    const runs = sortTransports(data.mapRuns()).map((t) => ({ t, geo: data.runOnMap(t) })).filter((r) => r.geo.label);   // no destination on the map yet: nothing to draw
+    const stacks = runStacks(runs.map((r) => r.geo));
+    const pills = new Map();   // the pills at one spot, the board's order, lowest first
+    runs.forEach(({ t, geo }, i) => {
+      const s = stacks[i];
       const lit = state.runLit === t.id;
       const color = RUN_COLOR[geo.state] || RUN_COLOR.planned;
       const words = runLine(t, ev, opts) + (geo.vehicle ? ` · ${unitLabel(data.member(t.driver_user_id))}'s phone ${hhmm(geo.vehicleAt)}` : '');
       const open = (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onTransport && this.cb.onTransport(t.id); };
       const paths = [];
       if (geo.line) paths.push(L.polyline(geo.line, { color, weight: lit ? 5 : 3, opacity: lit ? 1 : 0.8, dashArray: '8 6', className: 'tr-line' + (lit ? ' lit' : '') }));
-      if (geo.from) paths.push(L.circleMarker(geo.from, { radius: lit ? 7 : 5, color, weight: 2, fillColor: '#fff', fillOpacity: 1, className: 'tr-end' }));
-      if (geo.to) paths.push(L.circleMarker(geo.to, { radius: lit ? 18 : 15, color, weight: lit ? 3 : 2, fill: false, className: 'tr-end' }));
+      if (geo.from) paths.push(s.dot ? L.circleMarker(geo.from, { radius: DOT_R + DOT_STEP * s.dot, color, weight: lit ? 3 : 2, fill: false, className: 'tr-end tr-dot' }) : L.circleMarker(geo.from, { radius: DOT_R, color, weight: lit ? 3 : 2, fillColor: '#fff', fillOpacity: 1, className: 'tr-end tr-dot' }));
+      if (geo.to) paths.push(L.circleMarker(geo.to, { radius: RING_R + RING_STEP * s.ring, color, weight: lit ? 4 : 2, fill: false, className: 'tr-end tr-ring' }));
       for (const p of paths) { p.addTo(g); p.bindTooltip(words, { direction: 'top', sticky: true }); p.on('click', open); }
       const cls = ['tr-mark', 'st-' + geo.state, geo.vehicle ? 'veh' : 'route'];
       if (lit) cls.push('lit');
-      const m = L.marker(geo.label, { icon: icon(`<span class="${cls.join(' ')}" data-run="${t.id}" title="${esc(words)}">${esc(transportLabel(t))}</span>`), keyboard: false, zIndexOffset: 900 }).addTo(g);
-      m.on('click', open);
+      if (!pills.has(s.stack)) pills.set(s.stack, { at: geo.label, kind: geo.vehicle ? 'veh' : 'route', html: [], ids: [] });
+      const stack = pills.get(s.stack);
+      stack.html.push(`<span class="${cls.join(' ')}" data-run="${t.id}" title="${esc(words)}">${esc(transportLabel(t))}</span>`);
+      stack.ids.push(t.id);
+    });
+    for (const [, s] of pills) {
+      const m = L.marker(s.at, { icon: icon(`<span class="tr-stack ${s.kind}">${s.html.join('')}</span>`), keyboard: false, zIndexOffset: 900 }).addTo(g);
+      m.on('click', (e) => {
+        if (this.mode) return;
+        L.DomEvent.stopPropagation(e);
+        const el = e.originalEvent && e.originalEvent.target && e.originalEvent.target.closest ? e.originalEvent.target.closest('[data-run]') : null;   // the pill pressed, in a column of them
+        this.cb.onTransport && this.cb.onTransport(el ? el.dataset.run : s.ids[0]);
+      });
     }
   }
 

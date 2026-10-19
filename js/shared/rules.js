@@ -880,6 +880,19 @@ export function runGeometry(t, { facilityOf, zoneOf, positionOf, now = Date.now(
   const label = vehicle || (line ? [(line[0][0] + line[1][0]) / 2, (line[0][1] + line[1][1]) / 2] : to);
   return { from, to, vehicle, vehicleAt: fresh ? pos.at : null, line, label, state: runState(t, now) };
 }
+// the runs that share a point (v75): two on one phone, two to one shelter, two from one division. Given each run's
+// geometry in the board's order, says where each stands: pill (among the pills at one spot, 0 the lowest, with the
+// tail), ring (among the rings on one destination, 0 the innermost), dot (among the dots on one pickup, 0 the dot
+// itself; the rest are rings around it); stack names the spot the pill shares.
+export function runStacks(geos) {
+  const key = (p) => p ? p[0].toFixed(5) + ',' + p[1].toFixed(5) : '';
+  const pills = {}, rings = {}, dots = {};
+  const next = (m, k) => { m[k] = (m[k] || 0) + 1; return m[k] - 1; };
+  return geos.map((g) => {
+    const stack = (g.vehicle ? 'v' : 'r') + key(g.label);
+    return { stack, pill: g.label ? next(pills, stack) : 0, ring: g.to ? next(rings, key(g.to)) : 0, dot: g.from ? next(dots, key(g.from)) : 0 };
+  });
+}
 
 // ---- people and tags, phase 1 (v55): a band is an id (ic_tags: a number printed on it, a code in the QR, no name),
 // given to a responder or a sheltered person by scanning it; a scan is a seen record (ic_seen: what it meant, where,

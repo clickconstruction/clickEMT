@@ -67,8 +67,10 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   in a full run (passes alone); the `layers` suite's overlay upload sometimes not arriving within its wait late in a
   run (v50 to v53; passes alone); a suite that reads the panel right after a click that queues a redraw passes with
   the window hidden and fails with it visible (wrap such a read in `until`); the `transports` suite run twice in one
-  page fails its Withdraw check (`state.tr.gone` survives `reload()`; reload the page between runs). Rerun a missed
-  suite alone before it counts.
+  page fails its Withdraw check (`state.tr.gone` survives `reload()`; reload the page between runs); the `fieldReports` suite's two revisit checks
+  after 22:00 local, when the revisit two hours ahead falls tomorrow and `revisitWords` says so while the check
+  expects the bare time (seen at v75, on `main` at v74 the same: run the suite earlier, or teach the check the
+  word). Rerun a missed suite alone before it counts.
 - **What shipped on 18 October,** one release per note of Todd's walk of the base, each with its section in
   [punchlist.md](punchlist.md) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md): v57 the check-in
   head count put back on the real database (migration 0034); v58 Show me around; v59 the header's right end and a
@@ -264,6 +266,13 @@ own port with `PORT=8798 python3 dev/serve.py 8798`; the suites read whatever po
   `window.__smokeResult = null; import('/dev/smoke.js').then((m) => m.run()).then((r) => { window.__smokeResult = r; })`.
   An embedded browser usually refuses the camera: the suites scan bands and codes by typing the number, as a phone
   whose camera refuses does. The known misses are listed under "Where things stand".
+- **The smoke suite headless** (v75): `npm run smoke` (`dev/smoke-headless.py`) runs the same suite in headless Google
+  Chrome from `/Applications`, for a machine with no window to keep visible: the Browser pane only draws while the
+  session is open on screen, and the suite stalls without frames. `python3 dev/smoke-headless.py transports` runs one
+  suite in a fresh page; `--log file` keeps the console lines and the result. A full run takes about a quarter of an
+  hour headless and misses more on timing than a window does (30 of 852 at v75 on 18 October: four of the six suites
+  that missed passed alone, `tags` on its second run alone, and `fieldReports`'s two revisit misses are the suite's
+  own after-22:00 flake, under Known misses), so rerun a missed suite alone before it counts, as the rule above says.
 - **SQL rule tests**, against the real database: `python3 dev/sbq.py supabase/tests/<file>.sql`. Each runs in one
   transaction that rolls back, so nothing is left behind, and returns rows that should all say `ok: true`. Run all
   of them (23 files at v73) before a release, not only the new one.
@@ -353,9 +362,10 @@ Todd walked the base and the phone at v59 and kept sending notes; the audit in
   door's screenshots, still the base at v33; what happens to a division held by a unit made Operations. Section 15's
   "mocked up and waiting" list still carries pieces since built (each says so, except imagery, v67); tidy it when
   the section is next touched.
-- **A transport on the map** (v70, `try/mockups/transports.html`): the pill covers the unit's heading arrow when the
-  same phone is the bus; two runs on one phone stack two pills; two runs to one shelter stack two rings; a Runs box
-  in the Layers panel, a pickup as a point, the mini map and a trail are the page's open items, recommended first.
+- **A transport on the map** (v70, `try/mockups/transports.html`): v75 took the re-walk's three (the pill clear of
+  the heading arrow, two runs on one phone as one column of pills, two runs to one shelter as rings one inside the
+  next) and the page's first open item, the Transport runs box in the Layers panel (punchlist section 34). A pickup
+  as a point, the run on the phone's mini map and a trail stay open, the page's recommendations standing.
 - **The 211** (v71, v72): no hours column (the Hours sheet has them) and no signature line per person.
 - **Report a hazard keeps its four urgency chips** and their long words until its own walk; v74 shortens the scale
   for messages and requests only.

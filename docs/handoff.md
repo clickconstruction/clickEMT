@@ -2,15 +2,15 @@
 
 For whoever picks up clickEMT next, on another computer. This says where things stand, how to get it running, how
 a change is shipped, how the work was run on 18 October, and where the open work is. The open work itself is in
-[punchlist.md](punchlist.md). Written 17 October 2026, brought up to date late on 18 October 2026 at v73.
+[punchlist.md](punchlist.md). Written 17 October 2026, brought up to date late on 18 October 2026 at v74.
 
 ## Start here
 
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
-- `main` is at **v73**, "Sign in by a code, no password", live. **v74** is built and waiting on a branch; see "Next
-  to land" just below.
+- `main` is at **v74**, "Tell the base: one scale, a stuck flag, fewer words", live; v73, sign in by a code, came
+  just before it.
 - The first five things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
      `http://localhost:8766/field/?mock` (the phone). No build, no `npm install`, no account.
@@ -25,31 +25,6 @@ database, shared with a charity app, holds both. Pushing `main` deploys https://
      scanners were only ever seen refusing there. A camera test in Chrome passed on 18 October.
 - Then read [What only Todd can set](#what-only-todd-can-set) and [The walk of 18 October, and what is
   open](#the-walk-of-18-october-and-what-is-open).
-
-### Next to land: v74
-
-If `https://clickemt.com/sw.js` still reads `v73` when you read this, v74 has not landed. Where it is:
-
-- **The release:** "Tell the base: one scale, a stuck flag, fewer words (v74)", the phone's Message Operations and
-  Ask for something redrawn on one anatomy (one three-step scale Now · Before dark · Tomorrow, "We're stuck" as a
-  flag of its own, the words shortened, the spot on by default), from `try/mockups/tell-the-base.html` with all six
-  of its decisions as recommended. Todd said yes to it on 18 October.
-- **Where:** branch `claude/sleepy-rhodes-9aaea0` on `origin`, one commit `01d8f6f` over `edcfd56` (v72 plus two
-  docs commits), so it is two commits behind `main` (v73 came after). Its session was archived before the rebase.
-- **The database:** its migration `0038_tell_the_base.sql` (`blocking` on `ic_messages` and `ic_requests`, the
-  urgency words for messages and requests, the old "blocking" rows moved) **is already applied** on the real
-  database; do not apply it again (everything in it is `create or replace` / `if not exists`, so a second run is
-  harmless, but pointless). Its rule test `supabase/tests/tellbase.sql` passed 17 of 17 there, every rule test 24
-  files, 426 of 426.
-- **Its counts at its base (v72):** check and test pass; the full smoke run 846 of 846 across 40 suites (the
-  `passwordless` suite, v73's, was not on its tree yet).
-- **Steps left,** in a worktree cut from that branch: `git rebase origin/main` (conflicts to expect: `sw.js` keeps
-  `'v74'`; README's version list and CLAUDE.md's gotchas take both sides, v74's lines above v73's; punchlist section 33
-  after v73's section 32, its table row, and the head's "next is v75" and "next migration 0039"; this file's "main is
-  at" line and the "Next to land" entry go; walkthroughs' "Re-walk after v74" after v73's); `npm run check`;
-  `npm test`; the full smoke run at 1280 wide on the rebased tree (41 suites); every rule test on the real database
-  (24 files); push the branch; fast-forward `main` to it and push; check that `sw.js` on the live site reads `v74`.
-  The mock-up page's "Built as v74" line is in the commit already.
 
 ## What it is
 
@@ -70,22 +45,22 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v73**, "Sign in by a code, no password" (after v72, The 211 per the mock-up; v71, The 211 as a
-  table; v70, A transport on the map). The service worker reads `v73`.
-- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0037` in
-  `supabase/migrations/` are all applied, and so is `0038_tell_the_base.sql` (v74, applied on 18 October from its
-  build session before the release landed). They were applied by hand with `dev/sbq.py` and are **not** recorded in
+- `main` is at **v74**, "Tell the base: one scale, a stuck flag, fewer words" (after v73, Sign in by a code; v72,
+  The 211 per the mock-up; v71, The 211 as a table; v70, A transport on the map). The service worker reads `v74`.
+- **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0038` in
+  `supabase/migrations/` are all applied (`0038_tell_the_base.sql`, v74's, from its build session on 18 October,
+  before the release landed). They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
   The next free migration number is **0039**.
 - **The live database holds no incident yet** (checked on 18 October): everything so far was done in the mock and
   the suites. The first real incident, the first real invitation email and the first real sign-in code are all still
   to happen.
-- **Tests on `main` at v73:** `npm run check` and `npm test` pass. The full smoke run is 41 suites, 861 checks
-  (860 of 861 on the rebased tree, the one miss the known hover-timing flake in `seeded`, which passes alone). The
-  SQL rule tests are 23 files, 409 checks, all passing on the real database: `accept` 4, `alertwords` 18, `bring` 3,
+- **Tests on `main` at v74:** `npm run check` and `npm test` pass. The full smoke run is 42 suites, 869 checks
+  (868 of 869 on the rebased tree over v73, the one miss the known hover-timing flake in `seeded`, which passed 24 of
+  24 alone). The SQL rule tests are 24 files, 426 checks, all passing on the real database: `accept` 4, `alertwords` 18, `bring` 3,
   `corners` 10, `credentials` 50, `decisions` 3, `deputy` 5, `evacuees` 28, `hazards` 5, `ics100` 33, `invites` 32,
   `joincount` 10, `members` 44, `newcomer` 3, `par` 10, `parbyname` 10, `people` 28, `rewalks` 10, `safetyset` 23,
-  `scene` 9, `tags` 28, `transports` 33, `walkfix` 10. v74 adds `tellbase.sql` (17) for 24 files, 426 checks. Run
+  `scene` 9, `tags` 28, `tellbase` 17, `transports` 33, `walkfix` 10. Run
   every file before a release is called done, not only the new one: at v55 and v56 two of them failed on the real
   database without anyone noticing (punchlist section 16).
 - **Known misses in the smoke run,** none of them the code: the division hover card's half-second in `seeded` late
@@ -101,7 +76,8 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   own dialogs, and the band door; v63 Replay, a time you name; v64 the pages as windows; v65 the People board as
   cards and a drawer; v66 Went to and On which run as chips; v67 a picture by its corners (0035); v68 Need help now,
   what's wrong and what you need (0036); v69 claim a band, submit licences, Operations confirms (0037); v70 a
-  transport on the map; v71 and v72 the 211 as a table, then per the mock-up's panel; v73 sign in by a code. Before
+  transport on the map; v71 and v72 the 211 as a table, then per the mock-up's panel; v73 sign in by a code; v74 tell the base, one
+  scale and a stuck flag (0038). Before
   that day: v38 to v48 from the walk at v37, v49 the front door, v50 to v53 from the walk at v48, v54 the transport
   board, v55 QR bands, v56 invitations by email.
 - **Open work:** the walk's audit and leftovers are under [The walk of 18 October, and what is
@@ -384,7 +360,7 @@ Todd walked the base and the phone at v59 and kept sending notes; the audit in
 - **Report a hazard keeps its four urgency chips** and their long words until its own walk; v74 shortens the scale
   for messages and requests only.
 - **Message Operations and Ask for something** (`try/mockups/tell-the-base.html`): the six decisions were taken as
-  the page recommended and built as v74, which waits on its branch ("Next to land" at the top).
+  the page recommended and built as v74, live.
 - **The older "Still bites" items** from the re-walks before the walk (section 15's second list): the PAR by scan is
   one scan per press; runs nobody updates; a pickup is not a point; the desk cannot put a walk-in on a run; the base
   cannot give a sheltered person a band; Boarding needs a run loading from here; the Public page is a list; Details

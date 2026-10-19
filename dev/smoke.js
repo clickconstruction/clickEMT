@@ -370,7 +370,7 @@ async function emergency(check) {
 async function messages(check) {
   const u = USERS();
   const composer = () => $('#panel form[data-form="message"]');
-  check('the home panel shows the seeded messages, both still waiting on Unit 3, and the two answered PARs, the first closed by the second (v38)', $$('#panel .mrow.message').length === 2 && $$('#panel .mrow .ack.wait').every((e) => /waiting on unit 3/i.test(e.textContent)) && $$('#panel .mrow.par').length === 2 && $$('#panel .mrow.par .ack').some((e) => /closed by the par started/i.test(e.textContent)), text('#panel'));
+  check('the home panel shows the seeded messages, two still waiting on Unit 3 and Unit 1\'s stuck one acknowledged with its Now and Stuck badges (v74), and the two answered PARs, the first closed by the second (v38)', $$('#panel .mrow.message').length === 3 && $$('#panel .mrow .ack.wait').every((e) => /waiting on unit 3/i.test(e.textContent)) && $$('#panel .mrow.message').some((e) => e.querySelector('.badge.urg-now') && e.querySelector('.badge.stuck') && /all 1 acknowledged/i.test(e.textContent)) && $$('#panel .mrow.par').length === 2 && $$('#panel .mrow.par .ack').some((e) => /closed by the par started/i.test(e.textContent)), text('#panel'));
   check('Unit 3 has two unanswered messages in its inbox (the seeded PARs are answered or closed)', field.myUnanswered().length === 2 && field.myInbox().filter((m) => m.kind === 'message').length === 2, field.myUnanswered().map((m) => m.kind).join(','));
   check('the composer offers everyone, the three assigned zones and the three units', (() => { const o = $$('option', composer()).map((x) => x.value); return o[0] === 'all' && o.filter((v) => v.startsWith('zone:')).length === 3 && o.filter((v) => v.startsWith('user:')).length === 3; })(), $$('option', composer()).map((x) => x.textContent).join(' | '));
 
@@ -418,12 +418,14 @@ async function messages(check) {
   await until(() => base.ack(mid, u.ops));
   check('Operations acknowledges it from the panel, and the unit sees the acknowledgement', await until(() => has(`#panel .mrow[data-message="${mid}"]`, 'all 1 acknowledged')) && !!eventText(base, 'Operations acknowledged Unit 3: Copy') && await until(() => field.ack(mid, u.ops)));
   const urgent = uuid();
-  await field.sendMessage(urgent, { ...field.recipientsFor('ops'), kind: 'message', text: 'Culvert washed out, road gone', urgency: 'now', lat: 30.2676, lng: -97.7388 });
+  await field.sendMessage(urgent, { ...field.recipientsFor('ops'), kind: 'message', text: 'Culvert washed out, road gone', urgency: 'now', blocking: true, lat: 30.2676, lng: -97.7388 });
   await until(() => base.message(urgent));
-  check('a message carries how urgent it is and the spot it is about, and the base shows both', await until(() => has(`#panel .mrow[data-message="${urgent}"]`, 'act on now', 'culvert washed out')) && !!$(`#panel .mrow[data-message="${urgent}"] [data-action="pan-to"]`) && $$('#map .mpin.urg-now').length === 1, text(`#panel .mrow[data-message="${urgent}"]`));
-  check('the log says how urgent and that a location came with it', !!eventText(base, 'Unit 3 to Operations (act on now): Culvert washed out, road gone · location attached'), logTexts()[0]);
+  check('a message carries its step, the stuck flag and the spot it is about, and the base shows all three (v74)', await until(() => has(`#panel .mrow[data-message="${urgent}"]`, 'culvert washed out') && !!$(`#panel .mrow[data-message="${urgent}"] .badge.urg-now`)) && $(`#panel .mrow[data-message="${urgent}"] .badge.urg-now`).textContent === 'Now' && $(`#panel .mrow[data-message="${urgent}"] .badge.stuck`).textContent === 'Stuck' && !!$(`#panel .mrow[data-message="${urgent}"] [data-action="pan-to"]`) && $$('#map .mpin.urg-now').length === 1, text(`#panel .mrow[data-message="${urgent}"]`));
+  check('the log says the step and the flag, and that a location came with it', !!eventText(base, 'Unit 3 to Operations (now, stuck): Culvert washed out, road gone · location attached'), logTexts()[0]);
   const badUrg = await field.sb.from('ic_messages').insert({ id: uuid(), incident_id: INC(), from_user: u.unit3, to_users: [u.ops], to_label: 'Operations', kind: 'message', text: 'x', urgency: 'asap' }).select().single();
-  check('urgency is one of the four words or nothing', !!badUrg.error && badUrg.error.code === '23514', JSON.stringify(badUrg.error));
+  check('urgency is one of the three steps or nothing', !!badUrg.error && badUrg.error.code === '23514', JSON.stringify(badUrg.error));
+  const oldWord = await field.sb.from('ic_messages').insert({ id: uuid(), incident_id: INC(), from_user: u.unit3, to_users: [u.ops], to_label: 'Operations', kind: 'message', text: 'x', urgency: 'blocking' }).select().single();
+  check('blocking is no longer a step: it is the flag (v74)', !!oldWord.error && oldWord.error.code === '23514', JSON.stringify(oldWord.error));
   const forged = await field.sb.from('ic_messages').insert({ id: uuid(), incident_id: INC(), from_user: u.unit1, to_users: [u.ops], to_label: 'Operations', kind: 'message', text: 'Forged' }).select().single();
   check('a message must carry the sender\'s own user id', forged.error && forged.error.code === '42501' && !base.messages().some((m) => m.text === 'Forged'), JSON.stringify(forged.error));
 }
@@ -1461,9 +1463,9 @@ async function sections(check) {
   await until(() => has('#panel', 'requests (213rr)'));
   check('the home panel lists the open requests, the urgent first, with the seeded ask from Unit 1', $$('#panel .req').length >= 2 && has('#panel', '2 open', '4 portable lights', 'fuel truck, diesel', 'ordered, on the way'), text('#panel').slice(0, 400));
   const rid = uuid();
-  await field.addRequest({ id: rid, kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', note: 'Two houses with people on the roof', zoneId: ZONE('A-2'), lat: 30.2674, lng: -97.7384 });
+  await field.addRequest({ id: rid, kind: 'water', what: 'swift-water team', quantity: 1, urgency: 'now', blocking: true, note: 'Two houses with people on the roof', zoneId: ZONE('A-2'), lat: 30.2674, lng: -97.7384 });
   await until(() => base.request(rid));
-  check('the field asks and the base has it at the top, logged with the words of the ask', await until(() => $(`#panel .req[data-request="${rid}"]`) && $$('#panel .req')[0].dataset.request === rid) && has('#panel', '1 to act on now') && !!eventText(base, 'Unit 3 asked for swift-water team for A-2, act on now: Two houses with people on the roof'), logTexts()[0]);
+  check('the field asks and the base has it at the top with its Now and Stuck badges, logged with the words of the ask (v74)', await until(() => $(`#panel .req[data-request="${rid}"]`) && $$('#panel .req')[0].dataset.request === rid) && has('#panel', '1 to act on now') && $(`#panel .req[data-request="${rid}"] .badge.urg-now`).textContent === 'Now' && $(`#panel .req[data-request="${rid}"] .badge.stuck`).textContent === 'Stuck' && !!eventText(base, 'Unit 3 asked for swift-water team for A-2, now, stuck: Two houses with people on the roof'), logTexts()[0]);
   const answer = (st, words) => { const f = $(`#panel .req[data-request="${rid}"] form[data-form="request-answer"]`); f.answer.value = words || ''; f.requestSubmit(); };
   // requestSubmit has no submitter: click the button instead
   const press = (st) => $(`#panel .req[data-request="${rid}"] button[name="status"][value="${st}"]`).click();
@@ -1479,7 +1481,7 @@ async function sections(check) {
   check('Filled closes it, off the open list, in the sitrep no more', await until(() => eventText(base, 'Request for swift-water team (Unit 3) filled')) && base.openRequests().every((r) => r.id !== rid), logTexts()[0]);
   $('[data-action="sitrep"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
-  check('the situation report\'s Resources needed is written from the open requests', has('#briefing-page', 'resources needed', '4 portable lights for a-1, before nightfall · asked', 'fuel truck, diesel, before nightfall · ordered, on the way, county yard'), text('#briefing-page').slice(-700));
+  check('the situation report\'s Resources needed is written from the open requests', has('#briefing-page', 'resources needed', '4 portable lights for a-1, before dark · asked', 'fuel truck, diesel, before dark · ordered, on the way, county yard'), text('#briefing-page').slice(-700));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   const e1 = await (async () => { try { await field.answerRequest(REQ[2], 'approved', ''); return null; } catch (e) { return e; } })();
@@ -2835,6 +2837,38 @@ async function walkfix(check) {
     await P.act('send-compose');
     await until(() => P.shown('#s-inbox') && /the gym is nearly full/.test(P.text('#inbox-list')));
     check('after sending, the Messages page is whole: not clipped at the left (the shelter desk)', P.sideways().length === 0 && P.$('#s-inbox').scrollLeft === 0 && P.doc().scrollingElement.scrollLeft === 0 && /the gym is nearly full/.test(P.text('#inbox-list')), P.sideways().join('; '));
+    // v74: the two sheets share one anatomy: the scale, the stuck flag and the Where switch on Message Operations
+    await P.act('compose');
+    await until(() => P.shown('#s-compose'));
+    if (!P.$('#compose-loc').classList.contains('on')) { await wait(600); await P.act('compose-loc'); }   // the pretend phone's first fix can land after the sheet opened
+    check('Message Operations opens with three steps on the scale and nothing lit, the flag off, the spot on with the map, four quick starts, Send to Operations (v74)', P.$$('#compose-scale .step').length === 3 && !P.$('#compose-scale .step.on') && !P.$('#compose-flag').classList.contains('on') && P.$('#compose-loc').classList.contains('on') && !P.$('#compose-map').hidden && P.$$('#compose-chips button').length === 4 && P.$('[data-action="send-compose"]').textContent.trim() === 'Send to Operations', P.text('#s-compose').slice(0, 300));
+    P.$('#compose-chips [data-text="Road blocked"]').click();
+    await wait(50);
+    check('a quick start fills the box and the quick starts go', P.$('#compose-text').value === 'Road blocked' && P.$('#compose-chips').hidden, P.$('#compose-text').value);
+    P.$('#compose-scale .step.s-now').click();
+    await wait(50);
+    P.$('#compose-flag').click();
+    await wait(50);
+    check('Now fills with a tick, the flag turns on, and the pin takes the step\'s colour', P.$('#compose-scale .step.s-now').classList.contains('on') && /Now/.test(P.$('#compose-scale .step.on').textContent) && P.$('#compose-flag').classList.contains('on') && !!P.$('#compose-map .mpin.urg-now') && P.sideways().length === 0, P.text('#compose-scale') + ' | ' + P.sideways().join('; '));
+    await P.act('send-compose');
+    await until(() => P.shown('#s-inbox') && /road blocked/.test(P.text('#inbox-list')));
+    const stuckMsg = await until(() => base.messages().find((m) => m.text === 'Road blocked'));
+    check('the message carries the step and the flag: the phone\'s inbox reads Now and Stuck, the base\'s row too, the 214 says (now, stuck)', !!stuckMsg && stuckMsg.urgency === 'now' && stuckMsg.blocking === true && stuckMsg.lat != null && !!P.$('#inbox-list .badge.stuck') && P.$('#inbox-list .badge.urg-now').textContent === 'Now' && await until(() => $(`#panel .mrow[data-message="${stuckMsg.id}"] .badge.stuck`)) && !!eventText(base, 'Unit 3 to Operations (now, stuck): Road blocked · location attached'), logTexts()[0]);
+    // Ask for something: the same anatomy, nothing chosen for the unit, the request's words
+    await P.act('ask');
+    await until(() => P.shown('#s-ask'));
+    check('Ask for something opens with no kind and no step lit, the same scale and flag, the spot on for the division, Send to Logistics (v74)', !P.$('#ask-kinds .chip.on') && P.$$('#ask-scale .step').length === 3 && !P.$('#ask-scale .step.on') && !P.$('#ask-flag').classList.contains('on') && P.$('#ask-where').classList.contains('on') && /for a-2/.test(P.text('#ask-where')) && P.$('[data-action="ask-send"]').textContent.trim() === 'Send to Logistics' && P.sideways().length === 0, P.text('#s-ask').slice(0, 300) + ' | ' + P.sideways().join('; '));
+    await P.act('ask-send');
+    check('Send with no kind asks for one and stays on the sheet', P.shown('#s-ask') && /pick what you need/.test(P.text('#toast')), P.text('#toast'));
+    P.$('#ask-kinds .chip[data-value="equipment"]').click();
+    await wait(50);
+    P.$('#ask-scale .step.s-nightfall').click();
+    await wait(50);
+    P.$('#ask-what').value = 'pumps'; P.$('#ask-qty').value = '2';
+    await P.act('ask-send');
+    const pumps = await until(() => base.requests().find((r) => r.what === 'pumps'));
+    check('the request carries its step and no flag: the base\'s card reads Before dark, the 214 ", before dark", the phone lists it with the word', !!pumps && pumps.urgency === 'nightfall' && pumps.blocking === false && pumps.quantity === 2 && pumps.lat != null && await until(() => $(`#panel .req[data-request="${pumps.id}"] .badge.urg-nightfall`)) && $(`#panel .req[data-request="${pumps.id}"] .badge.urg-nightfall`).textContent === 'Before dark' && !$(`#panel .req[data-request="${pumps.id}"] .badge.stuck`) && !!eventText(base, 'Unit 3 asked for 2 pumps for A-2, before dark') && await until(() => /before dark/.test(P.text('#ask-mine'))), logTexts()[0]);
+    await P.act('inbox');
     await P.act('home');
     check('Nearby lists the boat ramp with directions (Rosa)', await until(() => /boat ramp/.test(P.text('#nearby'))) && P.$$('#nearby .near').some((r) => /low-water crossing ramp/i.test(r.textContent) && r.querySelector('a.btn[href*="google.com/maps/dir"]')), P.text('#nearby'));
 

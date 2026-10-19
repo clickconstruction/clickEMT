@@ -1592,3 +1592,30 @@ the stand-in shows under the form, and the link's landing was the stand-in's `#a
 - **The link lands in the browser the mail app picks**: a phone that signed in from an installed app and taps the email's link lands in the browser, not the app; the typed code stays in the app. The link carries `?join=` / `?band=` / `?invite=` so the new tab still finds what was waiting.
 - **A code's life**: Supabase's email code lasts an hour and a text message's code a minute or so by its defaults; the form says neither, only "or it has expired" when one is refused.
 - **An account made with a number cannot take an email invitation** (the invitation is to an address): the card says so and offers nothing; sign in with the address instead.
+
+## Re-walk after v74
+
+Tell the base: Rosa sending a message from a flooded street, Ana asking for pumps, Moreno cut off at the bridge,
+the shelter desk's quick starts, Marcus and Logistics reading the base, walked on 2026-10-18 in the mock at 375 × 812
+(the phone, light and dark) and 1280 × 900 (the base), the words through the `walkfix`, `fieldReports`, `sections`
+and `seeded` suites and the rule test `tellbase.sql` on the real database.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The order | Rosa | Message Operations: the title with its blue icon, "Operations reads it and answers here.", the box first, the quick starts under it in quotes, How soon, the flag, Where, the red link, Send to Operations. Ask for something the same way in teal. | Learned once |
+| The scale | Rosa | Three steps on one bar, Now · Before dark · Tomorrow, the coloured line under each; Now pressed fills red with a tick, a second press clears it. | Clear |
+| The flag | Moreno | "We're stuck until this is sorted" under the scale, off; pressed, a red outline and tint with a tick, not another red fill. The base reads Now and Stuck side by side, the 214 "(now, stuck)". | Clear |
+| The spot | Rosa | On when the phone has a fix: "Your spot goes with it · A-2 Pecan Mobile Home Park · 30.26735, -97.73836", the small map with the pin in the step's colour, "Drag the pin to the exact place."; switched off, the map goes and the message carries no spot. | Clear |
+| The quick starts | the desk | "Nearly full", "Need cots and blankets", "Need a nurse", "Bus has arrived" as quoted words under the box, 44 px to tap, gone once the box has words. | Clear |
+| One screen | Rosa | With the map showing, the foot's buttons sit at 734 px on an 812 px phone: the whole sheet on one screen, the foot sticky when it is not. | Fits |
+| Ask for something | Ana | Nothing lit: no kind, no step; Send with no kind says "Pick what you need first". The kind, how many, what exactly, your words; Needed by on the same scale; "We're stuck until it comes"; Where already on, "For A-2 Pecan Mobile Home Park, where you are". | Clear |
+| The request's words | Logistics | The card reads Before dark · Asked, or Now · Stuck · Asked; the requests sort by step with the stuck ones first; "1 to act on now" counts the stuck one; the 214 "Unit 3 asked for 2 pumps for A-2, before dark"; the phone's own row "2 pumps · Asked · 20:51 · before dark". | Clear |
+| No rush | Ana | A request with no step is no rush: no badge, no words in the 214, as the base's own By when select has said all along. | Clear |
+| Hazards | Moreno | Report a hazard still offers its four chips with the old words; the hazards' badges and lines on the base read as before. | As decided |
+
+**Still bites, small:**
+
+- **Report a hazard** keeps the four pills; the mock-up says it can take the same scale and flag with one more column, when a walk asks.
+- **The base's own request form** has the three steps and No rush but no stuck flag: Operations asks for itself, so none was drawn.
+- **The pin's colour** follows the step chosen before the map was drawn and on the next redraw; a step pressed after dragging the pin recolours it on the next draw, not under the finger.
+- **The spot on a request** cannot be moved: it is the phone's fix, and the division is the place Logistics reads.

@@ -67,7 +67,7 @@ body { background: var(--bg-2); }
 .p-body { flex: 1; min-height: 0; overflow: auto; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 .card .zone-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
-.compose-map { height: 240px; }
+.compose-map { height: 180px; margin-top: -4px; }
 .req-row { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
 .req-row:last-child { border-bottom: 0; }
 .req-dot { width: 10px; height: 10px; border-radius: 5px; flex: none; background: var(--dot-off); }
@@ -322,3 +322,38 @@ dialog.confirm .row-btns { margin-top: 14px; }
 .you .line .w { color: var(--muted); font-size: 12.5px; grid-column: 1 / -1; margin-top: -4px; }
 .you .line .st { justify-self: end; }
 .you .btn { width: 100%; margin-top: 4px; }
+
+/* ---- Tell the base (v74): what Message Operations and Ask for something share: the title's icon, the quick starts
+   under the box, the scale (three steps on one bar, hot to cool), the stuck flag under it, the Where switch, the red
+   link at the foot. The chosen step fills with its colour; the flag on is an outline and a tint, a different shape. */
+.sheet-title { display: flex; align-items: center; gap: 10px; }
+.sheet-ic { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.sheet-ic.ask { background: var(--ask); }
+.sheet-ic svg { width: 18px; height: 18px; }
+.sheet label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.quick { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: -4px; }
+.quick button { min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; font-style: italic; color: var(--accent-text); padding: 0 2px; text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--grey); }
+.quick button::before { content: '\201C'; opacity: .55; } .quick button::after { content: '\201D'; opacity: .55; }
+.scale { display: flex; border: 1px solid var(--control-border); border-radius: 12px; overflow: hidden; background: var(--control-bg); }
+.scale .step { flex: 1 1 0; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 16px; font-weight: 600; color: var(--ink); border-right: 1px solid var(--control-border); border-bottom: 4px solid var(--dot-off); padding: 0 4px; white-space: nowrap; }
+.scale .step:last-child { border-right: 0; }
+.scale .step.s-now { border-bottom-color: var(--danger); } .scale .step.s-nightfall { border-bottom-color: var(--hazard); } .scale .step.s-tomorrow { border-bottom-color: var(--active-fill); }
+.scale .step.on.s-now { background: var(--danger); color: #fff; } .scale .step.on.s-nightfall { background: var(--hazard); color: #1B1B18; } .scale .step.on.s-tomorrow { background: var(--active-fill); color: #fff; }
+.scale .step.on { border-right-color: transparent; }
+.scale .tick { font-size: 14px; }
+.flag { display: flex; align-items: center; gap: 10px; min-height: 48px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--control-bg); padding: 0 12px; font-size: 15px; font-weight: 500; color: var(--ink); text-align: left; margin-top: -4px; }
+.flag .fic { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--grey); flex: none; position: relative; }
+.flag .fic::after { content: ''; position: absolute; left: 3px; right: 3px; top: 7px; height: 4px; background: var(--grey); border-radius: 2px; }
+.flag.on { border: 2px solid var(--danger); background: var(--tint-red); color: var(--danger); font-weight: 700; padding: 0 11px; }
+.flag.on .fic { border-color: var(--danger); background: var(--danger); } .flag.on .fic::after { background: #fff; }
+.flag .tick { margin-left: auto; }
+.where { display: flex; align-items: center; gap: 12px; min-height: 48px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--control-bg); padding: 6px 12px; color: var(--ink); text-align: left; width: 100%; }
+.tog { width: 44px; height: 26px; border-radius: 13px; background: var(--dot-off); position: relative; flex: none; transition: background .15s; }
+.tog .knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.35); transition: left .15s; }
+.where.on .tog { background: var(--accent); } .where.on .tog .knob { left: 21px; }
+.where-w { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.where-t { font-size: 15px; font-weight: 600; } .where.on .where-t { color: var(--accent-text); }
+.where-s { font-size: 12.5px; color: var(--muted); }
+#ask-where.on .tog { background: var(--ask); } #ask-where.on .where-t { color: var(--ask-text); }
+.help-link { min-height: 44px; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; width: 100%; }
+.btn.pri.ask { background: var(--ask); border-color: var(--ask); }

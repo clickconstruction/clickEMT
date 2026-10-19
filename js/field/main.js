@@ -4,7 +4,7 @@ import { Data } from '../shared/data.js';
 import { Outbox } from '../shared/queue.js';
 import { Sensors } from './sensors.js';
 import { pickPhoto, shrink } from './camera.js';
-import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, urgencyLabel, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, NOTE_CHIPS, HAZARD_KINDS, ALERT_WRONG, ALERT_NEEDS, alertCodes, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
+import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, URGENCY_STEPS, stepLabel, STUCK_WORDS, NOTE_CHIPS, HAZARD_KINDS, ALERT_WRONG, ALERT_NEEDS, alertCodes, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 import { revisitWords, revisitHhmm } from '../shared/rules.js';   // a revisit already past today means tomorrow (v48)
 
@@ -15,7 +15,7 @@ import { joinUrl, codeFromScan, codeFromSearch, qrSvg } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
 import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
-import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
+import { REQUEST_KINDS, REQUEST_STATUS, requestLine, urgencyWords, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
 import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
 import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports, runCard, foldRuns } from '../shared/rules.js';   // the transport board (v54), the run cards (v66)
 import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, bandCodeNumber, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
@@ -33,7 +33,7 @@ const POSITION_MIN_M = 8;
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { screen: 'home', alertWrong: new Set(), alertNeeds: new Set(), pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeLoc: null, ask: { kind: 'people', urgency: 'now' }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null, claim: null, licType: null, licencesOnce: false };
+const state = { screen: 'home', alertWrong: new Set(), alertNeeds: new Set(), pending: null, noteI: 0, hazI: 0, victims: 0, clearHaz: new Set(), lastSentAt: null, lastPosSent: null, lastPosAt: 0, justCleared: null, outbox: 0, outboxError: null, seenMsgs: null, composeI: 0, parCounts: new Map(), oosPick: null, st: null, pass: 'primary', composeU: '', composeStuck: false, composeLoc: null, ask: { kind: '', urgency: '', stuck: false, loc: true }, coTicks: {}, waterNudged: 0, parMissingOpen: new Set(), parPicked: new Map(), mpEdit: null, ident: { read: null, photo: null, source: '' }, identShown: false, joinPeople: [blankPerson(), blankPerson()], mpQuals: new Set(), joinKind: '', briefOnce: false, joinFor: null, ev: null, deskQ: '', deskPicked: null, hazAckSeen: null, scanCtx: null, band: null, parScanned: new Map(), invite: null, claim: null, licType: null, licencesOnce: false };
 function blankPerson() { return { name: '', role: '', quals: new Set(), band: '' }; }
 let composeMap = null, composeMarker = null, composeZone = null;
 const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];   // suggestions under the box, gone once the unit types
@@ -502,7 +502,7 @@ function messageRow(m, big) {
     else if (m.kind === 'par') btns = parCardHtml(m);
     else btns = `<div class="mrow-btns">${REPLIES.map((r) => `<button class="btn${r === 'Copy' ? ' pri' : ''}" data-action="ack" data-id="${m.id}" data-reply="${r}">${r}</button>`).join('')}</div>`;
   }
-  const marks = (m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(urgencyLabel(m.urgency))}</span>` : '') + (m.lat != null && m.lng != null ? '<span class="muted">· location attached</span>' : '');
+  const marks = (m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(stepLabel(m.urgency))}</span>` : '') + (m.blocking ? `<span class="badge stuck">${esc(STUCK_WORDS.badge)}</span>` : '') + (m.lat != null && m.lng != null ? '<span class="muted">· location attached</span>' : '');
   return `
     <div class="mrow ${esc(m.kind)}${mine ? ' mine' : ''}">
       <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${mine ? 'You' : esc(unitLabel(data.member(m.from_user)))}</span><span>to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}${marks}</div>
@@ -518,15 +518,32 @@ function drawInbox() {
   setHtml($('#inbox-list'), rows.length ? rows.map((m) => messageRow(m)).join('') : '<p class="muted">No messages yet. Operations will see anything you send.</p>');
 }
 
-// ---- Message Operations: how urgent (the four words), the words, and the spot it is about
+// ---- Message Operations (v74): your words with the quick starts under the box, How soon on the scale, the stuck
+// flag, your spot on by default with the pin to drag. One anatomy with Ask for something below.
+// the scale: three steps on one bar (URGENCY_STEPS), the chosen one filled; a second tap clears it
+const scaleHtml = (action, chosen) => URGENCY_STEPS.map(([v, label]) => `<button type="button" class="step s-${v}${chosen === v ? ' on' : ''}" data-action="${action}" data-value="${v}" aria-pressed="${chosen === v}">${chosen === v ? '<span class="tick">✓</span>' : ''}${esc(label)}</button>`).join('');
+function drawFlag(el, on, words) {
+  el.classList.toggle('on', on);
+  el.setAttribute('aria-pressed', String(on));
+  el.innerHTML = `<span class="fic"></span><span>${esc(words)}</span>${on ? '<span class="tick">✓</span>' : ''}`;
+}
+function drawSwitch(el, on) { el.classList.toggle('on', on); el.setAttribute('aria-pressed', String(on)); }
+function openCompose() {
+  state.composeI = 0;
+  state.composeLoc = sensors.pos ? { lat: sensors.pos.lat, lng: sensors.pos.lng } : null;   // on when the phone has a fix
+  screen('compose'); drawCompose();
+}
 function drawCompose() {
-  $('#compose-urgency').innerHTML = URGENCY.map(([v, label]) => `<button class="chip${state.composeU === v ? ' on' : ''}" data-action="cmp-u" data-value="${v}">${esc(label)}</button>`).join('');
+  $('#compose-scale').innerHTML = scaleHtml('cmp-u', state.composeU);
+  drawFlag($('#compose-flag'), state.composeStuck, STUCK_WORDS.message);
   const typed = $('#compose-text').value.trim() !== '';
   $('#compose-chips').hidden = typed;
-  $('#compose-chips').innerHTML = (isDesk() ? QUICK_DESK : QUICK).map((c) => `<button class="chip" data-action="cmp" data-text="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#compose-chips').innerHTML = (isDesk() ? QUICK_DESK : QUICK).map((c) => `<button type="button" data-action="cmp" data-text="${esc(c)}">${esc(c)}</button>`).join('');
   const loc = state.composeLoc;
-  $('#compose-loc').textContent = loc ? 'Remove location' : 'Attach my location';
-  $('#compose-loc-text').textContent = loc ? latLngText(loc.lat, loc.lng) : '';
+  const zone = loc ? zoneAt(data.zones(), loc.lat, loc.lng) : null;
+  drawSwitch($('#compose-loc'), !!loc);
+  $('#compose-loc-text').textContent = loc ? 'Your spot goes with it' : (sensors.pos ? 'Your spot stays off it' : 'No GPS fix yet');
+  $('#compose-loc-sub').textContent = loc ? (zone ? `${zone.code} ${zone.name || ''}`.trim() + ' · ' : '') + latLngText(loc.lat, loc.lng) : 'Operations gets your words alone';
   $('#compose-map').hidden = !loc;
   $('#compose-map-hint').hidden = !loc;
   if (loc) drawComposeMap(loc);
@@ -538,12 +555,13 @@ function drawComposeMap(loc) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(composeMap);
     composeZone = L.layerGroup().addTo(composeMap);
     composeMarker = L.marker([loc.lat, loc.lng], { draggable: true, icon: L.divIcon({ html: '<span class="mpin urg-none"></span>', className: '', iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(composeMap);
-    composeMarker.on('dragend', () => { const p = composeMarker.getLatLng(); state.composeLoc = { lat: p.lat, lng: p.lng }; $('#compose-loc-text').textContent = latLngText(p.lat, p.lng) + ' · moved'; });
-    composeMap.on('click', (e) => { composeMarker.setLatLng(e.latlng); state.composeLoc = { lat: e.latlng.lat, lng: e.latlng.lng }; $('#compose-loc-text').textContent = latLngText(e.latlng.lat, e.latlng.lng) + ' · moved'; });
+    composeMarker.on('dragend', () => { const p = composeMarker.getLatLng(); state.composeLoc = { lat: p.lat, lng: p.lng }; $('#compose-loc-sub').textContent = latLngText(p.lat, p.lng) + ' · moved'; });
+    composeMap.on('click', (e) => { composeMarker.setLatLng(e.latlng); state.composeLoc = { lat: e.latlng.lat, lng: e.latlng.lng }; $('#compose-loc-sub').textContent = latLngText(e.latlng.lat, e.latlng.lng) + ' · moved'; });
   }
   composeZone.clearLayers();
   for (const z of data.zones()) { const pts = ringToLatLngs(z.polygon); if (pts.length >= 3) L.polygon(pts, { color: '#24588F', weight: 1.5, fillOpacity: 0.08, interactive: false }).addTo(composeZone); }
   composeMarker.setLatLng([loc.lat, loc.lng]);
+  { const pin = composeMarker.getElement() && composeMarker.getElement().querySelector('.mpin'); if (pin) pin.className = 'mpin urg-' + (state.composeU || 'none'); }   // the pin in the step's colour
   composeMap.setView([loc.lat, loc.lng], 17);
   setTimeout(() => composeMap.invalidateSize(), 50);
 }
@@ -562,11 +580,11 @@ async function sendCompose() {
   if (!r.toUsers.length) { toast('Nobody at Operations to send to', true); return; }
   const id = uuid();
   const loc = state.composeLoc;
-  const extra = { urgency: state.composeU || '', lat: loc ? loc.lat : null, lng: loc ? loc.lng : null };
+  const extra = { urgency: state.composeU || '', blocking: state.composeStuck, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null };
   data.local('ic_messages', { id, incident_id: data.incident.id, from_user: data.user.id, to_users: r.toUsers, to_label: r.toLabel, to_zone: null, kind: 'message', text, ...extra, created_at: new Date().toISOString() });
   await outbox.add('message', { id, toUsers: r.toUsers, toLabel: r.toLabel, toZone: null, kind: 'message', text, ...extra });
   state.lastSentAt = Date.now();
-  $('#compose-text').value = ''; state.composeI = 0; state.composeU = ''; state.composeLoc = null;
+  $('#compose-text').value = ''; state.composeI = 0; state.composeU = ''; state.composeStuck = false; state.composeLoc = null;
   screen('inbox'); drawInbox();
   toast(navigator.onLine ? 'Sent to Operations' : 'Kept, it sends when there is signal');
   queueDraw();
@@ -704,30 +722,40 @@ async function setMyStatus(status, note) {
   queueDraw();
 }
 // ---- Ask for something: a resource request to Logistics, worked at the base, answered here
+// v74: the same anatomy as Message Operations: what (the kind, how many, what exactly, your words), Needed by on the
+// same scale, the stuck flag, Where as the same switch; nothing chosen for the unit (no kind, no step: no rush).
+const askReset = () => ({ kind: '', urgency: '', stuck: false, loc: true });
 function drawAsk() {
   const a = state.ask;
   $('#ask-kinds').innerHTML = REQUEST_KINDS.map(([v, label]) => `<button class="chip${a.kind === v ? ' on' : ''}" data-action="ask-kind" data-value="${v}">${esc(label)}</button>`).join('');
-  $('#ask-urgency').innerHTML = URGENCY_WORDS.filter(([v]) => v !== 'blocking').map(([v, label]) => `<button class="chip${a.urgency === v ? ' on' : ''}" data-action="ask-urgency" data-value="${v}">${esc(label)}</button>`).join('');
+  $('#ask-scale').innerHTML = scaleHtml('ask-urgency', a.urgency);
+  drawFlag($('#ask-flag'), a.stuck, STUCK_WORDS.request);
   const zone = data.myZones()[0] || (sensors.pos ? zoneAt(data.zones(), sensors.pos.lat, sensors.pos.lng) : null);
-  $('#ask-where').textContent = zone ? `For ${zone.code} ${zone.name || ''}, where you are · your spot goes with it` : (sensors.pos ? 'Your spot goes with it' : 'No GPS fix yet; the request goes without a spot');
+  const on = a.loc && !!sensors.pos;
+  drawSwitch($('#ask-where'), on);
+  $('#ask-where-t').textContent = on ? 'Your spot goes with it' : (sensors.pos ? 'Your spot stays off it' : 'No GPS fix yet');
+  $('#ask-where-s').textContent = zone ? `${on ? 'For' : 'Still for'} ${zone.code} ${zone.name || ''}`.trim() + ', where you are' : (on ? 'Not in a division' : 'The request goes without a spot');
   const mine = data.myRequests().slice(0, 6);
-  $('#ask-mine').innerHTML = mine.length ? mine.map((r) => `<div class="req-row"><span class="req-dot ${esc(r.status)}"></span><span style="flex:1"><strong>${esc(requestLine(r))}</strong><br><span class="muted" style="font-size:12px">${esc(REQUEST_STATUS[r.status] || r.status)}${r.answer ? ' · ' + esc(r.answer) : ''} · ${hhmm(r.status_at || r.created_at)}</span></span>${r.status === 'asked' ? `<button class="btn sm" data-action="ask-withdraw" data-id="${r.id}">Withdraw</button>` : ''}</div>`).join('') : '<div class="muted small">Nothing asked yet.</div>';
+  $('#ask-mine').innerHTML = mine.length ? mine.map((r) => `<div class="req-row"><span class="req-dot ${esc(r.status)}"></span><span style="flex:1"><strong>${esc(requestLine(r))}</strong><br><span class="muted" style="font-size:12px">${esc(REQUEST_STATUS[r.status] || r.status)}${r.answer ? ' · ' + esc(r.answer) : ''} · ${hhmm(r.status_at || r.created_at)}${r.urgency || r.blocking ? ' · ' + esc(urgencyWords(r.urgency, r.blocking)) : ''}</span></span>${r.status === 'asked' ? `<button class="btn sm" data-action="ask-withdraw" data-id="${r.id}">Withdraw</button>` : ''}</div>`).join('') : '<div class="muted small">Nothing asked yet.</div>';
 }
-// the hurt card's shortcut: an ambulance, act on now, with the spot
+// the hurt card's shortcut: an ambulance, now, with the spot
 function askAmbulance() {
-  state.ask = { kind: 'medical', urgency: 'now' };
+  state.ask = { ...askReset(), kind: 'medical', urgency: 'now' };
   screen('ask'); drawAsk();
   $('#ask-what').value = 'ambulance';
   $('#ask-note').value = 'Someone is hurt';
   $('#ask-note').focus();
 }
 async function sendAsk() {
+  if (!state.ask.kind) { toast('Pick what you need first', true); return; }
   const what = $('#ask-what').value.trim() || REQUEST_KINDS.find(([v]) => v === state.ask.kind)[1].toLowerCase();
   const qty = Math.max(1, Number($('#ask-qty').value) || 1);
   const zone = data.myZones()[0] || (sensors.pos ? zoneAt(data.zones(), sensors.pos.lat, sensors.pos.lng) : null);
+  const spot = state.ask.loc && sensors.pos ? sensors.pos : null;
   try {
-    await data.addRequest({ kind: state.ask.kind, what, quantity: qty, urgency: state.ask.urgency, note: $('#ask-note').value.trim(), zoneId: zone ? zone.id : null, lat: sensors.pos ? sensors.pos.lat : null, lng: sensors.pos ? sensors.pos.lng : null });
+    await data.addRequest({ kind: state.ask.kind, what, quantity: qty, urgency: state.ask.urgency, blocking: state.ask.stuck, note: $('#ask-note').value.trim(), zoneId: zone ? zone.id : null, lat: spot ? spot.lat : null, lng: spot ? spot.lng : null });
     $('#ask-what').value = ''; $('#ask-note').value = ''; $('#ask-qty').value = '1';
+    state.ask = askReset();
     toast('Sent to Logistics');
     drawAsk();
   } catch (err) { toast(err.message || String(err), true); }
@@ -2164,10 +2192,12 @@ document.addEventListener('click', async (e) => {
       case 'person-out': await setPersonOut(btn.dataset.id, true); break;
       case 'person-in': await setPersonOut(btn.dataset.id, false); break;
       case 'check-out': openCheckout(); break;
-      case 'compose': state.composeI = 0; screen('compose'); drawCompose(); break;
+      case 'compose': openCompose(); break;
       case 'ask': screen('ask'); drawAsk(); break;
       case 'ask-kind': state.ask.kind = btn.dataset.value; drawAsk(); break;
-      case 'ask-urgency': state.ask.urgency = btn.dataset.value; drawAsk(); break;
+      case 'ask-urgency': state.ask.urgency = state.ask.urgency === btn.dataset.value ? '' : btn.dataset.value; drawAsk(); break;
+      case 'ask-stuck': state.ask.stuck = !state.ask.stuck; drawAsk(); break;
+      case 'ask-loc': if (!sensors.pos) { toast('No GPS fix yet', true); break; } state.ask.loc = !state.ask.loc; drawAsk(); break;
       case 'ask-send': await sendAsk(); break;
       case 'ask-withdraw': await data.withdrawRequest(btn.dataset.id); drawAsk(); toast('Withdrawn'); break;
       case 'ask-ambulance': askAmbulance(); break;
@@ -2181,6 +2211,7 @@ document.addEventListener('click', async (e) => {
       case 'checkout-confirm': await checkOut(); break;
       case 'cmp': $('#compose-text').value = btn.dataset.text || ''; drawCompose(); break;
       case 'cmp-u': state.composeU = state.composeU === btn.dataset.value ? '' : btn.dataset.value; drawCompose(); break;
+      case 'cmp-stuck': state.composeStuck = !state.composeStuck; drawCompose(); break;
       case 'compose-loc': toggleComposeLocation(); break;
       case 'send-compose': await sendCompose(); break;
       case 'ack': await ackMessage(btn.dataset.id, btn.dataset.reply || 'Copy'); break;

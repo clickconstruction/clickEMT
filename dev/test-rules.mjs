@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS } from '../js/shared/rules.js';
+import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -378,6 +378,19 @@ t('what\'s wrong, what you need on an alert (v68): the lists\' order, the note l
   assert.deepEqual(alertChange(null, { wrong: ['cut_off'] }), { added: 'cut off', gone: '' });
 });
 
+t('tell the base (v74): three steps, the stuck flag, the words and the order', () => {
+  assert.deepEqual(URGENCY_STEPS.map((s) => s[0]), ['now', 'nightfall', 'tomorrow'], 'the codes stay; blocking is not a step');
+  assert.equal(stepLabel('nightfall'), 'Before dark');
+  assert.equal(stepLabel('blocking'), '', 'the old fourth word is no step');
+  assert.equal(urgencyWords('now', true), 'now, stuck');
+  assert.equal(urgencyWords('nightfall', false), 'before dark');
+  assert.equal(urgencyWords('', true), 'stuck');
+  assert.equal(urgencyWords('', false), '');
+  assert.equal(STUCK_WORDS.badge, 'Stuck');
+  const R = [{ id: 'a', urgency: 'tomorrow' }, { id: 'b', urgency: 'now' }, { id: 'c', urgency: '', blocking: true }, { id: 'd', urgency: 'now', blocking: true }, { id: 'e', urgency: 'nightfall' }, { id: 'f', urgency: '' }];
+  assert.deepEqual(R.slice().sort((x, y) => stepRank(x) - stepRank(y)).map((r) => r.id), ['d', 'b', 'e', 'a', 'c', 'f'], 'by step, the stuck one first among equals');
+  assert.deepEqual(R.filter(actNow).map((r) => r.id), ['b', 'c', 'd'], 'to act on now: the Now step and every stuck one');
+});
 t('small items from the re-walks (v48): hazards by urgency, the current stretch, the revisit\'s words', () => {
   const H = [{ id: 'a', urgency: '', created_at: '2026-10-17T20:00:00Z' }, { id: 'b', urgency: 'nightfall', created_at: '2026-10-17T19:00:00Z' }, { id: 'c', urgency: 'blocking', created_at: '2026-10-17T18:00:00Z' }, { id: 'd', urgency: 'now', created_at: '2026-10-17T17:00:00Z' }, { id: 'e', urgency: 'tomorrow', created_at: '2026-10-17T21:00:00Z' }, { id: 'f', urgency: '', created_at: '2026-10-17T22:00:00Z' }];
   assert.deepEqual(sortHazards(H).map((h) => h.id), ['d', 'c', 'b', 'e', 'f', 'a'], 'act on now, blocks, nightfall, can wait, then no word newest first');

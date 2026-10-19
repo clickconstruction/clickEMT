@@ -553,8 +553,8 @@ export class Data {
   request(id) { return this.store.requests.get(id) || null; }
   openRequests() { return this.requests().filter((r) => r.status === 'asked' || r.status === 'approved' || r.status === 'ordered'); }
   myRequests() { return this.user ? this.requests().filter((r) => r.user_id === this.user.id) : []; }
-  async addRequest({ id, kind, what, quantity, urgency, note, zoneId, lat, lng }) {
-    const row = { id: id || crypto.randomUUID(), incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, kind: kind || 'other', what: (what || '').trim(), quantity: Math.max(1, Number(quantity) || 1), urgency: urgency || '', note: (note || '').trim(), lat: lat ?? null, lng: lng ?? null };
+  async addRequest({ id, kind, what, quantity, urgency, blocking, note, zoneId, lat, lng }) {
+    const row = { id: id || crypto.randomUUID(), incident_id: this.store.incident.id, user_id: this.user.id, zone_id: zoneId || null, kind: kind || 'other', what: (what || '').trim(), quantity: Math.max(1, Number(quantity) || 1), urgency: urgency || '', blocking: !!blocking, note: (note || '').trim(), lat: lat ?? null, lng: lng ?? null };
     const { data, error } = await this.sb.from('ic_requests').insert(row).select().single();
     if (error && error.code !== '23505') throw error;
     this.local('ic_requests', data || row);
@@ -873,9 +873,9 @@ export class Data {
     return data;
   }
   // urgency is one of URGENCY in rules.js or ''; lat/lng is the spot the message is about, when attached
-  async sendMessage(id, { toUsers, toLabel, toZone, kind, text, urgency, lat, lng, createdAt }) {
+  async sendMessage(id, { toUsers, toLabel, toZone, kind, text, urgency, blocking, lat, lng, createdAt }) {
     if (!toUsers || !toUsers.length) throw new Error('Nobody to send that to');
-    const row = { id: id || (crypto.randomUUID ? crypto.randomUUID() : undefined), incident_id: this.store.incident.id, from_user: this.user.id, to_users: toUsers, to_label: toLabel || '', to_zone: toZone || null, kind: kind || 'message', text, urgency: urgency || '', lat: lat ?? null, lng: lng ?? null };
+    const row = { id: id || (crypto.randomUUID ? crypto.randomUUID() : undefined), incident_id: this.store.incident.id, from_user: this.user.id, to_users: toUsers, to_label: toLabel || '', to_zone: toZone || null, kind: kind || 'message', text, urgency: urgency || '', blocking: !!blocking, lat: lat ?? null, lng: lng ?? null };
     if (createdAt) row.created_at = createdAt;
     const { data, error } = await this.sb.from('ic_messages').insert(row).select().single();
     if (error && error.code !== '23505') throw error;

@@ -307,22 +307,24 @@
   </div>
 
   <div id="s-ask" class="sheet" hidden>
-    <h2>Ask for something</h2>
-    <p class="muted small">Goes to Logistics at the base. You see each step here as they work it. For a person in danger, use Need help now instead.</p>
+    <div class="sheet-title"><span class="sheet-ic ask" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M3 8l9-4 9 4v9l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v9"/></svg></span><h2>Ask for something</h2></div>
+    <p class="muted small">Logistics works it; you see each step here.</p>
     <div class="k">What</div>
     <div class="chips" id="ask-kinds"></div>
     <div class="row-2">
-      <label class="k" for="ask-qty" style="display:flex;flex-direction:column;gap:4px;text-transform:none;letter-spacing:0;font-size:12px">How many<input id="ask-qty" class="input" type="number" inputmode="numeric" min="1" max="9999" value="1"></label>
-      <label class="k" for="ask-what" style="display:flex;flex-direction:column;gap:4px;text-transform:none;letter-spacing:0;font-size:12px">What exactly<input id="ask-what" class="input" placeholder="swift-water team" maxlength="120" autocomplete="off"></label>
+      <label class="f" for="ask-qty">How many<input id="ask-qty" class="input" type="number" inputmode="numeric" min="1" max="9999" value="1"></label>
+      <label class="f" for="ask-what">What exactly<input id="ask-what" class="input" placeholder="swift-water team" maxlength="120" autocomplete="off"></label>
     </div>
-    <label class="k" for="ask-note">In your words</label>
-    <input id="ask-note" class="input" placeholder="Why, and where" maxlength="300" autocomplete="off">
-    <div class="k">By when</div>
-    <div class="chips" id="ask-urgency"></div>
-    <div class="muted small" id="ask-where"></div>
+    <label class="f" for="ask-note">Your words<input id="ask-note" class="input" placeholder="Why, and where" maxlength="300" autocomplete="off"></label>
+    <div class="k">Needed by</div>
+    <div class="scale" id="ask-scale" role="group" aria-label="Needed by"></div>
+    <button type="button" class="flag" id="ask-flag" data-action="ask-stuck" aria-pressed="false"></button>
+    <div class="k">Where</div>
+    <button type="button" class="where" id="ask-where" data-action="ask-loc" aria-pressed="false"><span class="tog"><span class="knob"></span></span><span class="where-w"><span class="where-t" id="ask-where-t"></span><span class="where-s" id="ask-where-s"></span></span></button>
     <div class="k">Your requests today</div>
     <div id="ask-mine"></div>
-    <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="ask-send">Send to Logistics</button></div>
+    <button type="button" class="help-link" data-action="help">Someone in danger? Need help now</button>
+    <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri ask" data-action="ask-send">Send to Logistics</button></div>
   </div>
 
   <div id="s-checkout" class="sheet" hidden>
@@ -343,17 +345,20 @@
   </div>
 
   <div id="s-compose" class="sheet" hidden>
-    <h2>Message Operations</h2>
-    <div class="k">How urgent</div>
-    <div class="chips" id="compose-urgency"></div>
-    <label class="k" for="compose-text" style="margin-top:4px">In your words</label>
+    <div class="sheet-title"><span class="sheet-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg></span><h2>Message Operations</h2></div>
+    <p class="muted small">Operations reads it and answers here.</p>
+    <label class="k" for="compose-text">Your words</label>
     <input id="compose-text" class="input" placeholder="What Operations should know" maxlength="500" autocomplete="off">
-    <div class="chips" id="compose-chips"></div>
+    <div class="quick" id="compose-chips"></div>
+    <div class="k">How soon</div>
+    <div class="scale" id="compose-scale" role="group" aria-label="How soon"></div>
+    <button type="button" class="flag" id="compose-flag" data-action="cmp-stuck" aria-pressed="false"></button>
     <div class="k">Where</div>
-    <div class="status-row"><button class="btn" data-action="compose-loc" id="compose-loc">Attach my location</button><span class="muted" id="compose-loc-text"></span></div>
+    <button type="button" class="where" id="compose-loc" data-action="compose-loc" aria-pressed="false"><span class="tog"><span class="knob"></span></span><span class="where-w"><span class="where-t" id="compose-loc-text"></span><span class="where-s" id="compose-loc-sub"></span></span></button>
     <div id="compose-map" class="mini compose-map" hidden aria-label="Where this message is about"></div>
-    <p class="muted small" id="compose-map-hint" hidden>This is the spot Operations will see. Drag the pin to the exact place.</p>
-    <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="send-compose">Send</button></div>
+    <p class="muted small" id="compose-map-hint" hidden>Drag the pin to the exact place.</p>
+    <button type="button" class="help-link" data-action="help">Someone in danger? Need help now</button>
+    <div class="sheet-btns"><button class="btn" data-action="inbox">Cancel</button><button class="btn pri" data-action="send-compose">Send to Operations</button></div>
   </div>
 
   <div id="s-briefing" class="sheet" hidden>

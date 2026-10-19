@@ -250,7 +250,7 @@ window.IC_TOURS = (function () {
           result: '"Nguyen, Tam · oxygen · High school gym since 12:01 · from 118 Pecan Ln", across every shelter and hospital. Nobody on record? Not listed? sends Operations "Looking for …" with your desk\'s number.' },
         { on: 'phone', say: 'Tell Operations you are nearly full.',
           show: (h) => h.p('[data-action="inbox"]'),
-          do: async (h) => { await h.tap(() => h.p('[data-action="inbox"]')); await h.until(() => h.shown(h.p('[data-action="compose"]'))); await h.tap(() => h.p('[data-action="compose"]')); await h.until(() => h.shown(h.p('#s-compose'))); const urg = h.p('#compose-urgency .chip'); if (urg) await h.tap(urg); h.fill(h.p('#compose-text'), 'The gym is nearly full: 52 of 60'); await h.wait(300); await h.tap(() => h.p('[data-action="send-compose"]')); },
+          do: async (h) => { await h.tap(() => h.p('[data-action="inbox"]')); await h.until(() => h.shown(h.p('[data-action="compose"]'))); await h.tap(() => h.p('[data-action="compose"]')); await h.until(() => h.shown(h.p('#s-compose'))); const urg = h.p('#compose-scale .step'); if (urg) await h.tap(urg); h.fill(h.p('#compose-text'), 'The gym is nearly full: 52 of 60'); await h.wait(300); await h.tap(() => h.p('[data-action="send-compose"]')); },
           done: (h) => h.logHas('nearly full'),
           result: 'Four words say how urgent it is (act on now, before nightfall, can wait until tomorrow, blocks further operations). The base shows the badge; your inbox reads "Waiting on Operations" until they answer.' }
       ]

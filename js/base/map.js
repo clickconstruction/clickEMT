@@ -1,7 +1,7 @@
 // The base map: Leaflet over OpenStreetMap tiles, with the incident boundary, the zones and their
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
-import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyLabel, sampleAt, samplesBefore, transportLabel, runLine, hhmm } from '../shared/rules.js';
+import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyWords, sampleAt, samplesBefore, transportLabel, runLine, hhmm } from '../shared/rules.js';
 import { layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay, hiddenOverlays } from '../shared/layers.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
@@ -257,7 +257,7 @@ export class BaseMap {
     for (const m of data.placedMessages()) {
       const who = unitLabel(data.member(m.from_user));
       const mk = L.marker([m.lat, m.lng], { icon: icon(`<span class="mpin urg-${esc(m.urgency || 'none')}" title="${esc(who)}: ${esc(m.text)}"></span>`), keyboard: false, zIndexOffset: 700 }).addTo(this.layers.messages);
-      mk.bindTooltip(`${who}${m.urgency ? ' · ' + urgencyLabel(m.urgency) : ''}: ${m.text}`, { direction: 'top', offset: [0, -14] });
+      mk.bindTooltip(`${who}${m.urgency || m.blocking ? ' · ' + urgencyWords(m.urgency, m.blocking) : ''}: ${m.text}`, { direction: 'top', offset: [0, -14] });
       mk.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onUnit(m.from_user); });
     }
   }

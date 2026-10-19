@@ -12,6 +12,7 @@
   --hazard: #D9822B; --hazard-ink: #9A5A14; --danger: #B3261E; --safety: #F2B134;
   --tint-green: #DDF0E4; --tint-green2: #E3F2E8; --tint-blue: #E0EAF6; --tint-orange: #FBE9D6; --tint-yellow: #FDF5E3; --tint-red: #F8E1DF;
   --p1: #B3261E; --p2: #B86E00; --p3: #6B6860;
+  --ask: #146C7A; --ask-text: #146C7A;   /* Logistics' teal on the phone's Ask for something (v74) */
 }
 /* Dark, for the overnight shift: the same palette turned over, status colours lifted so they read
    on dark panels, the map tiles dimmed. Chosen with the theme button (data-theme on <html>), or
@@ -32,6 +33,7 @@
   --open: #9A978F; --active: #8FB9E6; --cleared: #7FD3A3;
   --hazard-ink: #F0B06A; --danger: #C9362C;
   --tint-green: #1E3A2B; --tint-green2: #1E3A2B; --tint-blue: #22344A; --tint-orange: #45301A; --tint-yellow: #3E3418; --tint-red: #44221F;
+  --ask: #2E8A9A; --ask-text: #5FC0D0;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -45,6 +47,7 @@
     --open: #9A978F; --active: #8FB9E6; --cleared: #7FD3A3;
     --hazard-ink: #F0B06A; --danger: #C9362C;
     --tint-green: #1E3A2B; --tint-green2: #1E3A2B; --tint-blue: #22344A; --tint-orange: #45301A; --tint-yellow: #3E3418; --tint-red: #44221F;
+    --ask: #2E8A9A; --ask-text: #5FC0D0;
   }
 }
 /* Paper is always light. */
@@ -55,6 +58,7 @@
     --ink: #1B1B18; --ink-2: #3E3C36; --muted: #5C5A53; --soft: #F1EFEA; --accent: #1F4E79; --accent-text: #1F4E79; --map-ink: #1B1B18; --map-accent: #1F4E79; --map-dim: none;
     --active: #24588F; --cleared: #1F6B42; --hazard-ink: #9A5A14; --danger: #B3261E;
     --tint-green: #DDF0E4; --tint-green2: #E3F2E8; --tint-blue: #E0EAF6; --tint-orange: #FBE9D6; --tint-yellow: #FDF5E3; --tint-red: #F8E1DF;
+    --ask: #146C7A; --ask-text: #146C7A;
   }
 }
 * { box-sizing: border-box; }
@@ -144,6 +148,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .badge.urg-now, .badge.urg-blocking { background: var(--danger); color: #fff; }
 .badge.urg-nightfall { background: var(--tint-orange); color: var(--hazard-ink); }
 .badge.urg-tomorrow { background: var(--tint-blue); color: var(--active); }
+.badge.stuck { background: var(--tint-red); color: var(--danger); border: 1px solid var(--danger); padding: 1px 7px; }   /* the flag under the scale (v74): outlined, so it is not read as a second step */
 .mpin { position: absolute; left: -11px; top: -24px; width: 22px; height: 20px; border-radius: 7px 7px 7px 1px; background: var(--accent); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); cursor: pointer; }
 .mpin::after { content: ''; position: absolute; left: 4px; top: 5px; width: 10px; height: 2px; background: #fff; box-shadow: 0 4px 0 #fff; }
 .mpin.urg-now, .mpin.urg-blocking { background: var(--danger); animation: blinkdot 1.2s ease-in-out 6; }

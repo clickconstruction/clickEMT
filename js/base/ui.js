@@ -5,7 +5,7 @@ import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey } f
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
-import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
+import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 import { personQuals, qualChipText, qualsTextWith, credentialLabel, credentialExpired, credentialText } from '../shared/rules.js';   // claim a band, submit licences, Operations confirms (v69)
 
@@ -1160,13 +1160,12 @@ export function demobHtml(m) {
 
 // Resource requests (ICS 213RR): a card per request with the step Operations can take next.
 const REQ_NEXT = { asked: [['approved', 'Approve'], ['declined', 'Can\'t fill']], approved: [['ordered', 'Mark ordered'], ['declined', 'Can\'t fill']], ordered: [['filled', 'Arrived, filled'], ['declined', 'Can\'t fill']], filled: [], declined: [['asked', 'Ask again']] };
-const URG_RANK = { now: 0, nightfall: 1, tomorrow: 2, blocking: 0, '': 3 };
 export function requestCardHtml(data, r) {
   const who = unitLabel(data.member(r.user_id));
   const z = r.zone_id ? data.zone(r.zone_id) : null;
   const next = REQ_NEXT[r.status] || [];
   return `<div class="req req-${esc(r.status)} urg-${esc(r.urgency || 'none')}" data-request="${r.id}">
-    <div class="req-top">${r.urgency ? `<span class="badge urg-${esc(r.urgency)}">${esc(urgencyLabel(r.urgency))}</span>` : ''}<span class="badge st-req-${esc(r.status)}">${esc(REQUEST_STATUS[r.status] || r.status)}</span><span class="muted">${hhmm(r.created_at)} · ${esc(who)}${z ? ' · ' + esc(z.code) : ''}</span></div>
+    <div class="req-top">${r.urgency ? `<span class="badge urg-${esc(r.urgency)}">${esc(stepLabel(r.urgency))}</span>` : ''}${r.blocking ? `<span class="badge stuck">${esc(STUCK_WORDS.badge)}</span>` : ''}<span class="badge st-req-${esc(r.status)}">${esc(REQUEST_STATUS[r.status] || r.status)}</span><span class="muted">${hhmm(r.created_at)} · ${esc(who)}${z ? ' · ' + esc(z.code) : ''}</span></div>
     <div class="req-line">${esc(requestLine(r))}</div>
     ${r.note ? `<div class="muted" style="font-size:12.5px">${esc(r.note)}</div>` : ''}
     ${(() => { if (!['asked', 'approved', 'ordered'].includes(r.status)) return ''; const m = unitsForRequest(r, { units: data.units(), zones: data.zones(), positions: data.positions() }); return m.length ? `<div class="req-onscene"><strong>On scene now:</strong> ${esc(onSceneLine(m))}${m.length > 3 ? ' · and ' + (m.length - 3) + ' more' : ''}. Open a division and press the unit's name to reassign it.</div>` : ''; })()}
@@ -1176,9 +1175,9 @@ export function requestCardHtml(data, r) {
   </div>`;
 }
 export function requestsHtml(data) {
-  const open = data.openRequests().sort((a, b) => (URG_RANK[a.urgency] ?? 3) - (URG_RANK[b.urgency] ?? 3) || (a.created_at < b.created_at ? -1 : 1));
+  const open = data.openRequests().sort((a, b) => stepRank(a) - stepRank(b) || (a.created_at < b.created_at ? -1 : 1));   // by step, the stuck ones first among equals (v74)
   const done = data.requests().filter((r) => r.status === 'filled' || r.status === 'declined').slice(0, 4);
-  const now = open.filter((r) => r.urgency === 'now' || r.urgency === 'blocking').length;
+  const now = open.filter(actNow).length;
   return `
     <div class="d-row" style="margin-top:14px"><span class="k" style="width:auto;flex:1">Requests (213RR) · ${open.length} open</span>${now ? `<span class="badge urg-now">${now} to act on now</span>` : ''}</div>
     ${open.length ? open.map((r) => requestCardHtml(data, r)).join('') : '<div class="muted" style="font-size:12.5px">Nothing open. The field asks from its inbox; Operations asks below.</div>'}
@@ -1190,7 +1189,7 @@ export function requestsHtml(data) {
       </div>
       <div class="row-2">
         <label>Kind <select name="kind" class="sel">${REQUEST_KINDS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select></label>
-        <label>By when <select name="urgency" class="sel"><option value="">No rush</option>${URGENCY.filter(([v]) => v !== 'blocking').map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select></label>
+        <label>By when <select name="urgency" class="sel"><option value="">No rush</option>${URGENCY_STEPS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</select></label>
       </div>
       <div class="row-2">
         <label>For <select name="zone" class="sel"><option value="">Staging or the base</option>${data.zones().map((z) => `<option value="${z.id}">${esc(z.code)} ${esc(z.name)}</option>`).join('')}</select></label>
@@ -1598,7 +1597,7 @@ export function sitrepSections(data) {
   S.push({ title: 'Resources', lines: [`${units.length} units checked in, ${data.activeUnits().length} on the incident, ${data.peopleInField()} people in the field`].concat(
     ['assigned', 'available', 'out_of_service', 'checked_out'].map((st) => `${STATUS_LABEL[st]}: ${units.filter((u) => u.status === st).length}`),
     agenciesOn(units).map(agencyLine)) });
-  S.push({ title: 'Resources needed', lines: data.openRequests().map((r) => `${requestLine(r)}${r.zone_id && data.zone(r.zone_id) ? ' for ' + data.zone(r.zone_id).code : ''}${r.urgency ? ', ' + urgencyLabel(r.urgency).toLowerCase() : ''} · ${REQUEST_STATUS[r.status].toLowerCase()}${r.answer ? ', ' + r.answer : ''}`).concat(sr.needs ? [sr.needs] : []).concat(data.openRequests().length || sr.needs ? [] : ['None stated']) });
+  S.push({ title: 'Resources needed', lines: data.openRequests().map((r) => `${requestLine(r)}${r.zone_id && data.zone(r.zone_id) ? ' for ' + data.zone(r.zone_id).code : ''}${r.urgency || r.blocking ? ', ' + urgencyWords(r.urgency, r.blocking) : ''} · ${REQUEST_STATUS[r.status].toLowerCase()}${r.answer ? ', ' + r.answer : ''}`).concat(sr.needs ? [sr.needs] : []).concat(data.openRequests().length || sr.needs ? [] : ['None stated']) });
   S.push({ title: 'Outlook for the next period', lines: [sr.outlook || 'Not written yet'] });
   S.push({ title: 'Facilities', lines: data.facilities().length ? data.facilities().map((f) => facilityLabel(f)) : ['None set'] });
   const pub = data.publicPhotos().length, checked = data.publicSet().length;
@@ -1869,7 +1868,7 @@ export function messageRowHtml(data, m) {
   const replies = acks.filter((a) => a.reply && a.reply !== 'Copy').map((a) => `${esc(unitLabel(data.member(a.user_id)))}: ${esc(a.reply)}${a.count != null ? ' (' + a.count + ')' : ''}`).join(' · ');
   return `
     <div class="mrow ${esc(m.kind)}" data-message="${m.id}">
-      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${esc(unitLabel(data.member(m.from_user)))}</span><span class="muted">to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}${m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(urgencyLabel(m.urgency))}</span>` : ''}</div>
+      <div class="mrow-top"><span class="t mono">${hhmm(m.created_at)}</span><span class="who">${esc(unitLabel(data.member(m.from_user)))}</span><span class="muted">to ${esc(m.to_label || 'everyone')}</span>${m.kind === 'safety' ? '<span class="badge haz">Safety</span>' : ''}${m.kind === 'par' ? '<span class="badge">PAR</span>' : ''}${m.urgency ? `<span class="badge urg-${esc(m.urgency)}">${esc(stepLabel(m.urgency))}</span>` : ''}${m.blocking ? `<span class="badge stuck">${esc(STUCK_WORDS.badge)}</span>` : ''}</div>
       <div class="mrow-text">${esc(m.text)}</div>
       <div class="mrow-state">${state}${replies ? `<span class="muted">${replies}</span>` : ''}${mine ? `<button class="btn sm" data-action="ack-message" data-id="${m.id}" data-reply="Copy">Acknowledge</button>` : ''}${m.lat != null && m.lng != null ? `<button class="btn sm" data-action="pan-to" data-lat="${m.lat}" data-lng="${m.lng}" title="${esc(latLngText(m.lat, m.lng))}">Show on map</button>` : ''}</div>
     </div>`;

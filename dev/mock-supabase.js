@@ -34,7 +34,7 @@
   const P = [ID('f', 1), ID('f', 2), ID('f', 3)];
   const H1 = ID('b', 1);
   const AL1 = ID('b', 2);   // the morning's emergency, stood down (v68)
-  const MSG = [ID('d', 1), ID('d', 2), ID('d', 3), ID('d', 4)];
+  const MSG = [ID('d', 1), ID('d', 2), ID('d', 3), ID('d', 4), ID('d', 5)];
   const PER = ID('1', 1);
   const OBJ = [ID('2', 1), ID('2', 2), ID('2', 3)];
   const ST = [ID('3', 1), ID('3', 2), ID('3', 3), ID('3', 4), ID('3', 5), ID('3', 6), ID('3', 7), ID('3', 8), ID('3', 9), ID('3', 10), ID('3', 11), ID('3', 12), ID('3', 13), ID('3', 14)];
@@ -251,12 +251,14 @@
       ic_messages: [
         { id: MSG[0], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'message', text: 'Shelter is open at the high school gym, send anyone who needs it there', created_at: ago(60) },
         { id: MSG[1], incident_id: INC, from_user: U.ops, to_users: [U.unit3], to_label: 'Unit 3', to_zone: Z['A-2'], kind: 'message', text: 'Watch the power line at the park entrance, the utility crew is 20 minutes out', created_at: ago(15) },
+        { id: MSG[4], incident_id: INC, from_user: U.unit1, to_users: [U.ops], to_label: 'Operations', to_zone: null, kind: 'message', text: 'Low-water crossing is under, we are cut off from staging until it drops', urgency: 'now', blocking: true, created_at: ago(75) },   // a stuck message (v74)
         { id: MSG[2], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'par', text: 'PAR: is everyone accounted for?', created_at: ago(120), superseded_by: MSG[3], superseded_at: ago(100) },
         { id: MSG[3], incident_id: INC, from_user: U.ops, to_users: [U.unit1, U.unit2, U.unit3], to_label: 'everyone', to_zone: null, kind: 'par', text: 'PAR: is everyone accounted for?', created_at: ago(100) }
       ],
       ic_message_acks: [
         { message_id: MSG[0], incident_id: INC, user_id: U.unit1, reply: 'Copy', count: null, acked_at: ago(59) },
         { message_id: MSG[0], incident_id: INC, user_id: U.unit2, reply: 'Copy', count: null, acked_at: ago(58) },
+        { message_id: MSG[4], incident_id: INC, user_id: U.ops, reply: 'Copy', count: null, acked_at: ago(74) },
         { message_id: MSG[2], incident_id: INC, user_id: U.unit1, reply: 'All accounted for', count: 2, acked_at: ago(119) },
         { message_id: MSG[2], incident_id: INC, user_id: U.unit3, reply: 'All accounted for', count: 2, acked_at: ago(118) },
         { message_id: MSG[3], incident_id: INC, user_id: U.unit1, reply: 'All accounted for', count: 2, acked_at: ago(99) },
@@ -308,6 +310,8 @@
     ev(99, U.unit1, 'par', 'Unit 1: All accounted for (2)', 'ic_messages', MSG[3]);
     ev(98, U.unit2, 'par', 'Unit 2: All accounted for (2)', 'ic_messages', MSG[3]);
     ev(97, U.unit3, 'par', 'Unit 3: All accounted for (2)', 'ic_messages', MSG[3]);
+    ev(75, U.unit1, 'msg', 'Unit 1 to Operations (now, stuck): Low-water crossing is under, we are cut off from staging until it drops', 'ic_messages', MSG[4]);   // a stuck message (v74)
+    ev(74, U.ops, 'msg', 'Operations acknowledged Unit 1: Copy', 'ic_messages', MSG[4]);
     ev(60, U.ops, 'msg', 'Operations to everyone: Shelter is open at the high school gym, send anyone who needs it there', 'ic_messages', MSG[0]);
     ev(59, U.unit1, 'msg', 'Unit 1 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
     ev(58, U.unit2, 'msg', 'Unit 2 acknowledged Operations: Copy', 'ic_messages', MSG[0]);
@@ -366,7 +370,7 @@
     ic_periods: () => ({ id: uuid(), starts_at: now(), ends_at: null, closed_at: null, ic_name: '', ops_chief: '', safety_officer: '', notes: '', sitrep: {}, unified: '', planning_chief: '', logistics_chief: '', finance_chief: '', pio: '', liaison: '', rotation_minutes: 45, scene_hours: 12, deputy: '', bring: '', created_at: now() }),
     ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
-    ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
+    ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', blocking: false, note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
     ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null , accepted_zone_id: null, rides_with: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
@@ -377,7 +381,7 @@
     ic_hazards: () => ({ id: uuid(), zone_id: null, note: '', lat: null, lng: null, urgency: '', acked_at: null, acked_by: null, created_at: now(), resolved_at: null }),
     ic_alerts: () => ({ id: uuid(), zone_id: null, lat: null, lng: null, note: '', wrong: [], needs: [], created_at: now(), acknowledged_at: null, acknowledged_by: null, stood_down_at: null }),
     ic_events: () => ({ id: eventId(), user_id: null, ref_table: null, ref_id: null, at: now(), notable: false }),
-    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
+    ic_messages: () => ({ id: uuid(), to_users: [], to_label: '', to_zone: null, kind: 'message', urgency: '', blocking: false, lat: null, lng: null, superseded_by: null, superseded_at: null, created_at: now() }),
     ic_message_acks: () => ({ reply: '', count: null, missing: [], acked_at: now(), scanned: null }),
     ic_invites: () => ({ id: uuid(), role: 'unit', unit_name: '', invited_by: null, user_id: null, created_at: now(), sent_at: null, sends: 0, expires_at: new Date(Date.now() + 7 * 86400000).toISOString(), accepted_at: null, accepted_by: null, withdrawn_at: null, withdrawn_by: null, last_error: '' }),
     ic_tags: () => ({ id: uuid(), kind: '', person_id: null, evacuee_id: null, issued_at: null, issued_by: null, voided_at: null, voided_by: null, created_by: null, created_at: now() }),
@@ -476,7 +480,7 @@
     }
     if (table === 'ic_messages') {
       if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
-      if (!['', 'now', 'nightfall', 'tomorrow', 'blocking'].includes(r.urgency ?? '')) throw chk('ic_messages_urgency_check');
+      if (!['', 'now', 'nightfall', 'tomorrow'].includes(r.urgency ?? '')) throw chk('ic_messages_urgency_check');   // blocking is a flag since v74
       if (r.text == null) throw nn('text');
       if (!r.from_user) throw nn('from_user');
     }
@@ -873,7 +877,7 @@
     if (table === 'ic_facilities') log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' opened', 'ic_facilities', r.id);
     if (table === 'ic_overlays') log(changes, r.incident_id, uid, 'ops', overlayWhat(r) + ' added to the map', 'ic_overlays', r.id);
     if (table === 'ic_requests') {
-      const urg = r.urgency ? ', ' + R.urgencyLabel(r.urgency).toLowerCase() : '';
+      const urg = r.urgency || r.blocking ? ', ' + R.urgencyWords(r.urgency, r.blocking) : '';   // the step and the flag (v74)
       log(changes, r.incident_id, r.user_id, 'request', `${label(r.incident_id, r.user_id)} asked for ${requestLine(r)}${r.zone_id ? ' for ' + zoneCode(r.zone_id) : ''}${urg}${r.note ? ': ' + r.note : ''}`, 'ic_requests', r.id);
     }
     if (table === 'ic_zones') log(changes, r.incident_id, uid, 'ops', `Division ${r.code} drawn, priority ${r.priority}`, 'ic_zones', r.id);
@@ -890,7 +894,7 @@
     if (table === 'ic_messages') {
       const kind = r.kind === 'safety' ? 'safety' : r.kind === 'par' ? 'par' : 'msg';
       const lead = r.kind === 'safety' ? 'SAFETY MESSAGE, ' : r.kind === 'par' ? 'PAR, ' : '';
-      const urg = r.urgency ? ' (' + R.urgencyLabel(r.urgency).toLowerCase() + ')' : '';
+      const urg = r.urgency || r.blocking ? ' (' + R.urgencyWords(r.urgency, r.blocking) + ')' : '';   // the step and the flag (v74)
       log(changes, r.incident_id, r.from_user, kind, `${lead}${label(r.incident_id, r.from_user)} to ${r.to_label || 'everyone'}${urg}: ${r.text}${r.lat != null && r.lng != null ? ' · location attached' : ''}`, 'ic_messages', r.id);
       if (r.kind === 'par') for (const o of tables.ic_messages.filter((m) => m.incident_id === r.incident_id && m.kind === 'par' && m.id !== r.id && !m.superseded_by && m.created_at <= r.created_at)) {   // ic_par_supersede (v38)
         const waiting = (o.to_users || []).filter((u) => !tables.ic_message_acks.some((x) => x.message_id === o.id && x.user_id === u)).map((u) => label(r.incident_id, u));

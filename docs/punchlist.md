@@ -5,7 +5,7 @@ to 10), the walk at v48's four items as v50 to v53 (section 11), and the plan "I
 people and tags" as v54 to v56 (sections 12 to 14), each with its Shipped note, v57, the check-in head count put
 back on the real database (section 16), v58, Show me around (section 17), v59, the header's right end and a clock
 that swaps to UTC (section 18), v60, a cleaner base from Todd's walk (section 19), v61, the units section
-(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), v64, the pages as windows (section 23), v65, the People board as cards and a drawer with its bar and its Members tab redrawn (section 24), and v66, Went to and On which run as chips on the house record (section 25). **Open and not yet ranked** (18 October 2026, v66): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
+(section 20), v62, confirmations as the app's own dialogs and the band door (section 21), v63, Replay with a time you name and a speed in words (section 22), v64, the pages as windows (section 23), v65, the People board as cards and a drawer with its bar and its Members tab redrawn (section 24), v66, Went to and On which run as chips on the house record (section 25), and on to v74, Tell the base (section 33). **Open and not yet ranked** (18 October 2026, v66): the rest of Todd's walk at v59, in section 15 under "From Todd's walk", each with a mock-up.
 Written 17 October 2026, after v37 (`c89a929`), brought up to date at v66. Each numbered release below is written to be picked
 up cold: why it matters, what to build, what was already decided, and how to know it is done. Read
 [handoff.md](handoff.md) first for how to run, test and ship.
@@ -13,8 +13,8 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v74**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0038**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v75**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0039**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -51,6 +51,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 30 | v71 The 211 as a table: a table per unit, the totals as a small one, the text and the email keeping the lines (shipped 18 October) | small | v70 | the clerk, Priya, Marcus, the administrator |
 | 31 | v72 The 211 per the mock-up: the unit header line, the band as a number, the totals as two small tables (shipped 18 October) | small | v71 | the clerk, Finance, Priya |
 | 32 | v73 Sign in by a code, no password: an email or a mobile number, Send code, the six digits or the email's link (shipped 18 October; the project's SMS provider, email template and SMTP still to set) | small to medium | v71 | everyone at a door: the newcomer, Rosa, Ana, Marcus, the administrator |
+| 33 | v74 Tell the base: Message Operations and Ask for something as one anatomy, urgency as a scale of three steps, a stuck flag, fewer words (shipped 18 October) | medium | v72 | Rosa, Ana, Moreno, the desk, Marcus, Logistics |
 
 ---
 
@@ -1119,6 +1120,53 @@ field/index.html (`#auth-ask`, `#auth-enter`, `#auth-otp`), the block in both ma
 stand-in (`SEED_VERSION` 36), `mockSignIn` / `phoneSignIn` and the `passwordless` suite in dev/smoke.js (every suite
 that signed in goes through the code). Full run on the rebased tree 860 of 861 across 41 suites (189 s in the Browser pane at 1280 × 820), the one miss the hover card's half second in `seeded`, which passes alone (24 of 24; the known pointer timing), and 861 of 861 before the rebase; check and test pass; no migration; every rule test in `supabase/tests/` run on the real database, 23 files, 409 of 409 (no SQL changed). Until the
 project's settings are set, the email's link signs in on its own and a mobile number's code does not send.
+
+## 33. v74 Tell the base: one scale, a stuck flag, fewer words
+
+**Why.** Todd, walking the phone at v71: "I think that we can make this page visually better. The urgency seems to
+be a scale, maybe we should show it like a scale. But we shouldn't confuse the scale of need for Message Operations
+with the Ask for Something; take a holistic look at these two and help me find a way to make these as good as
+possible, given a disaster's needs." The two sheets asked the same things in a different order and drew the same
+question two ways: four urgency pills that read as a list of equals, the fourth ("Blocks further operations") not a
+time; three rows of pills that looked the same; a two-line intro on the request; "Act on now" lit on every request
+before anyone chose it. Drawn first as `try/mockups/tell-the-base.html` and judged.
+
+**Built.** One anatomy for both sheets: the title with its icon and one line of purpose ("Operations reads it and
+answers here." / "Logistics works it; you see each step here."), what (the box with four quick starts under it as
+words in quotes, gone once the box has words; the kind chips, how many, what exactly, your words), how soon as one
+scale (three steps on one bar, Now · Before dark · Tomorrow, hot to cool with a coloured line under each step, 52 px,
+the chosen step filled red, orange or blue with a tick, a second tap clears; "How soon" on the message, "Needed by" on
+the request), the stuck flag under the scale ("We're stuck until this is sorted" / "We're stuck until it comes", off
+by default, on as a red outline and tint with a tick, a different shape from the fill), Where as one switch row on
+both ("Your spot goes with it", the division named under it, on when the phone has a fix; the message shows the small
+map with the pin to drag, the pin in the step's colour; off, the message goes without a spot and the request is still
+for its division), the red "Someone in danger? Need help now" link, and Send to Operations in blue or Send to
+Logistics in teal. Nothing is lit for the unit: no kind, no step, and a request with nothing chosen is no rush. On the
+base: the step's badge reads the scale's word, **Stuck** sits beside it outlined on the message row and the request
+card, the requests sort by step with the stuck ones first among equals, "N to act on now" counts the Now step and
+every stuck one, the By when select and the briefing's Resources needed line say the same words, and the 214 reads
+"Unit 3 to Operations (now, stuck): Road blocked at the bridge · location attached" and "Unit 3 asked for 2 pumps for
+A-2, now, stuck: to drain the cul-de-sac". The data: `blocking boolean` on `ic_messages` and `ic_requests`; the
+message check lost its fourth word and the rows that carried it became Now and stuck in the migration; the stored
+codes stay now / nightfall / tomorrow. Hazards are untouched: their four values, words and chips wait for their own
+walk.
+
+*Decided (the mock-up's six, all as recommended):* the column, not the fourth value; the three words everywhere for
+messages and requests; Stuck, not Blocking; the flag on the request too; nothing chosen on a request means no rush;
+the spot on by default. Kept from the page: one order on both, nothing pre-lit, the quick starts as quoted words,
+teal for Logistics, the red link at the foot of both, Report a hazard as it was.
+
+**Shipped** 18 October 2026 as `Tell the base: one scale, a stuck flag, fewer words (v74)`: migration
+`0038_tell_the_base.sql` (applied; `ic_step_label`, `ic_urgency_words`, `ic_log_message` from 0010's body,
+`ic_request_after` from 0015's); `URGENCY_STEPS`, `stepLabel`, `STUCK_WORDS`, `urgencyWords`, `stepRank`, `actNow` in
+rules.js; the two sheets in field/index.html, `scaleHtml` / `drawFlag` / `drawSwitch` / `openCompose` / `askReset` in
+js/field/main.js, the styles at the foot of field.css, `--ask` and `.badge.stuck` in shared.css; `messageRowHtml`,
+`requestCardHtml`, `requestsHtml` and the Resources needed line in js/base/ui.js, the tooltip in map.js; the mock's
+defaults, check, lines and a seeded stuck message (`SEED_VERSION` 36); rule test `supabase/tests/tellbase.sql`
+(17 of 17); the `walkfix` suite drives both sheets, the `seeded`, `fieldReports` and `sections` suites read the new
+words; "Built as v74" on the mock-up page. Every rule test on the real database, 24 files, 426 of 426.
+
+Rebased onto v73 (the handoff rewrite on top) and rerun on 18 October before landing: `npm run check` and `npm test` pass; the full smoke run 868 of 869 across 42 suites at 1280 wide, the one miss the `seeded` hover card's half-second, 24 of 24 alone; every rule test on the real database, 24 files, 426 of 426.
 
 ## Done before this list
 

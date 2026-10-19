@@ -122,6 +122,20 @@ export function urgencyLabel(u) { const r = URGENCY.find((x) => x[0] === u); ret
 const URGENCY_RANK = { now: 0, blocking: 1, nightfall: 2, tomorrow: 3 };
 export function urgencyRank(u) { return u in URGENCY_RANK ? URGENCY_RANK[u] : 4; }
 export function sortHazards(list) { return [...list].sort((a, b) => urgencyRank(a.urgency) - urgencyRank(b.urgency) || (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)); }
+// The scale a message or a request sits on (v74): three steps on one bar, hot to cool, the codes kept from the four words
+// above (URGENCY stays for hazards, which keep their chips until their own walk). "Blocks further operations" is no longer
+// a step: it is the `blocking` flag under the scale, read as "stuck" on the base and in the 214. SQL: ic_step_label,
+// ic_urgency_words.
+export const URGENCY_STEPS = [['now', 'Now'], ['nightfall', 'Before dark'], ['tomorrow', 'Tomorrow']];
+export function stepLabel(u) { const r = URGENCY_STEPS.find((x) => x[0] === u); return r ? r[1] : ''; }
+export const STUCK_WORDS = { badge: 'Stuck', message: "We're stuck until this is sorted", request: "We're stuck until it comes" };
+// the step and the flag together, lower case, for the 214 and the reports: 'now, stuck' / 'before dark' / 'stuck' / ''
+export function urgencyWords(u, blocking) { return [stepLabel(u).toLowerCase(), blocking ? 'stuck' : ''].filter(Boolean).join(', '); }
+// the order the base lists requests in: Now, Before dark, Tomorrow, no word; among equals the stuck ones first
+const URGENCY_STEP_RANK = { now: 0, nightfall: 1, tomorrow: 2 };
+export function stepRank(r) { return (r.urgency in URGENCY_STEP_RANK ? URGENCY_STEP_RANK[r.urgency] : 3) * 2 + (r.blocking ? 0 : 1); }
+// what the requests' heading counts as "to act on now": the Now step and every stuck one
+export function actNow(r) { return r.urgency === 'now' || !!r.blocking; }
 
 // A unit's resource status, as ICS names it.
 export const STATUS_LABEL = { assigned: 'Assigned', available: 'Available', out_of_service: 'Out of service', checked_out: 'Checked out' };

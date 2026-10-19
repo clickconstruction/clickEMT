@@ -905,3 +905,12 @@ button.pill { border: 0; cursor: pointer; font: inherit; font-size: 12px; line-h
 .obj-x { border: 0; background: none; color: var(--muted); width: 26px; height: 22px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 17px; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; }
 .obj-x:hover { background: var(--hover); color: var(--danger); }
 .place-first { gap: 6px; }
+/* ---- the centre by address (v78): the Address box on the New incident sheet and its list of suggestions */
+.addr-wrap { position: relative; }
+.addr-wrap[hidden] { display: none; }
+.sugg { position: absolute; left: 0; right: 0; top: calc(100% - 4px); z-index: 6; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 4px; }
+.sugg[hidden] { display: none; }
+.sugg button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 6px; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+.sugg button .sub { display: block; font-size: 12px; color: var(--muted); }
+.sugg button.on, .sugg button:hover { background: var(--hover); }
+.sugg .g { padding: 4px 10px 6px; font-size: 11px; color: var(--muted); text-align: right; }

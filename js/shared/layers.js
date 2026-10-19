@@ -17,16 +17,18 @@ export const BASE_LAYERS = [
 ];
 // The key is the incident's (ic_incidents.settings.maps_key, set on the base's Settings sheet; every member's
 // browser reads it, so it is a browser key restricted to the site and the Map Tiles API); config.js is the fallback.
+import { testPlaces } from './places.js';   // the address box's answer, on the same key (v78; places.js imports googleKey from here, used only inside functions)
+
 let incidentKey = '';
 export function setGoogleKey(key) { const k = (key || '').trim(); if (k !== incidentKey) { incidentKey = k; sessions.clear(); } }
 export function googleKey() { return incidentKey || (typeof window !== 'undefined' && window.GOOGLE_MAPS_KEY) || ''; }
-// Settings' Test button: does this key open a Map Tiles session?
+// Settings' Test button: does this key open a Map Tiles session, and does Places answer it (v78)?
 export async function testGoogleKey(key) {
   const k = (key || '').trim();
   if (!k) return { ok: false, message: 'No key to test.' };
   try {
     const res = await fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(k), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mapType: 'roadmap', language: 'en-US', region: 'US' }) });
-    if (res.ok) return { ok: true, message: 'The key works: Google Maps opened a tile session.' };
+    if (res.ok) { const p = await testPlaces(k); return { ok: p.ok, message: 'The key works: Google Maps opened a tile session. ' + p.message }; }
     let why = '';
     try { const j = await res.json(); why = (j.error && j.error.message) || ''; } catch (e) { /* no body */ }
     return { ok: false, message: 'Google Maps refused the key (' + res.status + ')' + (why ? ': ' + why : '') + '. Check that the Map Tiles API is enabled and the key allows this site.' };

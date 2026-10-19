@@ -1645,6 +1645,28 @@ numbers).
 - **The box is per device:** a second laptop at the base shows the runs until its own box is pressed, as with a hidden picture.
 - **A run to a closed facility** still draws to it.
 
+## Re-walk after v78
+
+The centre by address: a first-time Operations opening an incident, Marcus with the key and without it, walked on
+2026-10-19 in the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words through the `starters`
+suite's address checks, and one real lookup against Google from localhost:8766 (the key's other allowed address).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The box | a first-time Operations | Address, under Base and above the map centre, with one line under it: "Suggestions as you type; one press sets the centre. Enter with no pick looks the words up. The words go to Google: an incident's centre, never a person's address." | Clear |
+| Typing | a first-time Operations | "mill": two places under the box, the first lit, "powered by Google" at the foot; the arrow moves the light, Enter picks; the two numbers fill, Base reads "Mill Street Bridge", the line under them reads the centre back. | Clear |
+| A full address pasted | the IC | Enter with no suggestion lit: the words looked up through Text Search, the first place sets the centre; Base, already filled, stays. | Clear |
+| Without the key | Marcus | One muted line in place of the box; the sheet is v77's. | Clear |
+| Against Google | Marcus | From a page on localhost:8766, inline with the module's calls: "1100 Congress Ave" biased to Austin gave five suggestions, the first "1100 Congress Avenue, Austin, TX"; its details gave 30.2748, -97.7405 and "1100 Congress Ave, Austin, TX 78701, USA"; Text Search gave the same place for the full address. The Geocoding API refused the key ("API keys with referer restrictions cannot be used with this API"), so Enter with no pick goes through Text Search. | Clear; Geocoding dropped |
+| The facility card | Marcus | Its Street address box is still typed; the same list there is the later step the page draws. | Not built |
+| Dark | Marcus | The list is the panel and its tokens, as the mock-up's; not looked at in dark this walk. | Not seen |
+
+**Still bites, small:**
+
+- **The facility card's Street address box** has no suggestions yet.
+- **The first incident of a county far from the last one** sees the last one's neighbourhood first until Use my location fills the boxes.
+- **The address words go nowhere** but the two numbers and Base; the join card's Getting there still reads the facility's own address.
+
 ## Re-walk after v77
 
 Incident kinds and starter periods: a first-time Operations opening an incident at night, Marcus on the seeded Cedar

@@ -161,7 +161,7 @@
 <div class="intro">
   <h1>Incident kinds and starter periods</h1>
   The note, 19 October, as the main session relayed it: <q>Offer buttons when making a new period: the user selects natural hazards, human-caused, medical and public health, search and rescue, planned events, and then sees options that pre-fill the period. They have not run an incident and want it easy to configure.</q>
-  Drawn at v76, before anything was built; <b>built as v77</b> (docs/punchlist.md, section 36; the re-walk in docs/walkthroughs.md), every decision as recommended, with one change from the build notes below: no migration, the kind kept in the incident's settings until a column exists. One piece: two rows of buttons on the New incident sheet, the kind of incident and then its usual sub-kinds, asked once; pressing a sub-kind gives period 1 a starter, a handful of short lines on the Period sheet that Operations can edit or remove with one press. Flood is written in full; the other sixteen are sketched in one line each. Made-up data; press the buttons below and watch the Period sheet fill.
+  Drawn at v76, before anything was built; <b>built as v77</b> (docs/punchlist.md, section 36; the re-walk in docs/walkthroughs.md), every decision as recommended, with one change from the build notes below: no migration, the kind kept in the incident's settings until a column exists; the centre by address <b>built as v78</b> (section 37). One piece: two rows of buttons on the New incident sheet, the kind of incident and then its usual sub-kinds, asked once; pressing a sub-kind gives period 1 a starter, a handful of short lines on the Period sheet that Operations can edit or remove with one press. Flood is written in full; the other sixteen are sketched in one line each. Made-up data; press the buttons below and watch the Period sheet fill.
 </div>
 
 <section class="part" id="today">
@@ -328,7 +328,7 @@
     <div class="panel">
       <div class="k">The key</div>
       <ul>
-        <li>The one config.js already carries for the Google layers, <span class="mono">window.GOOGLE_MAPS_KEY</span>. It is public, so it must be restricted in Google Cloud to the HTTP referrers <span class="mono">https://clickemt.com/*</span> and <span class="mono">http://localhost:8766/*</span>, with Places API (New) and Geocoding API enabled beside Map Tiles API.</li>
+        <li>The one config.js already carries for the Google layers, <span class="mono">window.GOOGLE_MAPS_KEY</span>. It is public, so it must be restricted in Google Cloud to the HTTP referrers <span class="mono">https://clickemt.com/*</span> and <span class="mono">http://localhost:8766/*</span>, with Places API (New) enabled beside Map Tiles API. Geocoding API was enabled too, and refused: Google does not let a key restricted to a site call it, so every call is Places (New).</li>
         <li>The Incident settings key (gear) cannot serve this sheet: no incident exists yet when it is typed.</li>
         <li>The settings' Test button (<span class="mono">testGoogleKey</span> in layers.js) opens a tile session today; it would also ask Places one word and say whether Places answers.</li>
         <li>Todd makes the key himself, with the Maps tooling already used on clicktooling.com. Until it is in config.js the sheet is today's.</li>
@@ -347,7 +347,7 @@
       <div class="k">The calls, and the cost</div>
       <ul>
         <li><span class="mono">places:autocomplete</span> (Places API (New), REST, called with fetch and the key) with the typed words, a session token and a <span class="mono">locationBias</span> circle around the device's position; then <span class="mono">places/{id}</span> with <span class="mono">fields=location,displayName</span> for the pick, which ends the session.</li>
-        <li>Enter with nothing picked sends the words to the Geocoding API and the first answer sets the centre: a full address pasted in works too.</li>
+        <li>Enter with nothing picked sends the words to Places Text Search (<span class="mono">places:searchText</span>, one result) and the first place sets the centre: a full address pasted in works too. The Geocoding API was the first draw; it refuses a referrer-restricted key.</li>
         <li>Billed per session token: one per address typed and picked. A handful of incidents a year is cents.</li>
         <li>No migration: the centre is <span class="mono">center_lat</span> and <span class="mono">center_lng</span>, as today; the base's name is the Base box.</li>
       </ul>
@@ -423,9 +423,13 @@
       <li><b>3. Whether a starter seeds facilities on the map or only names them.</b> Recommended: <b>names only</b>: Place first on the Period sheet, a chip per kind, each a press into Place on the map, gone once one is placed; the starter does not know where the boat ramp is. The other way inserts four facilities at the map's centre, named by kind, to drag into place. <span class="open">open</span></li>
       <li><b>4. Whether the phone's briefing says the kind.</b> Recommended: <b>yes, one word</b> under the briefing's title ("Cedar Fork Flooding, a flood"), nowhere else on the phone: a unit arriving from another county learns what it is walking into before the safety line. The other way leaves the phone untouched, the name usually saying it. <span class="open">open</span></li>
     </ul>
+    <div class="k">The centre by address: built as v78 · 19 October</div>
+    <ul class="decisions">
+      <li><b>The four decisions below as recommended.</b> <span class="mono">js/shared/places.js</span> (fetch, no DOM; the mock's stand-in for the suites), the box above Map center with its list, the muted line without the key, Enter looking the words up, the Test button saying whether Places answers; the bias is the two boxes when filled, else the newest incident's centre on the picker. Nothing new stored. The facility card is the later step still.</li>
+    </ul>
     <div class="k">The centre by address: yours to decide (recommended first)</div>
     <ul class="decisions">
-      <li><b>5. One key or two.</b> Recommended: <b>one key for the layers and the lookup, in config.js</b> (<span class="mono">window.GOOGLE_MAPS_KEY</span>), restricted to this site with the three APIs enabled; the Test button checks it once for both. The other way is a second key for Places alone: one more thing to restrict, rotate and paste. <span class="open">open</span></li>
+      <li><b>5. One key or two.</b> Recommended: <b>one key for the layers and the lookup, in config.js</b> (<span class="mono">window.GOOGLE_MAPS_KEY</span>), restricted to this site with Places (New) enabled beside Map Tiles; the Test button checks it once for both. The other way is a second key for Places alone: one more thing to restrict, rotate and paste. <span class="open">open</span></li>
       <li><b>6. The sheet first, facilities later.</b> Recommended: <b>the New incident sheet first</b>, the facility card's Street address box as a later step; the sheet is where a first-timer meets an empty map. The other way does both at once, which is small since the facility's box already exists. <span class="open">open</span></li>
       <li><b>7. Suggestions biased to the region.</b> Recommended: <b>a locationBias around the device's position</b>, or the state when there is no fix, so "Mill St" means the one nearby. The other way is unbiased: every Mill Street in the country, the nearest not first. <span class="open">open</span></li>
       <li><b>8. Its own release.</b> Recommended: <b>after the starters, as "The centre by address, vNN"</b>: no migration, one new module, a key to make; the starters' release carries a migration and is tested on its own. The other way folds it into the starters' release. <span class="open">open</span></li>
@@ -453,12 +457,12 @@
         </ul>
         <div class="k" style="margin-top:16px">The centre by address, its own release <span class="sub">· no migration; a v48-sized piece once the key exists</span></div>
         <ul class="touch">
-          <li><b>js/shared/places.js</b> (fetch, no DOM): <span class="mono">suggest(words, { token, near })</span> posts to <span class="mono">places:autocomplete</span> with the key in <span class="mono">X-Goog-Api-Key</span>, a session token and a <span class="mono">locationBias</span> circle; <span class="mono">placeLocation(id, token)</span> reads <span class="mono">places/{id}</span> with <span class="mono">fields=location,displayName</span> and ends the session; <span class="mono">geocode(words)</span> for Enter with no pick; the key from <span class="mono">googleKey()</span> in layers.js. A Node test with fetch stubbed checks the request shape.</li>
+          <li><b>js/shared/places.js</b> (fetch, no DOM): <span class="mono">suggest(words, { token, near })</span> posts to <span class="mono">places:autocomplete</span> with the key in <span class="mono">X-Goog-Api-Key</span>, a session token and a <span class="mono">locationBias</span> circle; <span class="mono">placeLocation(id, token)</span> reads <span class="mono">places/{id}</span> with <span class="mono">fields=location,displayName</span> and ends the session; <span class="mono">searchPlace(words)</span> (Text Search) for Enter with no pick; the key from <span class="mono">googleKey()</span> in layers.js. A Node test with fetch stubbed checks the request shape.</li>
           <li><b>index.html and ui.js:</b> the Address box and its list above Map center on <span class="mono">#new-incident</span>, or the muted line when <span class="mono">googleKey()</span> is empty; <span class="mono">suggestionsHtml</span> draws the list with "powered by Google".</li>
           <li><b>main.js:</b> the typing handler (a 250 ms wait, one session token per run of typing), the pick filling <span class="mono">lat</span>, <span class="mono">lng</span> and an empty Base, Enter, Escape; <span class="mono">use-my-location</span> unchanged.</li>
           <li><b>layers.js:</b> <span class="mono">testGoogleKey</span> also asks <span class="mono">places:autocomplete</span> for one word and says whether Places answers.</li>
           <li><b>The mock:</b> a stand-in for the two calls with a few Cedar Fork addresses, so the <span class="mono">seeded</span> or <span class="mono">join</span> suite can type "1200 Mill", pick, and read the two numbers.</li>
-          <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, config.js's comment naming Places API (New) and Geocoding API beside Map Tiles, the handoff's "What only Todd can set" (the key, its referrers, the three APIs).</li>
+          <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, config.js's comment naming Places API (New) beside Map Tiles, the handoff's "What only Todd can set" (the key, its referrers, the two APIs).</li>
           <li><b>Later:</b> the facility card's Street address box with the same list, a pick moving the pin; the Place first chips opening the card by address.</li>
         </ul>
       </div>

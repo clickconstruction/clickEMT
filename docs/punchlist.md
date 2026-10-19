@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v78**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v79**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0039**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -55,6 +55,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 34 | v75 Runs that share a point: the pills in a column clear of the heading arrow, the rings one inside the next, the Transport runs box in the Layers panel (built 18 October) | small | v74 | Marcus, his relief, a driver, the desk |
 | 35 | v76 The incident line, broken out: what changes on the line with the alarm first, the rest on a card a rest or a click opens (built 18 October) | small | v75 | Marcus, his relief, the IC, the clerk, every base |
 | 36 | v77 Incident kinds and starter periods: two rows of buttons on the New incident sheet, a starter that writes period 1's lines as Operations' own, × hides an objective (built 19 October) | small to medium | v76 | a first-time Operations, Marcus, Dana, every phone's briefing |
+| 37 | v78 The centre by address: an Address box on the New incident sheet, Google Places suggestions as you type, one press sets the centre (built 19 October) | small | v77 | a first-time Operations, Marcus, the IC |
 
 ---
 
@@ -1347,6 +1348,55 @@ in six suites (baseActions, log, evacuees, rewalks, transports, tags), each pass
 rewalks 21 of 21, tags 37 of 37 at once; evacuees 54 of 54 and transports 52 of 52 on a second run alone, their
 first having thrown part way; baseActions 19 of 19 on its third, the earlier two missing log lines that had not yet
 arrived. No migration, so no rule test on the real database.
+
+## 37. v78 The centre by address
+
+**Why.** Todd's adjustment of 19 October, after the starters page: Google address lookup as a way to set the incident's
+centre on the New incident sheet, since the Google Maps key now sits in `config.js` (restricted to clickemt.com and
+localhost:8766, with Map Tiles, Places (New) and Geocoding enabled; the Geocoding API turned out to refuse a key with
+referrer restrictions, so every call is Places (New)). Drawn as the page's "The centre by address"
+section (the sheet live with and without the key, the facility card later, the key, what goes to Google and what never
+will, the calls and the cost); the four decisions taken as recommended: one key for the layers and the lookup, in
+config.js; the sheet first, facilities later; suggestions biased to the region; its own release after the starters.
+
+**Built.** An Address box above Map center on the New incident sheet. Two letters typed and, after a quarter of a
+second, the places Google's Places API (New) offers, nearest the newest incident's centre on the picker or the two
+boxes once filled, as a list under the box with "powered by Google"; arrow keys and Enter, or a press, pick one: the
+place's point fills latitude and longitude to five places, its name fills Base when Base is empty, its address stays
+in the box and a line under the two numbers reads "Centre: 30.2612, -97.7402 · Mill Street Bridge, …". Enter with
+nothing picked sends the words to Places Text Search and the first place sets the centre. Escape puts the list away.
+One session token ties a run of typing and its pick into one billed session. Without the key in config.js the box is
+one muted line, "Address lookup needs the Google Maps key in config.js", and the sheet is as before. The settings'
+Test button says whether Places answers the key beside the tiles. `js/shared/places.js` is fetch only, no DOM; the
+mock's `window.__mock.places` (nine made-up Cedar Fork places) stands in for it, so the `starters` suite types, picks
+and reads the numbers without Google. Nothing new is stored: the centre is the two numbers, the base's name is the
+Base box, as before. No migration.
+
+*Decided (the page's, all as recommended):* one key for the layers and the lookup, in config.js, the Test button
+checking both; the New incident sheet first, the facility card's Street address box later; suggestions biased to the
+region, a 50 km circle around the two boxes when filled, else the newest incident's centre (no device position is asked
+for on focus; Use my location asks, as before); its own release after the starters.
+
+*Left open:* the facility card's Street address box with the same list, a pick moving the pin (later, as drawn); the
+address words are not stored (the sheet has no address column); a county whose first incident is far from the last
+one sees that one's neighbourhood first until the two boxes are filled; the lookup was verified against Google once, from a page on localhost:8766 (the key's other allowed address), inline
+  with the same calls the module makes: `places:autocomplete` answered five places for "1100 Congress Ave" biased to
+  Austin, `places/{id}` the point and the address, `places:searchText` the first place for the full address, and the
+  Geocoding API refused ("API keys with referer restrictions cannot be used with this API"), which is why Text Search
+  took its place; the module itself ran against the mock's stand-in only, since 8766 serves the main checkout.
+
+**Built** 19 October 2026 as `The centre by address (v78)`: `js/shared/places.js` (`placesReady`, `newSessionToken`,
+`suggestBody`, `searchBody`, `suggestionsOf`, `placeOf`, `suggest`, `placeLocation`, `searchPlace`, `testPlaces`;
+`dev/test-places.mjs`, five checks, in `npm test`); the box, the list and the hint on `#new-incident` in index.html;
+`addr`, `lastCentre`, `drawNewAddress`, `addrNear`, `drawAddrList`, `closeAddrList`, `askSuggestions`, `pickAddress`,
+`lookUpTyped`, `wireNewAddress` in js/base/main.js; `testGoogleKey` reporting Places in layers.js; `window.__mock.places`
+in the mock; `.addr-wrap` and `.sugg` in base.css; `VERSION` v78 and places.js in `SHELL`; the `starters` suite's seven
+address checks (31 in all); the docs and "Built as v78" on the page. `npm run check` and `npm test` pass; the
+`starters` suite 31 of 31 alone; the full smoke run in headless Chrome from the worktree (the worktree served on 8769) 913 of 917 across 43 suites, the four misses
+in baseActions, log and tags, each passing alone afterwards (log 23 of 23 and tags 37 of 37 at once; baseActions
+19 of 19 twice on its second and third runs, its one miss the zone-drawn check that reads the log's newest line
+before the page has drawn it). One real
+lookup from localhost:8766 as above. No migration, so no rule test on the real database.
 
 ## Done before this list
 

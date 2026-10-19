@@ -3651,7 +3651,21 @@ async function starters(check) {
   $('#new-subs [data-kind="flood"]').click();
   check('pressed again, Flood unpicks and the group stands alone', f.kind.value === 'natural' && !$('#new-subs [data-kind="flood"]').classList.contains('on'));
   $('#new-subs [data-kind="flood"]').click();
-  f.name.value = 'Starter drill'; f.base.value = 'The depot'; f.lat.value = '30.27'; f.lng.value = '-97.75';
+  // the centre by address (v78): the stand-in's Cedar Fork places; the sheet above the map centre
+  const ai = $('#new-address');
+  check('the Address box sits above the map centre with its hint, since config.js carries the key', !!ai && !$('#new-addr-wrap').hidden && has('#new-addr-hint', 'suggestions as you type', 'never a person') && !!$('#new-addr-wrap ~ .row-2 input[name="lat"]'), text('#new-addr-hint'));
+  ai.focus(); ai.value = 'mill'; ai.dispatchEvent(new Event('input', { bubbles: true }));
+  check('typing "mill" offers the two Mill Street places, the first lit, powered by Google', await until(() => !$('#new-addr-list').hidden && $$('#new-addr-list [data-pick]').length === 2, 4000) && has('#new-addr-list', 'cedar fork high school', 'mill street bridge', 'powered by google') && $('#new-addr-list [data-pick="0"]').classList.contains('on') && ai.getAttribute('aria-expanded') === 'true', text('#new-addr-list'));
+  ai.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  ai.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  check('arrow and Enter pick the bridge: latitude and longitude filled, Base filled with its name, the centre read back, the list gone', await until(() => f.lat.value === '30.26120' && f.lng.value === '-97.74020', 4000) && f.base.value === 'Mill Street Bridge' && ai.value === 'Mill St at Cedar Fork Creek, Cedar Fork, TX' && has('#new-addr-hint', 'centre: 30.2612, -97.7402', 'mill street bridge') && $('#new-addr-list').hidden, [f.lat.value, f.lng.value, f.base.value, text('#new-addr-hint')].join(' | '));
+  ai.value = 'pecan park'; ai.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(() => $$('#new-addr-list [data-pick]').length === 1, 4000);
+  ai.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Escape puts the list away', $('#new-addr-list').hidden);
+  ai.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  check('Enter with nothing picked looks the words up and sets the centre; Base, already filled, stays', await until(() => f.lat.value === '30.25920', 4000) && f.lng.value === '-97.74710' && f.base.value === 'Mill Street Bridge' && has('#new-addr-hint', 'centre: 30.2592, -97.7471', '2 pecan park dr'), [f.lat.value, f.lng.value, f.base.value].join(' | '));
+  f.name.value = 'Starter drill'; f.base.value = 'The depot';
   f.requestSubmit();
   await until(() => !$('#app').hidden && has('#inc-name', 'starter drill'), 10000);
   const inc = () => M().tables.ic_incidents.find((i) => i.name === 'Starter drill');
@@ -3660,6 +3674,7 @@ async function starters(check) {
   const ev = (t) => M().tables.ic_events.some((e) => e.incident_id === inc().id && e.text === t);
   await until(() => objs().length === 7 && inc().settings.starter === 'flood', 10000);
   check('Create records the kind and the starter in the settings and resets the sheet', inc().settings.kind === 'flood' && inc().settings.starter === 'flood' && Array.isArray(inc().settings.removed_objectives) && inc().settings.removed_objectives.length === 0 && f.kind.value === '' && $('#new-subs').hidden, JSON.stringify(inc().settings));
+  check('the incident opened on the centre the address gave (v78)', inc().center_lat === 30.2592 && inc().center_lng === -97.7471 && inc().base_name === 'The depot', [inc().center_lat, inc().center_lng, inc().base_name].join(' | '));
   check('period 1 carries the starter\'s safety message, rotation, hours and bring', period().notes === 'Nobody enters moving water. PFDs on near the water. PAR on the hour.' && period().rotation_minutes === 45 && period().scene_hours === 12 && period().bring === 'PFDs and dry bags, a radio each, water for the day', JSON.stringify([period().notes, period().rotation_minutes, period().scene_hours, period().bring]));
   check('seven objectives, the standing three first, numbered 1 to 7', objs().map((o) => o.number).join('') === '1234567' && objs()[0].text === 'Nobody gets hurt, crews or residents' && objs()[2].text === 'Protect property once people are safe' && objs()[3].text === 'People off the low ground first' && objs()[6].text === 'Shelter open and staffed before dark', objs().map((o) => o.text).join(' | '));
   check('the triggers logged each line as Operations\' own, bring on the period\'s line, and one note says where they came from', ev('Objective 1 set: Nobody gets hurt, crews or residents') && ev('Objective 7 set: Shelter open and staffed before dark') && ev('Operational period 1 updated, bring: PFDs and dry bags, a radio each, water for the day') && ev('Opened as a flood: period 1 from the Flood starter (7 objectives, the safety message, the rotation, the hours on scene, what to bring)'), M().tables.ic_events.filter((e) => e.incident_id === inc().id).map((e) => e.text).join(' | ').slice(0, 300));
@@ -3704,4 +3719,13 @@ async function starters(check) {
     await until(() => has('#panel .title', 'operational period 2') && $$('#panel .obj').length === 6, 8000);
     check('period 2 carries seven rows in the table but the sheet shows six: the removed one is hidden again, and no from-starter line on period 2', objs(2).length === 7 && $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && inc().settings.removed_objectives.length === 2 && !$('#panel .from-starter'), JSON.stringify(inc().settings.removed_objectives));
   } finally { autoConfirm(false); }
+  // without the key in config.js the Address box is one muted line (v78)
+  const L = await import('../js/shared/layers.js');
+  const hadKey = window.GOOGLE_MAPS_KEY, hadInc = L.googleKey();
+  try {
+    window.GOOGLE_MAPS_KEY = ''; L.setGoogleKey('');
+    $('[data-action="switch-incident"]').click();
+    await until(() => !$('#pick').hidden && has('#pick-list', 'starter drill'));
+    check('with no key the sheet shows one muted line in place of the Address box', $('#new-addr-wrap').hidden && has('#new-addr-hint', 'address lookup needs the google maps key in config.js'), text('#new-addr-hint'));
+  } finally { window.GOOGLE_MAPS_KEY = hadKey; L.setGoogleKey(hadInc); }
 }

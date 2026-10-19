@@ -9,6 +9,7 @@ import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey, runsShown, setRunsShown } from '../shared/layers.js';
 import { incidentLine } from '../shared/rules.js';   // the incident line (v76)
 import { INCIDENT_KINDS, incidentKindText, starterFor, starterSummary } from '../shared/rules.js';   // incident kinds and starter periods (v77)
+import { placesReady, newSessionToken, suggest, placeLocation, searchPlace } from '../shared/places.js';   // the centre by address (v78)
 import { incidentPopHtml } from './ui.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
@@ -32,6 +33,7 @@ const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
 const state = { tr: { add: false, edit: null, open: null, gone: false }, runLit: null, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, incOpen: null, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 let newKind = { group: '', sub: '' };   // the New incident sheet's rows (v77): the kind pressed and its sub-kind
+let lastCentre = null;   // the newest incident's centre on the picker: where suggestions are biased when the sheet has no point yet (v78)
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -67,6 +69,77 @@ function drawNewKinds() {
   f.kind.value = code;
   $('#new-kind-hint').textContent = st && st.from ? `Period 1 starts from the ${st.from} starter: ${starterSummary(st)}. All of it yours to change on the Period sheet.` : st ? 'Period 1 starts with the three standing objectives. Pick a kind for more.' : 'Optional. With no kind, period 1 starts empty, as before.';
 }
+
+// The centre by address (v78): the Address box on the New incident sheet. Suggestions as Operations types (a 250 ms
+// wait, one session token per run of typing, biased around the two boxes when filled, else the newest incident's centre),
+// a pick fills latitude and longitude and an empty Base with the place's name, Enter with no pick looks the words up
+// (Places Text Search); the box is one muted line without the key in config.js. The words go to Google: an incident's centre,
+// never a person's address.
+const addr = { token: '', items: [], on: -1, timer: null, seq: 0 };
+function drawNewAddress() {
+  const wrap = $('#new-addr-wrap'), hint = $('#new-addr-hint');
+  if (!wrap || !hint) return;
+  const ready = placesReady();
+  wrap.hidden = !ready;
+  hint.textContent = ready ? 'Suggestions as you type; one press sets the centre. Enter with no pick looks the words up. The words go to Google: an incident\u2019s centre, never a person\u2019s address.' : 'Address lookup needs the Google Maps key in config.js.';
+}
+function addrNear() {
+  const f = $('#new-incident'), lat = Number(f.lat.value), lng = Number(f.lng.value);
+  if (f.lat.value && f.lng.value && Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
+  return lastCentre;
+}
+function drawAddrList() {
+  const list = $('#new-addr-list'), input = $('#new-address');
+  if (!list || !input) return;
+  if (!addr.items.length) { list.hidden = true; list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); return; }
+  list.innerHTML = addr.items.map((p, i) => `<button type="button" role="option" aria-selected="${i === addr.on}" class="${i === addr.on ? 'on' : ''}" data-pick="${i}">${p.main ? esc(p.main) + '<span class="sub">' + esc(p.secondary) + '</span>' : esc(p.text)}</button>`).join('') + '<div class="g">powered by Google</div>';
+  list.hidden = false; input.setAttribute('aria-expanded', 'true');
+}
+function closeAddrList() { addr.items = []; addr.on = -1; drawAddrList(); }
+async function askSuggestions() {
+  const q = $('#new-address').value.trim();
+  if (q.length < 2) { closeAddrList(); return; }
+  if (!addr.token) addr.token = newSessionToken();
+  const seq = ++addr.seq;
+  try {
+    const items = await suggest(q, { token: addr.token, near: addrNear() });
+    if (seq !== addr.seq) return;   // a newer run of typing is on its way
+    addr.items = items; addr.on = items.length ? 0 : -1; drawAddrList();
+  } catch (err) { if (seq === addr.seq) { closeAddrList(); toast(err.message || String(err), true); } }
+}
+async function pickAddress(p) {
+  const f = $('#new-incident');
+  closeAddrList();
+  try {
+    const place = p.id ? await placeLocation(p.id, { token: addr.token }) : p;
+    addr.token = '';   // the pick ends the session; the next typing starts another
+    if (place && place.lat != null) { f.lat.value = Number(place.lat).toFixed(5); f.lng.value = Number(place.lng).toFixed(5); }
+    if (place && place.name && !f.base.value.trim()) f.base.value = place.name;
+    if (place && place.address) f.address.value = place.address;
+    const words = place ? [place.name, place.address].filter(Boolean).join(', ') : '';
+    $('#new-addr-hint').textContent = place && place.lat != null ? `Centre: ${Number(place.lat).toFixed(4)}, ${Number(place.lng).toFixed(4)} \u00b7 ${words}` : 'No point for that address; try another, or Use my location.';
+  } catch (err) { toast(err.message || String(err), true); }
+}
+async function lookUpTyped() {
+  const q = $('#new-address').value.trim();
+  if (!q) return;
+  try { const g = await searchPlace(q, { near: addrNear() }); if (g) await pickAddress(g); else $('#new-addr-hint').textContent = 'Nothing found for "' + q + '"; try the street and the town, or pick a suggestion.'; }
+  catch (err) { toast(err.message || String(err), true); }
+}
+(function wireNewAddress() {
+  const input = $('#new-address'), list = $('#new-addr-list');
+  if (!input || !list) return;
+  input.addEventListener('input', () => { clearTimeout(addr.timer); addr.timer = setTimeout(askSuggestions, 250); });
+  input.addEventListener('focus', () => { if (input.value.trim().length >= 2 && !addr.items.length) askSuggestions(); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!addr.items.length) { askSuggestions(); return; } e.preventDefault(); addr.on = (addr.on + (e.key === 'ArrowDown' ? 1 : addr.items.length - 1)) % addr.items.length; drawAddrList(); }
+    else if (e.key === 'Enter') { e.preventDefault(); clearTimeout(addr.timer); if (addr.items.length && addr.on >= 0) pickAddress(addr.items[addr.on]); else lookUpTyped(); }
+    else if (e.key === 'Escape') closeAddrList();
+  });
+  input.addEventListener('blur', () => setTimeout(closeAddrList, 150));
+  list.addEventListener('mousedown', (e) => { const b = e.target.closest('[data-pick]'); if (b) { e.preventDefault(); pickAddress(addr.items[Number(b.dataset.pick)]); } });
+  drawNewAddress();
+})();
 
 // ---- boot
 async function boot() {
@@ -196,6 +269,7 @@ async function acceptInvite() {
 }
 async function showPicker() {
   show('pick');
+  drawNewAddress();   // v78: the Address box, or the muted line without the key
   $('#pick-user').textContent = data.accountText();
   drawPickInvite();
   const list = $('#pick-list');
@@ -203,6 +277,8 @@ async function showPicker() {
   try { await data.clearPersonalDue(); } catch (e) { console.warn('personal records due', e); }   // whatever is due clears on open too, not only nightly
   try {
     const rows = await data.myIncidents();
+    const near = rows.find((r) => r.center_lat != null && r.center_lng != null);   // v78: the newest with a centre
+    lastCentre = near ? [Number(near.center_lat), Number(near.center_lng)] : null;
     list.innerHTML = rows.length ? rows.map((r) => `
       <button class="pick-row" data-action="open-incident" data-id="${r.id}">
         <span><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')}${r.settings && r.settings.kind && incidentKindText(r.settings.kind) ? ' · ' + esc(incidentKindText(r.settings.kind)) : ''}${r.base_name ? ' · ' + esc(r.base_name) : ''} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
@@ -272,7 +348,7 @@ $('#new-incident').addEventListener('submit', async (e) => {
     const lat = f.lat.value ? Number(f.lat.value) : null, lng = f.lng.value ? Number(f.lng.value) : null;
     const inc = await data.createIncident({ name: f.name.value, period: f.period.value, base: f.base.value, lat, lng, zoom: 14 });
     const kind = f.kind.value, starter = starterFor(kind);   // v77: the kind pressed and what period 1 starts with
-    f.reset(); msg.textContent = ''; newKind = { group: '', sub: '' }; drawNewKinds();
+    f.reset(); msg.textContent = ''; newKind = { group: '', sub: '' }; drawNewKinds(); addr.token = ''; closeAddrList(); drawNewAddress();
     await openIncident(inc.id);
     await data.applyStarter(kind, starter);   // written even with no kind: settings carry from the account's last incident
     if (starter) { state.periodNext = false; select({ type: 'period' }); toast(starter.from ? `Period 1 from the ${starter.from} starter: ${starterSummary(starter)}` : 'Period 1 with the three standing objectives'); }

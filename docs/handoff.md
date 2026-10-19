@@ -405,7 +405,8 @@ and v61, with the 211 as a table as panel 10, v71 and v72), `people.html` (v65),
 `incident-line.html` (the header's second line broken out into a card; drawn at v75, built as v76 on its six decisions),
 `starters.html` (incident kinds and starter periods: two rows of buttons on the New incident sheet, a starter that
 pre-fills period 1, Flood in full and sixteen sketched, and the centre by address, an Address box with Google Places
-suggestions on the same sheet; drawn at v76 from the notes of 19 October, not built).
+suggestions on the same sheet; drawn at v76 from the notes of 19 October, built as v77 and v78 with every decision as
+recommended and no migration).
 
 The larger features before that were designed as mock-up canvases on claude.ai, private to Grace's account; ask her
 to share any you need. The punchlist repeats every decision that matters, so you can work without them.

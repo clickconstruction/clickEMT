@@ -174,6 +174,11 @@
         </div>
         <label>Operational period <input name="period" placeholder="OP 1 · 07:00 to 19:00"></label>
         <label>Base <input name="base" placeholder="Cedar Fork High School"></label>
+        <div class="addr-wrap" id="new-addr-wrap">
+          <label>Address <input name="address" id="new-address" placeholder="1200 Mill St, Cedar Fork" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="new-addr-list" aria-autocomplete="list" maxlength="160" spellcheck="false"></label>
+          <div class="sugg" id="new-addr-list" role="listbox" hidden></div>
+        </div>
+        <span class="muted kind-hint" id="new-addr-hint"></span>
         <div class="row-2">
           <label>Map center, latitude <input name="lat" type="number" step="any" placeholder="30.2672"></label>
           <label>Longitude <input name="lng" type="number" step="any" placeholder="-97.7431"></label>

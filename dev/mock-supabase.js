@@ -1957,7 +1957,26 @@
 
   // ---- install: the app opens the seeded incident on load (it remembers the last one per view)
   try { localStorage.setItem(FIELD ? 'ic.field.incident' : 'ic.base.incident', INC); } catch (e) { /* storage blocked */ }
+  // the centre by address (v78): a stand-in for Google Places, nine made-up Cedar Fork places, so the suites type and pick
+  const PLACES = [
+    { id: 'mock-place-1', name: 'Cedar Fork High School', address: '1200 Mill St, Cedar Fork, TX', lat: 30.2562, lng: -97.7415 },
+    { id: 'mock-place-2', name: 'Cedar Fork Fire Station 1', address: '800 Main St, Cedar Fork, TX', lat: 30.2577, lng: -97.7433 },
+    { id: 'mock-place-3', name: 'Cedar Fork Community Center', address: '410 Main St, Cedar Fork, TX', lat: 30.2585, lng: -97.7440 },
+    { id: 'mock-place-4', name: 'First Baptist Church', address: '300 Cedar Fork Rd, Cedar Fork, TX', lat: 30.2688, lng: -97.7360 },
+    { id: 'mock-place-5', name: 'Pecan Park', address: '2 Pecan Park Dr, Cedar Fork, TX', lat: 30.2592, lng: -97.7471 },
+    { id: 'mock-place-6', name: '', address: '120 Pecan Ln, Cedar Fork, TX', lat: 30.2601, lng: -97.7388 },
+    { id: 'mock-place-7', name: '', address: '45 Riverside Dr, Cedar Fork, TX', lat: 30.2628, lng: -97.7451 },
+    { id: 'mock-place-8', name: 'Mill Street Bridge', address: 'Mill St at Cedar Fork Creek, Cedar Fork, TX', lat: 30.2612, lng: -97.7402 },
+    { id: 'mock-place-9', name: 'Low Water Crossing boat ramp', address: '1501 Low Water Crossing Rd, Cedar Fork, TX', lat: 30.2530, lng: -97.7490 }
+  ];
+  const placeMatch = (q) => { const t = String(q || '').toLowerCase().trim().split(/\s+/).filter(Boolean); return t.length ? PLACES.filter((p) => { const s = (p.name + ' ' + p.address).toLowerCase(); return t.every((w) => s.includes(w)); }).slice(0, 5) : []; };
+  const places = {
+    suggest: async (q) => placeMatch(q).map((p) => ({ id: p.id, text: p.name ? p.name + ', ' + p.address : p.address, main: p.name || p.address, secondary: p.name ? p.address : '' })),
+    location: async (id) => { const p = PLACES.find((x) => x.id === id); return p ? { lat: p.lat, lng: p.lng, name: p.name, address: p.address } : null; },
+    search: async (q) => { const p = placeMatch(q)[0]; return p ? { lat: p.lat, lng: p.lng, name: '', address: p.address } : null; }
+  };
   window.__mock = {
+    places,   // js/shared/places.js uses this instead of Google while it is here (v78)
     get tables() { return tables; }, set tables(v) { tables = v; },
     files, urls, reset, geo, tab: TAB, users, codes, codeFor,   // the sign-in codes the stand-in "sent" (v73)
     ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD, evacuees: EV, opsCode: OPS_CODE, credentials: CRED },

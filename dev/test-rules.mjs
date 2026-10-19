@@ -584,3 +584,44 @@ t('the incident line says what changes, the alarm first; the card has the rest (
   assert.equal(incidentFacts({ incident: null, period: null }, now).period, null);
 });
 
+
+// ---- incident kinds and starter periods (v77)
+import { INCIDENT_KINDS, STANDING_OBJECTIVES, STARTERS, incidentKind, incidentKindText, kindOptions, starterFor, starterSummary, placeFirst, expectedUnits, FACILITY_KINDS } from '../js/shared/rules.js';
+
+t('every sub-kind has a starter; every line is twelve words or fewer; every place and unit is a known kind (v77)', () => {
+  const words = (s) => s.trim().split(/\s+/).length;
+  const subs = INCIDENT_KINDS.flatMap(([, , s]) => s.map((x) => x[0]));
+  assert.deepEqual(Object.keys(STARTERS).sort(), subs.slice().sort());
+  assert.equal(subs.length, 17);
+  for (const l of STANDING_OBJECTIVES) assert.ok(words(l) <= 12, l);
+  for (const [code, s] of Object.entries(STARTERS)) {
+    assert.ok(s.objectives.length >= 3 && s.objectives.length <= 5, code + ': three to five of its own');
+    for (const l of s.objectives) assert.ok(words(l) <= 12, code + ': ' + l);
+    assert.ok(s.notes && s.bring && s.rotation >= 0 && s.rotation <= 600 && s.scene > 0 && s.scene <= 72, code);
+    for (const p of s.places) assert.ok(FACILITY_KINDS.some((k) => k[0] === p), code + ' place ' + p);
+    for (const u of s.units) assert.ok(UNIT_KINDS.some((k) => k[0] === u), code + ' unit ' + u);
+  }
+  for (const [, gl, s] of INCIDENT_KINDS) { assert.ok(words(gl) <= 12, gl); for (const [, l] of s) assert.ok(words(l) <= 12, l); }
+});
+
+t('a kind is a group or a sub-kind, said in a sentence; a starter is the standing three and its own; place first and the units to expect read from it', () => {
+  assert.deepEqual(incidentKind('flood'), { group: 'natural', groupLabel: 'Natural hazard', code: 'flood', label: 'Flood', sub: true });
+  assert.equal(incidentKind('natural').sub, false); assert.equal(incidentKind('nope'), null); assert.equal(incidentKind(''), null);
+  assert.equal(incidentKindText('flood'), 'a flood'); assert.equal(incidentKindText('outbreak'), 'an outbreak'); assert.equal(incidentKindText('urban'), 'an urban search');
+  assert.equal(incidentKindText('sar'), 'a search and rescue'); assert.equal(incidentKindText('natural'), 'a natural hazard'); assert.equal(incidentKindText(''), '');
+  const s = starterFor('flood');
+  assert.equal(s.from, 'Flood'); assert.equal(s.objectives.length, 7); assert.deepEqual(s.objectives.slice(0, 3), STANDING_OBJECTIVES); assert.equal(s.rotation, 45); assert.equal(s.scene, 12);
+  assert.equal(starterSummary(s), '7 objectives, the safety message, the rotation, the hours on scene, what to bring');
+  const g = starterFor('natural');
+  assert.equal(g.from, ''); assert.deepEqual(g.objectives, STANDING_OBJECTIVES); assert.equal(g.rotation, null); assert.equal(g.bring, ''); assert.equal(starterSummary(g), '3 objectives');
+  assert.equal(starterFor(''), null); assert.equal(starterSummary(null), '');
+  assert.equal(starterFor('wildfire').rotation, 0, 'a wildfire turns the water rotation off'); assert.equal(starterFor('wildfire').scene, 16);
+  assert.deepEqual(placeFirst('flood', [{ kind: 'icp' }, { kind: 'shelter', closed_at: null }, { kind: 'staging', closed_at: '2026-10-19T00:00:00Z' }]).map((k) => k[0]), ['staging', 'ramp'], 'a closed facility does not count');
+  assert.deepEqual(placeFirst('flood', []).map((k) => k[2]), ['CP', 'S', 'BR', 'SH']);
+  assert.deepEqual(placeFirst('', []), []); assert.deepEqual(placeFirst('natural', []), []);
+  assert.equal(expectedUnits('flood'), 'boat crews, swift-water teams, high-water vehicles, engines, ambulances, pump crews');
+  assert.equal(expectedUnits('collapse'), 'search teams, K9 teams, drone teams, engines, ambulances');
+  assert.equal(expectedUnits('natural'), '');
+  const opts = kindOptions();
+  assert.deepEqual(opts[0], ['', 'Not set']); assert.ok(opts.some(([c, l]) => c === 'flood' && l === 'Natural hazard · Flood') && opts.some(([c, l]) => c === 'natural' && l === 'Natural hazard'));
+});

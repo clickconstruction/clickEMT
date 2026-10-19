@@ -1645,6 +1645,32 @@ numbers).
 - **The box is per device:** a second laptop at the base shows the runs until its own box is pressed, as with a hidden picture.
 - **A run to a closed facility** still draws to it.
 
+## Re-walk after v77
+
+Incident kinds and starter periods: a first-time Operations opening an incident at night, Marcus on the seeded Cedar
+Fork, Unit 3 reading the briefing, the clerk at the change of period and Incident settings, walked on 2026-10-19 in the
+mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words through the `starters` suite.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The two rows | a first-time Operations | Under Name: Kind, five buttons; Natural hazard pressed shows Flood, Wildfire, Storm, Winter storm under it; Flood pressed, the hint reads "Period 1 starts from the Flood starter: 7 objectives, the safety message, the rotation, the hours on scene, what to bring. All of it yours to change on the Period sheet." Nothing else on the sheet moved. | Clear |
+| After Create | a first-time Operations | The Period sheet, not the empty map: "From the Flood starter. Edit any line; × removes an objective", the rotation 45 and the hours 12, the safety message and What to bring filled, Place first with four chips, Units to expect, seven objectives each with a ×. The 214 has a line per objective, the bring line and the note. | Clear |
+| A line that does not apply | a first-time Operations | × on "Primary search of every flooded structure": the row goes, the toast says the 214 keeps a line, the note reads "Objective 5 removed: …". The numbers keep their gap (1, 2, 3, 4, 6, 7). | Clear; the gap noted |
+| Place first | a first-time Operations | A chip, then a click on the map, and the facility opens to be named as the home panel's Place does; the chip is gone when the sheet is next drawn. | Clear |
+| The seeded incident | Marcus | Cedar Fork is a flood: "a flood" beside since on the card, on the picker's row; the Period sheet offers Place first for the boat ramp alone (the post, staging and the shelter are placed) and Units to expect; no from-starter line, since the seed wrote its own lines. | Clear |
+| The briefing | Unit 3 | "A flood · Unit 3, swift-water team · 20:14" under Your briefing; nothing else on the phone changed. | Clear |
+| Period 2 | the clerk | Start period 2 carries the open objectives; the removed one comes back from the database under a new id and is hidden again by its words; the sheet shows six, the table holds seven; no from-starter line on period 2. | Clear; the count in the period's log line includes the hidden one |
+| Incident settings | Marcus | Kind as a select under the rotation; changed to Wildfire, the card reads "a wildfire" and period 1 is untouched. | Clear |
+| A kind alone | a first-time Operations | Natural hazard with no sub-kind: the hint promises the standing three, and period 1 gets them. | Clear |
+| Dark | Marcus | The from-starter line is the tint-blue band, the chips the facility letters; not looked at in dark this walk. | Not seen |
+
+**Still bites, small:**
+
+- **The sixteen thin starters** have words nobody of their kind has read; the flood's are the seed's.
+- **An incident opened outside the sheet** (a suite's `createIncident`) inherits the last incident's kind, starter and removed list until the app writes them: settings carry (v28).
+- **The objectives' numbers keep their gaps** after a removal, and the period's "N objectives carried" counts the hidden one.
+- **The check-in table's kind chips** could start with the kinds to expect; they do not yet.
+
 ## Re-walk after v76
 
 The incident line, broken out: Marcus at the base reading the header all evening, his relief arriving cold, the IC

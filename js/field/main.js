@@ -7,6 +7,7 @@ import { pickPhoto, shrink } from './camera.js';
 import { compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, zoneAt, ringToLatLngs, latLngText, markingFor, periodLabel, nextPass, passDone, structureSummary, nearestFacility, facilityKind, milesText, directionsUrl, commandText, qualsText, crewNames, onSceneText, identityGiven, NEARBY_KINDS, NO_ID_TEXT, URGENCY, URGENCY_STEPS, stepLabel, STUCK_WORDS, NOTE_CHIPS, HAZARD_KINDS, ALERT_WRONG, ALERT_NEEDS, alertCodes, CLEAR_HAZARDS, PHOTO_WEDGE, STATUS_LABEL, OOS_REASONS, OCCUPANTS, WATER, DAMAGE, QUALIFICATIONS, UNIT_KINDS, waterState, WATER_KINDS, durationText, missingNames } from '../shared/rules.js';
 import { fieldBriefing, hurtLines } from '../shared/briefings.js';
 import { revisitWords, revisitHhmm } from '../shared/rules.js';   // a revisit already past today means tomorrow (v48)
+import { incidentKindText } from '../shared/rules.js';   // the incident's kind, one word on the briefing (v77)
 
 const LAST_INCIDENT = 'ic.field.incident';
 import { applyTheme, storedTheme } from '../shared/theme.js';
@@ -459,7 +460,8 @@ function maybeBriefing() {   // once per check-in, as openIncident does
 }
 function drawBriefingSheet() {
   const me = data.me(), p = sensors.pos;
-  $('#briefing-sub').textContent = unitWithKind(me) + ' · ' + hhmm(new Date());
+  const kw = incidentKindText(data.kind());   // v77: "A flood · Unit 3, swift-water team · 20:14"
+  $('#briefing-sub').textContent = (kw ? kw.charAt(0).toUpperCase() + kw.slice(1) + ' · ' : '') + unitWithKind(me) + ' · ' + hhmm(new Date());
   const S = fieldBriefing(data, { me, at: p ? [p.lat, p.lng] : null });
   const action = (s) => s.action === 'map' ? `<button class="btn sm" data-action="briefing-map">Show on map</button>` : s.action === 'ask' ? `<button class="btn sm" data-action="ask">Ask</button>` : s.action === 'hurt' ? `<button class="btn sm" data-action="hurt">Open the card</button>` : '';
   setHtml($('#briefing-list'), S.map((s) => `<div class="brief-sec${s.warn ? ' warn' : ''}"><div class="k">${esc(s.title)}</div><div class="brief-row"><span class="brief-text">${s.lead ? '<strong>' + esc(s.lead) + '</strong> ' : ''}${esc(s.text)}</span>${action(s)}</div></div>`).join(''));

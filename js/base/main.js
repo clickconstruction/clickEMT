@@ -8,6 +8,7 @@ import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, p
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey, runsShown, setRunsShown } from '../shared/layers.js';
 import { incidentLine } from '../shared/rules.js';   // the incident line (v76)
+import { INCIDENT_KINDS, incidentKindText, starterFor, starterSummary } from '../shared/rules.js';   // incident kinds and starter periods (v77)
 import { incidentPopHtml } from './ui.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
@@ -30,6 +31,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
 const state = { tr: { add: false, edit: null, open: null, gone: false }, runLit: null, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, incOpen: null, lastUpdate: null, liveSince: null, version: null, updateReady: false };
+let newKind = { group: '', sub: '' };   // the New incident sheet's rows (v77): the kind pressed and its sub-kind
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -52,6 +54,18 @@ function toast(msg, bad) {
 function show(which) {
   for (const id of ['auth', 'pick', 'app']) $('#' + id).hidden = id !== which;
   if (which === 'app' && map) map.invalidate();
+}
+
+// The New incident sheet's two rows (v77): the kind, then its sub-kinds; both optional; a lit button pressed again unpicks
+function drawNewKinds() {
+  const f = $('#new-incident'); if (!f || !$('#new-kinds')) return;
+  const g = INCIDENT_KINDS.find((k) => k[0] === newKind.group) || null;
+  $('#new-kinds').innerHTML = INCIDENT_KINDS.map(([c, l]) => `<button type="button" class="btn sm${newKind.group === c ? ' on' : ''}" data-action="new-kind" data-kind="${c}" aria-pressed="${newKind.group === c}">${esc(l)}</button>`).join('');
+  $('#new-subs').hidden = !g;
+  $('#new-subs').innerHTML = g ? g[2].map(([c, l]) => `<button type="button" class="btn sm${newKind.sub === c ? ' on' : ''}" data-action="new-sub" data-kind="${c}" aria-pressed="${newKind.sub === c}">${esc(l)}</button>`).join('') : '';
+  const code = newKind.sub || newKind.group, st = starterFor(code);
+  f.kind.value = code;
+  $('#new-kind-hint').textContent = st && st.from ? `Period 1 starts from the ${st.from} starter: ${starterSummary(st)}. All of it yours to change on the Period sheet.` : st ? 'Period 1 starts with the three standing objectives. Pick a kind for more.' : 'Optional. With no kind, period 1 starts empty, as before.';
 }
 
 // ---- boot
@@ -191,7 +205,7 @@ async function showPicker() {
     const rows = await data.myIncidents();
     list.innerHTML = rows.length ? rows.map((r) => `
       <button class="pick-row" data-action="open-incident" data-id="${r.id}">
-        <span><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')}${r.base_name ? ' · ' + esc(r.base_name) : ''} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
+        <span><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')}${r.settings && r.settings.kind && incidentKindText(r.settings.kind) ? ' · ' + esc(incidentKindText(r.settings.kind)) : ''}${r.base_name ? ' · ' + esc(r.base_name) : ''} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
         <span class="spacer"></span>
         <span class="pill mono">${esc(r.code)}</span>
         <span class="badge ${r.status === 'active' ? 'active' : ''}">${esc(r.status)}</span>
@@ -257,10 +271,14 @@ $('#new-incident').addEventListener('submit', async (e) => {
   try {
     const lat = f.lat.value ? Number(f.lat.value) : null, lng = f.lng.value ? Number(f.lng.value) : null;
     const inc = await data.createIncident({ name: f.name.value, period: f.period.value, base: f.base.value, lat, lng, zoom: 14 });
-    f.reset(); msg.textContent = '';
+    const kind = f.kind.value, starter = starterFor(kind);   // v77: the kind pressed and what period 1 starts with
+    f.reset(); msg.textContent = ''; newKind = { group: '', sub: '' }; drawNewKinds();
     await openIncident(inc.id);
+    await data.applyStarter(kind, starter);   // written even with no kind: settings carry from the account's last incident
+    if (starter) { state.periodNext = false; select({ type: 'period' }); toast(starter.from ? `Period 1 from the ${starter.from} starter: ${starterSummary(starter)}` : 'Period 1 with the three standing objectives'); }
   } catch (err) { msg.textContent = err.message || String(err); }
 });
+drawNewKinds();
 
 $('#join-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1124,6 +1142,9 @@ document.addEventListener('click', async (e) => {
     switch (act) {
       case 'sign-out': localStorage.removeItem(LAST_INCIDENT); await data.signOut(); clearAuth(); show('auth'); break;
       case 'open-incident': await openIncident(id); break;
+      case 'new-kind': newKind = { group: newKind.group === btn.dataset.kind ? '' : btn.dataset.kind, sub: '' }; drawNewKinds(); break;   // v77: the New incident sheet's rows
+      case 'new-sub': newKind.sub = newKind.sub === btn.dataset.kind ? '' : btn.dataset.kind; drawNewKinds(); break;
+      case 'objective-remove': { const o = data.objective(id); if (!o) break; await data.removeObjective(id); toast('Objective ' + o.number + ' removed; the 214 says so'); queueDraw(); break; }   // v77: hidden, never deleted
       case 'switch-incident': closeReplay(); data.close(); localStorage.removeItem(LAST_INCIDENT); await showPicker(); break;
       case 'use-my-location': {
         const f = $('#new-incident');
@@ -1307,7 +1328,7 @@ document.addEventListener('click', async (e) => {
       case 'print-shelter': state.printFacility = id; openOverlay('shelter'); break;
       case 'place-facility': {
         const sel = $('#facility-kind');
-        state.placeKind = sel ? sel.value : 'staging';
+        state.placeKind = btn.dataset.kind || (sel ? sel.value : 'staging');   // v77: the Period sheet's Place first chips name the kind
         map.startDraw('facility');
         $('#btn-boundary').classList.remove('on'); $('#btn-zone').classList.remove('on');
         $('#draw-btns').hidden = false;
@@ -1571,7 +1592,7 @@ document.addEventListener('submit', async (e) => {
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'settings') {
-      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))), eoc_email: form.eoc_email ? form.eoc_email.value.trim() : '' };
+      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))), eoc_email: form.eoc_email ? form.eoc_email.value.trim() : '', kind: form.kind ? form.kind.value : data.kind() };   // the kind (v77)
       await data.saveSettings(patch);
       setGoogleKey(patch.maps_key);
       const dlg = $('#settings-dialog'); if (dlg.open) dlg.close();

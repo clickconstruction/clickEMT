@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v77**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v78**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0039**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -54,6 +54,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 33 | v74 Tell the base: Message Operations and Ask for something as one anatomy, urgency as a scale of three steps, a stuck flag, fewer words (shipped 18 October) | medium | v72 | Rosa, Ana, Moreno, the desk, Marcus, Logistics |
 | 34 | v75 Runs that share a point: the pills in a column clear of the heading arrow, the rings one inside the next, the Transport runs box in the Layers panel (built 18 October) | small | v74 | Marcus, his relief, a driver, the desk |
 | 35 | v76 The incident line, broken out: what changes on the line with the alarm first, the rest on a card a rest or a click opens (built 18 October) | small | v75 | Marcus, his relief, the IC, the clerk, every base |
+| 36 | v77 Incident kinds and starter periods: two rows of buttons on the New incident sheet, a starter that writes period 1's lines as Operations' own, × hides an objective (built 19 October) | small to medium | v76 | a first-time Operations, Marcus, Dana, every phone's briefing |
 
 ---
 
@@ -1283,6 +1284,69 @@ discover label; `VERSION` v76; the `seeded` suite's seven checks, the `periods` 
 those suites passing alone afterwards (fieldReports, log, layers, walkfix, evacuees, rewalks, transports, invite,
 and tags once its headless camera check was rerun on a quiet machine); after the duration words changed, seeded,
 people, safetyset and tags alone again, all passing. No migration, so no rule test on the real database.
+
+## 36. v77 Incident kinds and starter periods
+
+**Why.** Todd's note, 19 October: offer buttons when making a new period; the user picks natural hazards, human-caused,
+medical and public health, search and rescue or planned events, then sees options that pre-fill the period; they have
+not run an incident and want it easy to configure. Drawn first as `try/mockups/starters.html` (the ask, the sheet as
+built, the two rows live with the Period sheet filling under them, the Flood starter in full and sixteen sketched, the
+thinking, the decisions with the recommended answer first); every decision taken as recommended.
+
+**Built.** The New incident sheet asks the kind in two rows of buttons under the name, both optional: the five kinds
+in the note's words, then the pressed kind's usual sub-kinds (seventeen in all); a lit button pressed again unpicks;
+the hint under the rows says what period 1 will start with. Create makes the incident and period 1 as always, then
+writes the starter as Operations' own lines so the triggers log each: period 1's safety message, water rotation, hours
+on scene and what to bring in one update, the objectives one by one (the three standing ones, Nobody gets hurt, crews
+or residents · Keep it from getting worse · Protect property once people are safe, then three to five for the kind;
+Flood's four are complete, the other sixteen thin), then one note, "Opened as a flood: period 1 from the Flood starter
+(7 objectives, the safety message, the rotation, the hours on scene, what to bring)". The Period sheet opens first,
+with "From the Flood starter. Edit any line; × removes an objective" under its title on period 1, a × on every
+objective's row, Place first chips for the facility kinds the starter names that are not yet on the map (a press
+arms the map for that kind, as the home panel's Place does; a chip goes once one of its kind is placed) and the unit
+kinds to expect on period 1 ("boat crews, swift-water teams, … · what to ask for on a 213RR"). A kind alone starts
+period 1 with the standing three. × hides the objective from every list, the 202 and every later period, never
+deletes it, and writes "Objective 5 removed: …". The kind is said on the incident's card beside "since", on the
+picker's row and first under the phone's briefing title ("A flood · Unit 3, swift-water team · 20:14"), and changes in
+Incident settings (a select; no period is rewritten). `STARTERS` in rules.js is one table read by both views, every
+line twelve words or fewer by a Node test. The mock's seed is a flood.
+
+*Decided (the mock-up's, all as recommended):* the kind once, on the New incident sheet, Start period N+1 carrying as
+before; the seventeen sub-kinds drawn, Flood complete and the rest thin; facilities named, not placed; one word under
+the phone's briefing title; the lines written on open as Operations' own; × removes, never deletes; Place first and
+Units to expect are words from the table, nothing written; Create opens the Period sheet when a starter was used; the
+kind changes in Incident settings.
+
+*One change from the page's build notes, on the brief:* **no migration.** Nobody on the Mac that built v77 can apply
+one (no Supabase login), and a release that reads a new column cannot land before its migration. The kind, the
+starter period 1 came from and the removed objectives live in `ic_incidents.settings` (`kind`, `starter`,
+`removed_objectives`; the v27 jsonb the maps key uses, through `data.saveSettings`). A real column, the 214's "Opened
+as a flood" from the trigger instead of the app's note, and `ic_objectives.archived_at` in place of the settings list
+wait for migration 0040 (after 0039 on `water-words`); when it comes, move the three keys and drop them.
+
+*Left open:* the carry-over (`ic_start_period`) copies removed objectives too, since the database does not know them,
+so `startPeriod` re-hides the copies by their text and the period's log line counts them among "N objectives
+carried"; the numbers keep their gaps (1, 2, 4 …) since they are in the 214's lines. Settings carry from the
+account's last incident (v28), so an incident made outside the sheet (a suite's `createIncident`) inherits the last
+one's three keys until the app writes them. The sixteen thin starters' words have not been read by a crew of their
+kind. The check-in table's kind chips could start with the kinds to expect. The third standing objective may read as
+noise on a parade or a game; it is one press to remove.
+
+**Built** 19 October 2026 as `Incident kinds and starter periods (v77)`: `INCIDENT_KINDS`, `STANDING_OBJECTIVES`,
+`STARTERS`, `incidentKind`, `incidentKindText`, `kindOptions`, `starterFor`, `starterSummary`, `placeFirst`,
+`expectedUnits` in rules.js (two Node tests in `dev/test-rules.mjs`); `kind`, `starter`, `removedObjectives`,
+`applyStarter`, `removeObjective`, `hideCarried` and the filter in `objectives` in data.js; the kind rows on
+`#new-incident` in index.html; `drawNewKinds`, `newKind`, the Create flow, `new-kind`, `new-sub`,
+`objective-remove`, the picker's word, the settings' `kind`, `place-facility` reading `data-kind` in
+js/base/main.js; `periodHtml`'s from-starter line, the ×, Place first and Units to expect, `incidentPopHtml`'s head
+and the settings' Kind select in js/base/ui.js; `drawBriefingSheet`'s word in js/field/main.js; the styles at the
+foot of base.css; the mock's seed as a flood, `SEED_VERSION` 37; `VERSION` v77; the `starters` suite (24 checks);
+the docs and "Built as v77" on the page. `npm run check` and `npm test` pass; the full smoke run in headless Chrome
+from the worktree (`dev/smoke-headless.py`, the worktree served on 8769) 891 of 902 across 43 suites, the 11 misses
+in six suites (baseActions, log, evacuees, rewalks, transports, tags), each passing alone afterwards: log 23 of 23,
+rewalks 21 of 21, tags 37 of 37 at once; evacuees 54 of 54 and transports 52 of 52 on a second run alone, their
+first having thrown part way; baseActions 19 of 19 on its third, the earlier two missing log lines that had not yet
+arrived. No migration, so no rule test on the real database.
 
 ## Done before this list
 

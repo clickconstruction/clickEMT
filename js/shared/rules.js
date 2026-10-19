@@ -1041,3 +1041,82 @@ export function personQuals(p, creds = []) {
 export function qualChipText(x) { return x.state === 'confirmed' ? x.label + ' ✓' : x.state === 'pending' ? x.label + ' · pending' : x.state === 'rejected' ? x.label + ' ✗' : x.label; }
 // the 211's words: "swift water ✓, EMT (pending), boat (not accepted), rope"
 export function qualsTextWith(p, creds) { return personQuals(p, creds).map((x) => QUAL_TEXT[x.kind] + (x.state === 'confirmed' ? ' ✓' : x.state === 'pending' ? ' (pending)' : x.state === 'rejected' ? ' (not accepted)' : '')).join(', '); }
+
+// ---- incident kinds and starter periods (v77; design record try/mockups/starters.html): the five kinds in Todd's
+// words, each with its usual sub-kinds, and a starter per sub-kind: a few short lines period 1 opens with, written on
+// Create as Operations' own (the period's notes, rotation, hours and bring; the objectives one by one, the three
+// standing ones first, so the triggers log them). The kind lives in ic_incidents.settings.kind until a migration gives
+// it a column. Twelve words at most on a line; dev/test-rules.mjs checks every one.
+export const INCIDENT_KINDS = [
+  ['natural', 'Natural hazard', [['flood', 'Flood'], ['wildfire', 'Wildfire'], ['storm', 'Storm'], ['winter', 'Winter storm']]],
+  ['human', 'Human-caused', [['fire', 'Structure fire'], ['hazmat', 'Hazmat'], ['collapse', 'Collapse'], ['crash', 'Crash'], ['utility', 'Utility failure']]],
+  ['medical', 'Medical and public health', [['mci', 'Mass casualty'], ['outbreak', 'Outbreak']]],
+  ['sar', 'Search and rescue', [['swift', 'Swift water'], ['wilderness', 'Wilderness'], ['urban', 'Urban']]],
+  ['planned', 'Planned event', [['parade', 'Parade'], ['festival', 'Festival'], ['game', 'Game']]]
+];
+// ICS's three priorities as three lines a crew can repeat; on every starter, first
+export const STANDING_OBJECTIVES = ['Nobody gets hurt, crews or residents', 'Keep it from getting worse', 'Protect property once people are safe'];
+// per sub-kind: its own objectives after the standing three, the safety message (the period's notes), the water
+// rotation in minutes (0 off) and the hours on scene before Safety is told, what to bring, the facility kinds to place
+// first (FACILITY_KINDS) and the unit kinds to expect (UNIT_KINDS). Flood is complete; the rest are thin starters.
+export const STARTERS = {
+  flood: { objectives: ['People off the low ground first', 'Primary search of every flooded structure', 'Every flooded crossing closed and watched', 'Shelter open and staffed before dark'], notes: 'Nobody enters moving water. PFDs on near the water. PAR on the hour.', rotation: 45, scene: 12, bring: 'PFDs and dry bags, a radio each, water for the day', places: ['icp', 'staging', 'ramp', 'shelter'], units: ['boat', 'swift_water', 'high_water', 'engine', 'ambulance', 'pump'] },
+  wildfire: { objectives: ['Homes in the fire’s path emptied first', 'The line held where it can be', 'Every evacuee counted at the shelter'], notes: 'Two ways out and a lookout posted. Watch the wind.', rotation: 0, scene: 16, bring: 'Nomex, a fire shelter, eye protection, water for the day', places: ['icp', 'staging', 'helispot', 'shelter'], units: ['engine', 'drone', 'ambulance', 'volunteer'] },
+  storm: { objectives: ['Downed lines reported and marked', 'Roads open for ambulances', 'Shelter open for homes without power'], notes: 'Every downed line is live. Chainsaw PPE on.', rotation: 0, scene: 12, bring: 'Chainsaw PPE, lights, rain gear, water', places: ['icp', 'staging', 'shelter', 'pod'], units: ['engine', 'search', 'pump', 'volunteer'] },
+  winter: { objectives: ['Warming shelter open and staffed', 'Welfare checks on the list done', 'Roads open for ambulances'], notes: 'Cold kills slowly: rotate crews in. Generators outside, never in.', rotation: 0, scene: 12, bring: 'Layers, hand warmers, chains, a hot drink', places: ['icp', 'shelter', 'pod'], units: ['engine', 'ambulance', 'volunteer', 'shelter_desk'] },
+  fire: { objectives: ['Everyone out and counted', 'The fire kept to the building', 'Utilities off'], notes: 'Collapse zone marked. Air checked. PAR every twenty minutes.', rotation: 0, scene: 12, bring: 'Spare bottles, rehab water', places: ['icp', 'staging'], units: ['engine', 'ambulance'] },
+  hazmat: { objectives: ['Hot, warm and cold zones set and held', 'Downwind homes emptied', 'The product named before anyone goes in'], notes: 'Upwind and uphill. Nobody in without the suit for it.', rotation: 0, scene: 12, bring: 'Binoculars, the ERG, the suits for the level', places: ['icp', 'staging', 'shelter'], units: ['engine', 'ambulance'] },
+  collapse: { objectives: ['Everyone who was inside accounted for', 'Voids searched and marked', 'Utilities off at the building'], notes: 'A second collapse is likely. Nobody under anything unshored.', rotation: 0, scene: 12, bring: 'Helmets, dust masks, marking paint, lights', places: ['icp', 'staging', 'hospital'], units: ['search', 'k9', 'drone', 'engine', 'ambulance'] },
+  crash: { objectives: ['Every patient triaged and moved', 'The road closed both ways', 'Fuel and the load made safe'], notes: 'Traffic is the second crash. Vests on, a blocker across the lane.', rotation: 0, scene: 12, bring: 'Vests, cones, lights', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'engine'] },
+  utility: { objectives: ['Hospitals and nursing homes on the list checked', 'A warming or cooling shelter open', 'Welfare checks on the list done'], notes: 'Carbon monoxide in homes with generators. Downed lines are live.', rotation: 0, scene: 12, bring: 'CO meters, lights, water', places: ['icp', 'shelter', 'pod'], units: ['volunteer', 'shelter_desk', 'engine'] },
+  mci: { objectives: ['Every patient triaged and tagged', 'Moved by priority, the hospitals told', 'The scene held secure'], notes: 'Scene secure before entry. Gloves and eye protection.', rotation: 0, scene: 12, bring: 'Triage tags, gloves, blankets', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'engine'] },
+  outbreak: { objectives: ['Cases listed and their contacts reached', 'A point of distribution open', 'Shelter staff in the right PPE'], notes: 'Masks and distance. Hands washed between people.', rotation: 0, scene: 12, bring: 'Masks, gloves, sanitiser', places: ['pod', 'shelter', 'hospital'], units: ['volunteer', 'shelter_desk', 'ambulance'] },
+  swift: { objectives: ['The last known point and time set', 'Downstream points watched', 'Crews out of the water on the rotation'], notes: 'Nobody in moving water without a PFD and a line. Rotate.', rotation: 45, scene: 12, bring: 'PFDs, throw bags, dry bags, a radio each', places: ['icp', 'ramp', 'staging'], units: ['swift_water', 'boat', 'drone', 'k9'] },
+  wilderness: { objectives: ['The last known point and time set', 'Segments assigned and walked', 'Trails and roads out watched'], notes: 'Pairs, never alone. Check in on the hour.', rotation: 0, scene: 12, bring: 'Water, layers, a light, a GPS', places: ['icp', 'staging'], units: ['search', 'k9', 'drone', 'volunteer'] },
+  urban: { objectives: ['Every address listed', 'Every structure searched and marked', 'Utilities off where crews go in'], notes: 'Mark every door. Nobody in an unmarked structure alone.', rotation: 0, scene: 12, bring: 'Marking paint, lights, dust masks', places: ['icp', 'staging'], units: ['search', 'k9', 'drone', 'engine'] },
+  parade: { objectives: ['The route closed and held', 'Medical tents staffed along the route', 'Lost children brought to one place'], notes: 'Heat and crowds. Water at every post.', rotation: 0, scene: 12, bring: 'Vests, water, a radio each', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer', 'engine'] },
+  festival: { objectives: ['Gates and exits held open', 'Medical tent staffed through the night', 'Lost children brought to one place'], notes: 'Heat, crowds and alcohol. Count the exits.', rotation: 0, scene: 12, bring: 'Vests, water, lights', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer'] },
+  game: { objectives: ['Traffic routes held before and after', 'Medical posts staffed in the stands', 'Exits clear through the final whistle'], notes: 'Crowds move at once. Keep the exits clear.', rotation: 0, scene: 12, bring: 'Vests, a radio each, water', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer', 'engine'] }
+};
+// the kind in a sentence, lower case: "a flood", "an outbreak", "a swift water rescue"
+const INCIDENT_KIND_WORDS = { natural: 'a natural hazard', human: 'a human-caused incident', medical: 'a medical or public health incident', sar: 'a search and rescue', planned: 'a planned event', hazmat: 'a hazmat incident', mci: 'a mass casualty incident', swift: 'a swift water rescue', wilderness: 'a wilderness search', urban: 'an urban search' };
+// a code is a group ("natural") or a sub-kind ("flood"); null for anything else
+export function incidentKind(code) {
+  if (!code) return null;
+  for (const [g, gl, subs] of INCIDENT_KINDS) {
+    if (g === code) return { group: g, groupLabel: gl, code: g, label: gl, sub: false };
+    const s = subs.find((x) => x[0] === code);
+    if (s) return { group: g, groupLabel: gl, code: s[0], label: s[1], sub: true };
+  }
+  return null;
+}
+export function incidentKindText(code) { const k = incidentKind(code); if (!k) return ''; if (INCIDENT_KIND_WORDS[k.code]) return INCIDENT_KIND_WORDS[k.code]; const w = k.label.toLowerCase(); return (/^[aeiou]/.test(w) ? 'an ' : 'a ') + w; }
+// the Incident settings select: Not set, then every group and its sub-kinds
+export function kindOptions() { return [['', 'Not set']].concat(INCIDENT_KINDS.flatMap(([g, gl, subs]) => [[g, gl]].concat(subs.map(([c, l]) => [c, gl + ' · ' + l])))); }
+// what period 1 opens with: a sub-kind's starter after the standing three; a group alone the standing three only
+export function starterFor(code) {
+  const k = incidentKind(code);
+  if (!k) return null;
+  const standing = STANDING_OBJECTIVES.slice();
+  if (!k.sub) return { code: k.code, from: '', label: k.label, objectives: standing, notes: '', rotation: null, scene: null, bring: '', places: [], units: [] };
+  const s = STARTERS[k.code];
+  return { code: k.code, from: k.label, label: k.label, objectives: standing.concat(s.objectives), notes: s.notes, rotation: s.rotation, scene: s.scene, bring: s.bring, places: s.places.slice(), units: s.units.slice() };
+}
+// "7 objectives, the safety message, the rotation, the hours on scene, what to bring"
+export function starterSummary(s) {
+  if (!s) return '';
+  const n = s.objectives.length;
+  return [n + ' objective' + (n === 1 ? '' : 's'), s.notes ? 'the safety message' : '', s.rotation != null ? 'the rotation' : '', s.scene != null ? 'the hours on scene' : '', s.bring ? 'what to bring' : ''].filter(Boolean).join(', ');
+}
+// the facility kinds the starter says to place first, less the ones already open on the map: FACILITY_KINDS rows
+export function placeFirst(code, facilities) {
+  const s = starterFor(code);
+  if (!s) return [];
+  const have = new Set((facilities || []).filter((f) => !f.closed_at).map((f) => f.kind));
+  return s.places.filter((p) => !have.has(p)).map((p) => facilityKind(p));
+}
+// "boat crews, swift-water teams, high-water vehicles": the unit kinds a starter expects, as words
+export function expectedUnits(code) {
+  const s = starterFor(code);
+  return s && s.units.length ? s.units.map((u) => { const k = unitKind(u); return k ? k[2].replace(/^(?!K9)[A-Z]/, (c) => c.toLowerCase()) : u; }).join(', ') : '';
+}

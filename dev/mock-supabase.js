@@ -14,7 +14,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 36;
+  const SEED_VERSION = 37;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -102,7 +102,7 @@
     const t = {
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
-        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null, settings: { maps_key: 'mock-maps-key-for-the-layers-suite', retention_days: 30, rotation_minutes: 45 },
+        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null, settings: { maps_key: 'mock-maps-key-for-the-layers-suite', retention_days: 30, rotation_minutes: 45, kind: 'flood' },
         channels: [{ use: 'Command', channel: 'CMD 1' }, { use: 'Tactical, Division A', channel: 'TAC 2' }, { use: 'Tactical, Division B', channel: 'TAC 3' }, { use: 'Emergency traffic', channel: 'TAC 9' }],
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],

@@ -86,7 +86,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, credentials, passwordless, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, credentials, passwordless, demo, starters };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -3609,4 +3609,99 @@ async function parbyname(check) {
     for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
     await wait(100);
   }
+}
+
+// ---- incident kinds and starter periods (v77): the seeded incident is a flood (its card, the picker, the phone's
+// briefing, Place first on the Period sheet); a new incident opened from the sheet with Flood pressed gets the starter's
+// lines as Operations' own, the Period sheet first; × hides an objective and the carry-over keeps it hidden.
+async function starters(check) {
+  const U = USERS();
+  $('#inc-sub').click();
+  check('the seeded incident is a flood: the card\'s head says so beside since', await until(() => !$('#inc-pop').hidden) && has('#inc-pop .ic-head', 'cedar fork flooding', 'a flood', 'since'), text('#inc-pop .ic-head'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#inc-pop').hidden);
+  $('[data-action="period"]').click();
+  await until(() => has('#panel .title', 'operational period 1'));
+  check('the Period sheet offers Place first for the flood\'s facility kinds not yet on the map (the boat ramp alone: the post, staging and the shelter are placed), the units to expect, and no from-starter line, since the seed wrote its own lines', $$('#panel .place-first').map((b) => b.dataset.kind).join(' ') === 'ramp' && has('#panel', 'units to expect', 'boat crews, swift-water teams') && !$('#panel .from-starter') && $$('#panel .obj-x').length === 3, $$('#panel .place-first').map((b) => b.dataset.kind).join(' '));
+  $('#panel .place-first[data-kind="ramp"]').click();
+  check('the chip arms the map for a boat ramp', $('#map').classList.contains('drawing') && has('#tool-hint', 'boat ramp'), text('#tool-hint'));
+  mapClick(70, 50);
+  await until(() => base.facilities().some((f) => f.kind === 'ramp'));
+  const ramp = base.facilities().find((f) => f.kind === 'ramp');
+  check('one click places the ramp and opens it to be named', !!ramp && await until(() => $('#panel form[data-form="facility-edit"]')) && !!eventText(base, 'Boat ramp opened'), logTexts()[0]);
+  $('[data-action="period"]').click();
+  await until(() => has('#panel .title', 'operational period 1'));
+  check('with the ramp placed, Place first is gone from the sheet', await until(() => !$('#panel .place-first') && !has('#panel', 'place first')), text('#panel').slice(0, 160));
+  let P = null;
+  try {
+    P = await phoneFrame();
+    await P.act('briefing');
+    check('the phone\'s briefing says the kind in one word under its title: "A flood · Unit 3, swift-water team · hh:mm"', await until(() => P.shown('#s-briefing') && /^a flood · unit 3, swift-water team · \d\d:\d\d$/.test(P.text('#briefing-sub')), 8000), P.text('#briefing-sub'));
+  } finally { if (P) P.frame.remove(); }
+  // the picker and the New incident sheet
+  $('[data-action="switch-incident"]').click();
+  await until(() => !$('#pick').hidden && has('#pick-list', 'cedar fork flooding'));
+  check('the picker\'s row says a flood', has('#pick-list', 'a flood'), text('#pick-list').slice(0, 200));
+  const f = $('#new-incident');
+  check('the sheet offers the five kinds, nothing pressed, the sub-kinds hidden, period 1 empty by default', $$('#new-kinds .btn').map((b) => b.textContent).join(' | ') === 'Natural hazard | Human-caused | Medical and public health | Search and rescue | Planned event' && $('#new-subs').hidden && f.kind.value === '' && has('#new-kind-hint', 'optional'), text('#new-kind-hint'));
+  $('#new-kinds [data-kind="natural"]').click();
+  check('Natural hazard pressed shows its four sub-kinds and promises the standing three', !$('#new-subs').hidden && $$('#new-subs .btn').map((b) => b.textContent).join(' | ') === 'Flood | Wildfire | Storm | Winter storm' && f.kind.value === 'natural' && has('#new-kind-hint', 'three standing objectives'), text('#new-kind-hint'));
+  $('#new-subs [data-kind="flood"]').click();
+  check('Flood pressed names the starter and what it brings', f.kind.value === 'flood' && $('#new-subs [data-kind="flood"]').classList.contains('on') && has('#new-kind-hint', 'from the flood starter', '7 objectives', 'the safety message', 'the rotation', 'the hours on scene', 'what to bring'), text('#new-kind-hint'));
+  $('#new-subs [data-kind="flood"]').click();
+  check('pressed again, Flood unpicks and the group stands alone', f.kind.value === 'natural' && !$('#new-subs [data-kind="flood"]').classList.contains('on'));
+  $('#new-subs [data-kind="flood"]').click();
+  f.name.value = 'Starter drill'; f.base.value = 'The depot'; f.lat.value = '30.27'; f.lng.value = '-97.75';
+  f.requestSubmit();
+  await until(() => !$('#app').hidden && has('#inc-name', 'starter drill'), 10000);
+  const inc = () => M().tables.ic_incidents.find((i) => i.name === 'Starter drill');
+  const period = () => M().tables.ic_periods.find((x) => x.incident_id === inc().id && x.number === 1);
+  const objs = (n = 1) => M().tables.ic_objectives.filter((o) => o.incident_id === inc().id && o.period_id === (n === 1 ? period().id : M().tables.ic_periods.find((x) => x.incident_id === inc().id && x.number === n).id)).sort((a, b) => a.number - b.number);
+  const ev = (t) => M().tables.ic_events.some((e) => e.incident_id === inc().id && e.text === t);
+  await until(() => objs().length === 7 && inc().settings.starter === 'flood', 10000);
+  check('Create records the kind and the starter in the settings and resets the sheet', inc().settings.kind === 'flood' && inc().settings.starter === 'flood' && Array.isArray(inc().settings.removed_objectives) && inc().settings.removed_objectives.length === 0 && f.kind.value === '' && $('#new-subs').hidden, JSON.stringify(inc().settings));
+  check('period 1 carries the starter\'s safety message, rotation, hours and bring', period().notes === 'Nobody enters moving water. PFDs on near the water. PAR on the hour.' && period().rotation_minutes === 45 && period().scene_hours === 12 && period().bring === 'PFDs and dry bags, a radio each, water for the day', JSON.stringify([period().notes, period().rotation_minutes, period().scene_hours, period().bring]));
+  check('seven objectives, the standing three first, numbered 1 to 7', objs().map((o) => o.number).join('') === '1234567' && objs()[0].text === 'Nobody gets hurt, crews or residents' && objs()[2].text === 'Protect property once people are safe' && objs()[3].text === 'People off the low ground first' && objs()[6].text === 'Shelter open and staffed before dark', objs().map((o) => o.text).join(' | '));
+  check('the triggers logged each line as Operations\' own, bring on the period\'s line, and one note says where they came from', ev('Objective 1 set: Nobody gets hurt, crews or residents') && ev('Objective 7 set: Shelter open and staffed before dark') && ev('Operational period 1 updated, bring: PFDs and dry bags, a radio each, water for the day') && ev('Opened as a flood: period 1 from the Flood starter (7 objectives, the safety message, the rotation, the hours on scene, what to bring)'), M().tables.ic_events.filter((e) => e.incident_id === inc().id).map((e) => e.text).join(' | ').slice(0, 300));
+  const sheetReady = () => !!$('#panel .from-starter') && has('#panel .title', 'operational period 1');
+  await until(sheetReady, 8000);
+  const pfv = (n) => { const el = $('#panel form[data-form="period-edit"] [name="' + n + '"]'); return el ? el.value : null; };
+  check('the Period sheet opened first, saying where the lines came from', sheetReady() && has('#panel .from-starter', 'from the flood starter', 'edit any line'), text('#panel .from-starter'));
+  check('every box filled from the starter: the rotation, the hours, the safety message, what to bring', await until(() => pfv('rotation') === '45' && pfv('scene') === '12' && (pfv('notes') || '').startsWith('Nobody enters moving water') && (pfv('bring') || '').startsWith('PFDs and dry bags'), 6000), [pfv('rotation'), pfv('scene'), pfv('notes'), pfv('bring')].join(' | '));
+  check('seven rows each with its ×, four kinds to place first, the units to expect', await until(() => $$('#panel .obj').length === 7 && $$('#panel .obj-x').length === 7, 6000) && $$('#panel .place-first').map((b) => b.dataset.kind).join(' ') === 'icp staging ramp shelter' && has('#panel', 'units to expect', 'boat crews, swift-water teams, high-water vehicles, engines, ambulances, pump crews'), $$('#panel .obj').length + ' rows, ' + $$('#panel .obj-x').length + ' ×, chips ' + $$('#panel .place-first').map((b) => b.dataset.kind).join(' '));
+  check('the incident\'s card says a flood', ($('#inc-sub').click(), await until(() => !$('#inc-pop').hidden)) && has('#inc-pop .ic-head', 'starter drill', 'a flood'), text('#inc-pop .ic-head'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#inc-pop').hidden);
+  // × on an objective: hidden, never deleted, one note
+  const o5 = objs()[4];
+  $(`#panel .obj-x[data-id="${o5.id}"]`).click();
+  await until(() => $$('#panel .obj').length === 6, 6000);
+  check('× on objective 5 takes it off the sheet, keeps the row, lists it in the settings and writes one note', $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && M().tables.ic_objectives.some((o) => o.id === o5.id) && inc().settings.removed_objectives.includes(o5.id) && ev('Objective 5 removed: Primary search of every flooded structure'), JSON.stringify(inc().settings.removed_objectives));
+  // a box cleared is a plain save
+  const pf = $('#panel form[data-form="period-edit"]');
+  pf.bring.value = ''; pf.requestSubmit();
+  await until(() => period().bring === '', 6000);
+  check('clearing What to bring is a plain save, logged as not set', period().bring === '' && ev('Operational period 1 updated, bring: not set'));
+  // the kind changes in Incident settings; no period is rewritten
+  $('[data-action="settings"]').click();
+  await until(() => $('#settings-dialog') && $('#settings-dialog').open && $('#settings-dialog select[name="kind"]'));
+  check('Incident settings shows the kind', $('#settings-dialog select[name="kind"]').value === 'flood');
+  $('#settings-dialog select[name="kind"]').value = 'wildfire';
+  $('#settings-dialog form').requestSubmit();
+  await until(() => inc().settings.kind === 'wildfire', 6000);
+  check('changed to wildfire: the settings say so, the starter and period 1 are untouched, the card reads a wildfire', inc().settings.kind === 'wildfire' && inc().settings.starter === 'flood' && objs().length === 7 && period().rotation_minutes === 45 && ($('#inc-sub').click(), await until(() => !$('#inc-pop').hidden && has('#inc-pop .ic-head', 'a wildfire'))), text('#inc-pop .ic-head'));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#inc-pop').hidden);
+  // Start period 2: the carry-over copies the removed objective too; the app hides the copy
+  autoConfirm(true);
+  try {
+    $('[data-action="period"]').click();
+    await until(() => has('#panel .title', 'operational period 1'));
+    $('#panel [data-action="period-next"]').click();
+    const sf = await until(() => $('#panel form[data-form="period-start"]'));
+    sf.requestSubmit();
+    await until(() => M().tables.ic_periods.some((x) => x.incident_id === inc().id && x.number === 2) && objs(2).length === 7, 10000);
+    await until(() => has('#panel .title', 'operational period 2') && $$('#panel .obj').length === 6, 8000);
+    check('period 2 carries seven rows in the table but the sheet shows six: the removed one is hidden again, and no from-starter line on period 2', objs(2).length === 7 && $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && inc().settings.removed_objectives.length === 2 && !$('#panel .from-starter'), JSON.stringify(inc().settings.removed_objectives));
+  } finally { autoConfirm(false); }
 }

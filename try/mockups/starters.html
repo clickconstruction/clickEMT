@@ -161,7 +161,7 @@
 <div class="intro">
   <h1>Incident kinds and starter periods</h1>
   The note, 19 October, as the main session relayed it: <q>Offer buttons when making a new period: the user selects natural hazards, human-caused, medical and public health, search and rescue, planned events, and then sees options that pre-fill the period. They have not run an incident and want it easy to configure.</q>
-  Drawn at v76, before anything is built. One piece: two rows of buttons on the New incident sheet, the kind of incident and then its usual sub-kinds, asked once; pressing a sub-kind gives period 1 a starter, a handful of short lines on the Period sheet that Operations can edit or remove with one press. Flood is written in full; the other sixteen are sketched in one line each. Made-up data; press the buttons below and watch the Period sheet fill.
+  Drawn at v76, before anything was built; <b>built as v77</b> (docs/punchlist.md, section 36; the re-walk in docs/walkthroughs.md), every decision as recommended, with one change from the build notes below: no migration, the kind kept in the incident's settings until a column exists. One piece: two rows of buttons on the New incident sheet, the kind of incident and then its usual sub-kinds, asked once; pressing a sub-kind gives period 1 a starter, a handful of short lines on the Period sheet that Operations can edit or remove with one press. Flood is written in full; the other sixteen are sketched in one line each. Made-up data; press the buttons below and watch the Period sheet fill.
 </div>
 
 <section class="part" id="today">
@@ -411,6 +411,10 @@
       <li><b>Place first and Units to expect are words, not records.</b> The chips come from the table for the incident's kind and each goes once a facility of its kind is on the map; the unit kinds are a line to read. Nothing written. <span class="chosen">chosen</span></li>
       <li><b>Create opens the Period sheet when a starter was used</b>, so the lines are the first thing seen; with no starter, the home panel as today. <span class="chosen">chosen</span></li>
       <li><b>The kind can change in Incident settings.</b> It changes the word on the card, the picker and the briefing; no period is rewritten. <span class="chosen">chosen</span></li>
+    </ul>
+    <div class="k">Built as v77 · 19 October</div>
+    <ul class="decisions">
+      <li><b>Every decision below as recommended</b>, and the decided-here list as drawn, with one change: <b>no migration</b>. Nobody on the Mac that built v77 could apply one, so the kind, the starter and the removed objectives live in the incident's settings (<span class="mono">settings.kind</span>, <span class="mono">starter</span>, <span class="mono">removed_objectives</span>) and × hides an objective through them; a real column, the 214's "Opened as a flood" from the trigger and <span class="mono">ic_objectives.archived_at</span> wait for migration 0040. The removed objective's number keeps its gap. The lists below are kept for the record.</li>
     </ul>
     <div class="k">Yours to decide (recommended first)</div>
     <ul class="decisions">

@@ -165,6 +165,13 @@
       <h2>Open a new incident</h2>
       <form id="new-incident" class="form">
         <label>Name <input name="name" required placeholder="Cedar Fork Flooding"></label>
+        <div class="kind-rows" id="new-kind-rows">
+          <span class="lab">Kind</span>
+          <span class="kind-row" id="new-kinds" role="group" aria-label="The kind of incident"></span>
+          <span class="sub-row" id="new-subs" role="group" aria-label="Which kind" hidden></span>
+          <span class="muted kind-hint" id="new-kind-hint">Optional. With no kind, period 1 starts empty, as before.</span>
+          <input type="hidden" name="kind" value="">
+        </div>
         <label>Operational period <input name="period" placeholder="OP 1 · 07:00 to 19:00"></label>
         <label>Base <input name="base" placeholder="Cedar Fork High School"></label>
         <div class="row-2">

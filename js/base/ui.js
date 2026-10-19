@@ -7,6 +7,7 @@ import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
 import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
+import { incidentKindText, starterFor, placeFirst, expectedUnits, kindOptions } from '../shared/rules.js';   // incident kinds and starter periods (v77)
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 import { personQuals, qualChipText, qualsTextWith, credentialLabel, credentialExpired, credentialText } from '../shared/rules.js';   // claim a band, submit licences, Operations confirms (v69)
 
@@ -1397,18 +1398,24 @@ export function periodHtml(data, state) {
   const objectives = p ? data.objectives(p.id) : [];
   const zonesFor = (o) => data.zones().filter((z) => z.objective_id === o.id);
   const earlier = data.periods().filter((x) => !p || x.id !== p.id);
+  // the starter (v77): where period 1's lines came from, the facilities still to place, the unit kinds to expect
+  const st = data.starter() ? starterFor(data.starter()) : null, chips = placeFirst(data.kind(), data.facilities()), expect = p && p.number === 1 ? expectedUnits(data.kind()) : '';
   return `
     <button class="back" data-action="close-panel">Back to units</button>
     <div class="title">${p ? 'Operational period ' + p.number : 'No operational period yet'} <span>${p ? esc(periodLabel(p)).replace('OP ' + p.number + ' · ', '') : ''}</span></div>
+    ${p && p.number === 1 && st && st.from ? `<div class="from-starter">From the ${esc(st.from)} starter. Edit any line; × removes an objective.</div>` : ''}
     ${p && periodState(p).state === 'overdue' ? `<div class="period-overdue" style="background:var(--tint-orange);color:var(--hazard-ink);border-radius:8px;padding:6px 10px;font-size:12.5px;margin:6px 0">The planned end ${hhmm(p.ends_at)} passed ${esc(durationText(periodState(p).overMin))} ago and the period is still open. Start period ${p.number + 1}, or move the planned end below.</div>` : ''}
     ${p ? periodFormHtml(data, p, false, state) : '<div class="muted" style="font-size:12.5px">An incident runs in operational periods, usually 12 hours, each with its objectives and its command names.</div>'}
     ${commandsHtml(data)}
+    ${chips.length ? `<div class="k">Place first</div><div class="d-row">${chips.map(([v, label, letters]) => `<button class="btn sm place-first" data-action="place-facility" data-kind="${v}" title="Then click the map where the ${esc(label.toLowerCase())} is"><span class="fmark fmark-${v} inline">${esc(letters)}</span>${esc(label)}</button>`).join('')}</div><div class="muted" style="font-size:12px">A press, then a click on the map; each goes once one of its kind is placed.</div>` : ''}
+    ${expect ? `<div class="k">Units to expect</div><div class="muted" style="font-size:12.5px">${esc(expect)} · what to ask for on a 213RR</div>` : ''}
     ${p ? `
     <div class="k">Objectives (ICS 202)</div>
     ${objectives.length ? objectives.map((o) => `
       <div class="obj${o.done_at ? ' done' : ''}">
         <button class="obj-tick" data-action="${o.done_at ? 'objective-undo' : 'objective-done'}" data-id="${o.id}" aria-label="${o.done_at ? 'Reopen' : 'Done'}">${o.done_at ? '✓' : ''}</button>
         <span class="obj-text"><strong>${o.number}.</strong> ${esc(o.text)}${o.done_at ? ` <span class="muted">done ${hhmm(o.done_at)}</span>` : ''}${zonesFor(o).length ? ` <span class="muted">· ${zonesFor(o).map((z) => esc(z.code)).join(', ')}</span>` : ''}</span>
+        <button class="obj-x" data-action="objective-remove" data-id="${o.id}" title="Remove this objective: it leaves every list and carries into no period; the 214 keeps a line" aria-label="Remove objective ${o.number}">×</button>
       </div>`).join('') : '<div class="muted" style="font-size:12.5px">None yet. What must be true by the end of the period?</div>'}
     <form class="composer" data-form="objective"><div class="composer-row"><input name="text" placeholder="Add an objective" required maxlength="300" autocomplete="off"><button class="btn pri sm" type="submit">Add</button></div></form>` : ''}
     <div class="k">Shift change</div>
@@ -1931,6 +1938,8 @@ export function settingsDialogHtml(data) {
       <label>EOC email address <input name="eoc_email" type="email" value="${esc(st.eoc_email || '')}" autocomplete="off" placeholder="eoc@county.gov" maxlength="120"></label>
       <div class="muted" style="font-size:12px">Send by email on the situation report and the other papers goes to it in one tap; leave it empty to pick the address in the mail app.</div>
       <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
+      <label>Kind <select name="kind" class="sel">${kindOptions().map(([v, l]) => `<option value="${v}"${(st.kind || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      <div class="muted" style="font-size:12px">Said on the incident's card, the picker and the phone's briefing; changing it rewrites no period (v77).</div>
       <div class="k" style="margin-top:4px">Bands</div>
       <div class="muted" style="font-size:12px">${data.tags(true).length} printed, ${data.tags(true).filter((t) => t.person_id || t.evacuee_id).length} on someone, ${data.tags(true).filter((t) => t.voided_at).length} voided. Print bands from the home panel's join box or the People board; a lost band is voided from its person's row on the People board and a new one given by scanning it. A sheltered person's band is voided with their name when the personal records clear.</div>
       <div class="row-btns"><button type="button" class="btn sm" data-action="settings-close">Cancel</button><button class="btn pri sm" type="submit">Save</button></div>
@@ -2004,7 +2013,7 @@ export function incidentPopHtml(data, state) {
   const segs = [['cleared', d.cleared, 'cleared'], ['primary', d.primary, 'primary search done'], ['active', d.active, 'in progress'], ['open', d.open, 'not started']].filter((x) => x[1]);
   const bar = segs.length ? `<span class="ic-bar">${segs.map(([k, n]) => `<i class="seg ${k}" style="flex:${n}"></i>`).join('')}</span>` : '';
   return `
-    <div class="ic-head"><b>${esc(f.name)}</b>${f.opened ? `<span class="muted">since ${esc(f.opened)}</span>` : ''}${p && p.overdue ? `<button type="button" class="btn sm pri" data-action="period-next">Start period ${p.number + 1}</button>` : ''}</div>
+    <div class="ic-head"><b>${esc(f.name)}</b>${data.kind() ? `<span class="muted">${esc(incidentKindText(data.kind()))}</span>` : ''}${f.opened ? `<span class="muted">since ${esc(f.opened)}</span>` : ''}${p && p.overdue ? `<button type="button" class="btn sm pri" data-action="period-next">Start period ${p.number + 1}</button>` : ''}</div>
     <div class="ic-tiles">
       ${periodTile}
       ${tile('people', String(f.units.n), f.units.n === 1 ? 'unit' : 'units', f.units.statusWords ? esc(f.units.statusWords) : 'none on scene', f.units.n ? '' : 'quiet')}

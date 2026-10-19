@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials, mapRuns, runGeometry, accountText, incidentKindText, starterSummary } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials, mapRuns, runGeometry, accountText } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen', 'ic_invites'];
 const BUCKET = 'ic-photos';
@@ -82,8 +82,10 @@ export class Data {
     if (error) throw error;
     return (data || []).filter((r) => r.incident && !r.removed_at).map((r) => ({ ...r.incident, role: r.role, unit_name: r.unit_name, crew: r.crew, agency: r.agency || '', joined_at: r.joined_at, member_status: r.status, checked_out_at: r.checked_out_at }));   // the member's status since v53 (the row's status is the incident's): the check-in page says who checked out
   }
-  async createIncident({ name, period, base, lat, lng, zoom }) {
-    const { data, error } = await this.sb.rpc('ic_create_incident', { p_name: name, p_period: period || null, p_base_name: base || null, p_lat: lat ?? null, p_lng: lng ?? null, p_zoom: zoom || 14 });
+  // kind and starter (v82): the incident's kind and the starter period 1 opens with, codes from rules.js, on the row from
+  // the start, so the opening line says them: "Incident opened: …, a flood, operational period 1 from the Flood starter"
+  async createIncident({ name, period, base, lat, lng, zoom, kind, starter }) {
+    const { data, error } = await this.sb.rpc('ic_create_incident', { p_name: name, p_period: period || null, p_base_name: base || null, p_lat: lat ?? null, p_lng: lng ?? null, p_zoom: zoom || 14, p_kind: kind || '', p_starter: starter || '' });
     if (error) throw error;
     return data;
   }
@@ -611,8 +613,7 @@ export class Data {
   }
   objectives(periodId) {
     const pid = periodId || (this.currentPeriod() && this.currentPeriod().id);
-    const gone = this.removedObjectives();   // v77: a removed objective is hidden, never deleted
-    return [...this.store.objectives.values()].filter((o) => o.period_id === pid && !gone.has(o.id)).sort((a, b) => a.number - b.number);
+    return [...this.store.objectives.values()].filter((o) => o.period_id === pid && !o.archived_at).sort((a, b) => a.number - b.number);   // × removed = archived (v82), never deleted
   }
   objective(id) { return this.store.objectives.get(id) || null; }
   // the events that fall inside a period
@@ -625,7 +626,6 @@ export class Data {
     const { data, error } = await this.sb.rpc('ic_start_period', { p_incident: this.store.incident.id, p_ends_at: endsAt || null, p_ic: ic || '', p_ops: ops || '', p_safety: safety || '', p_notes: notes || '', p_carry: carry !== false, p_planning: planning || '', p_logistics: logistics || '', p_finance: finance || '', p_unified: unified || '', p_pio: pio || '', p_liaison: liaison || '', p_rotation: rotation == null || rotation === '' ? null : Number(rotation), p_deputy: deputy || '', p_bring: bring || '', p_scene: scene == null || scene === '' ? null : Number(scene) });
     if (error) throw error;
     this.local('ic_periods', data);
-    await this.hideCarried(data);   // v77: the carry-over copies removed objectives too
     return data;
   }
   async updatePeriod(id, patch) {
@@ -668,7 +668,7 @@ export class Data {
   async addObjective(text) {
     const p = this.currentPeriod();
     if (!p) throw new Error('Start an operational period first');
-    const number = this.objectives(p.id).reduce((n, o) => Math.max(n, o.number), 0) + 1;
+    const number = [...this.store.objectives.values()].filter((o) => o.period_id === p.id).reduce((n, o) => Math.max(n, o.number), 0) + 1;   // the archived ones count too, so a number is never given twice (v82)
     const { data, error } = await this.sb.from('ic_objectives').insert({ incident_id: this.store.incident.id, period_id: p.id, number, text }).select().single();
     if (error) throw error;
     this.local('ic_objectives', data);
@@ -681,16 +681,13 @@ export class Data {
     return data;
   }
 
-  // ---- incident kinds and starter periods (v77): the kind, the starter period 1 came from and the objectives removed
-  // live in the incident's settings (settings.kind, settings.starter, settings.removed_objectives) until a migration
-  // gives them columns; nobody on the Mac that built v77 could apply one.
-  kind() { return this.settings().kind || ''; }
-  starter() { return this.settings().starter || ''; }
-  removedObjectives() { const s = this.settings(); return new Set(Array.isArray(s.removed_objectives) ? s.removed_objectives : []); }
-  // Create made the incident and period 1 as always; the starter's lines are written now, as Operations' own, so the
-  // triggers log them. The three keys are written even when empty: settings carry from the account's last incident.
-  async applyStarter(kind, starter) {
-    await this.saveSettings({ kind: kind || '', starter: starter && starter.from ? starter.code : '', removed_objectives: [] });
+  // ---- incident kinds and starter periods (v77; columns since migration 0040, v82): the kind and the starter period 1
+  // came from are ic_incidents.kind and .starter, written by ic_create_incident; an objective × removed is archived
+  kind() { return (this.store.incident && this.store.incident.kind) || ''; }
+  starter() { return (this.store.incident && this.store.incident.starter) || ''; }
+  // Create made the incident and period 1 as always, the kind and the starter on the row; the starter's lines are
+  // written now, as Operations' own, so the triggers log them. The opening line already says where they come from.
+  async applyStarter(starter) {
     if (!starter) return;
     const p = this.currentPeriod();
     if (!p) return;
@@ -701,26 +698,12 @@ export class Data {
     if (starter.bring) patch.bring = starter.bring;
     if (Object.keys(patch).length) await this.updatePeriod(p.id, patch);
     for (const text of starter.objectives) await this.addObjective(text);
-    await this.addNote(starter.from ? `Opened as ${incidentKindText(kind)}: period 1 from the ${starter.from} starter (${starterSummary(starter)})` : `Opened as ${incidentKindText(kind)}: period 1 with the three standing objectives`);
   }
-  // × on an objective: it leaves every list and carries into no period, never deleted; one note says so
-  async removeObjective(id) {
-    const o = this.objective(id);
-    if (!o) return;
-    await this.saveSettings({ removed_objectives: [...this.removedObjectives(), id] });
-    await this.addNote(`Objective ${o.number} removed: ${o.text}`);
-  }
-  // the carry-over copies every open objective, the removed ones too (the database does not know them): hide the copies
-  async hideCarried(np) {
-    const gone = this.removedObjectives();
-    if (!gone.size || !np) return;
-    const texts = new Set([...this.store.objectives.values()].filter((o) => gone.has(o.id)).map((o) => o.text));
-    const { data, error } = await this.sb.from('ic_objectives').select('*').eq('period_id', np.id);
-    if (error || !Array.isArray(data)) return;
-    for (const o of data) this.local('ic_objectives', o);
-    const more = data.filter((o) => texts.has(o.text) && !gone.has(o.id)).map((o) => o.id);
-    if (more.length) await this.saveSettings({ removed_objectives: [...gone, ...more] });
-  }
+  // × on an objective: archived, so it leaves every list and carries into no period, never deleted; the database writes
+  // "Objective 5 removed: …" (ic_log_objective)
+  async removeObjective(id) { return this.updateObjective(id, { archived_at: new Date().toISOString() }); }
+  // the kind changes in Incident settings; the database writes the line (ic_log_incident)
+  async setIncidentKind(kind) { return this.updateIncident({ kind: kind || '' }); }
 
   // ---- replay: the position history (ic_tracks) between two moments, one sample per unit per
   // `every` seconds, in one read. Not kept in the store: the base asks when the slider opens.

@@ -3681,12 +3681,12 @@ async function starters(check) {
   const period = () => M().tables.ic_periods.find((x) => x.incident_id === inc().id && x.number === 1);
   const objs = (n = 1) => M().tables.ic_objectives.filter((o) => o.incident_id === inc().id && o.period_id === (n === 1 ? period().id : M().tables.ic_periods.find((x) => x.incident_id === inc().id && x.number === n).id)).sort((a, b) => a.number - b.number);
   const ev = (t) => M().tables.ic_events.some((e) => e.incident_id === inc().id && e.text === t);
-  await until(() => objs().length === 7 && inc().settings.starter === 'flood', 10000);
-  check('Create records the kind and the starter in the settings and resets the sheet', inc().settings.kind === 'flood' && inc().settings.starter === 'flood' && Array.isArray(inc().settings.removed_objectives) && inc().settings.removed_objectives.length === 0 && f.kind.value === '' && $('#new-subs').hidden, JSON.stringify(inc().settings));
+  await until(() => objs().length === 7 && inc().starter === 'flood', 10000);
+  check('Create puts the kind and the starter on the row, nothing of them in the settings (v82), and resets the sheet', inc().kind === 'flood' && inc().starter === 'flood' && !('kind' in inc().settings) && !('starter' in inc().settings) && !('removed_objectives' in inc().settings) && f.kind.value === '' && $('#new-subs').hidden, JSON.stringify([inc().kind, inc().starter, inc().settings]));
   check('the incident opened on the centre the address gave (v78)', inc().center_lat === 30.2592 && inc().center_lng === -97.7471 && inc().base_name === 'The depot', [inc().center_lat, inc().center_lng, inc().base_name].join(' | '));
   check('period 1 carries the starter\'s safety message, rotation, hours and bring', period().notes === 'Nobody enters moving water. PFDs on near the water. PAR on the hour.' && period().rotation_minutes === 45 && period().scene_hours === 12 && period().bring === 'PFDs and dry bags, a radio each, water for the day', JSON.stringify([period().notes, period().rotation_minutes, period().scene_hours, period().bring]));
   check('seven objectives, the standing three first, numbered 1 to 7', objs().map((o) => o.number).join('') === '1234567' && objs()[0].text === 'Nobody gets hurt, crews or residents' && objs()[2].text === 'Protect property once people are safe' && objs()[3].text === 'People off the low ground first' && objs()[6].text === 'Shelter open and staffed before dark', objs().map((o) => o.text).join(' | '));
-  check('the triggers logged each line as Operations\' own, bring on the period\'s line, and one note says where they came from', ev('Objective 1 set: Nobody gets hurt, crews or residents') && ev('Objective 7 set: Shelter open and staffed before dark') && ev('Operational period 1 updated, bring: PFDs and dry bags, a radio each, water for the day') && ev('Opened as a flood: period 1 from the Flood starter (7 objectives, the safety message, the rotation, the hours on scene, what to bring)'), M().tables.ic_events.filter((e) => e.incident_id === inc().id).map((e) => e.text).join(' | ').slice(0, 300));
+  check('the triggers logged each line as Operations\' own, bring on the period\'s line, and the opening line says the kind and where they came from (v82); no note of the app\'s own', ev('Objective 1 set: Nobody gets hurt, crews or residents') && ev('Objective 7 set: Shelter open and staffed before dark') && ev('Operational period 1 updated, bring: PFDs and dry bags, a radio each, water for the day') && ev('Incident opened: Starter drill, a flood, operational period 1 from the Flood starter') && !M().tables.ic_events.some((e) => e.incident_id === inc().id && /^Opened as /.test(e.text)), M().tables.ic_events.filter((e) => e.incident_id === inc().id).map((e) => e.text).join(' | ').slice(0, 300));
   const sheetReady = () => !!$('#panel .from-starter') && has('#panel .title', 'operational period 1');
   await until(sheetReady, 8000);
   const pfv = (n) => { const el = $('#panel form[data-form="period-edit"] [name="' + n + '"]'); return el ? el.value : null; };
@@ -3708,7 +3708,7 @@ async function starters(check) {
   const o5 = objs()[4];
   $(`#panel .obj-x[data-id="${o5.id}"]`).click();
   await until(() => $$('#panel .obj').length === 6, 6000);
-  check('× on objective 5 takes it off the sheet, keeps the row, lists it in the settings and writes one note', $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && M().tables.ic_objectives.some((o) => o.id === o5.id) && inc().settings.removed_objectives.includes(o5.id) && ev('Objective 5 removed: Primary search of every flooded structure'), JSON.stringify(inc().settings.removed_objectives));
+  check('× on objective 5 takes it off the sheet, keeps the row archived (v82), and the database writes one line', $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && M().tables.ic_objectives.some((o) => o.id === o5.id && !!o.archived_at) && ev('Objective 5 removed: Primary search of every flooded structure'), JSON.stringify(M().tables.ic_objectives.filter((o) => o.id === o5.id).map((o) => o.archived_at)));
   // a box cleared is a plain save
   const pf = $('#panel form[data-form="period-edit"]');
   pf.bring.value = ''; pf.requestSubmit();
@@ -3720,8 +3720,8 @@ async function starters(check) {
   check('Incident settings shows the kind', $('#settings-dialog select[name="kind"]').value === 'flood');
   $('#settings-dialog select[name="kind"]').value = 'wildfire';
   $('#settings-dialog form').requestSubmit();
-  await until(() => inc().settings.kind === 'wildfire', 6000);
-  check('changed to wildfire: the settings say so, the starter and period 1 are untouched, the card reads a wildfire', inc().settings.kind === 'wildfire' && inc().settings.starter === 'flood' && objs().length === 7 && period().rotation_minutes === 45 && ($('#inc-sub').click(), await until(() => !$('#inc-pop').hidden && has('#inc-pop .ic-head', 'a wildfire'))), text('#inc-pop .ic-head'));
+  await until(() => inc().kind === 'wildfire', 6000);
+  check('changed to wildfire: the row says so and the 214 says who (v82), the starter and period 1 are untouched, the card reads a wildfire', inc().kind === 'wildfire' && inc().starter === 'flood' && M().tables.ic_events.some((e) => e.incident_id === inc().id && e.text === 'Marcus Bell set the kind to a wildfire') && objs().length === 7 && period().rotation_minutes === 45 && ($('#inc-sub').click(), await until(() => !$('#inc-pop').hidden && has('#inc-pop .ic-head', 'a wildfire'))), text('#inc-pop .ic-head'));
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await until(() => $('#inc-pop').hidden);
   // Start period 2: the carry-over copies the removed objective too; the app hides the copy
@@ -3732,9 +3732,9 @@ async function starters(check) {
     $('#panel [data-action="period-next"]').click();
     const sf = await until(() => $('#panel form[data-form="period-start"]'));
     sf.requestSubmit();
-    await until(() => M().tables.ic_periods.some((x) => x.incident_id === inc().id && x.number === 2) && objs(2).length === 7, 10000);
+    await until(() => M().tables.ic_periods.some((x) => x.incident_id === inc().id && x.number === 2) && objs(2).length === 6, 10000);
     await until(() => has('#panel .title', 'operational period 2') && $$('#panel .obj').length === 6, 8000);
-    check('period 2 carries seven rows in the table but the sheet shows six: the removed one is hidden again, and no from-starter line on period 2', objs(2).length === 7 && $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && inc().settings.removed_objectives.length === 2 && !$('#panel .from-starter'), JSON.stringify(inc().settings.removed_objectives));
+    check('period 2 carries six: the archived one stays behind in the database (v82), the sheet shows six numbered 1 to 6, the period\'s line counts six, and no from-starter line on period 2', objs(2).length === 6 && $$('#panel .obj').length === 6 && !has('#panel', 'primary search of every flooded structure') && objs(2).map((o) => o.number).join('') === '123456' && M().tables.ic_events.some((e) => e.incident_id === inc().id && /^Operational period 2 started.*, 6 objectives carried over$/.test(e.text)) && !$('#panel .from-starter'), objs(2).map((o) => o.number + ' ' + o.text).join(' | '));
   } finally { autoConfirm(false); }
   // without the key in config.js the Address box is one muted line (v78)
   const L = await import('../js/shared/layers.js');

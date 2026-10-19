@@ -1787,3 +1787,26 @@ database through `supabase/tests/waterwords.sql` once 0039 was applied.
 **Still bites, small:**
 
 - **The rotation lines** ("rotation in the water every 30 minutes", "set the default rotation to 30 minutes in the water") say "minutes" in full: a setting, not a duration, left as it is.
+
+## Re-walk after v82
+
+The incident's kind as a column: a first-time Operations opening an incident from the Flood starter, Marcus changing
+the kind in Incident settings and starting period 2, and the clerk reading the 214, walked on 2026-10-19 in the mock in
+headless Chrome (`dev/smoke-headless.py`) through the `starters` suite, and on the real database through
+`supabase/tests/incidentkind.sql`, first inside a rolled-back transaction with the migration and then after it was
+applied.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Create from the Flood starter | a first-time Operations | The Period sheet opens as at v77, "From the Flood starter. Edit any line; × removes an objective", seven rows. The 214's first line reads "Incident opened: Starter drill, a flood, operational period 1 from the Flood starter", then the period's bring line and "Objective 1 set" to "Objective 7 set". The app's own "Opened as a flood" line is gone, so the opening reads once. | Clear |
+| × on objective 5 | a first-time Operations | Six rows; "Objective 5 removed: Primary search of every flooded structure" in the log, written by the database this time. | Clear |
+| Start period 2 | Marcus | Six rows numbered 1 to 6 and "Operational period 2 started, 6 objectives carried over"; at v77 the line said 7 and the sheet showed 6, the copy hidden by the app. | Clear |
+| The kind in Incident settings | Marcus | Wildfire picked, Save: the card reads "a wildfire", the sheet keeps "From the Flood starter", and the 214 reads "Marcus Bell set the kind to a wildfire", where at v77 nothing was written. | Clear |
+| A kind alone, and none | the clerk | "Incident opened: Group test, a natural hazard, operational period 1"; with no kind, the line as it always was. | Clear |
+| An older incident | the clerk | The migration moves the settings' keys into the columns with no new line; the live database held no incident to move, and the mock's seed reads "a flood" from the row. | Clear |
+
+**Still bites, small:**
+
+- **The removed objective's number keeps its gap on period 1** (1, 2, 4 …): the 214's lines carry the number, so the sheet does too.
+- **The kind's change line names who** ("Marcus Bell set the kind to a wildfire") while the lead agency's does not ("Lead agency: …"): the kind sits with the settings in Incident settings, whose lines all name who.
+- **"a utility failure"** was "an utility failure" since v77 on the card, the picker and the phone; fixed here, never seen on a real incident.

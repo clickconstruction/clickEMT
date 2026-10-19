@@ -13,8 +13,8 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v82**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0040**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v83**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0041**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -59,6 +59,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 38 | v79 The 214's water words as 45m: the one duration the database writes reads as the app does, `ic_duration_text` in SQL (built 19 October; migration 0039, applied) | small | v78 | the Safety Officer, the clerk, Rosa, anyone reading the 214 |
 | 39 | v80 The header in four groups, and a quieter first minute: a word over each group of buttons, the gear with the pills; a fresh incident leads with the codes and its empty sections wait (built 19 October) | small | v79 | Marcus, every base, a first-time Operations |
 | 40 | v81 Every time in UTC, and the front door's pictures: the clock's click swaps every time on the screen, a Z on each, the forms' heads say which; the five pictures shot from the mock by a script (built 19 October) | small | v80 | a mutual-aid clerk on Zulu time, the Documentation Unit, every visitor to the front door |
+| 41 | v82 The incident's kind as a column: migration 0040 gives the kind and the starter their columns and an objective × removed its `archived_at`; the opening line, the removal and a change of kind come from the database (built 19 October; migration 0040, applied) | small | v81 | a first-time Operations, Marcus, the clerk, anyone reading the 214 |
 
 ---
 
@@ -1324,15 +1325,11 @@ kind changes in Incident settings.
 *One change from the page's build notes, on the brief:* **no migration.** Nobody on the Mac that built v77 can apply
 one (no Supabase login), and a release that reads a new column cannot land before its migration. The kind, the
 starter period 1 came from and the removed objectives live in `ic_incidents.settings` (`kind`, `starter`,
-`removed_objectives`; the v27 jsonb the maps key uses, through `data.saveSettings`). A real column, the 214's "Opened
-as a flood" from the trigger instead of the app's note, and `ic_objectives.archived_at` in place of the settings list
-wait for migration 0040 (after 0039 on `water-words`); when it comes, move the three keys and drop them.
+`removed_objectives`; the v27 jsonb the maps key uses, through `data.saveSettings`). The column came as v82 (section 41, migration 0040): the three keys moved into `kind`, `starter` and
+`ic_objectives.archived_at` and were dropped, and the opening line and an objective's removal come from the database.
 
-*Left open:* the carry-over (`ic_start_period`) copies removed objectives too, since the database does not know them,
-so `startPeriod` re-hides the copies by their text and the period's log line counts them among "N objectives
-carried"; the numbers keep their gaps (1, 2, 4 …) since they are in the 214's lines. Settings carry from the
-account's last incident (v28), so an incident made outside the sheet (a suite's `createIncident`) inherits the last
-one's three keys until the app writes them. The sixteen thin starters' words have not been read by a crew of their
+*Left open* (the carry-over's copies and the inherited keys went with v82; the numbers keep their gaps on period 1,
+1, 2, 4 …, since they are in the 214's lines): the sixteen thin starters' words have not been read by a crew of their
 kind. The check-in table's kind chips could start with the kinds to expect. The third standing objective may read as
 noise on a parade or a game; it is one press to remove.
 
@@ -1521,6 +1518,55 @@ Chrome, each head saying which, the planned end's box labelled "(local)" with UT
 front door at 1280: the hero and steps 2 and 3 read; step 1's tile (4:3, cropping the 16:10 shot at both sides) cut the
 codes' card at its right edge, so that tile is anchored right (`.shot.right`), in a second commit. No migration, no rule
 test.
+
+## 41. v82 The incident's kind as a column
+
+**Why.** v77 (section 36) had to keep the incident's kind, the starter period 1 came from and the objectives × removed
+in `ic_incidents.settings`, because nobody on the Mac that built it could apply a migration. That left four things
+wrong by the repository's own rules: the app wrote the "Opened as a flood" line itself, where the database writes the
+214; × hid an objective through a list in the settings instead of archiving the row; the carry-over copied hidden
+objectives into the next period and counted them, so the app re-hid the copies by their text; and a new incident
+inherited the last one's kind through the settings' carry. The owner put the column fourth in the open work on 19
+October.
+
+**Built.** Migration `0040_incident_kind.sql`: `ic_incidents.kind` and `ic_incidents.starter`, each '' by default
+and checked against the codes of `INCIDENT_KINDS` (the five kinds and their seventeen sub-kinds for the kind; the
+sub-kinds for the starter); `ic_objectives.archived_at`; `ic_incident_kind_text` and `ic_starter_name`, the SQL twins
+of `incidentKindText` and the starter's name; `ic_create_incident(…, p_kind, p_starter)` writing "Incident opened:
+Starter drill, a flood, operational period 1 from the Flood starter" (a kind alone, "Incident opened: Group test, a
+natural hazard, operational period 1"; none, the line as before); `ic_log_objective` writing "Objective 5 removed: …"
+when a row is archived; `ic_start_period` carrying no archived objective, so "6 objectives carried over" is right and
+period 2 runs 1 to 6; `ic_log_incident` writing "Marcus Bell set the kind to a wildfire" or "cleared the kind". The
+three settings keys were moved into the columns and dropped, with the old trigger bodies still in place so the move
+wrote no line (the live database held no incident). The app: Create sends the kind and the starter with the name;
+`applyStarter` writes period 1's lines and nothing else; × archives; the settings dialog saves the kind in the same
+write as the settings; the from-starter line, the card, the picker and the phone's word read the columns.
+`dev/test-rules.mjs` reads the migration and fails when its check lists or its words drift from rules.js, which is
+also how "an utility failure" was caught and became "a utility failure".
+
+*Decided:* the words as the mock-up's decided-here list had them (the opening line with the kind and "from the Flood
+starter", "Objective N removed"); one line for a change of kind naming who, as the settings' lines do; the starter on
+the incident, not the period, since it says where period 1 came from and `data.starter()` already read it there; the
+six-argument `ic_create_incident` dropped rather than kept beside the new one, since a call by name would match both;
+archived objectives count when the next number is given, so a number is never used twice; no mock-up page of its own,
+since nothing new is on a screen and `starters.html` had decided the words.
+
+*Left open:* the removed objective's number keeps its gap on period 1 (1, 2, 4 …), as the 214's lines carry it; the
+sixteen thin starters' words (section 36); the facility card's address box (section 37).
+
+**Built** 19 October 2026 as `The incident's kind as a column of its own (v82)` on branch `kind-column`: migration
+0040 and `supabase/tests/incidentkind.sql` (22 checks, run on the real database first inside one rolled-back
+transaction with the migration, then after it was applied); `incidentKindCodes` and the `utility` word in rules.js;
+`createIncident`, `kind`, `starter`, `applyStarter`, `removeObjective`, `setIncidentKind`, `objectives` and
+`addObjective` in data.js (`removedObjectives` and `hideCarried` gone); the Create flow and the settings form in
+js/base/main.js; the mock's columns, checks, opening line, archived branch and carry, `SEED_VERSION` 38; `VERSION`
+v82; the `starters` suite's five checks rewritten; the Node test at the foot of `dev/test-rules.mjs`. `npm run check`
+and `npm test` pass; the full smoke run in headless Chrome from the branch served on 8766, 913 of 924 across 42 suites, the eleven
+misses in periods, log, transports, tags, walkfix and parbyname, each passing alone afterwards (periods in a run of
+starters, periods and seeded, 95 of 95; log 23 of 23, transports 52 of 52, walkfix 46 of 46, parbyname 24 of 24; tags
+36 of 37 then 37 of 37, its void-band line the race the handoff records at v75); every rule test on the real database after 0040 was applied, 26 files and 461 checks, all ok, and the same 26
+before the apply, each inside one rolled-back transaction with the migration, so the live database was untouched
+until the owner's word.
 
 ## Done before this list
 

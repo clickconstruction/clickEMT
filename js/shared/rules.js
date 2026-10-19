@@ -1057,8 +1057,9 @@ export function qualsTextWith(p, creds) { return personQuals(p, creds).map((x) =
 // ---- incident kinds and starter periods (v77; design record try/mockups/starters.html): the five kinds in Todd's
 // words, each with its usual sub-kinds, and a starter per sub-kind: a few short lines period 1 opens with, written on
 // Create as Operations' own (the period's notes, rotation, hours and bring; the objectives one by one, the three
-// standing ones first, so the triggers log them). The kind lives in ic_incidents.settings.kind until a migration gives
-// it a column. Twelve words at most on a line; dev/test-rules.mjs checks every one.
+// standing ones first, so the triggers log them). The kind and the starter are ic_incidents.kind and .starter since
+// migration 0040 (v82); its check and its words (ic_incident_kind_text, ic_starter_name) say what this table says, and
+// dev/test-rules.mjs reads the file to hold them together. Twelve words at most on a line; the same test checks every one.
 export const INCIDENT_KINDS = [
   ['natural', 'Natural hazard', [['flood', 'Flood'], ['wildfire', 'Wildfire'], ['storm', 'Storm'], ['winter', 'Winter storm']]],
   ['human', 'Human-caused', [['fire', 'Structure fire'], ['hazmat', 'Hazmat'], ['collapse', 'Collapse'], ['crash', 'Crash'], ['utility', 'Utility failure']]],
@@ -1091,7 +1092,9 @@ export const STARTERS = {
   game: { objectives: ['Traffic routes held before and after', 'Medical posts staffed in the stands', 'Exits clear through the final whistle'], notes: 'Crowds move at once. Keep the exits clear.', rotation: 0, scene: 12, bring: 'Vests, a radio each, water', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer', 'engine'] }
 };
 // the kind in a sentence, lower case: "a flood", "an outbreak", "a swift water rescue"
-const INCIDENT_KIND_WORDS = { natural: 'a natural hazard', human: 'a human-caused incident', medical: 'a medical or public health incident', sar: 'a search and rescue', planned: 'a planned event', hazmat: 'a hazmat incident', mci: 'a mass casualty incident', swift: 'a swift water rescue', wilderness: 'a wilderness search', urban: 'an urban search' };
+const INCIDENT_KIND_WORDS = { natural: 'a natural hazard', human: 'a human-caused incident', medical: 'a medical or public health incident', sar: 'a search and rescue', planned: 'a planned event', hazmat: 'a hazmat incident', mci: 'a mass casualty incident', swift: 'a swift water rescue', wilderness: 'a wilderness search', urban: 'an urban search', utility: 'a utility failure' };
+// every code, the five groups and their seventeen sub-kinds, in the table's order: the SQL check in 0040 and the mock's
+export function incidentKindCodes() { return INCIDENT_KINDS.flatMap(([g, , subs]) => [g].concat(subs.map((x) => x[0]))); }
 // a code is a group ("natural") or a sub-kind ("flood"); null for anything else
 export function incidentKind(code) {
   if (!code) return null;

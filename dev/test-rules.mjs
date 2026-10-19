@@ -653,3 +653,22 @@ t('a kind is a group or a sub-kind, said in a sentence; a starter is the standin
   const opts = kindOptions();
   assert.deepEqual(opts[0], ['', 'Not set']); assert.ok(opts.some(([c, l]) => c === 'flood' && l === 'Natural hazard · Flood') && opts.some(([c, l]) => c === 'natural' && l === 'Natural hazard'));
 });
+
+// ---- the incident's kind as a column (v82): migration 0040's checks and words say what rules.js says
+import { readFileSync } from 'node:fs';
+import { incidentKindCodes } from '../js/shared/rules.js';
+t('migration 0040 checks the codes of INCIDENT_KINDS, and its words are incidentKindText\'s and the starters\' names (v82)', () => {
+  assert.equal(incidentKindText('utility'), 'a utility failure', 'utility takes "a", not "an"');
+  assert.equal(incidentKindCodes().length, 22); assert.deepEqual(incidentKindCodes().slice(0, 3), ['natural', 'flood', 'wildfire']);
+  const sql = readFileSync(new URL('../supabase/migrations/0040_incident_kind.sql', import.meta.url), 'utf8');
+  const list = (name) => { const m = sql.match(new RegExp(name + ' check \\(\\w+ in \\(([^)]*)\\)\\)')); assert.ok(m, name + ' is in the migration'); return m[1].split(',').map((x) => x.trim().replace(/^'|'$/g, '')).filter(Boolean); };
+  const subs = INCIDENT_KINDS.flatMap(([, , s]) => s.map((x) => x[0]));
+  assert.deepEqual(list('ic_incidents_kind_check'), incidentKindCodes(), 'the kind check');
+  assert.deepEqual(list('ic_incidents_starter_check'), subs, 'the starter check');
+  const cases = (fn) => Object.fromEntries([...sql.split('function public.' + fn)[1].split('$$;')[0].matchAll(/when '([^']*)' then '([^']*)'/g)].map((m) => [m[1], m[2]]));
+  const kt = cases('ic_incident_kind_text'), sn = cases('ic_starter_name');
+  for (const c of incidentKindCodes()) assert.equal(kt[c], incidentKindText(c), 'ic_incident_kind_text ' + c);
+  assert.equal(Object.keys(kt).length, incidentKindCodes().length, 'no extra words in the SQL');
+  for (const c of subs) assert.equal(sn[c], starterFor(c).from, 'ic_starter_name ' + c);
+  assert.equal(Object.keys(sn).length, subs.length, 'no extra starter names in the SQL');
+});

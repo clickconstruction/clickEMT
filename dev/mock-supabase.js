@@ -14,7 +14,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 37;
+  const SEED_VERSION = 38;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -102,7 +102,7 @@
     const t = {
       ic_incidents: [{
         id: INC, name: 'Cedar Fork Flooding', code: 'CEDAR7', period: 'OP 1 · 07:00 to 19:00', base_name: 'Cedar Fork High School',
-        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null, settings: { maps_key: 'mock-maps-key-for-the-layers-suite', retention_days: 30, rotation_minutes: 45, kind: 'flood' },
+        center_lat: 30.265, center_lng: -97.74, zoom: 15, status: 'active', created_by: U.ops, created_at: ago(190), current_period_id: PER, lead_agency: 'Cedar Fork Fire Department', clear_personal_at: null, personal_cleared_at: null, kind: 'flood', starter: '', settings: { maps_key: 'mock-maps-key-for-the-layers-suite', retention_days: 30, rotation_minutes: 45 },   // a flood (v77), the kind a column since v82; the seed wrote its own lines, so no starter
         channels: [{ use: 'Command', channel: 'CMD 1' }, { use: 'Tactical, Division A', channel: 'TAC 2' }, { use: 'Tactical, Division B', channel: 'TAC 3' }, { use: 'Emergency traffic', channel: 'TAC 9' }],
         boundary: ring([[30.2545, -97.7540], [30.2550, -97.7260], [30.2750, -97.7265], [30.2745, -97.7545]])
       }],
@@ -113,9 +113,9 @@
           sitrep: { summary: 'Cedar Fork crested at 04:30, two feet over the 2015 mark. Mill Street bridge closed. Primary search under way north of the river.', needs: 'One more swift-water team for the south bank at first light. Fuel truck at staging by 18:00.', outlook: 'Water falling slowly overnight; secondary search of the north bank in period 2, south bank once the crossing is passable.' } }
       ],
       ic_objectives: [
-        { id: OBJ[0], incident_id: INC, period_id: PER, number: 1, text: 'Primary search of every structure north of the river by 19:00', done_at: null, created_at: ago(188) },
-        { id: OBJ[1], incident_id: INC, period_id: PER, number: 2, text: 'Keep the Mill Street bridge approach closed and watched', done_at: null, created_at: ago(187) },
-        { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), created_at: ago(186) }
+        { id: OBJ[0], incident_id: INC, period_id: PER, number: 1, text: 'Primary search of every structure north of the river by 19:00', done_at: null, archived_at: null, created_at: ago(188) },
+        { id: OBJ[1], incident_id: INC, period_id: PER, number: 2, text: 'Keep the Mill Street bridge approach closed and watched', done_at: null, archived_at: null, created_at: ago(187) },
+        { id: OBJ[2], incident_id: INC, period_id: PER, number: 3, text: 'Shelter open and staffed at the high school', done_at: ago(5), archived_at: null, created_at: ago(186) }
       ],
       ic_members: [
         { incident_id: INC, user_id: U.ops, role: 'ops', unit_name: 'Operations', crew: null, joined_at: ago(190), status: 'available', status_note: '', status_at: ago(190), crew_count: null, agency: 'Cedar Fork Fire Department', checked_out_at: null, kind: '', demob: null, facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null, rides_with: null },
@@ -268,7 +268,7 @@
       ic_events: []
     };
     const ev = (min, user, kind, text, ref_table, ref_id) => t.ic_events.push({ id: t.ic_events.length + 1, incident_id: INC, user_id: user, kind, text, ref_table: ref_table || null, ref_id: ref_id || null, at: ago(min), notable: false });
-    ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1');
+    ev(190, U.ops, 'ops', 'Incident opened: Cedar Fork Flooding, a flood, operational period 1');   // the kind on the opening line (v82)
     ev(190, U.ops, 'ops', 'Lead agency: Cedar Fork Fire Department');
     ev(189, U.ops, 'ops', 'Operational period 1 updated, Incident Commander Dana Ruiz, Operations Marcus Bell, Safety Priya Natarajan, PIO Lena Marsh, Liaison Tomás Herrera');
     for (const o of t.ic_objectives) ev(189 - o.number, U.ops, 'ops', 'Objective ' + o.number + ' set: ' + o.text, 'ic_objectives', o.id);
@@ -358,7 +358,7 @@
 
   // ---- column defaults, as the schema's
   const DEFAULTS = {
-    ic_incidents: () => ({ id: uuid(), invite_only: false, period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', clear_personal_at: null, personal_cleared_at: null, settings: {} }),
+    ic_incidents: () => ({ id: uuid(), invite_only: false, period: null, base_name: null, center_lat: null, center_lng: null, zoom: 14, boundary: null, status: 'active', created_at: now(), current_period_id: null, channels: [], lead_agency: '', kind: '', starter: '', clear_personal_at: null, personal_cleared_at: null, settings: {} }),
     ic_ops_codes: () => ({ created_at: now(), created_by: null }),
     ic_id_purge: () => ({ id: eventId(), queued_at: now(), done_at: null }),
     ic_facilities: () => ({ id: uuid(), name: '', notes: '', contact: '', address: '', created_by: null, created_at: now(), updated_at: now(), closed_at: null, beds: null, expected: '' }),
@@ -371,7 +371,7 @@
     ic_period_agencies: () => ({ id: uuid(), name: '', phone: '', created_at: now(), updated_at: now(), archived_at: null }),
     ic_commands: () => ({ id: uuid(), period_id: null, from_name: '', ops_chief: '', started_at: now(), ended_at: null, transferred_by: null, created_at: now() }),
     ic_requests: () => ({ id: uuid(), zone_id: null, kind: 'other', quantity: 1, urgency: '', blocking: false, note: '', lat: null, lng: null, status: 'asked', answer: '', status_by: null, status_at: null, created_at: now(), updated_at: now(), archived_at: null }),
-    ic_objectives: () => ({ id: uuid(), done_at: null, created_at: now() }),
+    ic_objectives: () => ({ id: uuid(), done_at: null, archived_at: null, created_at: now() }),
     ic_members: () => ({ unit_name: null, crew: null, joined_at: now(), status: 'available', status_note: '', status_at: now(), crew_count: null, agency: '', checked_out_at: null, demob: null, kind: '', facility_id: null, removed_at: null, removed_by: null, in_water_since: null, unnamed_count: null , accepted_zone_id: null, rides_with: null }),
     ic_zones: () => ({ id: uuid(), name: '', priority: 2, status: 'open', hazard: false, assigned_to: null, structures: 0, cleared: 0, cleared_at: null, marking: null, objective_id: null, work_assignment: '', instructions: '', channel: '', supervisor: '', branch: '', primary_done_at: null, secondary_done_at: null, created_at: now(), updated_at: now() }),
     ic_structures: () => ({ id: uuid(), zone_id: null, label: '', lat: null, lng: null, status: 'searched', pass: 'primary', occupants: 'unknown', people_needing_help: 0, water_cm: null, damage: 'unknown', hazards: '', marking: null, notes: '', searched_by: null, searched_at: null, created_by: null, created_at: now(), updated_at: now(), revisit_at: null, revisit_hhmm: '' }),
@@ -477,6 +477,10 @@
       if (r.crew_count != null && !(r.crew_count >= 0 && r.crew_count <= 99)) throw chk('ic_members_crew_count_check');
       if (r.unnamed_count != null && !(r.unnamed_count >= 0 && r.unnamed_count <= 99)) throw chk('ic_members_unnamed_count_check');
       if (!['', 'engine', 'boat', 'swift_water', 'high_water', 'ambulance', 'search', 'k9', 'drone', 'pump', 'shelter_desk', 'volunteer', 'other'].includes(r.kind ?? '')) throw chk('ic_members_kind_check');
+    }
+    if (table === 'ic_incidents') {   // the kind and the starter (v82): the codes of INCIDENT_KINDS in rules.js, a starter a sub-kind's
+      if (!['', ...R.incidentKindCodes()].includes(r.kind ?? '')) throw chk('ic_incidents_kind_check');
+      if (!['', ...R.INCIDENT_KINDS.flatMap(([, , s]) => s.map((x) => x[0]))].includes(r.starter ?? '')) throw chk('ic_incidents_starter_check');
     }
     if (table === 'ic_messages') {
       if (!['message', 'safety', 'par'].includes(r.kind)) throw chk('ic_messages_kind_check');
@@ -974,7 +978,8 @@
       if ((r.expected || '') !== (old.expected || '')) log(changes, r.incident_id, uid, 'ops', facilityWhat(r) + ' expecting ' + (r.expected || 'nobody now'), 'ic_facilities', r.id);
     }
     if (table === 'ic_objectives' && !quiet) {
-      if (r.done_at && !old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} done: ${r.text}`, 'ic_objectives', r.id);
+      if (r.archived_at && !old.archived_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} removed: ${r.text}`, 'ic_objectives', r.id);   // × removed: archived, one line (v82)
+      else if (r.done_at && !old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} done: ${r.text}`, 'ic_objectives', r.id);
       else if (!r.done_at && old.done_at) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} reopened`, 'ic_objectives', r.id);
       else if (r.text !== old.text) log(changes, r.incident_id, uid, 'ops', `Objective ${r.number} is now: ${r.text}`, 'ic_objectives', r.id);
     }
@@ -1076,6 +1081,7 @@
       else if (r.status === 'active' && old.status === 'closed') log(changes, r.id, uid, 'ops', 'Incident reopened');
       const ns = r.settings || {}, os = old.settings || {};   // the settings: what changed, never the key (ic_log_incident)
       const pr = tables.ic_profiles.find((x) => x.user_id === uid), actor = (pr && pr.full_name) || label(r.id, uid);
+      if ((r.kind || '') !== (old.kind || '')) log(changes, r.id, uid, 'ops', actor + (r.kind ? ' set the kind to ' + R.incidentKindText(r.kind) : ' cleared the kind'));   // the kind is a column (v82)
       if ((ns.maps_key || '') !== (os.maps_key || '')) log(changes, r.id, uid, 'ops', actor + (ns.maps_key ? ' set the Google Maps key' : ' cleared the Google Maps key'));
       if (String(ns.retention_days ?? '') !== String(os.retention_days ?? '')) log(changes, r.id, uid, 'ops', actor + ' set personal records to clear ' + (ns.retention_days || 30) + ' days after the close');
       if (String(ns.rotation_minutes ?? '') !== String(os.rotation_minutes ?? '')) log(changes, r.id, uid, 'ops', actor + ' set the default rotation to ' + (ns.rotation_minutes ?? 45) + ' minutes in the water');
@@ -1393,7 +1399,8 @@
         let code;
         do { code = ''; for (let i = 0; i < 6; i++) code += ALPHA[Math.floor(Math.random() * ALPHA.length)]; } while (tables.ic_incidents.some((i) => i.code === code));
         const lastInc = tables.ic_incidents.filter((i) => i.created_by === uid && i.settings && Object.keys(i.settings).length).sort((x, y) => (x.created_at < y.created_at ? 1 : -1))[0];
-        const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period) || 'OP 1', base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid, settings: lastInc ? copy(lastInc.settings) : {} };   // ic_incident_before_insert
+        const inc = { ...DEFAULTS.ic_incidents(), name: nm, code, period: trim(a.p_period) || 'OP 1', base_name: trim(a.p_base_name), center_lat: a.p_lat ?? null, center_lng: a.p_lng ?? null, zoom: a.p_zoom ?? 14, created_by: uid, kind: trim(a.p_kind) || '', starter: trim(a.p_starter) || '', settings: lastInc ? copy(lastInc.settings) : {} };   // ic_incident_before_insert; the kind and the starter on the row (v82)
+        constraints('ic_incidents', inc);
         tables.ic_incidents.push(inc); changes.push(['INSERT', 'ic_incidents', inc, null]);
         setOpsCode(inc.id, uid, changes);   // ic_incident_after_insert
         const m = { ...DEFAULTS.ic_members(), incident_id: inc.id, user_id: uid, role: 'ops', unit_name: 'Operations' };
@@ -1401,7 +1408,7 @@
         const p1 = { ...DEFAULTS.ic_periods(), incident_id: inc.id, number: 1, rotation_minutes: inc.settings.rotation_minutes >= 0 && inc.settings.rotation_minutes <= 600 ? Number(inc.settings.rotation_minutes) : 45 };   // ic_period_before_insert
         tables.ic_periods.push(p1); changes.push(['INSERT', 'ic_periods', p1, null]);
         inc.current_period_id = p1.id;
-        log(changes, inc.id, uid, 'ops', 'Incident opened: ' + inc.name + ', operational period 1');
+        log(changes, inc.id, uid, 'ops', 'Incident opened: ' + inc.name + (inc.kind ? ', ' + R.incidentKindText(inc.kind) : '') + ', operational period 1' + (inc.starter ? ' from the ' + R.starterFor(inc.starter).from + ' starter' : ''));   // ic_create_incident's line, with the kind and the starter (v82)
         out = copy(inc);
       } else if (name === 'ic_start_period') {
         if (!isOps(a.p_incident, uid)) throw dbError('Only Operations starts a period');
@@ -1426,7 +1433,7 @@
               tables.ic_period_agencies.push(na); changes.push(['INSERT', 'ic_period_agencies', na, null]);
             }
             if (a.p_carry !== false) {
-              for (const o of tables.ic_objectives.filter((x) => x.period_id === cur.id && !x.done_at).sort((x, y) => x.number - y.number)) {
+              for (const o of tables.ic_objectives.filter((x) => x.period_id === cur.id && !x.done_at && !x.archived_at).sort((x, y) => x.number - y.number)) {   // an archived objective stays behind (v82)
                 n += 1;
                 const no = { ...DEFAULTS.ic_objectives(), incident_id: a.p_incident, period_id: np.id, number: n, text: o.text };
                 tables.ic_objectives.push(no); changes.push(['INSERT', 'ic_objectives', no, null]);

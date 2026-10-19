@@ -282,7 +282,7 @@ async function showPicker() {
     lastCentre = near ? [Number(near.center_lat), Number(near.center_lng)] : null;
     list.innerHTML = rows.length ? rows.map((r) => `
       <button class="pick-row" data-action="open-incident" data-id="${r.id}">
-        <span><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')}${r.settings && r.settings.kind && incidentKindText(r.settings.kind) ? ' · ' + esc(incidentKindText(r.settings.kind)) : ''}${r.base_name ? ' · ' + esc(r.base_name) : ''} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
+        <span><span class="name">${esc(r.name)}</span><br><span class="sub">${esc(r.period || '')}${r.kind && incidentKindText(r.kind) ? ' · ' + esc(incidentKindText(r.kind)) : ''}${r.base_name ? ' · ' + esc(r.base_name) : ''} · you are ${r.role === 'ops' ? 'Operations' : esc(r.unit_name || 'a unit')}</span></span>
         <span class="spacer"></span>
         <span class="pill mono">${esc(r.code)}</span>
         <span class="badge ${r.status === 'active' ? 'active' : ''}">${esc(r.status)}</span>
@@ -347,11 +347,11 @@ $('#new-incident').addEventListener('submit', async (e) => {
   msg.textContent = 'Creating…';
   try {
     const lat = f.lat.value ? Number(f.lat.value) : null, lng = f.lng.value ? Number(f.lng.value) : null;
-    const inc = await data.createIncident({ name: f.name.value, period: f.period.value, base: f.base.value, lat, lng, zoom: 14 });
     const kind = f.kind.value, starter = starterFor(kind);   // v77: the kind pressed and what period 1 starts with
+    const inc = await data.createIncident({ name: f.name.value, period: f.period.value, base: f.base.value, lat, lng, zoom: 14, kind, starter: starter && starter.from ? starter.code : '' });   // both on the row from the start (v82)
     f.reset(); msg.textContent = ''; newKind = { group: '', sub: '' }; drawNewKinds(); addr.token = ''; closeAddrList(); drawNewAddress();
     await openIncident(inc.id);
-    await data.applyStarter(kind, starter);   // written even with no kind: settings carry from the account's last incident
+    await data.applyStarter(starter);   // period 1's lines as Operations' own; the kind and the starter are on the row already (v82)
     if (starter) { state.periodNext = false; select({ type: 'period' }); toast(starter.from ? `Period 1 from the ${starter.from} starter: ${starterSummary(starter)}` : 'Period 1 with the three standing objectives'); }
   } catch (err) { msg.textContent = err.message || String(err); }
 });
@@ -1669,8 +1669,10 @@ document.addEventListener('submit', async (e) => {
       if (document.activeElement && form.contains(document.activeElement)) document.activeElement.blur();
       queueDraw();
     } else if (form.dataset.form === 'settings') {
-      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))), eoc_email: form.eoc_email ? form.eoc_email.value.trim() : '', kind: form.kind ? form.kind.value : data.kind() };   // the kind (v77)
-      await data.saveSettings(patch);
+      const patch = { maps_key: form.maps_key.value.trim(), retention_days: Math.max(1, Number(form.retention_days.value) || 30), rotation_minutes: Math.min(600, Math.max(0, Math.round(Number(form.rotation_minutes.value) || 0))), eoc_email: form.eoc_email ? form.eoc_email.value.trim() : '' };
+      const row = { settings: Object.assign({}, data.settings(), patch) };
+      if (form.kind) row.kind = form.kind.value;   // the kind is a column since v82, saved in the same write; the database writes its line
+      await data.updateIncident(row);
       setGoogleKey(patch.maps_key);
       const dlg = $('#settings-dialog'); if (dlg.open) dlg.close();
       toast('Settings saved' + (patch.maps_key ? ' · Google Maps is in the Layers panel' : ''));

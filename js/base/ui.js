@@ -1946,7 +1946,7 @@ export function settingsDialogHtml(data) {
       <label>EOC email address <input name="eoc_email" type="email" value="${esc(st.eoc_email || '')}" autocomplete="off" placeholder="eoc@county.gov" maxlength="120"></label>
       <div class="muted" style="font-size:12px">Send by email on the situation report and the other papers goes to it in one tap; leave it empty to pick the address in the mail app.</div>
       <div class="muted" style="font-size:12px">The first period of a new incident starts with it; each period's own rotation is on the Period sheet.</div>
-      <label>Kind <select name="kind" class="sel">${kindOptions().map(([v, l]) => `<option value="${v}"${(st.kind || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      <label>Kind <select name="kind" class="sel">${kindOptions().map(([v, l]) => `<option value="${v}"${data.kind() === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
       <div class="muted" style="font-size:12px">Said on the incident's card, the picker and the phone's briefing; changing it rewrites no period (v77).</div>
       <div class="k" style="margin-top:4px">Bands</div>
       <div class="muted" style="font-size:12px">${data.tags(true).length} printed, ${data.tags(true).filter((t) => t.person_id || t.evacuee_id).length} on someone, ${data.tags(true).filter((t) => t.voided_at).length} voided. Print bands from the home panel's join box or the People board; a lost band is voided from its person's row on the People board and a new one given by scanning it. A sheltered person's band is voided with their name when the personal records clear.</div>

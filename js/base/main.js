@@ -26,7 +26,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, runLit: null, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -272,11 +272,12 @@ async function openIncident(id) {
       onStructure: (sid) => select({ type: 'structure', id: sid }),
       onPlace: (lat, lng) => placeStructure(lat, lng),
       onFacility: (fid) => select({ type: 'facility', id: fid }),
+      onTransport: (tid) => { state.tr.open = tid; openTransports(); },   // v70: a run on the map opens the board on it
       onPlaceFacility: (lat, lng) => placeFacility(lat, lng),
       onHazard: (hid) => { const h = data.hazards(true).find((x) => x.id === hid); if (h && h.zone_id) select({ type: 'zone', id: h.zone_id }); },
       overlayUrl: (path) => data.overlayUrl(path),
       onError: (err) => toast(err.message || String(err), true),
-      onBlank: () => { if (state.selected && state.selected.type !== 'newzone') select(null); },
+      onBlank: () => { if (state.runLit) { state.runLit = null; queueDraw(); } if (state.selected && state.selected.type !== 'newzone') select(null); },
       onDraftChange: (n) => { setHint(n === 0 ? 'Click the map to place the first corner.' : n < 3 ? `${n} of at least 3 points. Click the next corner; Backspace takes one off.` : `${n} points. Click to add more, Backspace takes one off, Finish saves it.`); }
     });
   }
@@ -1216,6 +1217,13 @@ document.addEventListener('click', async (e) => {
       case 'tr-edit': state.tr.edit = id; state.tr.add = false; drawTransports(); focusTrForm(); break;
       case 'tr-edit-cancel': state.tr.edit = null; state.tr.add = false; drawTransports(); break;
       case 'tr-open': state.tr.open = state.tr.open === id ? null : id; drawTransports(); break;
+      case 'tr-show': {   // v70: the run lit on the map and brought into view; the board, a window over the map, goes away first
+        const t = data.transport(id); if (!t || !map) break;
+        const g = data.runOnMap(t);
+        if (!g.label) { toast('Nothing to show yet: the run has no destination on the map.'); break; }
+        if (!$('#transports').hidden) closeTransports();
+        state.runLit = t.id; map.fitRun([g.from, g.to, g.vehicle]); queueDraw(); break;
+      }
       case 'tr-gone-toggle': state.tr.gone = !state.tr.gone; drawTransports(); break;
       case 'tr-step': { const t = data.transport(id); if (!t) break; const done = await data.updateTransport(id, { status: btn.dataset.status }); toast(transportLabel(done) + ': ' + TRANSPORT_STATUS[done.status].toLowerCase()); queueDraw(); drawTransports(); break; }
       case 'tr-withdraw': { const t = data.transport(id); if (t && await askConfirm({ title: `Withdraw ${esc(transportLabel(t))}?`, text: 'It stays in the history and can be put back. The people on it keep their records.', ok: 'Withdraw' })) { await data.updateTransport(id, { archived_at: new Date().toISOString() }); state.tr.edit = null; toast(transportLabel(t) + ' withdrawn'); queueDraw(); drawTransports(); } break; }
@@ -1450,6 +1458,7 @@ document.addEventListener('keydown', (e) => {
     if (pageDirty(top)) { toast('Save or cancel the form first'); return; }
     closePage(top); return;
   }
+  if (e.key === 'Escape' && state.runLit && !document.querySelector('dialog[open]')) { state.runLit = null; queueDraw(); return; }   // v70: the run lit by Show on map
   if (e.key === 'Escape' && state.highlight && !$('#zone-dialog').open && $('#briefing').hidden) { setHighlight(null); return; }
   if (e.key !== 'Backspace' && e.key !== 'Delete') return;
   if (!map || (map.mode !== 'boundary' && map.mode !== 'zone')) return;

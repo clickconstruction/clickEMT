@@ -1491,3 +1491,28 @@ screenshots).
 - **A photo for an "other" credential**: the row offers Type alone, because the database needs the card's words first; a photo could be added once the title is typed.
 - **Withdrawing a licence from the phone**: the database allows it (archived, logged); the sheet offers Submit again on a refused one and nothing on a pending one. A wrong submission waits for Operations' Not accepted.
 - **A rider's own phone gets no PAR and no messages** (the unit's phone answers for the crew); a rider who wanders off is counted by the lead's answer, not their own. Positions too: the unit's dot is the lead's phone.
+
+## Re-walk after v70
+
+A transport on the map: Marcus at the base with three runs on the board, his relief reading the home panel, the driver
+of Bus 2 (Unit 2's phone), the desk at the gym and the clerk at Replay, walked on 2026-10-18 in the mock at 1280 × 820
+(the pane in dark and in light; the places and the words read through the `transports` suite and the pane's own
+screenshots).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The map | Marcus | Three runs over the incident without opening anything: Bus 2 a blue pill with a tail on U2's dot and a dashed line down to the ring on the gym's S; Bus 3 a grey dashed pill midway from a white dot on A-1 to the gym; Ambulance 1 green from A-2 to the H at Dell Seton. Hover on any of it: "Bus 2 · Pecan Park pickup → High school gym · left 19:40 · expected 20:05 · 4 of 40 · Unit 2's phone 19:51". The legend says Transport run. | Clear |
+| A click | Marcus | The pill opens Transports on that run, Who is on it open. Show on map on Bus 3's row closes the board, the map slides to the run, the pill gets a ring and the line thickens; Escape or a click on blank map puts it out. | Clear |
+| The home panel | Marcus's relief | Each run under Transports has Show on map at its right; the row itself still opens the board. | Clear |
+| The bus moves | the driver | Unit 2's phone reports from Mill Street: the pill follows the dot, the line shortens to the gym. A phone quiet for five minutes loses the pill to the route, dashed, and the line runs from the pickup again. | Clear |
+| Done | the desk | They're here on Bus 2 keeps it on the map, green, until Operations presses Done; then it comes off, and the board and the 214 keep it. | Clear |
+| Replay | the clerk | Replay takes the runs off with the live units; Close brings them back. | Clear |
+| Dark | Marcus | The pill's colours are fixed and white-edged like the markers; the dashed line reads on the dimmed tiles. | Clear |
+
+**Still bites, small:**
+
+- **The pill covers the unit's heading arrow** when the same phone is the bus (the pill is 22 px above the dot, the arrow 17).
+- **A driver not in the app** (a name and a phone) has no vehicle: the pill sits on the route and says nothing of where the bus is. The board's buttons are Operations' then, as v54 decided.
+- **A pickup typed in words has no dot**, so Bus 2's line starts at the vehicle; a pickup clicked on the map is still section 15's item from v54.
+- **Two runs to one shelter** stack two rings on its mark; the colours tell them apart, the hover names them.
+- **Two runs on one phone** (Unit 2 driving Bus 2 and Van 4 in the suite) stack two pills; the second is read on hover.

@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith } from '../js/shared/rules.js';
+import { hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -64,6 +64,48 @@ t('zones sort by priority then code, and status text reads well', () => {
   assert.equal(zoneStatusText({ status: 'active', structures: 9, cleared: 0, hazard: false }, 'Brush 12', false), 'Assigned, not accepted · Brush 12 · 0 of 9');   // v42
   assert.equal(pct({ structures: 14, cleared: 7 }), 50);
   assert.equal(pct({ structures: 0, cleared: 0 }), 0);
+});
+
+t('a run on the map (v70): the open runs, their points and their state', () => {
+  const now = new Date(2026, 9, 18, 17, 30).getTime();
+  const iso = (min) => new Date(now - min * 60000).toISOString();
+  const gym = { id: 'g', lat: 30.2566, lng: -97.7426 }, park = { id: 'p', lat: 30.2600, lng: -97.7400 };
+  const zone = { id: 'z', polygon: { type: 'Polygon', coordinates: [[[-97.74, 30.26], [-97.73, 30.26], [-97.73, 30.27], [-97.74, 30.27], [-97.74, 30.26]]] } };
+  const positions = { d1: { lat: 30.2590, lng: -97.7420, at: iso(2) }, d2: { lat: 30.2590, lng: -97.7420, at: iso(6) } };
+  const opts = { facilityOf: (id) => ({ g: gym, p: park }[id] || null), zoneOf: (id) => (id === 'z' ? zone : null), positionOf: (id) => positions[id] || null, now };
+  const runs = [
+    { id: 1, status: 'planned', from_zone_id: 'z', to_facility_id: 'g', leaves_at: iso(-30) },
+    { id: 2, status: 'en_route', from_text: 'Pecan Park pickup', to_facility_id: 'g', driver_user_id: 'd1', expected_at: iso(10) },
+    { id: 3, status: 'done', to_facility_id: 'g' },
+    { id: 4, status: 'loading', from_facility_id: 'p', to_facility_id: 'g', archived_at: iso(1) },
+    { id: 5, status: 'arrived', from_facility_id: 'p', to_facility_id: 'g', driver_user_id: 'd2' },
+    { id: 6, status: 'loading', from_facility_id: 'p', to_facility_id: 'g', leaves_at: iso(5) },
+    { id: 7, status: 'planned', from_text: 'the corner', to_facility_id: 'g' }
+  ];
+  assert.deepEqual(mapRuns(runs).map((t) => t.id), [1, 2, 5, 6, 7], 'done and withdrawn come off');
+  const g1 = runGeometry(runs[0], opts);
+  assert.deepEqual(g1.from, [30.265, -97.735], 'a division pickup is its centroid');
+  assert.deepEqual(g1.to, [30.2566, -97.7426]);
+  assert.equal(g1.vehicle, null);
+  assert.deepEqual(g1.line, [g1.from, g1.to]);
+  assert.deepEqual(g1.label, [(30.265 + 30.2566) / 2, (-97.735 + -97.7426) / 2], 'no vehicle: the label sits midway');
+  assert.equal(g1.state, 'planned');
+  const g2 = runGeometry(runs[1], opts);
+  assert.equal(g2.from, null, 'words alone are no point');
+  assert.deepEqual(g2.vehicle, [30.2590, -97.7420], 'the driver\'s phone two minutes ago is fresh');
+  assert.equal(g2.vehicleAt, iso(2));
+  assert.deepEqual(g2.line, [g2.vehicle, g2.to], 'with no pickup the line runs from the vehicle');
+  assert.deepEqual(g2.label, g2.vehicle);
+  assert.equal(g2.state, 'late', 'expected ten minutes ago and not arrived');
+  const g5 = runGeometry(runs[4], opts);
+  assert.equal(g5.vehicle, null, 'six minutes old is stale (RUN_FRESH_MS ' + RUN_FRESH_MS + ')');
+  assert.deepEqual(g5.from, [30.26, -97.74], 'a facility pickup is its spot');
+  assert.equal(g5.state, 'arrived');
+  assert.equal(runState(runs[5], now), 'late', 'still loading past the planned departure');
+  const g7 = runGeometry(runs[6], opts);
+  assert.equal(g7.line, null);
+  assert.deepEqual(g7.label, g7.to, 'nothing but the destination: the label sits there');
+  assert.equal(runGeometry({ status: 'planned' }, opts).label, null, 'no destination on the map: nothing to draw');
 });
 
 console.log(n + ' checks passed');

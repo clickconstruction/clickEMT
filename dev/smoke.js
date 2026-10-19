@@ -1834,6 +1834,33 @@ async function transports(check) {
     check('seeded: three runs, Bus 2 en route to the gym with the family of 4 on it, the home panel counts people in transit', base.transports().length === 3 && run('Bus 2').status === 'en_route' && rec('family of 4').transport_id === run('Bus 2').id && rec('family of 4').status === 'on_the_way' && has('#panel', 'transports: 1 under way with 4 people in transit, 1 planned, 1 arrived, 0 done'), text('#panel').slice(0, 300));
     check('the seeded log names the run the crew put them on', !!eventText(base, 'Unit 3 sent family of 4 from 112 Pecan Ln to High school gym on Bus 2, needs pets') && !!eventText(base, 'Bus 2 left Pecan Park pickup for High school gym with 4 people in 1 record'));
 
+    // ---- the runs on the map (v70): a pill per open run, on the driver's phone or on the route, a dashed line to the destination
+    const mark = (label) => $$('#map .tr-mark').find((m) => m.textContent === label) || null;
+    const at = (el) => el ? el.closest('.leaflet-marker-icon').style.transform : null;
+    const u2mark = () => $$('#map .umark').find((m) => m.querySelector('.ulab').textContent === 'U2') || null;
+    check('the three open runs are on the map: a pill and a dashed line each, Bus 2\'s pill on Unit 2\'s phone (its driver, en route), Bus 3\'s on its route (planned), Ambulance 1\'s (arrived); the pill\'s title is the run\'s line', $$('#map .tr-mark').length === 3 && $$('#map .tr-line').length === 3 && !!mark('Bus 2') && mark('Bus 2').classList.contains('veh') && mark('Bus 2').classList.contains('st-en_route') && at(mark('Bus 2')) === at(u2mark()) && !!mark('Bus 3') && mark('Bus 3').classList.contains('route') && mark('Bus 3').classList.contains('st-planned') && !!mark('Ambulance 1') && mark('Ambulance 1').classList.contains('st-arrived') && /^bus 2 · pecan park pickup → high school gym · left \d\d:\d\d · expected \d\d:\d\d · 4 of 40 · unit 2's phone \d\d:\d\d$/.test(mark('Bus 2').title.toLowerCase()), $$('#map .tr-mark').map((m) => m.className + ' ' + m.textContent).join(' | ') + ' · ' + (mark('Bus 2') ? mark('Bus 2').title : ''));
+    const c2 = window.supabase.createClient();
+    await c2.auth.signInWithPassword({ email: 'unit2@mock.local', password: 'any' });
+    const boat = new Data(c2); await boat.init(); await boat.open(INC());
+    const wasAt = at(mark('Bus 2'));
+    await boat.upsertPosition({ lat: 30.2590, lng: -97.7424, heading: 190, accuracy: 5 });
+    check('the driver\'s phone reports from further down the road: the pill moves with it', await until(() => mark('Bus 2') && at(mark('Bus 2')) !== wasAt) && at(mark('Bus 2')) === at(u2mark()), wasAt + ' → ' + at(mark('Bus 2')));
+    boat.close();
+    $('[data-action="replay"]').click();
+    await until(() => !$('#replay').hidden && $$('#map .umark.ghost').length === 3, 6000);
+    check('while Replay is on, the runs come off the map like the live units', $$('#map .tr-mark').length === 0 && $$('#map .tr-line').length === 0 && $$('#map .umark.ghost').length === 3, $$('#map .tr-mark').length + ' pills, ' + $$('#map .tr-line').length + ' lines');
+    $('[data-action="replay-close"]').click();
+    check('Close puts them back', await until(() => $('#replay').hidden && $$('#map .tr-mark').length === 3, 6000) && $$('#map .tr-line').length === 3, $$('#map .tr-mark').length + ' pills');
+    mark('Bus 3').click();
+    check('a pill clicked opens the board on that run', await until(() => !$('#transports').hidden && $(`#transports-page .tr-row[data-id="${run('Bus 3').id}"].open`)), $$('#transports-page .tr-row.open').map((r) => r.dataset.id).join());
+    $(`#transports-page .tr-row[data-id="${run('Bus 3').id}"] [data-action="tr-show"]`).click();
+    const inView = (el) => { const r = $('#map').getBoundingClientRect(), b = el.getBoundingClientRect(); return b.left >= r.left && b.right <= r.right && b.top >= r.top && b.bottom <= r.bottom; };
+    check('Show on map on the board\'s row closes the board, lights the run and brings it into view', await until(() => $('#transports').hidden && mark('Bus 3') && mark('Bus 3').classList.contains('lit')) && $$('#map .tr-mark.lit').length === 1 && $$('#map .tr-line.lit').length === 1 && inView(mark('Bus 3')), mark('Bus 3') && mark('Bus 3').className);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    check('Escape puts the light out; the home panel\'s runs have Show on map too, and it lights Bus 2', await until(() => $$('#map .tr-mark.lit').length === 0) && $$('#panel .tr-home [data-action="tr-show"]').length === 3 && (() => { $(`#panel .tr-home [data-action="tr-show"][data-id="${run('Bus 2').id}"]`).click(); return true; })() && await until(() => mark('Bus 2') && mark('Bus 2').classList.contains('lit')), $$('#panel .tr-home [data-action="tr-show"]').length + ' buttons');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await until(() => $$('#map .tr-mark.lit').length === 0);
+
     // ---- the board from the header
     $('.top-btns [data-action="transports"]').click();
     await until(() => !$('#transports').hidden && $$('#transports-page .tr-row').length === 3);
@@ -1855,6 +1882,7 @@ async function transports(check) {
     check('Done on an arrived run is final, with who rode it in the log', await until(() => run('Ambulance 1').status === 'done') && await until(() => eventText(base, 'Ambulance 1 done at Dell Seton Medical Center, 1 person in 1 record')) && !$(`#transports-page .tr-row[data-id="${amb.id}"] [data-action="tr-step"]`), logTexts()[0]);
     const e1 = await (async () => { try { await base.updateTransport(amb.id, { status: 'en_route' }); return null; } catch (e) { return e; } })();
     check('a done run stays done', !!e1 && /done stays done/.test(e1.message) && run('Ambulance 1').status === 'done', e1 && e1.message);
+    check('a done run comes off the map; the new run is on it, its pill on Unit 2\'s phone (it drives this one too)', await until(() => !mark('Ambulance 1') && !!mark('Van 4')) && $$('#map .tr-mark').length === 3 && mark('Van 4').classList.contains('veh') && mark('Van 4').classList.contains('st-loading'), $$('#map .tr-mark').map((m) => m.textContent).join());
     $('[data-action="close-transports"]').click();
 
     // ---- the gym card: the typed Expected line gave way to the runs coming here; a record is put on a run from its row

@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v70**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v71**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0038**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -45,7 +45,9 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 24 | v65 The People board: cards and a drawer, the bar, the Members tab (shipped 18 October) | medium | v64 | Priya, Marcus, the Safety Officer, the clerk, the newcomer at the post, the administrator |
 | 25 | v66 Went to and On which run as chips on the house record, and the base's arriving rows the same (shipped 18 October) | small | v65 | Ana, every crew, the desk, Marcus |
 | 26 | v67 A picture by its corners: aerial photography dragged into place by its four corners (ready on branch `imagery`, PR #1) | medium | v66 | Marcus, Dana, Civil Air Patrol and drone pictures, every phone's mini map |
+| 27 | v68 Need help now: what's wrong and what you need, two rows of chips on the emergency sheet (shipped 18 October) | small | v67 | Ana, Moreno, Marcus, every phone |
 | 28 | v69 Claim a band, submit licences, Operations confirms: the band as the door, credentials on the account, pending until confirmed (built 18 October) | medium, v55-sized | v68 | Rosa, the newcomer, Reyes, Marcus, Priya, the clerk |
+| 29 | v70 A transport on the map: every open run as a dashed line and a pill, the bus where the driver's phone is (shipped 18 October) | small | v69 | Marcus, his relief, the IC, the desk, a driver |
 
 ---
 
@@ -493,8 +495,6 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
   v64 (section 23).
 - **Placing aerial imagery by its corners** (`/try/mockups/imagery.html`): drag the picture to fit instead of typing four
   edges; a rectangle first (today's bounds), four free corners later.
-- **A transport on the map** (Todd, 18 October): a run shown on the map view, its pickup and destination and where the
-  bus is when the driver's phone reports. Not drawn yet.
 Walk first, then rank, as before.
 
 - **Verify the first real invitation email** (Marcus, Ana). The Edge Function is deployed but no email has been sent
@@ -988,6 +988,41 @@ rider), the mock (`SEED_VERSION` 34), the phone's `#s-claim`, `#s-licences` and 
 `credentials` smoke suite (31 checks); full run 830 of 830 across 40 suites on 18 October, rebased onto v68, at 1280 wide; check and test pass; 0037 applied
 from the main session on 18 October, and every rule test on the real database after it: 23 files, 409 of 409
 (`credentials.sql` 50 of 50).
+
+## 29. v70 A transport on the map
+
+**Why.** Todd, 18 October, of the transport board at v54: "For transports we should make it easy to expose a transport on
+the map view." A run was a row on the board and a line on the shelter card; the map, which is what Operations watches,
+showed nothing of it: not where the bus was, not where it was going.
+
+**Built.** Every open run (planned, loading, en route or arrived; done and withdrawn come off) is drawn on the base's
+map: a dashed line from the pickup to the destination, a white dot at the pickup (the facility's spot or the division's
+centroid; a pickup typed in words has no point), a ring around the destination's facility mark, and the run's label as a
+pill, "Bus 2", on the driver's phone while its last position is fresher than five minutes (the division hover card's
+rule), with a tail down to the unit's dot. With no fresh position the pill sits midway along the route with a dashed
+edge, and a run with no pickup point draws its line from the vehicle. The colour is the state: planned grey, loading
+purple, en route blue, arrived green, late orange. Hover gives the board's line ("Bus 2 · Pecan Park pickup → High
+school gym · left 17:05 · expected 17:30 · 4 of 40 · Unit 2's phone 17:40"). A click on the pill, the line or either end
+opens the board on that run. Show on map, on the board's rows and the home panel's runs, closes the board, brings the
+run into view and lights it (a ring on the pill, a heavier line) until Escape, a click on blank map or another Show. The
+legend has a Transport run entry. Replay takes the runs off with the live units and Close puts them back. The phone's
+mini map is unchanged.
+
+*Decided:* no migration: the pickup, the destination and the vehicle come from `ic_transports`, `ic_facilities`,
+`ic_zones` and `ic_positions` as they are, so the bus is where the driver's phone is, and a driver not in the app (a name
+and a phone) has no pill on the vehicle, only on the route; the label is drawn even without a vehicle, so a planned run
+is findable on the map; the pill sits above the unit's dot (the same phone) with a tail, not beside it; loading is
+purple, not the board's orange tint, because orange means late on the map; a done run comes off, since the board and the
+214 keep it. Not built: a pickup clicked as a point on the map (section 15, from v54), the run on the phone's mini
+map, a trail behind the bus.
+
+**Shipped** 18 October 2026 as `A transport on the map (v70)`: `mapRuns` / `runState` / `runGeometry` / `RUN_FRESH_MS`
+in rules.js (`dev/test-rules.mjs`); `data.mapRuns()` / `data.runOnMap(t)`; `renderRuns`, `fitRun`, `RUN_COLOR` and the
+`runs` layer in js/base/map.js (`setReplay` clears it); `onTransport`, the `tr-show` action, `state.runLit`, Escape and
+the blank click in js/base/main.js; `runShowBtn` on the board's rows and the home panel's `.tr-home` rows in
+js/base/ui.js; `.tr-mark` / `.tr-line` / `.sw.run` / `.tr-home` in base.css; the legend entry in index.html; the mock
+gives Bus 2 Unit 2 as its driver, so its phone is the bus (`SEED_VERSION` 35); the `transports` smoke suite gains 11
+checks (45). Full run 838 of 838 across 40 suites; check and test pass; no migration.
 
 ## Done before this list
 

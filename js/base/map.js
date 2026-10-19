@@ -1,7 +1,7 @@
 // The base map: Leaflet over OpenStreetMap tiles, with the incident boundary, the zones and their
 // labels, each unit's position and heading, photo pins with the wedge of what they face, hazard
 // marks, and a click-to-outline drawing mode for the boundary and new zones.
-import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyLabel, sampleAt, samplesBefore } from '../shared/rules.js';
+import { ringToLatLngs, latLngsToPolygon, centroid, PHOTO_WEDGE, unitLabel, facilityKind, facilityLabel, urgencyLabel, sampleAt, samplesBefore, transportLabel, runLine, hhmm } from '../shared/rules.js';
 import { layerDef, storedLayer, storeLayer, makeBaseLayer, makeOverlay, hiddenOverlays } from '../shared/layers.js';
 
 const STALE_MS = 3 * 60 * 1000;   // a unit that has not reported for this long is drawn grey
@@ -15,6 +15,8 @@ const ZONE_STYLE = {
   cleared: { color: '#1F6B42', weight: 2, fillColor: '#2E8B57', fillOpacity: 0.42, dashArray: null }
 };
 const STRUCTURE_COLOR = { searched: '#2E8B57', in_progress: '#D9822B', not_searched: '#8F8B82' };
+// a run's colour by state (v70): planned grey, loading purple, en route blue, arrived green, late orange (the pill's CSS says the same)
+const RUN_COLOR = { planned: '#8F8B82', loading: '#6B5DBF', en_route: '#2F6FB3', arrived: '#2E8B57', late: '#D9822B' };
 
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -45,7 +47,7 @@ export class BaseMap {
     this.placingId = null;            // a saved picture being adjusted (v67): drawn by the placing handles, not here
     this.setBaseLayer(storedLayer() || 'streets');
     this.layers = {};
-    for (const name of ['boundary', 'zones', 'structures', 'trails', 'hazards', 'facilities', 'messages', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
+    for (const name of ['boundary', 'zones', 'structures', 'trails', 'runs', 'hazards', 'facilities', 'messages', 'photos', 'labels', 'units', 'replay', 'draft']) this.layers[name] = L.layerGroup().addTo(this.map);
     this.replay = null;   // samples by unit while the base is replaying, else null
     this.unitMarkers = new Map();
     this.trails = new Map();
@@ -109,6 +111,13 @@ export class BaseMap {
     if (pts.length) this.map.fitBounds(L.latLngBounds(pts), { padding: [30, 30] });
   }
   panTo(lat, lng) { if (lat != null && lng != null) this.map.panTo([lat, lng]); }
+  // Show on map on a run (v70): the whole run in view, or the one point it has
+  fitRun(points) {
+    const pts = (points || []).filter(Boolean);
+    if (!pts.length) return;
+    if (pts.length === 1) this.map.panTo(pts[0]);
+    else this.map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 16 });
+  }
   invalidate() { setTimeout(() => this.map.invalidateSize(), 50); }
 
   // ---- drawing
@@ -205,10 +214,40 @@ export class BaseMap {
       m.on('click', (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onHazard && this.cb.onHazard(h.id); });
     }
 
+    this.renderRuns(data, state);
     this.renderPhotos(data, state);
     this.renderMessages(data);
     if (this.replay) this.renderReplayUnits(data, state);
     else this.renderUnits(data, state);
+  }
+
+  // the runs (v70): every open run as a dashed line from the pickup to the destination (from the vehicle when the pickup
+  // has no point), a dot at the pickup, a ring at the destination, and the run's label as a pill on the driver's phone
+  // while its position is fresh (veh, with a tail), else on the route (route, dashed). The colour is the state; the run
+  // Show on map lit stands out. A click on any of it opens the board on the run. While replaying, the runs come off.
+  renderRuns(data, state) {
+    const g = this.layers.runs;
+    g.clearLayers();
+    if (this.replay || !data.mapRuns) return;
+    const ev = data.evacuees();
+    const opts = { facilityOf: (id) => data.facility(id), zoneOf: (id) => data.zone(id) };
+    for (const t of data.mapRuns()) {
+      const geo = data.runOnMap(t);
+      if (!geo.label) continue;   // no destination on the map yet: nothing to draw
+      const lit = state.runLit === t.id;
+      const color = RUN_COLOR[geo.state] || RUN_COLOR.planned;
+      const words = runLine(t, ev, opts) + (geo.vehicle ? ` · ${unitLabel(data.member(t.driver_user_id))}'s phone ${hhmm(geo.vehicleAt)}` : '');
+      const open = (e) => { if (this.mode) return; L.DomEvent.stopPropagation(e); this.cb.onTransport && this.cb.onTransport(t.id); };
+      const paths = [];
+      if (geo.line) paths.push(L.polyline(geo.line, { color, weight: lit ? 5 : 3, opacity: lit ? 1 : 0.8, dashArray: '8 6', className: 'tr-line' + (lit ? ' lit' : '') }));
+      if (geo.from) paths.push(L.circleMarker(geo.from, { radius: lit ? 7 : 5, color, weight: 2, fillColor: '#fff', fillOpacity: 1, className: 'tr-end' }));
+      if (geo.to) paths.push(L.circleMarker(geo.to, { radius: lit ? 18 : 15, color, weight: lit ? 3 : 2, fill: false, className: 'tr-end' }));
+      for (const p of paths) { p.addTo(g); p.bindTooltip(words, { direction: 'top', sticky: true }); p.on('click', open); }
+      const cls = ['tr-mark', 'st-' + geo.state, geo.vehicle ? 'veh' : 'route'];
+      if (lit) cls.push('lit');
+      const m = L.marker(geo.label, { icon: icon(`<span class="${cls.join(' ')}" data-run="${t.id}" title="${esc(words)}">${esc(transportLabel(t))}</span>`), keyboard: false, zIndexOffset: 900 }).addTo(g);
+      m.on('click', open);
+    }
   }
 
   // a message from the field that carries a spot: a bubble at the spot, coloured by how urgent
@@ -248,6 +287,7 @@ export class BaseMap {
       for (const m of this.unitMarkers.values()) this.layers.units.removeLayer(m);
       this.unitMarkers.clear();
       this.layers.trails.clearLayers();
+      this.layers.runs.clearLayers();   // v70: the runs come off with the live units
     }
   }
   // what changes from one moment to the next: the photos taken by then and where the units were

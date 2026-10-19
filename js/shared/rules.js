@@ -797,6 +797,29 @@ export function transportsLine(transports, evacuees) {
   return `Transports: ${under.length} under way with ${inTransit} ${inTransit === 1 ? 'person' : 'people'} in transit, ${n('planned')} planned, ${n('arrived')} arrived, ${n('done')} done`;
 }
 
+// ---- a run on the map (v70): what the base draws for every open run (planned, loading, en route or arrived; done
+// and withdrawn come off). The pickup is the facility's spot, else the division's centroid, else nothing (words alone
+// have no point); the destination is its facility; the vehicle is the driver's phone's last position while it is
+// fresher than RUN_FRESH_MS (the division hover card's rule for "in it now"). The line runs pickup to destination, or
+// vehicle to destination when the pickup has no point; the label sits on the vehicle, else midway along the line,
+// else on the destination. The state is the status, or late (transportLate).
+export const RUN_FRESH_MS = 5 * 60 * 1000;
+export function mapRuns(transports) { return transports.filter((t) => !t.archived_at && t.status !== 'done'); }
+export function runState(t, now = Date.now()) { return transportLate(t, now) ? 'late' : t.status; }
+export function runGeometry(t, { facilityOf, zoneOf, positionOf, now = Date.now() } = {}) {
+  const ff = t.from_facility_id && facilityOf ? facilityOf(t.from_facility_id) : null;
+  const fz = !ff && t.from_zone_id && zoneOf ? zoneOf(t.from_zone_id) : null;
+  const from = ff && ff.lat != null ? [ff.lat, ff.lng] : fz && fz.polygon ? centroid(fz.polygon) : null;
+  const tf = t.to_facility_id && facilityOf ? facilityOf(t.to_facility_id) : null;
+  const to = tf && tf.lat != null ? [tf.lat, tf.lng] : null;
+  const pos = t.driver_user_id && positionOf ? positionOf(t.driver_user_id) : null;
+  const fresh = !!pos && pos.lat != null && now - new Date(pos.at).getTime() <= RUN_FRESH_MS;
+  const vehicle = fresh ? [pos.lat, pos.lng] : null;
+  const line = from && to ? [from, to] : vehicle && to ? [vehicle, to] : null;
+  const label = vehicle || (line ? [(line[0][0] + line[1][0]) / 2, (line[0][1] + line[1][1]) / 2] : to);
+  return { from, to, vehicle, vehicleAt: fresh ? pos.at : null, line, label, state: runState(t, now) };
+}
+
 // ---- people and tags, phase 1 (v55): a band is an id (ic_tags: a number printed on it, a code in the QR, no name),
 // given to a responder or a sheltered person by scanning it; a scan is a seen record (ic_seen: what it meant, where,
 // when, by whom). Last seen is a record, never "is at". The words are ic_band_label / ic_seen_words in SQL.

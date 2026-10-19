@@ -14,7 +14,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 34;
+  const SEED_VERSION = 35;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -211,10 +211,11 @@
       ],
       // people sheltered and moved: three records signed in at the gym by Operations before a desk was there,
       // a family Unit 3 sent from 112 Pecan Ln that is still on its way, and a woman it sent to hospital
-      // the transport board (v54): Bus 2 on its way to the gym with the family of 4 Unit 3 put on it, the ambulance that
+      // the transport board (v54): Bus 2 on its way to the gym with the family of 4 Unit 3 put on it (Unit 2 drives it, so its
+      // phone's position is the bus on the base's map, v70), the ambulance that
       // took Maria Alvarez to Dell Seton (arrived), and Bus 3 planned from Riverside Drive with nobody on it yet
       ic_transports: [
-        { id: TR[0], incident_id: INC, kind: 'bus', label: 'Bus 2', from_facility_id: null, from_zone_id: null, from_text: 'Pecan Park pickup', to_facility_id: FAC[2], capacity: 40, leaves_at: ago(12), expected_at: ago(-13), status: 'en_route', status_at: ago(12), left_at: ago(12), arrived_at: null, driver_user_id: null, driver_text: 'Travis ISD, 512 555 0177', notes: '', created_by: U.ops, created_at: ago(46), updated_at: ago(12), archived_at: null },
+        { id: TR[0], incident_id: INC, kind: 'bus', label: 'Bus 2', from_facility_id: null, from_zone_id: null, from_text: 'Pecan Park pickup', to_facility_id: FAC[2], capacity: 40, leaves_at: ago(12), expected_at: ago(-13), status: 'en_route', status_at: ago(12), left_at: ago(12), arrived_at: null, driver_user_id: U.unit2, driver_text: '', notes: '', created_by: U.ops, created_at: ago(46), updated_at: ago(12), archived_at: null },
         { id: TR[1], incident_id: INC, kind: 'ambulance', label: 'Ambulance 1', from_facility_id: null, from_zone_id: Z['A-2'], from_text: '', to_facility_id: FAC[3], capacity: 2, leaves_at: ago(13), expected_at: ago(0), status: 'arrived', status_at: ago(6), left_at: ago(13), arrived_at: ago(6), driver_user_id: null, driver_text: 'Travis County EMS, 512 555 0100', notes: '', created_by: U.ops, created_at: ago(16), updated_at: ago(6), archived_at: null },
         { id: TR[2], incident_id: INC, kind: 'bus', label: 'Bus 3', from_facility_id: null, from_zone_id: Z['A-1'], from_text: '', to_facility_id: FAC[2], capacity: 40, leaves_at: ago(-40), expected_at: ago(-65), status: 'planned', status_at: ago(10), left_at: null, arrived_at: null, driver_user_id: null, driver_text: '', notes: '', created_by: U.ops, created_at: ago(10), updated_at: ago(10), archived_at: null }
       ],
@@ -324,7 +325,7 @@
     ev(40, U.ops, 'shelter', 'High school gym: Operations signed in Nguyen, Tam, from 118 Pecan Ln, needs oxygen', 'ic_evacuees', EV[2]);
     ev(14, U.unit3, 'shelter', 'Unit 3 sent family of 4 from 112 Pecan Ln to High school gym on Bus 2, needs pets', 'ic_evacuees', EV[0]);
     ev(14, U.unit3, 'shelter', 'Unit 3 sent Maria Alvarez, 78 from 112 Pecan Ln to Dell Seton Medical Center on Ambulance 1, needs oxygen', 'ic_evacuees', EV[1]);
-    ev(46, U.ops, 'transport', 'Bus 2 planned by Operations: Pecan Park pickup to High school gym, 40 seats, driver Travis ISD, 512 555 0177', 'ic_transports', TR[0]);
+    ev(46, U.ops, 'transport', 'Bus 2 planned by Operations: Pecan Park pickup to High school gym, 40 seats, driver Unit 2', 'ic_transports', TR[0]);
     ev(20, U.ops, 'transport', 'Bus 2 loading at Pecan Park pickup for High school gym', 'ic_transports', TR[0]);
     ev(12, U.ops, 'transport', 'Bus 2 left Pecan Park pickup for High school gym with 4 people in 1 record', 'ic_transports', TR[0]);
     ev(16, U.ops, 'transport', 'Ambulance 1 planned by Operations: A-2 Pecan Park to Dell Seton Medical Center, 2 seats, driver Travis County EMS, 512 555 0100', 'ic_transports', TR[1]);

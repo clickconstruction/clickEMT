@@ -982,6 +982,8 @@ const trFrom = (data, t) => transportFrom(t, { facilityOf: facilityOf(data), zon
 const trTo = (data, t) => { const f = data.facility(t.to_facility_id); return f ? (f.name || facilityKind(f.kind)[1]) : 'a facility'; };
 function trDriver(data, t) { return t.driver_user_id ? unitLabel(data.member(t.driver_user_id)) : t.driver_text || 'driver not named'; }
 function runBadge(t) { return `<span class="badge tr-${esc(t.status)}">${TRANSPORT_STATUS[t.status] || t.status}</span>`; }
+// Show on map (v70): the run lit on the map and brought into view; a done or withdrawn run is not on the map
+function runShowBtn(t) { return t.archived_at || t.status === 'done' ? '' : `<button class="btn sm" data-action="tr-show" data-id="${t.id}" title="Light this run on the map and bring it into view">Show on map</button>`; }
 // the next step as one button: Loading, Leaving, Arrived, Done
 function runStepBtn(t, cls = 'btn sm') { const n = transportNext(t.status); return n && !t.archived_at ? `<button class="${cls}" data-action="tr-step" data-id="${t.id}" data-status="${n[0]}">${n[1]}</button>` : ''; }
 // the runs a record on its way to this facility can be put on, as cards (v66): Not on a run first, then each run
@@ -1007,7 +1009,7 @@ export function transportsHtml(data) {
   return `
     <div class="d-row" style="margin-top:6px"><span class="k" style="width:auto;flex:1">Transports</span><button class="btn sm" data-action="transports">Open the board</button><button class="btn sm" data-action="tr-new">New run</button></div>
     <div class="muted" style="font-size:12.5px">${esc(transportsLine(live, ev))}</div>
-    ${shown.map((t) => { const b = transportOnBoard(ev, t); return `<button class="ur" data-action="transports" data-id="${t.id}"><span class="ur-main"><span class="ur-name">${esc(transportLabel(t))} · ${esc(trFrom(data, t))} → ${esc(trTo(data, t))}</span><span class="ur-sub">${esc(TRANSPORT_STATUS[t.status])} · ${esc(transportTimes(t))} · ${esc(capacityText(b.people, t.capacity))} aboard${transportLate(t) ? ' · <span class="tr-late">late</span>' : ''}</span></span></button>`; }).join('')}
+    ${shown.map((t) => { const b = transportOnBoard(ev, t); return `<div class="tr-home"><button class="ur" data-action="transports" data-id="${t.id}"><span class="ur-main"><span class="ur-name">${esc(transportLabel(t))} · ${esc(trFrom(data, t))} → ${esc(trTo(data, t))}</span><span class="ur-sub">${esc(TRANSPORT_STATUS[t.status])} · ${esc(transportTimes(t))} · ${esc(capacityText(b.people, t.capacity))} aboard${transportLate(t) ? ' · <span class="tr-late">late</span>' : ''}</span></span></button>${runShowBtn(t)}</div>`; }).join('')}
     ${!live.length ? '<div class="muted" style="font-size:12.5px">None yet. New run plans a bus, a van, an ambulance or a boat run from a pickup to a shelter or a hospital; crews put their people on it from the house record, and the desk sees the whole run coming.</div>' : ''}`;
 }
 // hh:mm typed on the form, as the next such moment: today, or tomorrow when it is well past
@@ -1070,7 +1072,7 @@ export function transportsPageHtml(data, state) {
       <span class="tr-aboard"><strong>${esc(capacityText(b.people, t.capacity))}</strong><span class="muted">${b.on.length ? b.on.length + (b.on.length === 1 ? ' record' : ' records') + (b.signedIn.length ? ', ' + b.signedInPeople + ' signed in' : '') : 'nobody listed'}</span></span>
       <span class="tr-times">${esc(transportTimes(t))}${late ? ' <span class="tr-late">late</span>' : ''}</span>
       ${runBadge(t)}
-      <span class="tr-btns">${t.archived_at ? `<button class="btn sm" data-action="tr-restore" data-id="${t.id}">Put back</button>` : runStepBtn(t) + `<button class="btn sm" data-action="tr-edit" data-id="${t.id}">Edit</button>`}<button class="btn sm" data-action="tr-open" data-id="${t.id}" aria-expanded="${open}">${open ? 'Hide' : 'Who is on it'}</button></span>
+      <span class="tr-btns">${t.archived_at ? `<button class="btn sm" data-action="tr-restore" data-id="${t.id}">Put back</button>` : runStepBtn(t) + `<button class="btn sm" data-action="tr-edit" data-id="${t.id}">Edit</button>`}${runShowBtn(t)}<button class="btn sm" data-action="tr-open" data-id="${t.id}" aria-expanded="${open}">${open ? 'Hide' : 'Who is on it'}</button></span>
       ${open ? `<div class="tr-on">${b.on.length ? b.on.map((e) => `<div class="tr-on-row"><span><strong>${esc(evacueeWho(e))}</strong>${evFrom(data, e) ? ' · from ' + esc(evFrom(data, e)) : ''}${e.needs.length ? ' · ' + esc(needsText(e.needs)) : ''}${e.note ? ` · <span class="muted">${esc(e.note)}</span>` : ''}</span><span class="muted">${esc(evacueeWhere(e, facilityOf(data)))}</span>${!t.archived_at && !b.signedIn.includes(e) ? `<button class="btn sm" data-action="tr-take-off" data-id="${e.id}" title="Off this run; the record stays where it says">Take off</button>` : ''}</div>`).join('') : '<div class="muted" style="font-size:12.5px">Nobody on it yet. A crew puts its people on from the house record; Operations from the shelter card\'s arriving rows.</div>'}</div>` : ''}
     </div>`;
   };

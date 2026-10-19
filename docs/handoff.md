@@ -2,7 +2,7 @@
 
 For whoever picks up clickEMT next. This says where things stand, how to get it running, how a change is shipped,
 and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026, brought
-up to date on 18 October 2026 at v69.
+up to date on 18 October 2026 at v70.
 
 ## What it is
 
@@ -23,7 +23,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v69**, "Claim a band, submit licences, Operations confirms" (after v68, Need help now with what's wrong and what you need). The service worker reads `v69`.
+- `main` is at **v70**, "A transport on the map" (after v69, Claim a band, submit licences, Operations confirms, and v68, Need help now with what's wrong and what you need). The service worker reads `v70`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0034` in
   `supabase/migrations/` are all applied, and so are `0035_overlay_corners.sql` (v67), `0036_alert_words.sql` (v68) and `0037_credentials.sql` (v69), all on 18 October. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
@@ -49,12 +49,12 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   that 0032 and 0033 had lost; v58 is Show me around, a label over each part of the base on a device's first open; v59 moved the header's
   pills to the end of the buttons row and made the clock swap between local and UTC; v60 took eight marks from Todd's
   walk of the base (shorter labels, the codes behind the pill, the connection's card, the head count, the drawing
-  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section; v62 made every confirmation a dialog of the app's own and gave a band's link on a signed-out phone its door; v63 gave Replay a time you name, every range starting at the first position, and a speed in words; v64 put the pages in windows over the dimmed map, with Expand to full screen; v65 redrew the People board as cards and a drawer, with the tabs first in its bar and the Members tab as two groups; v66 made the house record's Went to and On which run chip rows, with the base's arriving rows the same; v68 gave Need help now two rows of chips, what's wrong and what you need.; v69 made a band the door (scan it, say who you are, It's mine), put credentials on the account, pending until Operations confirms them from the queue, and the chips, the 211 and the 214 follow. v49 was the front door's redesign. Each release has its section
-  in [punchlist.md](punchlist.md) (1 to 14, 16 to 25, 27, 28) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section; v62 made every confirmation a dialog of the app's own and gave a band's link on a signed-out phone its door; v63 gave Replay a time you name, every range starting at the first position, and a speed in words; v64 put the pages in windows over the dimmed map, with Expand to full screen; v65 redrew the People board as cards and a drawer, with the tabs first in its bar and the Members tab as two groups; v66 made the house record's Went to and On which run chip rows, with the base's arriving rows the same; v68 gave Need help now two rows of chips, what's wrong and what you need.; v69 made a band the door (scan it, say who you are, It's mine), put credentials on the account, pending until Operations confirms them from the queue, and the chips, the 211 and the 214 follow; v70 drew every open run on the base's map, the bus where the driver's phone is. v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14, 16 to 25, 27 to 29) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
 - **Open, not yet ranked: the rest of Todd's walk.** Todd walked the base at v59 on 18 October and kept marking
   things; v60 took eight, v61 the units section, v62 the confirmations and the band door, v63 the Replay bar, v64 the pages as windows, v65 the People board, v66 the house record's two drop-downs and v68 the chips on Need help now (what's wrong, what you need). The rest are in punchlist section 15 ("From Todd's walk at v59"),
   most with a mock-up: Replay's time picker, imagery placed
-  by its corners, a transport on the map, the 211 as a table. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
+  by its corners (v67), a transport on the map (v70), the 211 as a table. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
   "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on
   the hardware Grace chooses.
 - **Not yet seen working for real:** the first real invitation email. The Edge Function `invite` is deployed and

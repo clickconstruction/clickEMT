@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials, mapRuns, runGeometry } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen', 'ic_invites'];
 const BUCKET = 'ic-photos';
@@ -358,6 +358,9 @@ export class Data {
   }
   // the runs this account drives or is in charge of, not done: the phone's run card
   myRuns() { return this.user ? this.transports().filter((t) => t.driver_user_id === this.user.id && t.status !== 'done') : []; }
+  // the runs the base draws (v70): every open run, and a run's points (the pickup, the destination, the driver's phone while fresh)
+  mapRuns() { return mapRuns(this.transports()); }
+  runOnMap(t) { return runGeometry(t, { facilityOf: (id) => this.facility(id), zoneOf: (id) => this.zone(id), positionOf: (id) => this.position(id) }); }
   // put a record on a run (or take it off with null): the database moves it to the run's destination
   async putOnTransport(evacueeId, transportId) { return this.updateEvacuee(evacueeId, { transport_id: transportId || null }); }
   // ---- people and tags (v55): bands (ic_tags) and scans (ic_seen). A band is printed by Operations in sheets

@@ -283,6 +283,18 @@ html.page-open .menu, html.page-open .pop, html.page-open .find-pop { z-index: 1
 .umark.stale .udot { background: var(--grey); } .umark.stale .upulse { display: none; } .umark.stale .uhead::before { border-bottom-color: var(--grey); }
 .umark.sos .udot { background: var(--danger); } .umark.sos .uhead::before { border-bottom-color: var(--danger); } .umark.sos .upulse { background: var(--danger); animation-duration: .9s; }
 .umark.sel .udot { border-color: var(--ink); border-width: 3px; }
+/* a run on the map (v70): the label as a pill, on the driver's phone (veh, a tail down to the dot) or on the route (route,
+   dashed), coloured by state; the run lit by Show on map gets a ring; the ends and the line take the same colour in map.js */
+.tr-mark { --run: #8F8B82; position: absolute; left: 0; top: 0; transform: translate(-50%, -100%) translateY(-22px); display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--run); color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); white-space: nowrap; cursor: pointer; }
+.tr-mark.veh::after { content: ''; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--run); filter: drop-shadow(0 1px 1px rgba(0,0,0,.3)); }
+.tr-mark.route { transform: translate(-50%, -50%); border-style: dashed; }
+.tr-mark.st-loading { --run: #6B5DBF; } .tr-mark.st-en_route { --run: #2F6FB3; } .tr-mark.st-arrived { --run: #2E8B57; } .tr-mark.st-late { --run: #D9822B; color: #1B1B18; }
+.tr-mark.lit { box-shadow: 0 0 0 3px var(--accent), 0 1px 3px rgba(0,0,0,.4); }
+.tr-line.lit { filter: drop-shadow(0 0 3px rgba(0,0,0,.45)); }
+.map.drawing .tr-mark { pointer-events: none; }
+.sw.run { border-style: dashed; border-color: #2F6FB3; background: var(--control-bg); }
+.tr-home { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line-soft); }
+.tr-home .ur { border-bottom: 0; flex: 1; min-width: 0; } .tr-home .btn { flex: none; }
 .trail { fill: var(--accent); fill-opacity: .35; stroke: none; }
 /* replay: the units as they were, faded, with a breadcrumb of the last quarter hour */
 .umark.ghost .udot { background: #fff; border: 2.5px solid var(--accent); }

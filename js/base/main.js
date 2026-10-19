@@ -9,6 +9,7 @@ import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey, runsShown, setRunsShown } from '../shared/layers.js';
 import { incidentLine } from '../shared/rules.js';   // the incident line (v76)
 import { INCIDENT_KINDS, incidentKindText, starterFor, starterSummary } from '../shared/rules.js';   // incident kinds and starter periods (v77)
+import { setClockUtc } from '../shared/rules.js';   // every time in UTC (v81)
 import { placesReady, newSessionToken, suggest, placeLocation, searchPlace } from '../shared/places.js';   // the centre by address (v78)
 import { incidentPopHtml } from './ui.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
@@ -1165,7 +1166,7 @@ async function downloadPublic(btn) {
     const blob = new Blob([zip(files)], { type: 'application/zip' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${inc.code}-public-set-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${hhmm(now).replace(':', '')}.zip`;
+    a.download = `${inc.code}-public-set-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0')}.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast(missed.length ? `${files.length - 1} saved with captions; ${missed.length} could not be fetched (listed in captions.txt)` : `${files.length - 1} photo${files.length === 2 ? '' : 's'} saved with captions` + (waiting.length ? `; ${waiting.length} cleared but not checked, listed as missing` : ''), !!missed.length);
@@ -1326,7 +1327,7 @@ document.addEventListener('click', async (e) => {
       case 'ops-show': state.opsShown = !state.opsShown; drawCodes(); queueDraw(); break;   // v60; v80: the home panel carries the card too on a fresh incident
       case 'live': state.liveOpen = !state.liveOpen; state.codesOpen = false; drawLivePop(); drawCodes(); break;   // v60
       case 'reconnect': state.liveOpen = false; drawLivePop(); toast('Reconnecting…'); await openIncident(data.incident.id); break;   // v60
-      case 'clock': clockUtcOn = !clockUtcOn; try { localStorage.setItem(CLOCK_KEY, clockUtcOn ? 'utc' : 'local'); } catch (err) { /* storage blocked */ } drawClock(); break;   // v59
+      case 'clock': clockUtcOn = !clockUtcOn; setClockUtc(clockUtcOn); try { localStorage.setItem(CLOCK_KEY, clockUtcOn ? 'utc' : 'local'); } catch (err) { /* storage blocked */ } drawClock(); queueDraw(); toast(clockUtcOn ? 'Every time on this screen is UTC now' : 'Every time on this screen is local again' + (zoneShort() ? ' (' + zoneShort() + ')' : '')); break;   // v59; v81: every time follows
       case 'log-toggle': if (LOG_ONLY) break; state.log.open = !state.log.open; if (state.log.open) markLogSeen(); saveLogPrefs(); drawLog(); map.invalidate(); break;
       case 'log-group': state.log.group = btn.dataset.group || 'all'; saveLogPrefs(); drawLog(); break;
       case 'log-since-seen': markSince(); if (state.log.group === 'new') state.log.group = 'all'; saveLogPrefs(); drawLog(); break;
@@ -1884,10 +1885,12 @@ $('.side').addEventListener('scroll', hideZoneHover, { passive: true });
 // the forms stay local, as ICS has them.
 const CLOCK_KEY = 'ic.base.clock';
 let clockUtcOn = (() => { try { return localStorage.getItem(CLOCK_KEY) === 'utc'; } catch (e) { return false; } })();
+setClockUtc(clockUtcOn);   // v81: every time on this screen follows the clock
 function drawClock() {
   const now = new Date(), el = $('#clock'), z = zoneShort(now);
   el.textContent = clockUtcOn ? hhmmUtc(now) + ' UTC' : (hhmm(now) + ' ' + z).trim();
-  el.title = clockUtcOn ? 'UTC. Click for the local time; the log and the forms stay local.' : 'Local time' + (z ? ' (' + z + ')' : '') + '. Click for UTC.';
+  el.title = clockUtcOn ? 'UTC, every time on this screen. Click for the local time.' : 'Local time' + (z ? ' (' + z + ')' : '') + ', every time on this screen. Click for UTC.';
+  const pick = $('#replay-pick b'); if (pick) pick.textContent = 'Pick a time' + (clockUtcOn ? ' (local)' : '');
 }
 setInterval(() => {
   drawClock();

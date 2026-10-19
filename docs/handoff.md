@@ -451,8 +451,7 @@ recommended and no migration),
 `leftovers.html` (the four leftovers of the walk at v59 in punchlist section 15: the header row grouped as a labelled row,
 a new incident starting emptier with the codes first, every time in UTC on the clock's click, and the front door's
 pictures re-shot from headless Chrome; drawn 19 October at v76; the header and the emptier start built as v80, every
-decision as recommended; every time in UTC and the pictures, by `dev/front-shots.py`, built as v81 on branch
-`leftovers`, not landed).
+decision as recommended; every time in UTC and the pictures, by `dev/front-shots.py`, built as v81).
 
 The larger features before that were designed as mock-up canvases on claude.ai, private to Grace's account; ask her
 to share any you need. The punchlist repeats every decision that matters, so you can work without them.

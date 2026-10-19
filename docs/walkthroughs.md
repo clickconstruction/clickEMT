@@ -1719,6 +1719,31 @@ the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words 
 - **At the base's phone width** the card takes the screen's width under the header and its rows stack.
 
 
+## Re-walk after v81
+
+Every time in UTC, and the front door's pictures: a mutual-aid clerk on Zulu time at the base, the Documentation Unit
+printing the 214 at the change of period, Marcus pressing the clock by mistake, a crew on its phone, and a visitor on
+the front door, walked on 2026-10-19 in the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the
+words through the `seeded` suite's v81 checks and the rules tests, and the five pictures looked at after the shoot.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The click | the clerk on Zulu time | The clock reads 16:58 UTC, and with it the log's newest line reads 16:53Z, the line under the name "Period 1 · to 00:00Z · 3 units · …", the Period sheet's hours and the briefing's bar the same; one toast, "Every time on this screen is UTC now". The hover text on the clock says the whole screen follows. | Clear |
+| The hour lines | the clerk | "16:00 to 16:59" over the UTC lines. Past midnight the hour line carries the day once, where it changes ("20 Oct · 00:00 to 00:59"); the mock's morning did not cross midnight in either clock, so that was seen in the code and the mock-up page, not on the base. | Clear; the day line not seen |
+| Print 214 | the Documentation Unit | "Prepared by Operations, 19 Oct 2026 16:58Z" and "Times UTC (Z)" in the head; every entry with its Z. Back in local: "Prepared by Operations, 19 Oct 2026 11:59", "Times local, CDT", bare times. | Clear |
+| The other forms | the Documentation Unit | The IAP, the 207, the 209, the briefing, a 204, the 211 and the join card, opened one by one in each clock: every head says "Times UTC (Z)" or "Times local, CDT", beside Prepared where the form has one. | Clear |
+| By mistake | Marcus | The toast says what happened; a second click puts it back, "Every time on this screen is local again (CDT)". The planned end's box reads "Planned end (local)" while UTC is on, so nobody types a UTC hour into it. | Clear |
+| The phone | a crew | Nothing changed: the phone's times are its wrist's. | Clear |
+| The front door | a visitor | The base with the incident line and its card open, the bus on its dashed run, the grouped row; the codes' card with the QR under "prints the join card"; the IAP as a window with A-1's 204 and its map; the phone's home and its head count. | Clear |
+| Dark | the clerk | The Z is the same mono as the time; not looked at in dark this walk. | Not seen |
+
+**Still bites, small:**
+
+- **A log that crosses the day in local time** now gets its date on the hour line too, which it never had; a long incident's log is the better for it.
+- **"5 min ago" and the connection card's "live since"** have no zone and read the same in either clock.
+- **The Hours page** follows the screen while its CSV is UTC by itself; the two agree only with UTC on.
+- **The pictures are the mock at the hour they were shot**: the clock in the corner reads that hour, and the period's planned end, 19:00, reads overdue on a shot after it.
+
 ## Re-walk after v80
 
 The header in four groups, and a quieter first minute: Marcus reading the base's row all day, his relief on a

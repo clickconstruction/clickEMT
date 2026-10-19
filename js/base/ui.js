@@ -8,6 +8,7 @@ import { licenceExpired, licenceTail } from '../shared/licence.js';
 import { hoursRows, hoursTotals, hoursCsv } from '../shared/hours.js';
 import { hazardWords, alertWords, sortHazards, sceneStart, stintText, revisitWords, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, hazardUrgent, whenText, dateText, periodLine, periodState, overdueText, compass, hhmm, ago, pct, unitLabel, unitWithKind, kindText, unitKind, unitsForRequest, kindsAsked, commandLines, centroid, zoneStatusText, latLngText, zoneAt, periodLabel, structureSummary, waterText, facilityKind, facilityLabel, commandText, agenciesOn, agencyLine, urgencyLabel, REQUEST_KINDS, REQUEST_STATUS, requestLine, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, qualLabel, qualsText, personOn, onSceneText, crewNames, peopleMatch, STATUS_LABEL, OOS_REASONS, STRUCTURE_STATUS, OCCUPANTS, WATER, DAMAGE, FACILITY_KINDS, QUALIFICATIONS, UNIT_KINDS, identityGiven, NO_ID_TEXT, NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, needsText, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, placeWordsOf, profileReady, waterState, unitsInWater, rotationText, durationText, parAnswerText, HEAD_COUNT_UNKNOWN, TRANSPORT_KINDS, TRANSPORT_STATUS, transportNext, transportLabel, transportKindText, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, sortTransports, runsTo, runCard, foldRuns, transportsLine, bandLabel, bandNumber, bandUrl, tagOf, lastSeen, lastSeenText, seenStale, seenWords, inviteState, INVITE_STATE } from '../shared/rules.js';
 import { incidentKindText, starterFor, placeFirst, expectedUnits, kindOptions } from '../shared/rules.js';   // incident kinds and starter periods (v77)
+import { hourOf, timesLine, clockUtcOn } from '../shared/rules.js';   // every time in UTC (v81)
 import { orgTree, orgLines, deputyAdvice, agencyReps, agencyRepLines, hurtText, deploymentLines, whoToAsk, onSceneLine, SPAN_MAX } from '../shared/briefings.js';
 import { personQuals, qualChipText, qualsTextWith, credentialLabel, credentialExpired, credentialText } from '../shared/rules.js';   // claim a band, submit licences, Operations confirms (v69)
 
@@ -245,7 +246,7 @@ export function placeCardHtml(p) {
   return `
     <div class="pc-top"><b title="${esc(p.fileName)}">${esc(p.fileName)}</b><span class="muted">${Number(p.width)} × ${Number(p.height)}</span></div>
     <label class="f">Name <input id="place-name" value="${esc(p.name || '')}" placeholder="Aerial 06:40, Civil Air Patrol" maxlength="120"></label>
-    <label class="f">Taken at <input id="place-taken" type="datetime-local" value="${esc(p.taken || '')}"></label>
+    <label class="f">Taken at${clockUtcOn() ? ' (local)' : ''} <input id="place-taken" type="datetime-local" value="${esc(p.taken || '')}"></label>
     <label class="f">Opacity · <span id="place-op-v">${Math.round(Number(p.opacity) * 100)}%</span><input type="range" id="place-op" data-range="place-opacity" min="0.1" max="1" step="0.05" value="${Number(p.opacity)}" aria-label="Opacity"></label>
     <p class="muted pc-hint">Drag the picture to move it, a corner to stretch it, the round handle to turn it. Zoom in to line the roads up. Arrows nudge; Escape cancels.</p>
     <div class="pc-btns"><button class="btn pri sm" data-action="place-save">Save</button><button class="btn sm" data-action="place-undo" disabled>Undo</button><button class="btn sm" data-action="place-cancel">Cancel</button></div>`;
@@ -286,7 +287,7 @@ export function joinCardSections(data) {
     { title: 'Deployment briefing', lines: deploymentLines(data, now).map(([k, v]) => k + ': ' + v) },
     { title: 'Who to ask for', lines: [whoToAsk(data)] },
     { title: 'Check in with your phone', lines: [inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''), p ? periodLine(p) : '', 'Join code ' + inc.code, 'Scan the code, or open ' + fieldJoinUrl(inc.code).replace(/\?.*$/, '') + ' and type it.', 'Say who you are (name, phone, licence), name your unit, what it is and the people on it, then press Check in. Your briefing opens after check-in; everything you send keeps until there is signal.', 'Anyone with this code can join as a unit. Keep it to the people who should.'].filter(Boolean) },
-    { title: 'Printed', lines: [whenText(now) + ' · the lines above are the incident as it was then'] }
+    { title: 'Printed', lines: [whenText(now) + ' · the lines above are the incident as it was then', timesLine()] }
   ];
 }
 export function joinCardHtml(data) {
@@ -795,7 +796,7 @@ export function form211Sections(data) {
     ['Incident', inc.name + (inc.base_name ? ' · base: ' + inc.base_name : '')],
     ['Period', periodLine(p)],
     ['Command', commandText(inc, p) || ''],
-    ['Prepared by', 'Operations, ' + whenText(new Date(now))]
+    ['Prepared by', 'Operations, ' + whenText(new Date(now)) + ' · ' + timesLine()]
   ].filter((x) => x[1]);
   S.push({ title: 'Check-in list, ICS 211', lines: head.map(([k, v]) => k === 'Prepared by' ? 'Prepared by ' + v : v), figureOnly: true,
     figure: `<h2>Check-in list, ICS 211</h2><div class="f211-head">${head.map(([k, v]) => `<span class="k">${esc(k)}</span><span>${esc(v)}</span>`).join('')}</div>` });
@@ -1086,8 +1087,8 @@ function transportFormHtml(data, t) {
     </div>
     <div class="row-3">
       <label>To <select name="to" class="sel" required>${dest.map((f) => `<option value="${f.id}"${(t ? t.to_facility_id : (dest[0] || {}).id) === f.id ? ' selected' : ''}>${esc(f.name || facilityKind(f.kind)[1])} (${esc(facilityKind(f.kind)[1].toLowerCase())})</option>`).join('')}</select></label>
-      <label>Leaves <input name="leaves" type="time" value="${t ? timeValue(t.leaves_at) : ''}"></label>
-      <label>Expected <input name="expected" type="time" value="${t ? timeValue(t.expected_at) : ''}"></label>
+      <label>Leaves${clockUtcOn() ? ' (local)' : ''} <input name="leaves" type="time" value="${t ? timeValue(t.leaves_at) : ''}"></label>
+      <label>Expected${clockUtcOn() ? ' (local)' : ''} <input name="expected" type="time" value="${t ? timeValue(t.expected_at) : ''}"></label>
     </div>
     <div class="row-2">
       <label>Driver <select name="driver" class="sel"><option value=""${t && t.driver_user_id ? '' : ' selected'}>Not in the app (name and phone)</option>${units.map((u) => `<option value="${u.user_id}"${t && t.driver_user_id === u.user_id ? ' selected' : ''}>${esc(unitWithKind(u))}</option>`).join('')}</select></label>
@@ -1365,7 +1366,7 @@ function periodFormHtml(data, p, next, state) {
         <label>Safety Officer <input name="safety" value="${esc(d.safety)}"></label>
       </div>
       <div class="row-2">
-        <label>Planned end <input name="ends" type="time" value="${esc(d.ends)}"></label>
+        <label>Planned end${clockUtcOn() ? ' (local)' : ''} <input name="ends" type="time" value="${esc(d.ends)}"></label>
         <span class="muted" style="font-size:12px;align-self:end;padding-bottom:8px">The deputy prints on the 203 and sits under the IC on the 207, which points at the seat when a span passes seven.</span>
       </div>
       <div class="row-2">
@@ -1484,7 +1485,7 @@ export function orgSections(data, { chartOnly } = {}) {
   return [{ title: 'Organization chart, ICS 207', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     periodLine(p),
-    'Drawn from the period\'s seats, the divisions and their supervisors, the units and their people · prepared ' + whenText(new Date())
+    'Drawn from the period\'s seats, the divisions and their supervisors, the units and their people · prepared ' + whenText(new Date()) + ' · ' + timesLine()
   ].concat(chartOnly ? [] : orgLines(data)), figure: orgChartHtml(data) }];
 }
 export function orgHtml(data) { return sectionsHtml(orgSections(data, { chartOnly: true })); }
@@ -1503,6 +1504,7 @@ export function briefingSections(data) {
   S.push({ title: 'Incident', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     periodLine(p),
+    timesLine(),
     p && (p.ic_name || p.ops_chief || p.safety_officer) ? ['Incident Commander ' + (p.ic_name || 'not set'), 'Deputy ' + (p.deputy || 'not set'), 'Operations ' + (p.ops_chief || 'not set'), 'Planning ' + (p.planning_chief || 'not set'), 'Logistics ' + (p.logistics_chief || 'not set'), 'Finance ' + (p.finance_chief || 'not set'), 'Safety ' + (p.safety_officer || 'not set'), 'PIO ' + (p.pio || 'not set'), 'Liaison ' + (p.liaison || 'not set')].join(' · ') : null,
     commandText(inc, p) || null,
     transferLine(data, p),
@@ -1566,7 +1568,7 @@ export function form204Sections(data, z) {
   S.push({ title: 'Progress', lines: [zoneStatusText(z, unit ? unitLabel(unit) : '', data.zoneAccepted(z))].concat(z.marking ? [`Marking painted: team ${z.marking.team}, out ${z.marking.out}, hazards ${z.marking.haz}, people found ${z.marking.victims}`] : []) });
   const revisits = data.structures(z.id).filter((s) => s.revisit_at).sort((a, b) => (a.revisit_at < b.revisit_at ? -1 : 1));   // v46: the next crew's revisits
   if (revisits.length) S.push({ title: 'Revisits', lines: revisits.map((s) => `${s.label || 'A structure'} at ${revisitWords(s.revisit_at).text}${revisitWords(s.revisit_at).due ? ' (due)' : ''}${s.notes ? ' · ' + s.notes : ''}`) });
-  S.push({ title: 'Prepared', lines: ['By Operations, ' + whenText(new Date())] });
+  S.push({ title: 'Prepared', lines: ['By Operations, ' + whenText(new Date()), timesLine()] });
   return S;
 }
 
@@ -1596,7 +1598,7 @@ export function sitrepSections(data) {
     p && p.ic_name ? 'Incident Commander ' + p.ic_name : null,
     commandText(inc, p) || null,
     transferLine(data, p),
-    'Prepared by Operations, ' + whenText(new Date())
+    'Prepared by Operations, ' + whenText(new Date()), timesLine()
   ].filter(Boolean) });
   S.push({ title: 'Situation', lines: [sr.summary || 'Not written yet'] });
   S.push({ title: 'Progress', lines: [
@@ -1635,7 +1637,7 @@ export function iapSections(data) {
   S.push({ title: 'Incident Action Plan', lines: [
     inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
     periodLine(p),
-    'Prepared ' + whenText(new Date()),
+    'Prepared ' + whenText(new Date()) + ' · ' + timesLine(),
     'Prepared by (Planning Section Chief): ' + ((p && p.planning_chief) || '______________________') + ' · signature ______________________',
     'Approved by (Incident Commander): ' + ((p && p.ic_name) || '______________________') + ' · signature ______________________ · date and time ______________________'
   ] });
@@ -1773,11 +1775,11 @@ export function logHtml(data, state) {
   const seenAt = state && state.log ? state.log.seenAt : null;
   const ops = !!data.me() && data.me().role === 'ops';   // only Operations marks a line; everyone sees the mark
   const out = [];
-  let lastHour = null;
+  let lastHour = null, lastDay = null;
   for (const e of events) {
-    const h = new Date(e.at).getHours();
-    if (lastHour !== null && h !== lastHour) out.push(`<div class="log-sep">${String(h).padStart(2, '0')}:00 to ${String(h).padStart(2, '0')}:59</div>`);
-    lastHour = h;
+    const h = hourOf(e.at), day = dateText(e.at);
+    if (lastHour !== null && h !== lastHour) out.push(`<div class="log-sep">${lastDay !== day ? esc(day.split(' ').slice(0, 2).join(' ')) + ' · ' : ''}${String(h).padStart(2, '0')}:00 to ${String(h).padStart(2, '0')}:59</div>`);   // v81: the day on the line when it changes
+    lastHour = h; lastDay = day;
     const mark = ops
       ? `<button class="nmark${e.notable ? ' on' : ''}" data-action="log-notable" data-id="${esc(e.id)}" data-on="${e.notable ? '0' : '1'}" aria-pressed="${e.notable ? 'true' : 'false'}" aria-label="Notable" title="${e.notable ? 'Notable: it leads the printed 214. Click to unmark' : 'Mark as notable: it leads the printed 214'}"></button>`
       : e.notable ? '<span class="nmark on" title="Notable"></span>' : '';
@@ -1805,7 +1807,7 @@ export function form214Sections(data) {
       inc.name + (inc.base_name ? ' · base: ' + inc.base_name : ''),
       periodLine(p),
       p && p.ic_name ? 'Incident Commander ' + p.ic_name + (data.commands().length > 1 ? ' · ' + commandLines(data.commands()).join('; ') : '') : null,
-      'Prepared by Operations, ' + whenText(new Date())
+      'Prepared by Operations, ' + whenText(new Date()), timesLine()
     ].filter(Boolean) },
     { title: notable.length ? `${notable.length} notable ${notable.length === 1 ? 'entry' : 'entries'}` : 'Notable entries', lines: notable.length ? notable.map(line) : ['None marked'] },
     { title: `${rows.length} entries, oldest first`, lines: rows.length ? rows.map(line) : ['Nothing yet'] }

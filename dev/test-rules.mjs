@@ -1,6 +1,7 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
 import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS, runStacks, incidentLine, incidentLineText, incidentFacts } from '../js/shared/rules.js';
+import { setClockUtc, clockUtcOn, hourOf, sameDay, timesLine, hhmm } from '../js/shared/rules.js';   // every time in UTC (v81)
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -468,6 +469,33 @@ t('a run as a card: the label and where it goes, the times and the seats, the cr
   assert.deepEqual(foldRuns(runs, '', false), { shown: runs.slice(0, 2), hidden: 3 }, 'past three: the first two and N more');
   assert.deepEqual(foldRuns(runs, 'r4', false), { shown: [runs[0], runs[1], runs[3]], hidden: 2 }, 'the one chosen is never hidden');
   assert.deepEqual(foldRuns(runs, 'r4', true), { shown: runs, hidden: 0 }, 'opened, all of them');
+});
+
+t('every time in UTC (v81): one switch moves hhmm, whenText, dateText, dayHhmm, hourOf and sameDay, a Z on each, and timesLine says which', () => {
+  const d = new Date('2026-10-20T00:36:00Z');   // 19:36 CDT on 19 October: the day moves with the clock
+  assert.equal(clockUtcOn(), false);
+  setClockUtc(true);
+  try {
+    assert.equal(clockUtcOn(), true);
+    assert.equal(hhmm(d), '00:36Z');
+    assert.equal(hhmm('2026-10-20T00:36:00Z'), '00:36Z');
+    assert.equal(dateText(d), '20 Oct 2026');
+    assert.equal(whenText(d), '20 Oct 2026 00:36Z');
+    assert.equal(hourOf(d), 0);
+    assert.equal(timesLine(d), 'Times UTC (Z)');
+    assert.equal(sameDay(d, new Date('2026-10-20T23:59:00Z')), true);
+    assert.equal(sameDay(d, new Date('2026-10-19T23:59:00Z')), false);
+    assert.equal(dayHhmm(d.getTime(), d.getTime() + 60000), '00:36Z');
+    assert.equal(dayHhmm(d.getTime() - 24 * 3600000, d.getTime()), 'yesterday 00:36Z');
+    assert.equal(dayHhmm(d.getTime() - 48 * 3600000, d.getTime()), '18 Oct 2026 00:36Z');
+    assert.equal(hhmm(''), ''); assert.equal(hhmm('not a date'), '');
+  } finally { setClockUtc(false); }
+  assert.equal(clockUtcOn(), false);
+  assert.ok(!/Z$/.test(hhmm(d)) && /^\d\d:\d\d$/.test(hhmm(d)), hhmm(d));
+  assert.equal(hourOf(d), d.getHours());
+  assert.ok(/^Times local/.test(timesLine(d)), timesLine(d));
+  assert.equal(sameDay(d, d), true);
+  assert.equal(dateText(d), d.getDate() + ' Oct 2026');
 });
 
 t('the header clock reads UTC from the same moment, and the zone has a short name (v59)', () => {

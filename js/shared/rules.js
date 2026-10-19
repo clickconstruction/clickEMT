@@ -196,10 +196,18 @@ export function compass(h) {
   return DIRS[Math.round(d / 45) % 8] + ' ' + String(d).padStart(3, '0') + '°';
 }
 
+// Every time in UTC (v81): the base's device setting (ic.base.clock, the header clock's click), set here by main.js;
+// the phone never sets it, so its times stay local. With it on, hhmm, whenText, dateText, dayHhmm, hourOf and sameDay
+// read the same moment in UTC, every time with a Z, and timesLine says which on a form's head. The date and time boxes
+// are the browser's and stay local; the Hours CSV writes UTC by itself; the public set's names stay local.
+let clockUtc = false;
+export function setClockUtc(on) { clockUtc = !!on; }
+export function clockUtcOn() { return clockUtc; }
 export function hhmm(iso) {
   if (!iso) return '';
   const d = iso instanceof Date ? iso : new Date(iso);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (isNaN(d)) return '';
+  return clockUtc ? hhmmUtc(d) + 'Z' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export function ago(iso, now = Date.now()) {
@@ -387,7 +395,11 @@ export function sinceSummary(events) {
 }
 // A day and a time in one form everywhere (v40): "17 Oct 2026 21:58", never the browser's locale with seconds.
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-export function dateText(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+export function dateText(iso) { const d = new Date(iso); return isNaN(d) ? '' : (clockUtc ? d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() : d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear()); }
+// the hour a moment falls in, whether two moments share a day, and the forms' line saying which clock, in the clock's mode (v81)
+export function hourOf(iso) { const d = new Date(iso); return isNaN(d) ? null : (clockUtc ? d.getUTCHours() : d.getHours()); }
+export function sameDay(a, b) { const x = new Date(a), y = new Date(b); if (isNaN(x) || isNaN(y)) return false; return clockUtc ? x.toISOString().slice(0, 10) === y.toISOString().slice(0, 10) : x.toDateString() === y.toDateString(); }
+export function timesLine(d = new Date()) { if (clockUtc) return 'Times UTC (Z)'; const z = zoneShort(d); return 'Times local' + (z ? ', ' + z : ''); }
 // the header clock (v59): the same moment in UTC, and the zone's short name, so each reading says which it is
 export function hhmmUtc(iso) {
   if (!iso) return '';
@@ -594,9 +606,9 @@ export function replayWindowLabel(kind, win, now = Date.now()) {
 export function dayHhmm(ms, now = Date.now()) {
   const d = new Date(ms), n = new Date(now);
   if (isNaN(d)) return '';
-  if (d.toDateString() === n.toDateString()) return hhmm(d);
-  const y = new Date(n); y.setDate(y.getDate() - 1);
-  return (d.toDateString() === y.toDateString() ? 'yesterday ' : dateText(d) + ' ') + hhmm(d);
+  if (sameDay(d, n)) return hhmm(d);
+  const y = new Date(n); if (clockUtc) y.setUTCDate(y.getUTCDate() - 1); else y.setDate(y.getDate() - 1);
+  return (sameDay(d, y) ? 'yesterday ' : dateText(d) + ' ') + hhmm(d);
 }
 // Pick a time: the moment typed must sit between the first position and now; the words are the sheet's sentence.
 // The boxes hold minutes, so the first position's own minute counts as it (16:16 typed for a first report at 16:16:37).
@@ -803,7 +815,7 @@ export function revisitWords(iso, now = Date.now()) {
   if (!iso) return null;
   const d = new Date(iso), n = new Date(now);
   if (isNaN(d)) return null;
-  const tomorrow = d.getTime() > n.getTime() && d.toDateString() !== n.toDateString();
+  const tomorrow = d.getTime() > n.getTime() && !sameDay(d, n);
   return { hhmm: hhmm(d), tomorrow, due: d.getTime() <= n.getTime(), text: (tomorrow ? 'tomorrow ' : '') + hhmm(d) };
 }
 export function revisitHhmm(iso, typed, now = Date.now()) { const w = revisitWords(iso, now); return w ? (w.tomorrow ? 'tomorrow ' : '') + String(typed || w.hhmm).trim().slice(0, 5) : ''; }

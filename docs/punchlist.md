@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v81**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v82**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0040**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -58,6 +58,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 37 | v78 The centre by address: an Address box on the New incident sheet, Google Places suggestions as you type, one press sets the centre (built 19 October) | small | v77 | a first-time Operations, Marcus, the IC |
 | 38 | v79 The 214's water words as 45m: the one duration the database writes reads as the app does, `ic_duration_text` in SQL (built 19 October; migration 0039, applied) | small | v78 | the Safety Officer, the clerk, Rosa, anyone reading the 214 |
 | 39 | v80 The header in four groups, and a quieter first minute: a word over each group of buttons, the gear with the pills; a fresh incident leads with the codes and its empty sections wait (built 19 October) | small | v79 | Marcus, every base, a first-time Operations |
+| 40 | v81 Every time in UTC, and the front door's pictures: the clock's click swaps every time on the screen, a Z on each, the forms' heads say which; the five pictures shot from the mock by a script (built 19 October) | small | v80 | a mutual-aid clerk on Zulu time, the Documentation Unit, every visitor to the front door |
 
 ---
 
@@ -545,8 +546,8 @@ Walk first, then rank, as before.
   enabled beside Map Tiles); no migration, its own release after the starters; four more decisions, one key first.
 - **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided. Mock-up `try/mockups/leftovers.html` (drawn 19 October at v76, with the three items below): a labelled row, every button one press, a word over each group and a line between, the gear beside the pills; Forms as the one menu is the fallback, four menus set aside. The page proposes two releases: the header and the emptier start together, then UTC with the pictures. **Built as v80** (section 39).
 - **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes. On `leftovers.html`: the home panel leads with the codes' card until the first unit joins, the empty sections stay out until their first row (Hazards excepted), the list says "Nothing here yet. Draw the boundary, then divisions inside it." and, after the boundary, "Boundary drawn. Now a division: an area for one unit."; the labels keep their words; the legend and the log's chips hide their zeros. **Built as v80** (section 39).
-- **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes. On `leftovers.html`: one screenshot per picture from headless Chrome at 1280 × 800 and 2× (`Page.captureScreenshot` through `dev/smoke-headless.py`'s class, a small `dev/front-shots.py`), no html2canvas, no proxy, no heading fix; the hero with the incident card open and the runs on the map, step 1 the codes' card, step 3 the IAP's 204 as a window; the phone's home and PAR re-shot in the same pass, the three phone pictures on no page removed.
-- **Every time in UTC** (v59): only the header clock swaps; the log, the 214 and the forms stay local. A device setting that swaps them all is the next cut if Zulu-time agencies ask. On `leftovers.html`: the clock's click swaps every time on the screen (`ic.base.clock` grown, one setting, never a UTC clock over a local log), a Z on every UTC time, "Times local, CDT" or "Times UTC (Z)" in every form's head in both modes, the log's hour line carrying the date when the day changes; one flag in rules.js read by `hhmm`, `whenText`, `dateText` and `dayHhmm`, so the call sites do not change; the phone, the date and time boxes, the Hours CSV and the public set stay local.
+- **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes. On `leftovers.html`: one screenshot per picture from headless Chrome at 1280 × 800 and 2× (`Page.captureScreenshot` through `dev/smoke-headless.py`'s class, a small `dev/front-shots.py`), no html2canvas, no proxy, no heading fix; the hero with the incident card open and the runs on the map, step 1 the codes' card, step 3 the IAP's 204 as a window; the phone's home and PAR re-shot in the same pass, the three phone pictures on no page removed. **Built as v81** (section 40): `dev/front-shots.py`.
+- **Every time in UTC** (v59): only the header clock swaps; the log, the 214 and the forms stay local. A device setting that swaps them all is the next cut if Zulu-time agencies ask. On `leftovers.html`: the clock's click swaps every time on the screen (`ic.base.clock` grown, one setting, never a UTC clock over a local log), a Z on every UTC time, "Times local, CDT" or "Times UTC (Z)" in every form's head in both modes, the log's hour line carrying the date when the day changes; one flag in rules.js read by `hhmm`, `whenText`, `dateText` and `dayHhmm`, so the call sites do not change; the phone, the date and time boxes, the Hours CSV and the public set stay local. **Built as v81** (section 40).
 - **The labels on the public demo** (v58): /try/ frames the base with its own tours, so the labels stay off it; they could show there on the first open as well, before the tours.
 - **Seen by the walkers, not product:** the mock's seeded period reads "22:48 to 19:00" (its start three hours before
   the clock, its planned end a fixed 19:00); the mock's pretend GPS takes about twenty seconds to give a new phone a
@@ -1468,6 +1469,50 @@ the three misses rerun alone: `periods` and `ics100` passing (the transfer and t
 "the home panel says so" a real miss of the build, the Public information section keyed on cleared photos and so gone once a
 photo was un-cleared; keyed on any photo instead, after which `publicInfo` 11 of 11, `starters` and `seeded` alone (32 of 32 on
 its second run alone, the first missing the known half-second hover flake). No migration, no rule test.
+
+## 40. v81 Every time in UTC, and the front door's pictures
+
+**Why.** The last two leftovers of Todd's walk at v59 (section 15). v59 gave the header a clock that swaps to UTC
+and left every other time local, by decision: a UTC clock over a local log would make the clerk do arithmetic, and a
+setting that swaps them all was the next cut if a Zulu-time agency asked. And the front door's three base pictures
+were still the base at v33: a sentence for the second line, ten buttons ending in Sign out, the join code in words,
+the QR and the Operations code in the open, no transport runs; one of them a 204 under the words "prints the join
+card", another a 207 with the browser's own date form. Both drawn on `try/mockups/leftovers.html` (the screen
+swapped live, the three pictures beside what each should show) and every decision taken as recommended.
+
+**Built.** The clock's click swaps every time on the screen together, so there is never a UTC clock over a local
+log: the log's lines and hour lines, the line under the incident's name and its card, the Period sheet, the home
+panel, the briefing and every printed form. One flag in rules.js (`setClockUtc`) is read by `hhmm`, `whenText`,
+`dateText` and `dayHhmm`, so the hundred and thirty places that write a time did not change; `hourOf` gives the
+log its hour line, which now carries the day when it changes ("20 Oct · 00:00 to 00:59", in local time too past
+midnight), and `sameDay` keeps "yesterday" and "tomorrow" right in either clock. Every UTC time carries a Z,
+"00:36Z"; a local time stays bare as ICS has it, the zone's short name on the clock. Every printed form's head says
+which, in both modes: "Times local, CDT" or "Times UTC (Z)", on the join card, the 211, every 204, the IAP, the
+207, the 209, the 214 and the briefing, beside Prepared. The clock's hover text says the whole screen follows, and
+the click toasts "Every time on this screen is UTC now" or "local again (CDT)". Kept per device as `ic.base.clock`,
+like the theme. Local by choice: the phone (a crew reads the time on its wrist; the setting never reaches a phone),
+the date and time boxes (the browser's, labelled "(local)" while UTC is on, Replay's Pick a time too), the Hours CSV
+(its columns are UTC already and say so) and the public set's names and captions (for the public).
+The pictures: `dev/front-shots.py` opens the mock in headless Chrome and takes Chrome's own screenshot of each, the
+base at 1280 × 800 and the phone at 375 × 812 at 2×, light, saved through sips at the landing's sizes: base-map (the
+hero: the incident line with its card pinned open, the runs on the map, the grouped row), base-codes (step 1: the
+codes' card under CEDAR7, the words of the step), base-iap (step 3: the IAP as a window over the map, scrolled to A-1's
+204 and its map), phone-home and phone-par (the head count, started from the base tab). base-204, base-org and the
+three phone pictures no page used are gone; the landing's alt texts say what the new ones show. No html2canvas, no
+CORS proxy for the tiles, no fix for the headings' spaces: the v33 render's three workarounds were the Browser pane's
+width cap, which headless Chrome does not have.
+
+*Decided:* the click is the setting, one and not two; Z on every UTC time and the zone line on every form's head in
+both modes; the phone local always, a phone setting later if a Zulu agency's crews ask; headless Chrome's own
+screenshot by a script in dev/; what each picture shows as the page recommended; the phone's two re-shot in the same
+pass and the three unused ones removed; the pictures named for what they show, so the step pictures changed name.
+
+**Built** 19 October 2026 as `Every time in UTC, and the front door's pictures (v81)` on branch `leftovers`:
+`setClockUtc` / `clockUtcOn` / `hourOf` / `sameDay` / `timesLine` and the mode in `hhmm`, `dateText`, `dayHhmm` and
+`revisitWords` in rules.js; the hour line, the forms' heads and the boxes' labels in ui.js; the click, the title, the
+toast and the public set's file name in main.js; `dev/front-shots.py` and the five pictures; index.html's alt texts;
+the rules tests' v81 block; the `seeded` suite's four v81 checks; `npm run check` and `npm test` pass. Not yet landed: the build session stopped on a usage limit before its full headless smoke run finished, and its work was committed on branch `leftovers` by the coordinating chat. The targeted headless run on the v81 tree was 290 of 292, the two misses the `log` suite's star checks, and `log` alone 23 of 23. Still to do before landing: the full headless run with every missed suite rerun alone, and a look at the five pictures at their sizes on the front door (base-map was looked at, and reads). No
+migration, no rule test.
 
 ## Done before this list
 

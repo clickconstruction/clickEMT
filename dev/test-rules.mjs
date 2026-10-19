@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS, runStacks } from '../js/shared/rules.js';
+import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, URGENCY_STEPS, stepLabel, STUCK_WORDS, urgencyWords, stepRank, actNow, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS, runStacks, incidentLine, incidentLineText, incidentFacts } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -327,8 +327,8 @@ t('times and dates read in one form, and the period knows when its planned end h
   assert.deepEqual(periodState(p, new Date(2026, 9, 17, 22, 0).getTime()), { state: 'overdue', overMin: 180 });
   assert.equal(periodState(Object.assign({}, p, { closed_at: ends.toISOString() }), new Date(2026, 9, 17, 22, 0).getTime()).state, 'closed');
   assert.equal(periodLabel(p, new Date(2026, 9, 17, 18, 50).getTime()), 'OP 1 · 18:47 to 19:00');
-  assert.equal(periodLabel(p, new Date(2026, 9, 17, 22, 0).getTime()), 'OP 1 · 18:47 to 19:00 · overdue 3 h');
-  assert.equal(periodLine(p, new Date(2026, 9, 17, 22, 5).getTime()), 'Operational period 1, 18:47 to 19:00 · the planned end passed 3 h 5 min ago; the next period has not been started');
+  assert.equal(periodLabel(p, new Date(2026, 9, 17, 22, 0).getTime()), 'OP 1 · 18:47 to 19:00 · overdue 3h');
+  assert.equal(periodLine(p, new Date(2026, 9, 17, 22, 5).getTime()), 'Operational period 1, 18:47 to 19:00 · the planned end passed 3h 5m ago; the next period has not been started');
   assert.equal(periodLine(null), 'No operational period set');
 });
 
@@ -349,7 +349,7 @@ t('on scene too long (v47): the threshold, who is past it, and the words', () =>
   assert.equal(sceneOver(people[2], 12, now), false, 'checked out is not on scene');
   const over = peopleOverScene(people, members, 12, now);
   assert.deepEqual(over.map((x) => x.person.name), ['Okafor'], 'a unit that checked out is not counted');
-  assert.equal(sceneLine(over[0], 12), 'Okafor (Unit 1): 13 h 12 min on scene, past 12 h');
+  assert.equal(sceneLine(over[0], 12), 'Okafor (Unit 1): 13h 12m on scene, past 12h');
   assert.deepEqual(peopleOverScene(people, members, 2, now).map((x) => x.person.name), ['Okafor', 'Ramirez'], 'longest first');
   assert.equal(sceneText(12), 'Safety is told past 12 hours on scene');
   assert.equal(sceneText(0), 'no hours-on-scene threshold set');
@@ -398,7 +398,7 @@ t('small items from the re-walks (v48): hazards by urgency, the current stretch,
   const now = new Date(2026, 9, 17, 22, 0).getTime();
   const p = { checked_in_at: new Date(2026, 9, 17, 9, 0).toISOString(), checked_out_at: null, stint_at: new Date(2026, 9, 17, 20, 30).toISOString() };
   assert.equal(sceneStart(p), p.stint_at);
-  assert.equal(stintText(p, now), '1 h 30 min', 'the current stretch, not the day');
+  assert.equal(stintText(p, now), '1h 30m', 'the current stretch, not the day');
   assert.equal(sceneMinutes(p, now), 90);
   assert.equal(sceneOver(p, 12, now), false, 'back in for ninety minutes is not past twelve hours');
   assert.equal(sceneStart({ checked_in_at: p.checked_in_at, stint_at: null }), p.checked_in_at);
@@ -559,3 +559,28 @@ t('runs that share a point stack: the pills at one spot, the rings on one destin
   assert.deepEqual(s.map((x) => x.dot), [0, 0, 1, 2, 0], 'the dot on A-2 is Van 4\'s, Bus 3 and Ambulance 1 ring it; words have no dot');
   assert.deepEqual(runStacks([]), []);
 });
+
+t('the incident line says what changes, the alarm first; the card has the rest (v76)', () => {
+  const now = new Date('2026-10-18T23:08:00-05:00').getTime();
+  const period = { number: 1, starts_at: '2026-10-18T19:58:00-05:00', ends_at: '2026-10-18T19:00:00-05:00', closed_at: null, ic_name: 'Dana Ruiz', ops_chief: 'Marcus Bell', safety_officer: 'Priya Natarajan' };
+  const units = [{ user_id: 'u1', unit_name: 'Unit 1', role: 'unit', kind: 'engine', status: 'assigned' }, { user_id: 'u2', unit_name: 'Unit 2', role: 'unit', kind: 'boat', status: 'assigned' }, { user_id: 'u3', unit_name: 'Unit 3', role: 'unit', kind: 'other', status: 'available' }];
+  const zones = [{ code: 'A-1', status: 'active', assigned_to: 'u1' }, { code: 'A-2', status: 'active', assigned_to: 'u3' }, { code: 'A-3', status: 'cleared' }, { code: 'B-1', status: 'active', assigned_to: 'u2' }, { code: 'B-2', status: 'open' }, { code: 'B-3', status: 'open' }];
+  const hazards = [{ id: 'h1', kind: 'Downed power line', note: 'across the park entrance', zone_id: 'z2', created_at: '2026-10-18T22:49:00-05:00', user_id: 'u3' }];
+  const line = incidentLine({ period, units, zones, hazards }, now);
+  assert.equal(incidentLineText(line), 'Period 1 · overdue 4h 8m · 3 units · 6 divisions, 1 cleared · 1 hazard open');
+  assert.deepEqual(line.map((p) => p.kind), ['period', 'alarm', 'count', 'count', 'count']);
+  assert.equal(incidentLineText(incidentLine({ period: { ...period, ends_at: '2026-10-19T01:00:00-05:00' }, units, zones, hazards: [] }, now)), 'Period 1 · to 01:00 · 3 units · 6 divisions, 1 cleared', 'nothing overdue: the planned end, and no hazard piece');
+  assert.equal(incidentLineText(incidentLine({ period: null, units: [], zones: [] }, now)), 'No period set · 0 units · 0 divisions');
+  const f = incidentFacts({ incident: { name: 'Cedar Fork Flooding', created_at: '2026-10-18T19:58:00-05:00', base_name: 'Cedar Fork High School', lead_agency: 'Cedar Fork Fire Department' }, period, units, zones, hazards, memberOf: (id) => units.find((u) => u.user_id === id), zoneOf: (id) => (id === 'z2' ? zones[1] : null) }, now);
+  assert.equal(f.opened, '19:58'); assert.equal(f.base, 'Cedar Fork High School'); assert.equal(f.agency, 'Cedar Fork Fire Department');
+  assert.deepEqual(f.period, { number: 1, started: '19:58', plannedTo: '19:00', overdue: '4h 8m', left: '', closed: '' });
+  assert.deepEqual(f.command, { ic: 'Dana Ruiz', ops: 'Marcus Bell', safety: 'Priya Natarajan' });
+  assert.equal(f.units.statusWords, '2 assigned, 1 available');
+  assert.deepEqual(f.units.list.map((u) => u.name + (u.kind ? ', ' + u.kind : '') + ', in ' + u.where.join(', ')), ['Unit 1, engine, in A-1', 'Unit 2, boat crew, in B-1', 'Unit 3, in A-2']);
+  assert.deepEqual(f.divisions, { n: 6, counts: { active: 3, primary: 0, cleared: 1, open: 2 } });
+  assert.deepEqual(f.hazards[0], { id: 'h1', kind: 'Downed power line', note: 'across the park entrance', zone: 'A-2', at: '22:49', by: 'Unit 3' });
+  const quiet = incidentFacts({ incident: null, period: { ...period, ends_at: '2026-10-19T01:00:00-05:00' }, units: units.map((u) => ({ ...u, status: 'assigned' })), zones, hazards: [] }, now);
+  assert.equal(quiet.period.left, '1h 52m'); assert.equal(quiet.units.statusWords, 'all assigned'); assert.equal(quiet.name, '');
+  assert.equal(incidentFacts({ incident: null, period: null }, now).period, null);
+});
+

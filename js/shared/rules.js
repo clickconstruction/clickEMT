@@ -413,6 +413,43 @@ export function periodLabel(p, now) {
   return 'OP ' + p.number + ' · ' + hhmm(p.starts_at) + (p.ends_at ? ' to ' + hhmm(p.ends_at) : '') + (p.closed_at ? ', closed ' + hhmm(p.closed_at) : '') + (over ? ' · ' + over : '');
 }
 // "Operational period 1, 18:47 to 19:00", with the overdue words when the planned end has passed: the reports' line
+// ---- the incident line and its card (v76): under the incident's name the base says what changes during the day, the
+// alarm first ("Period 1 · overdue 4h 8m · 3 units · 6 divisions, 1 cleared · 1 hazard open"; nothing overdue:
+// "Period 1 · to 19:00 · …"); a rest or a click on it opens a card with the whole picture broken out. One rule writes
+// both so they never disagree: incidentLine gives the pieces, incidentFacts the card's rows, ui.js draws them.
+const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+export function incidentLine({ period, units = [], zones = [], hazards = [] }, now = Date.now()) {
+  const out = [];
+  if (period) {
+    out.push({ kind: 'period', text: 'Period ' + period.number });
+    const s = periodState(period, now);
+    if (s.state === 'overdue') out.push({ kind: 'alarm', text: 'overdue ' + durationText(s.overMin) });
+    else if (s.state === 'closed') out.push({ kind: 'time', text: 'closed ' + hhmm(period.closed_at) });
+    else if (period.ends_at) out.push({ kind: 'time', text: 'to ' + hhmm(period.ends_at) });
+  } else out.push({ kind: 'period', text: 'No period set' });
+  out.push({ kind: 'count', text: plural(units.length, 'unit') });
+  const cleared = zones.filter((z) => z.status === 'cleared').length;
+  out.push({ kind: 'count', text: plural(zones.length, 'division') + (cleared ? ', ' + cleared + ' cleared' : '') });
+  if (hazards.length) out.push({ kind: 'count', text: plural(hazards.length, 'hazard') + ' open' });
+  return out;
+}
+export function incidentLineText(pieces) { return pieces.map((p) => p.text).join(' · '); }
+export function incidentFacts({ incident, period, units = [], zones = [], hazards = [], memberOf, zoneOf }, now = Date.now()) {
+  const s = periodState(period, now);
+  const by = {}; for (const u of units) by[u.status] = (by[u.status] || 0) + 1;
+  const statusWords = ['assigned', 'available', 'out_of_service'].filter((k) => by[k]).map((k) => (by[k] === units.length ? 'all ' : by[k] + ' ') + STATUS_LABEL[k].toLowerCase()).join(', ');
+  const counts = { active: 0, primary: 0, cleared: 0, open: 0 };
+  for (const z of zones) counts[z.status] = (counts[z.status] || 0) + 1;
+  const left = period && s.state === 'open' && period.ends_at ? Math.max(0, Math.round((new Date(period.ends_at).getTime() - now) / 60000)) : null;
+  return {
+    name: incident ? incident.name : '', opened: incident && incident.created_at ? hhmm(incident.created_at) : '', agency: (incident && incident.lead_agency) || '', base: (incident && incident.base_name) || '',
+    period: period ? { number: period.number, started: hhmm(period.starts_at), plannedTo: period.ends_at ? hhmm(period.ends_at) : '', overdue: s.state === 'overdue' ? durationText(s.overMin) : '', left: left != null ? durationText(left) : '', closed: period.closed_at ? hhmm(period.closed_at) : '' } : null,
+    command: period ? { ic: period.ic_name || '', ops: period.ops_chief || '', safety: period.safety_officer || '' } : null,
+    units: { n: units.length, statusWords, list: units.map((u) => ({ id: u.user_id, name: unitLabel(u), kind: kindText(u.kind), where: zones.filter((z) => z.assigned_to === u.user_id).map((z) => z.code) })) },
+    divisions: { n: zones.length, counts },
+    hazards: hazards.map((h) => ({ id: h.id, kind: h.kind || 'Hazard', note: h.note || '', zone: h.zone_id && zoneOf ? ((zoneOf(h.zone_id) || {}).code || '') : '', at: hhmm(h.created_at), by: h.user_id && memberOf ? unitLabel(memberOf(h.user_id)) : '' }))
+  };
+}
 export function periodLine(p, now) {
   if (!p) return 'No operational period set';
   const s = periodState(p, now);
@@ -465,12 +502,11 @@ export function qualsText(quals) {
 export function personLabel(p) { const q = qualsText(p.qualifications); return p.name + (q ? ' (' + q + ')' : ''); }
 // A person is on scene while checked in and not archived; a unit that checks out takes its people with it.
 export function personOn(p) { return !p.archived_at && !p.checked_out_at; }
-// "3 h 20 min" on scene, from check-in to check-out or now
+// "3h 20m" on scene, from check-in to check-out or now
 export function onSceneText(p, now = Date.now()) {
   const from = new Date(p.checked_in_at).getTime(), to = p.checked_out_at ? new Date(p.checked_out_at).getTime() : now;
   const m = Math.max(0, Math.round((to - from) / 60000));
-  if (m < 60) return m + ' min';
-  return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+  return durationText(m);   // v76: one format everywhere, "3h 20m"
 }
 // ---- on scene too long (v47): the period's threshold of hours on scene (ic_periods.scene_hours; 12 unless Safety sets
 // it, 0 for off, carried into the next period like the rotation). A person on scene past it reads orange on the People
@@ -490,8 +526,8 @@ export function peopleOverScene(people, members, hours, now = Date.now()) {
   return (people || []).filter((p) => { const m = unitOf.get(p.user_id); return sceneOver(p, hours, now) && !!m && m.status !== 'checked_out' && !m.removed_at; })
     .map((p) => ({ person: p, unit: unitOf.get(p.user_id), min: sceneMinutes(p, now) })).sort((a, b) => b.min - a.min);
 }
-// "Okafor (Unit 1): 13 h 12 min on scene, past 12 h"
-export function sceneLine(x, hours) { return `${x.person.name} (${unitLabel(x.unit)}): ${durationText(x.min)} on scene, past ${Math.max(0, Number(hours) || 0)} h`; }
+// "Okafor (Unit 1): 13h 12m on scene, past 12h"
+export function sceneLine(x, hours) { return `${x.person.name} (${unitLabel(x.unit)}): ${durationText(x.min)} on scene, past ${Math.max(0, Number(hours) || 0)}h`; }
 // The names on a unit: its people checked in (the database keeps crew in step), else the crew as typed.
 export function crewNames(unit, people) {
   const on = (people || []).filter((p) => p.user_id === unit.user_id && personOn(p));
@@ -721,7 +757,7 @@ export function peopleShelteredLine({ evacuees, facilities, placeWords, transpor
 // (ic_periods.rotation_minutes, 0 = off). Past WATER_LOST_ROTATIONS rotations nobody believes the number.
 export const WATER_LOST_ROTATIONS = 3;
 export const WATER_KINDS = ['boat', 'swift_water', 'high_water'];   // the kinds whose home screen offers the clock before it runs
-export function durationText(min) { return min < 60 ? min + ' min' : (Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '')).trim(); }
+export function durationText(min) { return min < 60 ? min + 'm' : Math.floor(min / 60) + 'h' + (min % 60 ? ' ' + (min % 60) + 'm' : ''); }   // "4h 8m", "45m", "12h" (v76: was "4 h 8 min")
 export function waterMinutes(since, now = Date.now()) { return since ? Math.max(0, Math.round((now - new Date(since).getTime()) / 60000)) : null; }
 export function waterState(since, rotation, now = Date.now()) {
   const min = waterMinutes(since, now);

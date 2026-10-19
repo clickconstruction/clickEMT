@@ -385,7 +385,7 @@ next touched). The pages: `index.html` (`#discovery`, Show me around, v58; `#cle
 and v61, with the 211 as a table as panel 10, v71 and v72), `people.html` (v65), `replay.html` (v63), `modals.html`
 (v64), `imagery.html` (v67), `mayday.html` (v68), `credentials.html` (v69), `runchips.html` (v66),
 `transports.html` (v70, written after the build as its record), `tell-the-base.html` (v74, built, on its branch),
-`incident-line.html` (the header's second line broken out into a card; drawn at v75, waiting for a yes).
+`incident-line.html` (the header's second line broken out into a card; drawn at v75, built as v76 on its six decisions).
 
 The larger features before that were designed as mock-up canvases on claude.ai, private to Grace's account; ask her
 to share any you need. The punchlist repeats every decision that matters, so you can work without them.

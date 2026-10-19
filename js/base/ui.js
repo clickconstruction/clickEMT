@@ -1,6 +1,7 @@
 // The base sidebar and log: plain HTML strings from the data, with data-action attributes that
 // main.js listens for. Nothing here talks to Supabase.
 import { divisionMapHtml } from './print-map.js';
+import { incidentFacts } from '../shared/rules.js';   // the incident line's card (v76)
 import { hiddenOverlays, boundsText, availableLayers, storedLayer, googleKey, runsShown } from '../shared/layers.js';
 import { joinUrl, qrSvg } from '../shared/qr.js';
 import { licenceExpired, licenceTail } from '../shared/licence.js';
@@ -91,7 +92,7 @@ function wherePill(data, m) {
   if (m.status === 'out_of_service') return `<span class="ur-where oos">Out of service${m.status_note ? ': ' + esc(m.status_note) : ''}</span>`;
   return `<span class="ur-where out">Checked out${m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}</span>`;
 }
-// " · in the water 38 min", orange past the rotation, "probably left running" past three (v28)
+// " · in the water 38m", orange past the rotation, "probably left running" past three (v28)
 function waterSpan(data, m, now) {
   const ws = m.in_water_since && m.status !== 'checked_out' ? waterState(m.in_water_since, data.rotationMinutes(), now) : null;
   return ws ? ` · <span class="water${ws.overdue ? ' over' : ''}" title="${ws.rotation ? 'Rotation every ' + ws.rotation + ' minutes' : 'No rotation set for the period'}">${esc(ws.text)}</span>` : '';
@@ -499,7 +500,7 @@ export function personRowHtml(data, p, { compact, now = Date.now() } = {}) {
   const state = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at) + (pos ? ' · ' + unitLabel(unit) + ' last at ' + latLngText(pos.lat, pos.lng) + ', ' + ago(pos.at, now) : ' · no position from ' + unitLabel(unit))
     : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
-    : (unitOut ? 'Unit checked out · ' : 'On scene ') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + data.sceneHours() + ' h' : '');   // the current stretch since v48
+    : (unitOut ? 'Unit checked out · ' : 'On scene ') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + data.sceneHours() + 'h' : '');   // the current stretch since v48
   const tag = tagOf(data.tags(true), { personId: p.id }), seen = tag ? lastSeen(data.seen(), [tag.id]) : null, stale = seenStale(seen, now);   // the band and its last scan (v55)
   const seenHtml = tag ? `<span class="pp-seen${stale ? ' stale' : ''}">${esc(bandLabel(tag))} · ${esc(lastSeenText(seen, seenOpts(data)))}${stale ? ' (' + esc(durationText(Math.round((now - new Date(seen.at).getTime()) / 60000))) + ' ago)' : ''}</span>` : '<span class="pp-seen muted">no band</span>';
   const mates = compact ? [] : data.unitPeople(p.user_id).filter((x) => x.id !== p.id);
@@ -660,11 +661,11 @@ function personFacts(data, p, now) {
     : p.archived_at ? 'removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'out ' + hhmm(p.checked_out_at)
     : unitOut ? 'unit checked out'
-    : stintText(p, now) + (over ? ' · past ' + hours + ' h' : '') + (p.stint_at ? ' · back in' : '');
+    : stintText(p, now) + (over ? ' · past ' + hours + 'h' : '') + (p.stint_at ? ' · back in' : '');
   const long = miss ? 'MISSING since ' + hhmm(miss.ack.acked_at) + (pos ? ' · ' + unitLabel(unit) + ' last at ' + latLngText(pos.lat, pos.lng) + ', ' + ago(pos.at, now) : ' · no position from ' + unitLabel(unit))
     : p.archived_at ? 'Removed ' + hhmm(p.archived_at)
     : p.checked_out_at ? 'Checked out ' + hhmm(p.checked_out_at) + ' · ' + onSceneText(p) + ' on scene'
-    : (unitOut ? 'Unit checked out · ' : '') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + hours + ' h' : '');
+    : (unitOut ? 'Unit checked out · ' : '') + stintText(p, now) + ', since ' + hhmm(sceneStart(p)) + (p.stint_at ? ' · back in' : '') + (over ? ' · past ' + hours + 'h' : '');
   const seenShort = !tag ? 'no band' : !seen ? band + ' · not scanned yet' : band + ' · ' + where;
   const seenLong = !tag ? 'no band' : !seen ? 'not scanned yet · ' + band.toLowerCase() : where + ', by ' + unitLabel(data.member(seen.seen_by)) + ' · ' + band.toLowerCase();
   return { unit, unitOut, miss, over, tag, seen, stale, short, long, seenShort, seenLong };
@@ -760,7 +761,7 @@ export function peopleBoardHtml(data, state) {
   const want = [...(ps.quals || [])], narrowed = want.length || (ps.q || '').trim();
   const overScene = peopleOverScene(on, data.members(), data.sceneHours());   // v47
   const count = narrowed ? `${shown.filter((p) => !p.archived_at).length} of ${all.length} ${all.length === 1 ? 'person' : 'people'}${want.length ? ' with ' + want.map(qualLabel).join(' and ') : ''}${(ps.q || '').trim() ? ' matching "' + esc(ps.q.trim()) + '"' : ''}`
-    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}${overScene.length ? ' · <span class="pp-over">' + overScene.length + ' past ' + data.sceneHours() + ' h on scene</span>' : ''}`;
+    : `${on.length} on scene on ${data.activeUnits().length} unit${data.activeUnits().length === 1 ? '' : 's'}${all.length > on.length ? ' · ' + (all.length - on.length) + ' checked out' : ''}${overScene.length ? ' · <span class="pp-over">' + overScene.length + ' past ' + data.sceneHours() + 'h on scene</span>' : ''}`;
   // a card for every unit on the incident, and for a member of any role or status with people on record
   const members = data.members().filter((m) => !m.rides_with && ((m.role === 'unit' && m.status !== 'checked_out') || data.unitPeople(m.user_id, true).length))   // a rider (v69) is on the unit's roster, not a card
     .sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.status === 'checked_out') - (b.status === 'checked_out') || (a.unit_name || '').localeCompare(b.unit_name || ''));
@@ -1985,4 +1986,30 @@ export function liveHtml(data, state, now = Date.now()) {
     ${rows}
     <div class="lv-row"><span>This base</span><span>${state.version ? esc(state.version) : 'version unknown'}${state.updateReady ? ' · <b class="warn">new version ready</b>' : ''}</span></div>
     <div class="d-row" style="margin-top:8px"><button class="btn sm" data-action="reconnect">Reconnect</button></div>`;
+}
+
+// The incident's card (v76): the header's line broken out as four tiles, one number each (how long overdue or left,
+// the units, the divisions with a bar of the search, the hazards open), each tile the button to where it is worked;
+// the one action, Start the next period, at the top while the period is overdue; the names in one quiet line at the
+// foot, the command line opening the org chart. Four numbers, not six sentences. Opened by a rest on the line or a click.
+export function incidentPopHtml(data, state) {
+  const f = incidentFacts({ incident: data.incident, period: data.currentPeriod(), units: data.activeUnits(), zones: data.zones(), hazards: data.hazards(), memberOf: (id) => data.member(id), zoneOf: (id) => data.zone(id) });
+  const p = f.period, c = f.command, d = f.divisions.counts, h = f.hazards;
+  const tile = (action, big, word, small, cls = '') => `<button type="button" class="ic-tile${cls ? ' ' + cls : ''}" data-action="${action}"><span class="ic-big">${big}</span><span class="ic-word">${word}</span><span class="ic-sm">${small}</span></button>`;
+  const periodSmall = p ? `Period ${p.number} · ${esc(p.started)}${p.plannedTo ? ' to ' + esc(p.plannedTo) : ''}` : '';
+  const periodTile = !p ? tile('period', '—', 'no period', 'set one on the Period sheet', 'quiet')
+    : p.overdue ? tile('period', esc(p.overdue), 'overdue', periodSmall, 'alarm')
+    : p.closed ? tile('period', 'closed', 'period ' + p.number, `${esc(p.started)} to ${esc(p.closed)}`, 'quiet')
+    : tile('period', p.left ? esc(p.left) : '—', p.left ? 'left' : 'no end set', periodSmall);
+  const segs = [['cleared', d.cleared, 'cleared'], ['primary', d.primary, 'primary search done'], ['active', d.active, 'in progress'], ['open', d.open, 'not started']].filter((x) => x[1]);
+  const bar = segs.length ? `<span class="ic-bar">${segs.map(([k, n]) => `<i class="seg ${k}" style="flex:${n}"></i>`).join('')}</span>` : '';
+  return `
+    <div class="ic-head"><b>${esc(f.name)}</b>${f.opened ? `<span class="muted">since ${esc(f.opened)}</span>` : ''}${p && p.overdue ? `<button type="button" class="btn sm pri" data-action="period-next">Start period ${p.number + 1}</button>` : ''}</div>
+    <div class="ic-tiles">
+      ${periodTile}
+      ${tile('people', String(f.units.n), f.units.n === 1 ? 'unit' : 'units', f.units.statusWords ? esc(f.units.statusWords) : 'none on scene', f.units.n ? '' : 'quiet')}
+      ${tile('inc-divisions', String(f.divisions.n), f.divisions.n === 1 ? 'division' : 'divisions', bar + (segs.length ? segs.map(([, n, w]) => n + ' ' + w).join(' · ') : 'none drawn yet'), f.divisions.n ? '' : 'quiet')}
+      ${h.length ? tile('inc-hazards', String(h.length), h.length === 1 ? 'hazard open' : 'hazards open', esc(h[0].kind) + (h[0].zone ? ' · ' + esc(h[0].zone) : '') + (h.length > 1 ? ' · and ' + (h.length - 1) + ' more' : '')) : tile('inc-hazards', '0', 'hazards', 'none open', 'quiet')}
+    </div>
+    <div class="ic-foot">${c ? `<button type="button" class="ic-link" data-action="org">${[c.ic ? 'IC ' + esc(c.ic) : 'No IC named', c.ops ? 'Operations ' + esc(c.ops) : '', c.safety ? 'Safety ' + esc(c.safety) : ''].filter(Boolean).join(' · ')}</button>` : ''}${f.base || f.agency ? `<span class="ic-base">${[f.base ? esc(f.base) : '', f.agency ? esc(f.agency) + ' leads' : ''].filter(Boolean).join(' · ')}</span>` : ''}</div>`;
 }

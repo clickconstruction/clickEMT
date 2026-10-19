@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v76**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v77**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0039**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -53,6 +53,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 32 | v73 Sign in by a code, no password: an email or a mobile number, Send code, the six digits or the email's link (shipped 18 October; the project's SMS provider, email template and SMTP still to set) | small to medium | v71 | everyone at a door: the newcomer, Rosa, Ana, Marcus, the administrator |
 | 33 | v74 Tell the base: Message Operations and Ask for something as one anatomy, urgency as a scale of three steps, a stuck flag, fewer words (shipped 18 October) | medium | v72 | Rosa, Ana, Moreno, the desk, Marcus, Logistics |
 | 34 | v75 Runs that share a point: the pills in a column clear of the heading arrow, the rings one inside the next, the Transport runs box in the Layers panel (built 18 October) | small | v74 | Marcus, his relief, a driver, the desk |
+| 35 | v76 The incident line, broken out: what changes on the line with the alarm first, the rest on a card a rest or a click opens (built 18 October) | small | v75 | Marcus, his relief, the IC, the clerk, every base |
 
 ---
 
@@ -517,7 +518,7 @@ Walk first, then rank, as before.
   the check-in brings the people back.
 - **A unit's invitation opened on a laptop** lands on the base as a unit (v56). The link sends units to the field app.
 - **The incident line, broken out** (the walk at v74, 18 October: "too much information too compacted too quickly";
-  mock-up `try/mockups/incident-line.html`, not yet decided): the header's second line keeps what changes (the period,
+  mock-up `try/mockups/incident-line.html`; built as v76, section 35): the header's second line keeps what changes (the period,
   overdue in orange or the planned end, the units, the divisions and cleared, the hazards) and a rest of half a second
   or a click opens a card with the whole picture broken out, six rows each with the place it is worked, Start the next
   period on it when overdue; the times, the IC and the base move to the card. No migration; a v60-sized panel.
@@ -788,7 +789,7 @@ the header has the clock), then Hours, Print 211, Print bands, Expand and Close 
 find box, the chips and Add a person are the People tab's own heading row under the bar, hidden on Members, drawn once
 so the box keeps focus across live redraws. A unit is a card: its name (a link to its panel), the status badge, the
 division, agency · kind · n on the unit; a person is a line on it: name and rank, the time on scene at the right
-("2 h 57 min", orange with "· past 12 h" when over the period's hours, "· back in" after a stint), the band and its
+("2h 57m", orange with "· past 12 h" when over the period's hours, "· back in" after a stint), the band and its
 last scan ("Band 001 · entering A-1 15:03", orange with "· 8 h ago" when the scan is older than two hours), the
 qualification chips; Add a person at the card's foot opens the form with the unit fixed. Pressing a line opens a
 340 px drawer beside the cards, which fall to two columns: the facts as a key-value list (On scene since when, Last
@@ -1072,7 +1073,7 @@ suites that read the 211 and every rule test before the session was stopped): th
 or the status when it holds none (Available, Out of service, Checked out 02:10); the table's columns are Name · Rank ·
 Qualifications · Checked in · On scene · Band · last seen · Out, with "own account", "with Okafor", the agency when not
 the unit's and the notes in small type under the name; the qualifications read "Swift water, EMT ✓"; the band column
-reads "001 · entering A-1 15:03", orange with "· 2 h 20 min ago" when the last scan is older than two hours, "no band"
+reads "001 · entering A-1 15:03", orange with "· 2h 20m ago" when the last scan is older than two hours, "no band"
 in grey; a unit with no names is one row saying so; what a unit left undone at check-out is the table's last line. The
 totals are a line ("8 people checked in on 3 units · 7 on scene · 1 checked out") over two small tables side by side,
 By agency and On scene by qualification, each with a People column, and the legend under them. On paper the division
@@ -1215,6 +1216,56 @@ check passing, the 30 misses in six suites that never touch runs; alone, `ics100
 `members` passed, `tags` passed on its second run, and `fieldReports`'s two revisit checks missed the same way on
 `main` at v74 (the suite's after-22:00 flake, handoff.md under Known misses). No migration, so no new rule test; the
 Supabase CLI is not logged in on this Mac, and the rule tests on the real database were not run for this release.
+
+## 35. v76 The incident line, broken out: what changes on the line, the rest on a card
+
+**Why.** The walk at v74, 18 October: "Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4h 8m, IC Dana
+Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared · 1 hazard open — is too much information too
+compacted too quickly. I would like to be able to hover over this and have a modal appear of a breakout of that
+information." Seven facts of four kinds in one grey line read all day as a status row, the one alarm fourth in the
+same grey, two names that never change in the middle, nothing to press. Drawn first as
+`try/mockups/incident-line.html`, with the thinking under "Is this the best we can do?"; the card's first draw, six
+labelled rows each a sentence with a button or two, was set aside on the second note, "a lot of noise and not a lot
+of signal", and redrawn as four tiles before the release landed.
+
+**Built.** The line under the name is a button saying what changes during the day, the alarm first: "Period 1 ·
+overdue 4h 8m · 3 units · 6 divisions, 1 cleared · 1 hazard open" (overdue in orange and semibold; with nothing
+overdue "Period 1 · to 19:00 · …"; a closed period "closed 19:00"; no hazard piece when none is open), with a caret
+at its end. The planned hours, the IC and the base are not on it. A rest of half a second on the line opens the card
+to peek (gone a quarter second after the pointer leaves the line and the card); a click keeps it (the caret blue)
+until Escape, a click elsewhere or a press on it. The card, under the line at the left like the codes' and the
+connection's cards: the incident's name and since when, **Start period 2** beside them while the period is overdue,
+then four tiles with one number each and one small fact under it: how long **overdue**, in orange, or how long is
+left, with the period and its planned hours under it (the tile opens the Period sheet); the **units**, all assigned
+or who is available or out of service (the People board); the **divisions**, with a bar of the search from cleared
+to not started in the map's colours and the counts in one line (the home panel at its list); the **hazards open**,
+the first one and where, "and 2 more" (the open hazards). The names, IC, Operations and Safety, the base and the
+lead agency, are one quiet line at the foot, the command line opening the org chart. One rule in rules.js writes the
+line and the card's facts, so they never disagree. No migration, the base only; the phone is untouched.
+
+*Decided (the mock-up's, all as recommended):* the five pieces on the line, the rest on the card; overdue in orange,
+second; tiles, not rows; Start the next period at the top while overdue only; the divisions as a bar, the legend's
+buttons going on filtering the map; "Period 1" on the line and "Operational period 1" nowhere, the card saying
+"Period 1" small under the number; the card 560 px wide, four tiles across, two by two at phone width.
+
+*Also in this release:* every duration reads "4h 8m", "45m", "12h" (was "4 h 8 min"), from the one formatter in rules.js; the
+214's "out of the water after 45 min" is written by the database and keeps the old words until a migration changes it.
+
+*Left open:* the hazards tile names the first and counts the rest; the chips of the first draw, which filtered the
+map from the card, are gone with it (the legend's buttons do that); at the base's phone width the card takes the
+screen's width under the header.
+
+**Built** 18 October 2026 as `The incident line, broken out: what changes on the line, the rest on a card (v76)`:
+`incidentLine`, `incidentLineText`, `incidentFacts` in rules.js (Node test in `dev/test-rules.mjs`);
+`incidentPopHtml` in js/base/ui.js; `#inc-sub` as a button and `#inc-pop` in index.html; `drawIncLine`,
+`drawIncPop`, `setIncOpen`, the rest and leave timers, `inc-line`, `inc-divisions`, `inc-hazards`, the Escape and
+click-outside rules in js/base/main.js; `.inc-line`, `.inc-pop`, `.ic-tile`, `.ic-bar`, `.ic-foot` in base.css; the
+discover label; `VERSION` v76; the `seeded` suite's seven checks, the `periods` and `ics100` suites reading the card;
+"Built as v76" on the mock-up page. `npm run check` and `npm test` pass; the full smoke run in headless Chrome
+(`npm run smoke`) 817 of 836 across 42 suites, the 19 misses in nine suites away from the header, every one of
+those suites passing alone afterwards (fieldReports, log, layers, walkfix, evacuees, rewalks, transports, invite,
+and tags once its headless camera check was rerun on a quiet machine); after the duration words changed, seeded,
+people, safetyset and tags alone again, all passing. No migration, so no rule test on the real database.
 
 ## Done before this list
 

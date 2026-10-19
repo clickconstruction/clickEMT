@@ -118,6 +118,24 @@ async function seeded(check) {
   check('a click swaps it to UTC, the right hour, kept for this device', /^\d\d:\d\d UTC$/.test(clk()) && nowUtc().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'utc' && /local/i.test($('#clock').title), clk() + ' | ' + nowUtc().join('/'));
   $('[data-action="clock"]').click();
   check('and back to local', !/UTC$/.test(clk()) && nowLocal().includes(clk().slice(0, 5)) && localStorage.getItem('ic.base.clock') === 'local', clk());
+  // ---- the incident line and its card (v76): the line says what changes, the alarm first; a rest opens the card to peek, a click keeps it
+  const lineText = () => $('#inc-sub').textContent.replace(/\s*·\s*/g, ' · ').replace(/\s*▾\s*$/, ' ▾').replace(/\s+/g, ' ').trim();
+  check('the line under the name is a button saying what changes, the alarm first, with a caret; the hours, the IC and the base are not on it', /^Period 1 · (overdue \d+(h( \d+m)?|m)|to \d\d:\d\d) · 3 units · 6 divisions, 1 cleared · 1 hazard open ▾$/.test(lineText()) && !/Dana|Base:|\d\d:\d\d to \d\d:\d\d/.test(lineText()) && $('#inc-sub').tagName === 'BUTTON' && $('#inc-pop').hidden && ((/overdue/.test(lineText())) === !!$('#inc-sub .warn')), lineText());
+  $('#inc-sub').dispatchEvent(new MouseEvent('mouseenter'));
+  check('a rest of half a second on the line opens the card to peek, not kept', !(await until(() => !$('#inc-pop').hidden, 300)) && await until(() => !$('#inc-pop').hidden, 1500) && !$('#inc-sub').classList.contains('on') && $$('#inc-pop .ic-tile').length === 4, $$('#inc-pop .ic-tile').length + ' tiles');
+  $('#inc-sub').dispatchEvent(new MouseEvent('mouseleave'));
+  check('the pointer leaving lets it go', await until(() => $('#inc-pop').hidden, 1500));
+  $('#inc-sub').click();
+  check('a click keeps it: the caret lit; four tiles with one number each (the units, the divisions, the hazard), the names at the foot', await until(() => !$('#inc-pop').hidden) && $('#inc-sub').classList.contains('on') && $$('#inc-pop .ic-tile .ic-big').map((b) => b.textContent).slice(1).join('|') === '3|6|1' && has('#inc-pop .ic-foot', 'ic dana ruiz', 'operations marcus bell', 'cedar fork high school', 'cedar fork fire department leads'), $$('#inc-pop .ic-tile .ic-big').map((b) => b.textContent).join('|'));
+  check('the divisions tile carries a bar of the search, cleared to not started, and the counts in one line', $$('#inc-pop .ic-bar .seg').map((x) => x.className.replace('seg ', '')).join('|') === 'cleared|active|open' && has('#inc-pop', '1 cleared', '3 in progress', '2 not started'), $$('#inc-pop .ic-bar .seg').map((x) => x.className).join('|'));
+  $('#inc-pop .ic-tile[data-action="people"]').click();
+  check('a tile is the button to its place: the units tile opens the People board and the card goes', await until(() => !$('#people').hidden) && $('#inc-pop').hidden, $('#people').hidden + ' ' + $('#inc-pop').hidden);
+  $('#people [data-action^="close-"]').click();
+  await until(() => $('#people').hidden);
+  $('#inc-sub').click();
+  await until(() => !$('#inc-pop').hidden);
+  document.body.click();
+  check('a click elsewhere closes it', await until(() => $('#inc-pop').hidden) && $('#inc-sub').getAttribute('aria-expanded') === 'false');
   // ---- v60: the gear in place of four buttons, the head count, the codes' and the connection's cards, the drawing buttons, a division's hover card
   check('the header row ends with a gear; Light, Settings, Pages (v64), Switch incident and Sign out are in its menu, not on the row', !!$('.top-btns [data-action="gear"]') && !$('.top-btns > [data-action="settings"]') && !$('.top-btns > [data-action="sign-out"]') && $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' ') === 'settings theme show-around pages-size switch-incident sign-out' && $('#gear-menu').hidden, $$('#gear-menu [data-action]').map((b) => b.dataset.action).join(' '));
   $('[data-action="gear"]').click();
@@ -516,7 +534,7 @@ async function people(check) {
   check('the log has each check-in with the qualifications, linked to the board', !!eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1') && eventText(base, 'Ramirez (swift water, EMT) checked in with Unit 1').kind === 'status' && $$('#log .log-row').filter((r) => /checked in with/.test(r.textContent) && r.querySelector('.llink[data-action="people"]')).length === 6, logTexts().find((t) => /Ramirez/.test(t)));   // the band lines link to the board too (v55)
   $('.top [data-action="people"]').click();
   await until(() => !$('#people').hidden && rows().length === 6);
-  check('the People board opens with a card per unit and a line per person: name, rank, qualifications and the hours on scene at the right, no drawer yet (v65)', $$('#people-page .pp-card').length === 3 && has('#people-page', '6 on scene on 3 units', 'unit 1', 'assigned', 'a-1', 'engine', '2 on the unit', 'ramirez', 'lt.', 'swift water', 'emt', 'okafor', 'paramedic', 'boat', 'nguyen', 'capt.') && /\b2 h \d+ min\b/.test(text(`#people-page .pp-line[data-person="${PP[0]}"] .pp-l-on`)) && !$('#people-page .pp-drawer') && getComputedStyle($('#people-page .pp-cards')).gridTemplateColumns.split(' ').length === 3, text('#people-page').slice(0, 400));
+  check('the People board opens with a card per unit and a line per person: name, rank, qualifications and the hours on scene at the right, no drawer yet (v65)', $$('#people-page .pp-card').length === 3 && has('#people-page', '6 on scene on 3 units', 'unit 1', 'assigned', 'a-1', 'engine', '2 on the unit', 'ramirez', 'lt.', 'swift water', 'emt', 'okafor', 'paramedic', 'boat', 'nguyen', 'capt.') && /\b2h \d+m\b/.test(text(`#people-page .pp-line[data-person="${PP[0]}"] .pp-l-on`)) && !$('#people-page .pp-drawer') && getComputedStyle($('#people-page .pp-cards')).gridTemplateColumns.split(' ').length === 3, text('#people-page').slice(0, 400));
   check('the bar is the tabs, the incident\'s name and the buttons on one row, Close last; the find box, the chips and Add a person are the People tab\'s heading row', (() => { const b = $$('#people .briefing-bar .btn, #people .briefing-bar .pp-tabs button'); const tops = b.map((x) => Math.round(x.getBoundingClientRect().top + x.getBoundingClientRect().height / 2)); return Math.max(...tops) - Math.min(...tops) < 8 && b[b.length - 1].textContent.trim() === 'Close' && b[0].textContent.trim() === 'People'; })() && text('#people-sub') === base.incident.name.toLowerCase() && !$('#people-head').hidden && $('#people-head').contains($('#people-q')) && $('#people-head').contains($('#people-quals')) && $('#people-head').contains($('#people-add')) && !$('#people-page').contains($('#people-q')), $$('#people .briefing-bar .btn').map((x) => x.textContent.trim()).join('/'));
   check('the chips count who on scene carries each qualification', has('#people-quals', 'swift water 3', 'boat 2', 'rope 1', 'emt 3', 'paramedic 2', 'k9 0'), text('#people-quals'));
   const d0 = await drawer(PP[0]);
@@ -653,10 +671,14 @@ async function people(check) {
 // carries the open objectives and the zones with them, and the briefing assembles the picture.
 async function periods(check) {
   const per = M().ids.period, obj = M().ids.objectives;
-  check('the header names operational period 1 and the Incident Commander', has('#inc-sub', 'op 1', 'ic dana ruiz'), text('#inc-sub'));
+  check('the header line names period 1 and the counts; the IC is on its card, not the line (v76)', has('#inc-sub', 'period 1', '3 units', '6 divisions', '1 cleared', '1 hazard open') && !has('#inc-sub', 'dana ruiz') && !has('#inc-sub', 'op 1'), text('#inc-sub'));
   { // v40: past its planned end the header says overdue, the reports say the next period has not been started, and the sheet lights Start period; before it, none of that
     const over = Date.now() > new Date(base.currentPeriod().ends_at).getTime();
     check('the header says overdue only when the planned end has passed (' + (over ? 'it has' : 'it has not') + ')', has('#inc-sub', 'overdue') === over, text('#inc-sub'));
+    $('#inc-sub').click();
+    check('the line clicked opens the incident\'s card, kept: four tiles, the period\'s ' + (over ? 'overdue in orange with Start period 2 at the top' : 'time left') + ', the units all assigned, the divisions with the bar, the hazard and where; the names at the foot (v76)', await until(() => !$('#inc-pop').hidden) && has('#inc-pop', over ? 'overdue' : 'left', 'period 1', '19:00', 'units', 'all assigned', 'divisions', '1 cleared', '3 in progress', '2 not started', 'hazard open', 'downed power line', 'a-2', 'ic dana ruiz', 'operations marcus bell', 'safety priya natarajan', 'cedar fork high school', 'cedar fork fire department leads') && (!!$('#inc-pop [data-action="period-next"]') === over) && ($('#inc-pop .ic-tile').classList.contains('alarm') === over) && $('#inc-sub').classList.contains('on') && $('#inc-sub').getAttribute('aria-expanded') === 'true', text('#inc-pop').slice(0, 400));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    check('Escape closes the card', await until(() => $('#inc-pop').hidden) && $('#inc-sub').getAttribute('aria-expanded') === 'false' && !$('#inc-sub').classList.contains('on'));
     $('[data-action="iap"]').click();
     await until(() => !$('#briefing').hidden);
     check('the IAP\'s period line and its Prepared line read in the app\'s own form', (/the planned end passed .* ago; the next period has not been started/.test(text('#briefing-page')) === over) && /prepared \d{1,2} [a-z]{3} \d{4} \d{2}:\d{2}/.test(text('#briefing-page')) && !/\d{1,2}\/\d{1,2}\/\d{4}/.test(text('#briefing-page')), text('#briefing-page').slice(0, 300));
@@ -713,7 +735,11 @@ async function periods(check) {
   check('the two open objectives came over, renumbered 1 and 2, the done ones stayed behind', carried.length === 2 && carried[0].number === 1 && carried[0].text.startsWith('Primary search') && carried[1].number === 2 && carried[1].text.startsWith('Secondary search') && base.objectives(per).length === 4, carried.map((o) => o.number + ' ' + o.text).join(' | '));
   check('zones follow their objectives into the new period', base.zone(ZONE('A-1')).objective_id === carried[0].id && base.zone(ZONE('B-3')).objective_id === carried[1].id && base.zone(ZONE('B-1')).objective_id === obj[1]);
   check('carry-over wrote no objective lines of its own', base.events().filter((e) => /^Objective 1 set/.test(e.text)).length === 1);
-  check('the header and the field see period 2', await until(() => has('#inc-sub', 'op 2', 'ic jordan pike')) && await until(() => field.currentPeriod() && field.currentPeriod().number === 2), text('#inc-sub'));
+  check('the header and the field see period 2', await until(() => has('#inc-sub', 'period 2')) && await until(() => field.currentPeriod() && field.currentPeriod().number === 2), text('#inc-sub'));
+  $('#inc-sub').click();
+  check('the card names the new period and its IC, Jordan Pike (v76)', await until(() => !$('#inc-pop').hidden && has('#inc-pop', 'period 2', 'ic jordan pike')), text('#inc-pop').slice(0, 200));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#inc-pop').hidden);
 
   $('[data-action="briefing"]').click();
   await until(() => !$('#briefing').hidden && $('#briefing-page').textContent.includes('Objectives'));
@@ -1429,28 +1455,28 @@ async function sections(check) {
   check('saving 2 hours is one line of its own', !!eventText(base, 'Operational period 1: on scene too long past 2 hours'), logTexts()[0]);
   $('[data-action="people"]').click();
   await until(() => !$('#people').hidden);
-  check('the People board turns everyone past 2 h orange, says so on each line and counts them', await until(() => $$('#people-page .pp-line.over').length === 6) && has('#people-page', '6 past 2 h on scene') && /\b2 h( \d+ min)? · past 2 h\b/.test(text('#people-page')), text('#people-page').slice(0, 300));
+  check('the People board turns everyone past 2h orange, says so on each line and counts them', await until(() => $$('#people-page .pp-line.over').length === 6) && has('#people-page', '6 past 2h on scene') && /\b2h( \d+m)? · past 2h\b/.test(text('#people-page')), text('#people-page').slice(0, 300));
   $('[data-action="close-people"]').click();
   await until(() => $('#people').hidden);
   $('[data-action="briefing"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'shift-change'));
-  check('the briefing\'s Needs attention names who is past it, longest first', /needs attention.*ramirez \(unit 1\): 2 h( \d+ min)? on scene, past 2 h.*okafor \(unit 1\)/.test(text('#briefing-page')), text('#briefing-page').slice(0, 200));
+  check('the briefing\'s Needs attention names who is past it, longest first', /needs attention.*ramirez \(unit 1\): 2h( \d+m)? on scene, past 2h.*okafor \(unit 1\)/.test(text('#briefing-page')), text('#briefing-page').slice(0, 200));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('[data-action="sitrep"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'situation report'));
-  check('the situation report has an On scene too long section', has('#briefing-page', 'on scene too long', 'okafor (unit 1): 2 h'), text('#briefing-page').slice(-600));
+  check('the situation report has an On scene too long section', has('#briefing-page', 'on scene too long', 'okafor (unit 1): 2h'), text('#briefing-page').slice(-600));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('#panel [data-action="close-panel"]').click();
   await until(() => !!$('#panel [data-home]'));
   $(`#panel [data-action="select-unit"][data-id="${u.unit1}"]`).click();
   await until(() => has('#panel .title', 'unit 1'));
-  check('the unit panel\'s people are orange too', await until(() => $$('#panel .pp-row.over').length === 2) && has('#panel', 'past 2 h'), text('#panel').slice(0, 300));
+  check('the unit panel\'s people are orange too', await until(() => $$('#panel .pp-row.over').length === 2) && has('#panel', 'past 2h'), text('#panel').slice(0, 300));
   // the crew's own briefing says under Shift that it is past the period's hours (the phone's one line of it)
   const { fieldBriefing: fb } = await import('../js/shared/briefings.js');
   const shift = fb(base, { me: base.member(u.unit1), at: [30.2681, -97.7318] }).find((x) => x.key === 'shift');
-  check('the crew\'s own briefing says under Shift that it is past the period\'s hours', !!shift && shift.warn === true && /Your crew has been on scene 2 h( \d+ min)?, past the period's 2 hours: Safety sees it; say when you need relief\./.test(shift.text), shift && shift.text);
+  check('the crew\'s own briefing says under Shift that it is past the period\'s hours', !!shift && shift.warn === true && /Your crew has been on scene 2h( \d+m)?, past the period's 2 hours: Safety sees it; say when you need relief\./.test(shift.text), shift && shift.text);
   $('[data-action="period"]').click();
   await until(() => $('#panel form[data-form="period-edit"]'));
   $('[data-action="iap"]').click();
@@ -1630,7 +1656,10 @@ async function ics100(check) {
   check('Unit 3 has it as an unanswered safety message', await until(() => field.myUnanswered().some((m) => m.id === msg.id && m.kind === 'safety')));
   await field.ackMessage(msg.id, 'Acknowledged');
   check('its acknowledgement is logged like any safety message', await until(() => !!eventText(base, 'Unit 3 acknowledged Operations: Acknowledged')) && await until(() => has('#safety', 'waiting on 2 units') && $$('#safety .bar-item').some((b) => /waiting on Unit 1, Unit 2$|waiting on Unit 1, Unit 2 ·/.test(b.title) && !/Unit 3/.test(b.title))), text('#safety'));
-  check('the header reads IC Marcus Bell', await until(() => has('#inc-sub', 'ic marcus bell')), text('#inc-sub'));
+  $('#inc-sub').click();
+  check('the incident\'s card reads IC Marcus Bell (v76)', await until(() => !$('#inc-pop').hidden && has('#inc-pop', 'ic marcus bell')), text('#inc-pop').slice(0, 200));
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => $('#inc-pop').hidden);
   $('[data-action="iap"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'incident action plan'));
   check('the 203 says who holds command since when, and who held it before, and prints the deputy', has('#briefing-page', 'incident commander: marcus bell · since', 'from dana ruiz-ortega', 'held command earlier: dana ruiz-ortega ·', 'deputy incident commander: chief al barnes'), text('#briefing-page').slice(0, 500));
@@ -1780,7 +1809,7 @@ async function rewalks(check) {
   check('checked out and back in: the check-in stays, the stint stamp is now, and the log says so', base.person(PPL[2]).checked_in_at === was && !base.person(PPL[2]).checked_out_at && Date.now() - new Date(base.person(PPL[2]).stint_at).getTime() < 60000 && !!eventText(base, 'Nguyen (swift water, boat) checked back in with Unit 2'), `${base.person(PPL[2]).checked_in_at === was} ${base.person(PPL[2]).stint_at} | ${logTexts()[0]}`);
   $('[data-action="people"]').click();
   await until(() => !$('#people').hidden);
-  check('the board counts the current stretch: "0 min · back in" on the line, "0 min, since now · back in" in the drawer', await until(() => /0 min · back in/.test(text(`#people-page .pp-line[data-person="${PPL[2]}"]`))) && await (async () => { $(`#people-page .pp-line[data-person="${PPL[2]}"]`).click(); return until(() => /0 min, since \d\d:\d\d · back in/.test(text(`#people-page .pp-drawer[data-person="${PPL[2]}"]`))); })(), text(`#people-page .pp-line[data-person="${PPL[2]}"]`));
+  check('the board counts the current stretch: "0m · back in" on the line, "0m, since now · back in" in the drawer', await until(() => /0m · back in/.test(text(`#people-page .pp-line[data-person="${PPL[2]}"]`))) && await (async () => { $(`#people-page .pp-line[data-person="${PPL[2]}"]`).click(); return until(() => /0m, since \d\d:\d\d · back in/.test(text(`#people-page .pp-drawer[data-person="${PPL[2]}"]`))); })(), text(`#people-page .pp-line[data-person="${PPL[2]}"]`));
   $('[data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
   check('the 211 keeps every stretch: checked in at the first check-in', row211('Nguyen').includes('capt. swift water, boat (pending) ' + new Date(was).toTimeString().slice(0, 5) + ' '), row211('Nguyen'));
@@ -3320,11 +3349,11 @@ async function safetyset(check) {
     const u2 = new Data(boat); await u2.init(); await u2.open(INC());
     check('the period carries a rotation of 45 minutes, and the briefing tells a boat crew about it and the boat ramp', base.rotationMinutes() === 45);
     await u2.setInWater(U.unit2, new Date().toISOString());
-    check('one tap puts the crew in the water, logged', await until(() => base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 in the water')) && await until(() => has('#panel', 'unit 2', 'in the water 0 min')), logTexts()[0]);
+    check('one tap puts the crew in the water, logged', await until(() => base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 in the water')) && await until(() => has('#panel', 'unit 2', 'in the water 0m')), logTexts()[0]);
     await u2.setInWater(U.unit2, new Date(Date.now() - 50 * 60000).toISOString());
-    check('past the rotation the row says so in orange', await until(() => $$('#panel .ur .water.over').some((w) => /in the water 50 min/.test(w.textContent))), text('#panel').slice(0, 200));
+    check('past the rotation the row says so in orange', await until(() => $$('#panel .ur .water.over').some((w) => /in the water 50m/.test(w.textContent))), text('#panel').slice(0, 200));
     await u2.setInWater(U.unit2, new Date(Date.now() - 140 * 60000).toISOString());
-    check('past three rotations the base says the clock was probably left running', await until(() => has('#panel', 'unit 2', 'probably left running (2 h 20 min)')));
+    check('past three rotations the base says the clock was probably left running', await until(() => has('#panel', 'unit 2', 'probably left running (2h 20m)')));
     $(`#panel [data-action="select-unit"][data-id="${U.unit2}"]`).click();
     await until(() => has('#panel .title', 'unit 2') && $('#panel [data-action="unit-water"]'));
     check('the unit panel shows the clock with Out of the water for Operations', has('#panel', 'in the water', 'probably left running', 'rotation 45 min') && $('#panel [data-action="unit-water"]').textContent === 'Out of the water');
@@ -3366,11 +3395,11 @@ async function safetyset(check) {
       await field.setKind(U.unit3, 'swift_water');
       check('a swift-water crew\'s home screen offers In the water before the clock runs', await until(() => P.shown('#water-row') && /in the water/.test(P.text('#water-row')) && !/in the water \d/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 6000), P.text('#water-row'));
       P.$('#water-row [data-action="water-toggle"]').click();
-      check('one tap: the row flips at once, and the base sees it in the water, logged (a hidden frame\'s outbox is slow to send)', await until(() => /in the water \d+ min · rotation 30 min/.test(P.text('#water-row')), 8000) && await until(() => base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 in the water'), 8000), P.text('#water-row'));
+      check('one tap: the row flips at once, and the base sees it in the water, logged (a hidden frame\'s outbox is slow to send)', await until(() => /in the water \d+m · rotation 30 min/.test(P.text('#water-row')), 8000) && await until(() => base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 in the water'), 8000), P.text('#water-row'));
       await base.setInWater(U.unit3, new Date(Date.now() - 35 * 60000).toISOString());
       check('past the rotation the row turns to the safety colour and nudges: swap the crew, with Later', await until(() => P.$('#water-row .water-row.over') && /past the rotation: swap the crew/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-later"]'), 8000), P.text('#water-row'));
       P.$('#water-row [data-action="water-later"]').click();
-      check('Later puts the nudge away until the next rotation, the clock stays', await until(() => !/swap the crew/.test(P.text('#water-row')) && /in the water 35 min/.test(P.text('#water-row')), 6000), P.text('#water-row'));
+      check('Later puts the nudge away until the next rotation, the clock stays', await until(() => !/swap the crew/.test(P.text('#water-row')) && /in the water 35m/.test(P.text('#water-row')), 6000), P.text('#water-row'));
       await base.setInWater(U.unit3, new Date(Date.now() - 65 * 60000).toISOString());
       check('the next rotation asks again', await until(() => /swap the crew/.test(P.text('#water-row')), 8000), P.text('#water-row'));
       P.$('#water-row [data-action="water-toggle"]').click();

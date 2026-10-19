@@ -18,7 +18,7 @@ const THIN = 80;   // a part shorter than this gets its label hung under it, not
 // from its left; `y`: a fraction of a tall part's height; a thin part's card hangs under it), and the words: the part's
 // own name, then one line of twelve words at most. `quiet`: tinted only while the alarm line is quiet.
 const LABELS = [
-  { key: 'head', targets: ['.top-main'], x: 0.02, title: 'The incident line', text: 'Command, period, units in, search done, what\'s open. Read it first.' },
+  { key: 'head', targets: ['.top-main'], x: 0.02, title: 'The incident line', text: 'Period, units, divisions, hazards. Rest on it for the whole picture.' },
   { key: 'btns', targets: ['.top-btns'], x: 0.4, title: 'The buttons', text: 'The period\'s sheets, the boards, the ICS forms, filled from the map.' },
   { key: 'bars', targets: ['#bars'], x: 0.45, quiet: true, title: 'Emergency and alarms', text: 'Red: a crew in trouble. Yellow: a safety message or head count.' },
   { key: 'tools', targets: ['.tools'], x: 0.02, title: 'Draw · Boundary · Division · Layers', text: 'Start here: the boundary, then the divisions inside it.' },

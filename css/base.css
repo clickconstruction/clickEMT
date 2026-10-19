@@ -19,6 +19,30 @@
 .top-main { display: flex; flex-direction: column; min-width: 400px; flex: 1; }   /* wide enough that at 1280 the buttons wrap under it and the pills end their row (v60) */
 .top h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top .muted { font-size: 12.5px; }
+/* the incident line and its card (v76): the line under the name is a button saying what changes during the day, the
+   alarm in orange; a rest of half a second or a click opens the card under it at the left (.pop), a click keeps it */
+.top-main { position: relative; }
+.top .inc-line { align-self: flex-start; display: inline-flex; flex-wrap: wrap; align-items: center; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; line-height: 1.5; padding: 1px 6px 1px 0; margin: 0; border-radius: 999px; cursor: pointer; text-align: left; }
+.top .inc-line:hover, .top .inc-line.on { color: var(--ink-2); }
+.inc-line .sep { padding: 0 5px; color: var(--grey); }
+.inc-line .warn { color: var(--hazard-ink); font-weight: 600; }
+.inc-line .caret { color: var(--grey); font-size: 10px; margin-left: 4px; } .inc-line.on .caret { color: var(--accent-text); }
+.inc-pop { left: 0; right: auto; width: min(560px, calc(100vw - 24px)); }
+.ic-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding-bottom: 10px; } .ic-head b { font-size: 14px; } .ic-head .muted { flex: 1; font-size: 12.5px; }
+.ic-tiles { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 8px; }   /* the first tile holds a duration, "4 h 44 min", on one line */
+.ic-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 88px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.ic-tile:hover { border-color: var(--grey); background: var(--hover); }
+.ic-big { font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ic-word { font-size: 12.5px; color: var(--ink-2); }
+.ic-tile.alarm .ic-big, .ic-tile.alarm .ic-word { color: var(--hazard-ink); }
+.ic-tile.quiet .ic-big { color: var(--muted); }
+.ic-sm { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.35; width: 100%; }
+.ic-bar { display: flex; height: 6px; width: 100%; border-radius: 3px; overflow: hidden; margin: 2px 0 5px; background: var(--soft); }
+.ic-bar .seg { display: block; min-width: 3px; } .ic-bar .seg.cleared { background: var(--cleared-fill); } .ic-bar .seg.primary { background: #8FCFA7; } .ic-bar .seg.active { background: var(--active-fill); } .ic-bar .seg.open { background: repeating-linear-gradient(45deg, var(--soft) 0 2px, var(--dot-off) 2px 3px); }
+.ic-foot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12px; line-height: 1.5; }
+.ic-link { display: block; border: 0; background: none; padding: 0; margin: 0; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-align: left; } .ic-link:hover { color: var(--ink-2); text-decoration: underline; }
+.ic-base { display: block; }
+@media (max-width: 720px) { .ic-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inc-pop { width: calc(100vw - 24px); } }
 .top-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 /* The pills (v59): the join code, the connection and the clock, last in the header and pushed to its right end, so a
    wide screen has the header on one row and 1280 has them at the end of the buttons' row. The connection is a dot

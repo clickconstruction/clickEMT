@@ -9,7 +9,7 @@
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="stylesheet" href="/css/shared.css">
 <!-- A click-through mock-up, drawn 18 October 2026 at v75 before anything is built, of the note on the base header's
-     second line: "Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4 h 8 min, IC Dana Ruiz · Base: Cedar Fork
+     second line: "Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4h 8m, IC Dana Ruiz · Base: Cedar Fork
      High School · 3 units · 6 divisions, 1 cleared · 1 hazard open — is too much information too compacted too
      quickly. I would like to be able to hover over this and have a modal appear of a breakout of that information."
      The line as it is today, the line thinned to what changes with the alarm first, and the card that opens on a rest
@@ -89,26 +89,22 @@
   /* the card: .pop as base.css draws the codes' and the connection's cards, under the line at the left */
   .inc-pop { position: absolute; left: 12px; top: calc(100% - 6px); z-index: 20; width: min(560px, calc(100% - 24px)); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px 14px; box-sizing: border-box; text-align: left; font-size: 13px; }
   .inc-pop[hidden] { display: none; }
-  .inc-pop .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
-  .inc-pop .head b { font-size: 14px; }
-  .ic-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-soft); }
-  .ic-row:first-of-type { border-top: 0; }
-  .ic-row .lab { color: var(--muted); font-size: 12px; padding-top: 2px; }
-  .ic-row .facts { min-width: 0; line-height: 1.45; }
-  .ic-row .facts b { font-weight: 600; }
-  .ic-row .facts .warn { color: var(--hazard-ink); font-weight: 600; }
-  .ic-row .facts .small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .ic-row .acts { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-  .ic-row .acts .btn { min-height: 26px; padding: 0 9px; font-size: 12px; }
-  .ic-row .acts .btn.pri { min-height: 26px; }
-  .chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); border-radius: 999px; padding: 1px 9px 1px 6px; font: inherit; font-size: 12px; cursor: pointer; margin: 2px 4px 2px 0; }
-  .chip:hover { border-color: var(--grey); }
-  .chip .sw { display: inline-block; width: 11px; height: 8px; border: 1.5px solid #7A776F; border-radius: 2px; }
-  .chip .sw.active { background: rgba(47,111,179,.35); border-color: #24588F; }
-  .chip .sw.cleared { background: rgba(46,139,87,.45); border-color: #1F6B42; }
-  .chip .sw.open { background: repeating-linear-gradient(45deg, var(--soft) 0 2px, var(--dot-off) 2px 3px); }
-  .inc-pop .foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 11.5px; }
-  @media (max-width: 720px) { .ic-row { grid-template-columns: 1fr; } .ic-row .acts { justify-content: flex-start; } .inc-pop { left: 0; width: 100%; } }
+  .ic-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding-bottom: 10px; }
+  .ic-head b { font-size: 14px; } .ic-head .muted { flex: 1; font-size: 12.5px; }
+  .ic-tiles { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 8px; }   /* the first tile holds a duration, "4h 44m", on one line */
+  .ic-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 88px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+  .ic-tile:hover { border-color: var(--grey); background: var(--hover); }
+  .ic-big { font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .ic-word { font-size: 12.5px; color: var(--ink-2); }
+  .ic-tile.alarm .ic-big, .ic-tile.alarm .ic-word { color: var(--hazard-ink); }
+  .ic-tile.quiet .ic-big { color: var(--muted); }
+  .ic-sm { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.35; width: 100%; }
+  .ic-bar { display: flex; height: 6px; width: 100%; border-radius: 3px; overflow: hidden; margin: 2px 0 5px; background: var(--soft); }
+  .ic-bar .seg { display: block; min-width: 3px; } .ic-bar .seg.cleared { background: var(--cleared-fill); } .ic-bar .seg.primary { background: #8FCFA7; } .ic-bar .seg.active { background: var(--active-fill); } .ic-bar .seg.open { background: repeating-linear-gradient(45deg, var(--soft) 0 2px, var(--dot-off) 2px 3px); }
+  .ic-foot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .ic-link { border: 0; background: none; padding: 0; margin: 0; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-align: left; display: block; }
+  .ic-link:hover { color: var(--ink-2); text-decoration: underline; }
+  @media (max-width: 720px) { .ic-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inc-pop { left: 0; width: 100%; } }
 
   /* the state switch above the proposed header */
   .states { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
@@ -141,8 +137,8 @@
 
 <div class="intro">
   <h1>The incident line, broken out</h1>
-  The note, 18 October, walking the base at v74: <q>Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4 h 8 min, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared · 1 hazard open — is too much information too compacted too quickly. I would like to be able to hover over this and have a modal appear of a breakout of that information.</q>
-  Drawn at v75, before anything is built. Two changes, one piece: the line under the incident's name keeps only what changes during the day, the alarm first; and resting on it, or clicking it, opens a card with the whole picture broken out, each row with the place it is worked. Made-up data; rest on the line below, click it, press its buttons.
+  The note, 18 October, walking the base at v74: <q>Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4h 8m, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared · 1 hazard open — is too much information too compacted too quickly. I would like to be able to hover over this and have a modal appear of a breakout of that information.</q>
+  Drawn at v75, before anything was built; <b>built as v76</b> (docs/punchlist.md, section 35; the re-walk in docs/walkthroughs.md), the card redrawn as four tiles on the way. Two changes, one piece: the line under the incident's name keeps only what changes during the day, the alarm first; and resting on it, or clicking it, opens a card with the whole picture broken out, each row with the place it is worked. Made-up data; rest on the line below, click it, press its buttons.
 </div>
 
 <section class="part" id="today">
@@ -190,14 +186,13 @@
       </div>
     </div>
     <div class="screen w">
-      <div class="cap"><b>The card is the breakout.</b> Six rows, one per kind of thing, each with its facts whole and a button to where it is worked.
+      <div class="cap"><b>The card is four numbers and one button.</b> A tile per thing that changes, the number the biggest thing on it, one small fact under it; each tile is the button to where it is worked, so there are no rows of buttons.
         <ul>
-          <li><b>Operational period:</b> started, planned to, and the alarm in words; <b>Start period 2</b> right there when it is overdue, since that is the one action the line has ever asked for.</li>
-          <li><b>Command:</b> the IC and the two chiefs the line could not fit; Org chart.</li>
-          <li><b>Base:</b> the name and the lead agency.</li>
-          <li><b>Units:</b> the count by status, then each unit, its kind and its division; Units scrolls the home panel there, People opens the board.</li>
-          <li><b>Divisions:</b> the count, then a chip per state that filters the map as the legend's buttons do; the list itself is on the home panel, always.</li>
-          <li><b>Hazards:</b> each open hazard in a line: kind, where, when, by whom.</li>
+          <li><b>How long overdue</b>, in orange, or how long is left; under it the period and its planned hours. <b>Start period 2</b> at the top of the card while it is overdue, the one action the line has ever asked for.</li>
+          <li><b>Units:</b> the number, and under it all assigned, or who is available or out of service. The tile opens the People board.</li>
+          <li><b>Divisions:</b> the number, a bar of the search from cleared to not started in the map's colours, the counts in one small line. The tile opens the home panel at its list.</li>
+          <li><b>Hazards open:</b> the number, the first one and where, "and 2 more". The tile opens the open hazards.</li>
+          <li><b>The names</b>, IC, Operations and Safety, the base and the lead agency, in one quiet line at the foot; the command line opens the org chart.</li>
         </ul>
       </div>
     </div>
@@ -235,6 +230,14 @@
       </ul>
     </div>
     <div class="panel">
+      <div class="k">The first draw, set aside</div>
+      <ul>
+        <li>Six labelled rows, each a sentence with a button or two: the whole picture, read as a sheet. The note on it: "a lot of noise and not a lot of signal".</li>
+        <li>The tiles keep the four numbers and lose the sentences. What the rows said in words, the tiles say in size and colour: the alarm is the biggest orange thing on the card, the search is a bar, the names are small.</li>
+        <li>What went: the unit-by-unit list (the People board has it), the hazard sentences (the home panel has them), a button per row (the tile is the button).</li>
+      </ul>
+    </div>
+    <div class="panel">
       <div class="k">What to watch after</div>
       <ul>
         <li>Whether anyone misses the IC's name on screen. If they do, it goes back as the last piece, after the counts, not the second.</li>
@@ -255,14 +258,19 @@
       <li><b>One rule writes both.</b> The line's pieces and the card's rows come from one function in rules.js, so they never disagree, and a Node test reads them. <span class="chosen">chosen</span></li>
       <li><b>No migration.</b> Everything on the card is already in the period, the incident, the members, the zones and the hazards. <span class="chosen">chosen</span></li>
     </ul>
+    <div class="k">Built as v76 · 18 October</div>
+    <ul class="decisions">
+      <li><b>The line as drawn</b>, and the card first as six rows, then, on the note "a lot of noise and not a lot of signal", as the four tiles above before the release landed: one number each, the one action at the top while overdue, the bar of the search, the names at the foot. The list below is kept for the record.</li>
+    </ul>
     <div class="k">Yours to decide (recommended first)</div>
     <ul class="decisions">
       <li><b>What the line keeps.</b> Recommended: <b>the period, the alarm or the planned end, the units, the divisions and cleared, the hazards</b>; the times, the IC and the base live on the card. The other way keeps every fact on the line and only adds the card. <span class="open">open</span></li>
       <li><b>Overdue in orange, second.</b> Recommended: <b>yes</b>, the one alarm reads as one; the other way leaves the line all grey as today. <span class="open">open</span></li>
       <li><b>Start period 2 on the card.</b> Recommended: <b>yes, when overdue only</b>: the line's one ask gets its one button, and the Period panel opens on the hand-over as it does from its own button; the other way keeps the card to facts and links. <span class="open">open</span></li>
-      <li><b>The divisions as chips that filter the map.</b> Recommended: <b>yes</b>, they are the legend's buttons with the counts on them; the other way is plain words. <span class="open">open</span></li>
+      <li><b>Tiles, not rows.</b> Recommended: <b>four tiles</b>, one number each, each the button to its place, the names at the foot; the other way is the first draw's six rows of sentences. <span class="open">open</span></li>
+      <li><b>The divisions as a bar.</b> Recommended: <b>a bar</b> of the search under the number, cleared to not started in the map's colours, the counts in one small line; the legend's buttons go on filtering the map. The first draw had chips that filtered it, four more buttons. <span class="open">open</span></li>
       <li><b>"Period 1" or "OP 1".</b> Recommended: <b>Period 1</b> on the line and "Operational period 1" on the card, the vocabulary the base already uses (v4's list); OP stays on the printed forms, where ICS wants it. <span class="open">open</span></li>
-      <li><b>The card's width.</b> Recommended: <b>560 px</b>, so each row is one line at 1280 wide; the other way matches the codes' card at 400 and wraps the units. <span class="open">open</span></li>
+      <li><b>The card's width.</b> Recommended: <b>560 px</b>, four tiles across, two by two at phone width; the other way matches the codes' card at 400 and stacks them. <span class="open">open</span></li>
     </ul>
   </div>
 </section>
@@ -275,9 +283,9 @@
         <ul class="touch">
           <li><b>rules.js:</b> <span class="mono">incidentLine({ period, units, zones, hazards }, now)</span> returns the line's pieces (words and kind) and <span class="mono">incidentCard(…)</span> the rows; both tested in <span class="mono">dev/test-rules.mjs</span>.</li>
           <li><b>index.html:</b> <span class="mono">#inc-sub</span> becomes a button, <span class="mono">.inc-line</span>, with <span class="mono">aria-expanded</span>; <span class="mono">#inc-pop</span> beside it, a <span class="mono">.pop</span> like <span class="mono">#codes-pop</span>.</li>
-          <li><b>ui.js:</b> <span class="mono">incidentPopHtml(data, state)</span> draws the rows; the chips carry <span class="mono">data-action="legend-status"</span> so the map's filter is the same code.</li>
+          <li><b>ui.js:</b> <span class="mono">incidentPopHtml(data, state)</span> draws the tiles from the facts; each tile carries the action of its place.</li>
           <li><b>main.js:</b> <span class="mono">drawAll</span> writes the line from the rule; a 500 ms rest timer like the division card's; <span class="mono">state.incOpen</span> for the click; Escape and the click-elsewhere rule the codes' card uses; <span class="mono">period-next</span> from the card.</li>
-          <li><b>base.css:</b> <span class="mono">.inc-line</span>, <span class="mono">.inc-pop</span>, <span class="mono">.ic-row</span>, the chips; the phone-width rule.</li>
+          <li><b>base.css:</b> <span class="mono">.inc-line</span>, <span class="mono">.inc-pop</span>, <span class="mono">.ic-tile</span>, <span class="mono">.ic-bar</span>, the foot; the phone-width rule.</li>
           <li><b>The suites:</b> <span class="mono">seeded</span> and <span class="mono">periods</span> read <span class="mono">#inc-sub</span> for "overdue" today and would read the line and the card instead; one new check for the rest, the click and Escape.</li>
           <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, the punchlist's section, "Built as vN" here, the re-walk; the discover labels (v58) say "the incident's name and its state" and keep saying it.</li>
         </ul>
@@ -305,7 +313,7 @@
   };
   const STATES = { overdue: { clock: '23:08 CDT', overMin: 248, leftMin: 0 }, ontime: { clock: '16:20 CDT', overMin: 0, leftMin: 160 } };
   let state = 'overdue';
-  const dur = (min) => min < 60 ? min + ' min' : (Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '')).trim();
+  const dur = (min) => min < 60 ? min + 'm' : Math.floor(min / 60) + 'h' + (min % 60 ? ' ' + (min % 60) + 'm' : '');   // "4h 8m", as rules.js writes it since v76
   const zonesN = (z) => z.active.length + z.primary.length + z.cleared.length + z.open.length;
 
   // today's line: the formula in drawAll at v74
@@ -346,26 +354,26 @@
     $('today-marks').innerHTML = todayMarks(DATA, STATES.overdue);
   }
 
-  // the card's rows (incidentCard in rules.js): label, the facts, the places it is worked
-  function cardRows(d, st) {
+  // the card's tiles: one number per thing that changes, each tile the button to where it is worked
+  function tiles(d, st) {
     const z = d.zones, n = zonesN(z);
     const byStatus = {}; for (const u of d.units) byStatus[u.status] = (byStatus[u.status] || 0) + 1;
-    const statusWords = Object.entries(byStatus).map(([s, c]) => (c === d.units.length ? 'all ' : c + ' ') + { assigned: 'assigned', available: 'available', oos: 'out of service' }[s]).join(', ');
-    const chips = [['active', z.active.length + ' in progress', 'In progress'], ['primary', z.primary.length + ' with the primary search done', 'Primary search done'], ['cleared', z.cleared.length + ' cleared', 'Cleared'], ['open', z.open.length + ' not started', 'Not started']].filter((c, i) => [z.active, z.primary, z.cleared, z.open][i].length);
+    const statusWords = Object.entries(byStatus).map(([k, c]) => (c === d.units.length ? 'all ' : c + ' ') + { assigned: 'assigned', available: 'available', oos: 'out of service' }[k]).join(', ');
+    const segs = [['cleared', z.cleared.length, 'cleared'], ['primary', z.primary.length, 'primary search done'], ['active', z.active.length, 'in progress'], ['open', z.open.length, 'not started']].filter((x) => x[1]);
+    const bar = `<span class="ic-bar">${segs.map(([k, c]) => `<i class="seg ${k}" style="flex:${c}"></i>`).join('')}</span>`;
+    const h = d.hazards, periodSmall = `Period ${d.period.number} · ${d.period.starts} to ${d.period.ends}`;
     return [
-      { label: 'Operational period', facts: `<b>${d.period.number}</b> · started ${d.period.starts} · planned to ${d.period.ends}` + (st.overMin ? ` · <span class="warn">overdue ${dur(st.overMin)}</span>` : ` · ${dur(st.leftMin)} left`), acts: [['Period', 'the Period panel'], st.overMin ? ['Start period ' + (d.period.number + 1), 'Start next period: the Period panel, on the hand-over', 'pri'] : null].filter(Boolean) },
-      { label: 'Command', facts: `IC <b>${esc(d.command.ic)}</b> · Operations ${esc(d.command.ops)} · Safety ${esc(d.command.safety)}`, acts: [['Org chart', 'the organization chart, ICS 207']] },
-      { label: 'Base', facts: `<b>${esc(d.base)}</b> · ${esc(d.agency)} leads`, acts: [] },
-      { label: 'Units', facts: `<b>${d.units.length}</b> on scene, ${statusWords}<span class="small">${d.units.map((u) => `${esc(u.name)}, ${esc(u.kind)}, in ${esc(u.where)}`).join(' · ')}</span>`, acts: [['Units', 'the home panel, at its units'], ['People', 'the People board']] },
-      { label: 'Divisions', facts: `<b>${n}</b>&nbsp; ` + chips.map(([k, t, word]) => `<button class="chip" type="button" data-filter="${k}" data-word="${esc(word)}"><span class="sw ${k}"></span>${esc(t)}</button>`).join(''), acts: [] },
-      { label: 'Hazards', facts: d.hazards.length ? d.hazards.map((h) => `<b>${esc(h.kind)}</b> ${esc(h.note)} · ${esc(h.zone)} · ${esc(h.at)} by ${esc(h.by)}`).join('<br>') : 'None open', acts: [['Hazards', 'the open hazards, where Safety looks']] }
+      st.overMin ? { where: 'the Period panel', big: dur(st.overMin), word: 'overdue', small: periodSmall, cls: 'alarm' } : { where: 'the Period panel', big: dur(st.leftMin), word: 'left', small: periodSmall },
+      { where: 'the People board', big: String(d.units.length), word: 'units', small: statusWords },
+      { where: 'the home panel, at its divisions', big: String(n), word: 'divisions', small: bar + segs.map(([, c, w]) => c + ' ' + w).join(' · ') },
+      h.length ? { where: 'the open hazards', big: String(h.length), word: 'hazard' + (h.length === 1 ? '' : 's') + ' open', small: esc(h[0].kind) + ' · ' + esc(h[0].zone) + (h.length > 1 ? ' · and ' + (h.length - 1) + ' more' : '') } : { where: 'the open hazards', big: '0', word: 'hazards', small: 'none open', cls: 'quiet' }
     ];
   }
   function drawCard() {
-    const rows = cardRows(DATA, STATES[state]);
-    $('inc-pop').innerHTML = `<div class="head"><b>${esc(DATA.name)}</b><span class="muted">opened ${esc(DATA.opened)} by Operations</span></div>` +
-      rows.map((r) => `<div class="ic-row"><span class="lab">${esc(r.label)}</span><span class="facts">${r.facts}</span><span class="acts">${r.acts.map(([t, where, cls]) => `<button class="btn sm${cls ? ' ' + cls : ''}" type="button" data-where="${esc(where)}">${esc(t)}</button>`).join('')}</span></div>`).join('') +
-      `<div class="foot">${pinned ? 'Open until Escape or a click elsewhere' : 'Click the line to keep this open'}</div>`;
+    const st = STATES[state], d = DATA;
+    $('inc-pop').innerHTML = `<div class="ic-head"><b>${esc(d.name)}</b><span class="muted">since ${esc(d.opened)}</span>${st.overMin ? `<button class="btn sm pri" type="button" data-where="Start next period: the Period panel, on the hand-over">Start period ${d.period.number + 1}</button>` : ''}</div>` +
+      `<div class="ic-tiles">${tiles(d, st).map((t) => `<button type="button" class="ic-tile${t.cls ? ' ' + t.cls : ''}" data-where="${esc(t.where)}"><span class="ic-big">${t.big}</span><span class="ic-word">${t.word}</span><span class="ic-sm">${t.small}</span></button>`).join('')}</div>` +
+      `<div class="ic-foot"><button type="button" class="ic-link" data-where="the organization chart, ICS 207">IC ${esc(d.command.ic)} · Operations ${esc(d.command.ops)} · Safety ${esc(d.command.safety)}</button>${esc(d.base)} · ${esc(d.agency)} leads</div>`;
   }
 
   // open on a rest of half a second (the division card's rule), keep on a click, close on Escape or a click elsewhere
@@ -381,7 +389,6 @@
   document.addEventListener('click', (e) => {
     if (!pop.hidden && !e.target.closest('#inc-pop') && !e.target.closest('#inc-line')) closeCard();
     const b = e.target.closest('[data-where]'); if (b) toast('Would open ' + b.dataset.where);
-    const c = e.target.closest('[data-filter]'); if (c) toast('Would show only the divisions ' + c.dataset.word.toLowerCase() + ' on the map, as the legend does');
     const s = e.target.closest('[data-state]'); if (s) { state = s.dataset.state; for (const x of document.querySelectorAll('[data-state]')) x.classList.toggle('on', x === s); drawLine(); if (!pop.hidden) drawCard(); }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) closeCard(); });

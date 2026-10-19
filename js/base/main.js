@@ -7,6 +7,8 @@ import { signInAddress, codeSentText, codeErrorText, phoneDisplay } from '../sha
 import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, replayWindow as replayWindowRule, replayWindowLabel, replayPickCheck, dayIso, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners, credentialLabel, REJECT_REASONS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey, runsShown, setRunsShown } from '../shared/layers.js';
+import { incidentLine } from '../shared/rules.js';   // the incident line (v76)
+import { incidentPopHtml } from './ui.js';
 import { codeFromSearch, joinUrl, CODE_RE } from '../shared/qr.js';
 import { watchUpdates } from '../shared/update.js';
 import { startAround, clearAround, layoutAround, aroundOn, aroundSeen } from './discover.js';
@@ -27,7 +29,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, runLit: null, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, runLit: null, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, incOpen: null, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -399,7 +401,7 @@ function drawAll() {
   const inc = data.incident;
   $('#inc-name').textContent = inc.name;
   const cur = data.currentPeriod();
-  $('#inc-sub').textContent = [cur ? periodLabel(cur) + (cur.ic_name ? ', IC ' + cur.ic_name : '') : inc.period, inc.base_name ? 'Base: ' + inc.base_name : null, `${data.activeUnits().length} units`, `${data.zones().length} divisions, ${data.zones().filter((z) => z.status === 'cleared').length} cleared`, data.hazards().length ? `${data.hazards().length} hazard${data.hazards().length === 1 ? '' : 's'} open` : null].filter(Boolean).join(' · ');
+  drawIncLine();   // v76: what changes during the day, the alarm first; the IC, the base and the hours are on the card
   $('#inc-code').textContent = inc.code;   // v59: the code alone; the words are in its title, and the home panel has it large
   drawLog();
   drawLegend();
@@ -412,7 +414,7 @@ function drawAll() {
   if (openPages().length) placePages();   // v64: the header's height may have changed under the window
   drawLive();
   if (LOG_ONLY) return;   // the pop-out is the log alone: no map, sidebar or bars to draw
-  drawHeadCount(); drawTools(); drawCodes(); drawLivePop(); refreshZoneHover();   // v60
+  drawHeadCount(); drawTools(); drawCodes(); drawLivePop(); drawIncPop(); refreshZoneHover();   // v60, the incident's card v76
   map.render(data, state);
   drawSide();
   drawZoneModal();
@@ -1109,6 +1111,7 @@ document.addEventListener('click', async (e) => {
   if (state.gearOpen && !e.target.closest('.gear-wrap')) setGearOpen(false);   // v60: the menu and the cards close on a click outside
   if (state.codesOpen && !e.target.closest('#codes-pop') && !e.target.closest('#inc-code')) { state.codesOpen = false; drawCodes(); }
   if (state.liveOpen && !e.target.closest('#live-pop') && !e.target.closest('#live-pill')) { state.liveOpen = false; drawLivePop(); }
+  if (state.incOpen && !e.target.closest('#inc-pop') && !e.target.closest('#inc-sub')) setIncOpen(null);   // v76
   if (state.people.menu && e.target.isConnected && !e.target.closest('.mb-act')) { state.people.menu = null; drawPeople(); }   // v65: the Members row's ··· menu; a target the redraw detached is not a click outside
   if (state.find.top && !e.target.closest('.find-top')) closeFind();
   else if (state.find.top && e.target.closest('#find-pop [data-action="select-facility"], #find-pop [data-action="select-unit"]')) setTimeout(closeFind, 0);
@@ -1117,6 +1120,7 @@ document.addEventListener('click', async (e) => {
   const act = btn.dataset.action, id = btn.dataset.id;
   if (btn.closest('#gear-menu')) setGearOpen(false);   // v60: a menu item chosen closes the menu
   try {
+    if (state.incOpen && btn.closest('#inc-pop')) setIncOpen(null);   // v76: a press on the card goes somewhere, so the card goes too
     switch (act) {
       case 'sign-out': localStorage.removeItem(LAST_INCIDENT); await data.signOut(); clearAuth(); show('auth'); break;
       case 'open-incident': await openIncident(id); break;
@@ -1219,6 +1223,9 @@ document.addEventListener('click', async (e) => {
       case 'gear': setGearOpen(!state.gearOpen); break;   // v60
       case 'pages-size': setPagesFull(!pagesFull); if (state.gearOpen) setGearOpen(false); break;   // v64: Expand or Shrink on a page, or the gear menu's item
       case 'codes': state.codesOpen = !state.codesOpen; state.liveOpen = false; drawCodes(); drawLivePop(); break;   // v60
+      case 'inc-line': setIncOpen(state.incOpen === 'pinned' ? null : 'pinned'); break;   // v76: a click keeps the card; another lets it go
+      case 'inc-divisions': select(null); requestAnimationFrame(() => { const z = $('#zones'); if (z) z.scrollIntoView({ block: 'start' }); }); break;   // the home panel's divisions list
+      case 'inc-hazards': select(null); requestAnimationFrame(() => { const k = [...document.querySelectorAll('#panel .k')].find((x) => /^Hazards open/.test(x.textContent.trim())); if (k) k.scrollIntoView({ block: 'start' }); }); break;
       case 'ops-show': state.opsShown = !state.opsShown; drawCodes(); break;   // v60
       case 'live': state.liveOpen = !state.liveOpen; state.codesOpen = false; drawLivePop(); drawCodes(); break;   // v60
       case 'reconnect': state.liveOpen = false; drawLivePop(); toast('Reconnecting…'); await openIncident(data.incident.id); break;   // v60
@@ -1459,7 +1466,7 @@ document.addEventListener('change', async (e) => {
 // While outlining, Backspace or Delete takes the last corner off (not while typing in a field).
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && aroundOn()) { clearAround('cleared'); return; }   // v58
-  if (e.key === 'Escape' && (state.gearOpen || state.codesOpen || state.liveOpen)) { setGearOpen(false); state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); return; }   // v60
+  if (e.key === 'Escape' && (state.gearOpen || state.codesOpen || state.liveOpen || state.incOpen)) { setGearOpen(false); state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); setIncOpen(null); return; }   // v60
   if (state.placing) {   // v67: while a picture is placed, Escape cancels, arrows nudge (Shift: ten pixels), ⌘Z / Ctrl+Z undoes
     const typing = e.target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable);
     if (e.key === 'Escape') { cancelPlacing(); return; }
@@ -1686,6 +1693,34 @@ function setGearOpen(open) { state.gearOpen = !!open; $('#gear-menu').hidden = !
 
 // The codes' card and the connection's card under the header's pills (v60). Both are drawn on every draw, so a
 // hidden button is still there to press, and shown while their state says so.
+// The incident line and its card (v76): the line under the name says what changes during the day, the alarm first
+// (incidentLine in rules.js); a rest of half a second on it opens the card (peek, gone when the pointer leaves it and
+// the card), a click keeps it (pinned, until Escape, a click elsewhere or a press on one of its buttons).
+function drawIncLine() {
+  const pieces = incidentLine({ period: data.currentPeriod(), units: data.activeUnits(), zones: data.zones(), hazards: data.hazards() });
+  const html = pieces.map((p) => `<span class="${p.kind === 'alarm' ? 'warn' : 'piece'}">${esc(p.text)}</span>`).join('<span class="sep">·</span>') + '<span class="caret" aria-hidden="true">▾</span>';
+  const el = $('#inc-sub'); if (el.__html !== html) { el.__html = html; el.innerHTML = html; }
+}
+function drawIncPop() {
+  if (!data.incident) return;
+  const pop = $('#inc-pop');
+  if (state.incOpen) { const html = incidentPopHtml(data, state); if (pop.__html !== html) { pop.__html = html; pop.innerHTML = html; } }
+  pop.hidden = !state.incOpen;
+  $('#inc-sub').setAttribute('aria-expanded', String(!!state.incOpen)); $('#inc-sub').classList.toggle('on', state.incOpen === 'pinned');
+}
+let incRestT = null, incLeaveT = null;
+function setIncOpen(how) {
+  clearTimeout(incRestT); clearTimeout(incLeaveT);
+  state.incOpen = how || null;
+  if (how && (state.codesOpen || state.liveOpen)) { state.codesOpen = false; state.liveOpen = false; drawCodes(); drawLivePop(); }
+  drawIncPop();
+}
+const incLetGo = () => { if (state.incOpen === 'peek') incLeaveT = setTimeout(() => { if (state.incOpen === 'peek') setIncOpen(null); }, 250); };
+$('#inc-sub').addEventListener('mouseenter', () => { clearTimeout(incLeaveT); if (!state.incOpen) { clearTimeout(incRestT); incRestT = setTimeout(() => { if (!state.incOpen && data.incident) setIncOpen('peek'); }, 500); } });
+$('#inc-sub').addEventListener('mouseleave', () => { clearTimeout(incRestT); incLetGo(); });
+$('#inc-pop').addEventListener('mouseenter', () => clearTimeout(incLeaveT));
+$('#inc-pop').addEventListener('mouseleave', incLetGo);
+
 function drawCodes() {
   if (!data.incident) return;
   const pop = $('#codes-pop'), html = codesPopHtml(data, state);

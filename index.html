@@ -194,7 +194,8 @@
   <header class="top">
     <div class="top-main">
       <h1 id="inc-name">Incident</h1>
-      <span id="inc-sub" class="muted"></span>
+      <button type="button" class="inc-line" id="inc-sub" data-action="inc-line" aria-expanded="false" aria-controls="inc-pop" title="The period, the command, the base, the units, the divisions and the hazards: rest here for the whole picture, click to keep it"></button>
+      <div class="pop inc-pop" id="inc-pop" role="region" aria-label="The incident, broken out" hidden></div>
     </div>
     <div class="find-top">
       <input id="find-q" class="log-search find-q" type="search" placeholder="Find a person" aria-label="Find a person: anyone sheltered, moved or on the way, and the responders" aria-controls="find-pop" autocomplete="off">

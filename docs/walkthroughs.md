@@ -243,7 +243,7 @@ Base to send, phone to read (as a unit).
 |---|---|---|---|---|
 | Message the field | Job 1 | A small "Safety" checkbox beside the recipient select; nothing says it takes over every phone until acknowledged. | Ticked it; it did. | PUZZLED |
 | Log / map | Job 3 | Hazards are log lines ("Hazard in A-2: other (Car in the water, one person inside), reported by SO 14"), an orange outline, a triangle on the map, a chip on the division panel. No list of open hazards of its own, and the deputy's car in the water had no urgency on it. | Read the log down. | SLOWED |
-| People board / Hours | Job 4 | "On scene 3 h 17 min, since 03:53" per person; Hours totals them; nothing warns at a threshold. | Scanned the times. | PUZZLED |
+| People board / Hours | Job 4 | "On scene 3h 17m, since 03:53" per person; Hours totals them; nothing warns at a threshold. | Scanned the times. | PUZZLED |
 
 **What worked**: the yellow SAFETY bar names who has not acknowledged ("waiting on Unit 3, Brush 12, Gym shelter desk, SO 14") and the Messages list says "All N acknowledged"; the period's safety message box prints on the 204 and 208 and reads in every briefing; the phone's briefing carries the message and the open hazards.
 
@@ -591,7 +591,7 @@ Phone, as the seeded Unit 2 (Travis County Rescue, Nguyen and Patel, B-1).
 | Time in the water | "Not in the water · In the water" is the first row; one tap → "In the water · the clock runs until you tap out", "In the water 0 min · rotation 45 min · Out of the water"; out → "Out of the water after 1 min". The base's unit panel "in the water 1 min · since 22:17". | Clear | As it is (the row could fold to a button on a dry assignment). |
 | The boat ramp | Nearby listed staging, the shelter and the hospital; nothing said there is no ramp on the map yet (her briefing says so). | PUZZLED | Nearby says "No boat ramp on the map yet; ask Operations where to put in" when none is placed. |
 | Log who we pulled out | Address clear → "Add who and where they went": a row with Went to High school gym (shelter) / Went to Dell Seton (hospital) / With family / Own transport / Not known. The save is below the fold with the rows added. | Clear, with a scroll | The sheet's foot buttons stay on screen. |
-| Her people | Menu → People on the unit: "2 on the unit. Operations counts them from here. · Nguyen Capt. · swift water, boat · since 19:09 · 3 h 8 min on scene · with Patel · Edit · Check out" and Patel. | Clear | As it is; per-person tracking is the tags work. |
+| Her people | Menu → People on the unit: "2 on the unit. Operations counts them from here. · Nguyen Capt. · swift water, boat · since 19:09 · 3h 8m on scene · with Patel · Edit · Check out" and Patel. | Clear | As it is; per-person tracking is the tags work. |
 
 ### 2. Marcus Bell, Operations Section Chief
 
@@ -641,7 +641,7 @@ Base to send and watch, the phone to read.
 | A safety message | Message the field: everyone, the "Safety" tick, the words, Send → "SAFETY · Walk test: … · waiting on 3 units · sent 22:02 by Operations" on the bar; every phone's takeover headed "Safety message and head count". | Clear | As it is. |
 | Who has not acknowledged | The bar "waiting on Unit 3", the Messages list "Waiting on Unit 2, Unit 3 · Unit 1: Acknowledged". | Clear | As it is. |
 | Hazards as they come in | Log lines ("Hazard in A-2: other (Car in the water at the low crossing, one person inside), reported by SO 14"), a triangle, the division's "hazard" word, the zone card's list, the briefing's "HAZARDS STILL OPEN". No list of its own on the base, no urgency on any of them. | SLOWED | A "Hazards open" section on the home panel (kind, division, when, who, Resolved) and the urgent ones on the bar. |
-| On scene too long | People board "On scene 3 h 8 min, since 19:09"; the water clock orange past the rotation; Hours totals; nothing warns at a threshold. | PUZZLED | A threshold on the Period sheet beside the rotation ("flag people past 12 h on scene"), orange on the board and a line in the briefing. *Built in v47 (see Re-walk after v47).* |
+| On scene too long | People board "On scene 3h 8m, since 19:09"; the water clock orange past the rotation; Hours totals; nothing warns at a threshold. | PUZZLED | A threshold on the Period sheet beside the rotation ("flag people past 12 h on scene"), orange on the board and a line in the briefing. *Built in v47 (see Re-walk after v47).* |
 | The period's safety message and rotation | On the Period sheet; printed on every 204 and the 208; read in every briefing. | Clear | As it is. |
 
 ### 6. The Documentation Unit
@@ -758,11 +758,11 @@ A period that has ended says so, and times in one form: Dana's thirty seconds, t
 
 | Item | Who | What they saw | Verdict |
 |---|---|---|---|
-| The header | Dana | "OP 1 · 20:07 to 19:00 · overdue 4 h 17 min, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared". | Clear |
-| The IAP | Dana, the clerk | "Operational period 1, 20:07 to 19:00 · the planned end passed 4 h 17 min ago; the next period has not been started" and "Prepared 17 Oct 2026 23:17". The same line heads the 203, the 207, the sitrep, the 211 and the 214. | Clear |
-| The Period sheet | Dana | "Operational period 1 · 20:07 to 19:00 · overdue 4 h 17 min", then in orange "The planned end 19:00 passed 4 h 17 min ago and the period is still open. Start period 2, or move the planned end below.", and Start period 2 drawn as the primary button under Shift change. | Clear |
+| The header | Dana | "OP 1 · 20:07 to 19:00 · overdue 4h 17m, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared". | Clear |
+| The IAP | Dana, the clerk | "Operational period 1, 20:07 to 19:00 · the planned end passed 4h 17m ago; the next period has not been started" and "Prepared 17 Oct 2026 23:17". The same line heads the 203, the 207, the sitrep, the 211 and the 214. | Clear |
+| The Period sheet | Dana | "Operational period 1 · 20:07 to 19:00 · overdue 4h 17m", then in orange "The planned end 19:00 passed 4h 17m ago and the period is still open. Start period 2, or move the planned end below.", and Start period 2 drawn as the primary button under Shift change. | Clear |
 | The home panel, a photo, a unit | Marcus, the PIO | "OPENED 17 Oct 2026 20:07", a photo's "TIME 17 Oct 2026 23:05", a unit's "JOINED 17 Oct 2026 20:27": the same form as every other time on the base. | Clear |
-| The phone | Unit 3 | The menu's "PERIOD OP 1 · 20:07 to 19:00 · overdue 4 h 17 min, IC Dana Ruiz"; the briefing's Situation "Cedar Fork Flooding, OP 1, planned end 19:00 has passed." and Shift "This period was to end 19:00, 4 h 17 min ago; stay on until Operations starts the next period, when the next crew is briefed at staging." | Clear |
+| The phone | Unit 3 | The menu's "PERIOD OP 1 · 20:07 to 19:00 · overdue 4h 17m, IC Dana Ruiz"; the briefing's Situation "Cedar Fork Flooding, OP 1, planned end 19:00 has passed." and Shift "This period was to end 19:00, 4h 17m ago; stay on until Operations starts the next period, when the next crew is briefed at staging." | Clear |
 
 Items 3 and 4 of "What to do first" are clear.
 
@@ -907,12 +907,12 @@ On scene too long: Priya's job 4, walked on 2026-10-18 after migration 0029 in t
 | Item | Who | What they saw | Verdict |
 |---|---|---|---|
 | The Period sheet | Priya | Beside "Rotation in the water, minutes (0 = off) · 45" a new box, "Hours on scene before Safety is told (0 = off) · 12", and under both: "Safety's two lines. Past the rotation a crew's phone nudges them out and the base shows the time in orange. Past the hours a person's time on scene is orange on the People board and the unit panel, and the briefing and the situation report name them. Both carry into the next period and print on the 204 and the 208." Set to 2 and saved: the log "Operational period 1: on scene too long past 2 hours". | Clear |
-| The People board | Priya | The count line "6 on scene on 3 units · 6 past 2 h on scene"; every row's state in orange on an orange tint: "On scene 2 h 53 min, since 22:23 · past 2 h". | Clear |
-| The unit panel | Priya, Marcus | Unit 1's people: "Ramirez Lt. · On scene 2 h 53 min, since 22:23 · past 2 h · with Okafor", orange, the same words as the board. | Clear |
-| The briefing | Marcus's relief | "NEEDS ATTENTION Ramirez (Unit 1): 2 h 56 min on scene, past 2 h · Okafor (Unit 1): 2 h 55 min on scene, past 2 h · Nguyen (Unit 2) …", six orange lines, longest first. | Clear |
+| The People board | Priya | The count line "6 on scene on 3 units · 6 past 2 h on scene"; every row's state in orange on an orange tint: "On scene 2h 53m, since 22:23 · past 2 h". | Clear |
+| The unit panel | Priya, Marcus | Unit 1's people: "Ramirez Lt. · On scene 2h 53m, since 22:23 · past 2 h · with Okafor", orange, the same words as the board. | Clear |
+| The briefing | Marcus's relief | "NEEDS ATTENTION Ramirez (Unit 1): 2h 56m on scene, past 2 h · Okafor (Unit 1): 2h 55m on scene, past 2 h · Nguyen (Unit 2) …", six orange lines, longest first. | Clear |
 | The situation report, the 208, the 204 | The clerk, Priya | The sitrep's own section "ON SCENE TOO LONG" with the same six lines; the IAP's 208 "Time in the water: crews out of the water every 45 minutes · Hours on scene: Safety is told past 2 hours on scene" and the six lines; A-1's 204 under Special instructions "Hours on scene: Safety is told past 2 hours on scene". | Clear |
 | The next period | Priya | Start period 2: the form carried "2", period 2 holds 2. | Clear |
-| The crew's phone | Unit 3 | Nothing pages the crew. Its briefing's Shift card: "This period ends 13:15; the next crew is briefed at staging. Your crew has been on scene 2 h 51 min, past the period's 2 hours: Safety sees it; say when you need relief. Check out from the menu when you leave …", drawn as a warning; under the threshold it says only "Safety is told past 12 hours on scene." | Clear |
+| The crew's phone | Unit 3 | Nothing pages the crew. Its briefing's Shift card: "This period ends 13:15; the next crew is briefed at staging. Your crew has been on scene 2h 51m, past the period's 2 hours: Safety sees it; say when you need relief. Check out from the menu when you leave …", drawn as a warning; under the threshold it says only "Safety is told past 12 hours on scene." | Clear |
 | The revisit's clock time (v46 follow-up) | The resident's next crew | Address clear in A-2 as Unit 3: "118 Pecan Ln", refused to leave, notes "on oxygen", Revisit at 03:20, Searched, save. The toast "118 Pecan Ln searched · 1 of 18"; the base's log "A-2: 118 Pecan Ln · revisit at 03:20 (on oxygen)" (the time as the phone typed it, since the server has no time zone) and the division's list "118 Pecan Ln · Searched · refused to leave · 01:20 · revisit 03:20". | Clear |
 
 Item 8 (Later) is built in full, so nothing on the punchlist is left; the Safety Officer's guide marks job 4 built. The next work comes from a new walk.
@@ -939,7 +939,7 @@ Small items from the re-walks: the eight Still bites from the re-walks after v38
 | Operations' acknowledgement on the phone | Moreno | A new card under the home screen: "YOUR HAZARDS · 01:56 · Tree down, road blocked · A-2 · waiting for Operations to acknowledge"; when the base pressed Acknowledge, the line turned green "acknowledged by Operations 01:56" and the toast said "Operations acknowledged your hazard: tree down, road blocked in A-2 at 01:56". Hazards sent without "act on now" read "sent to Operations". | Clear |
 | A revisit already past today | The resident's next crew | Under the Revisit at box: "Today at 22:56." for a time still ahead, "That is tomorrow 00:27; the next crew sees it on the division and the 204." for a time ninety minutes past; saved, the log "A-2: 122 Pecan Ln · revisit at 22:56 (gas off at the meter)" or "revisit tomorrow at 06:00 (gas off)", the division's list "revisit 22:56" or "revisit tomorrow 06:00". | Clear |
 | The chime's first click | The IC | The bar's quiet line: "No emergency open · no safety message or PAR waiting on an answer · click anywhere once so the base can ring"; the words stay until a real click or key, since a script's event cannot unlock the browser's sound. | Clear |
-| The current stretch | Priya, Finance | Nguyen checked out and back in: the board "On scene 0 min, since 01:56 · back in" (the check-in 23:07 unchanged); the 211 "Nguyen, Capt. · swift water, boat · checked in 23:07 · on scene 2 h 49 min", every stretch as before. | Clear |
+| The current stretch | Priya, Finance | Nguyen checked out and back in: the board "On scene 0 min, since 01:56 · back in" (the check-in 23:07 unchanged); the 211 "Nguyen, Capt. · swift water, boat · checked in 23:07 · on scene 2h 49m", every stretch as before. | Clear |
 
 Nothing from the Still bites lists after v38 to v47 is left open, except the ones recorded there as by design.
 
@@ -1015,7 +1015,7 @@ Severity as before: **LOST** = could not finish the job; **SLOWED** = finished a
 | Open her incident | "Incidents you are already in · Cedar Fork Flooding · OP 1 · 07:00 to 19:00 · you are Unit 2" (the typed label, by decision), one tap; the takeover "Safety message and head count" with one PAR card: "CHECKED IN WITH YOU Nguyen, Patel · All 2 accounted for · Someone's missing" and the safety message's Acknowledge, one tap each. | Clear | As it is. |
 | Where is the boat ramp | Nearby: staging, the gym, Dell Seton with Directions, and "BR No boat ramp on the map yet · ask Operations where to put in"; "Medic: Patel, EMT". | Clear | As it is. |
 | Time in the water | "In the water" → "In the water 0 min · rotation 45 min · Out of the water" → "Out of the water after 0 min". | Clear | As it is. |
-| Her people | "PEOPLE ON THE UNIT · 2 on the unit. Operations counts them from here. · Nguyen Capt. swift water, boat · since 23:10 · 2 h 54 min on scene · with Patel · Edit · Check out …", the chips, Add to the unit. | Clear | As it is. |
+| Her people | "PEOPLE ON THE UNIT · 2 on the unit. Operations counts them from here. · Nguyen Capt. swift water, boat · since 23:10 · 2h 54m on scene · with Patel · Edit · Check out …", the chips, Add to the unit. | Clear | As it is. |
 | Log who we pulled out | Address clear → "Add who and where they went" → a row "Who: a name, or "family of 4" · Condition: on oxygen, stable · Went to High school gym (shelter) / Went to Dell Seton Medical Center (hospital) / With family / Own transport / Not known"; "Each row is a person or a family; the shelter desk sees them coming." Save on screen. | Clear | As it is. |
 | Someone is missing, then found | Walked in the re-walks after v38 and v48: Someone's missing → tick → the alert; Found per name, or "They're all found" when both of her boat were out of contact. | Clear | As it is. |
 | Need help now, her assignment | "WILL BE SENT · UNIT Unit 2 · Nguyen, Patel · ZONE B-1 · POSITION · TIME · Cancel · Send alert"; "YOUR ZONE B-1 · Mill Street bridge approach · Priority 2 · 15 structures · In progress · 2 of 15 · Hold the bridge approach closed … · Radio TAC 3 · Objective 2". | Clear | As it is. |
@@ -1068,7 +1068,7 @@ Severity as before: **LOST** = could not finish the job; **SLOWED** = finished a
 | A safety message | The composer: Everyone in the field / the divisions / the units, the Safety tick, chips Hold where you are · Return to staging · PAR · You are released; sent → "SAFETY · Walk test: nobody enters moving water · waiting on 3 units · sent 02:01 by Operations". | Clear | As it is. |
 | Who has not acknowledged | The bar, and Messages "Waiting on Unit 1, Unit 2, Unit 3". | Clear | As it is. |
 | Hazards as they come in | "HAZARDS OPEN · 1 · 01:38 Downed power line · Line across the park entrance · A-2 · Unit 3 · Show on map · Resolved", the triangle, A-2's chip "Hazard · Downed power line · Line across the park entrance · Unit 3 at 01:38 · Resolved"; later SO 14's car in the water on the bar with Acknowledge. | Clear | As it is. |
-| On scene too long | The Period sheet's "Hours on scene before Safety is told (0 = off) · 12" beside the rotation; the board "6 on scene on 3 units", rows "On scene 2 h 53 min, since 23:08". | Clear | As it is. |
+| On scene too long | The Period sheet's "Hours on scene before Safety is told (0 = off) · 12" beside the rotation; the board "6 on scene on 3 units", rows "On scene 2h 53m, since 23:08". | Clear | As it is. |
 | The period's safety message and rotation | "Swift water everywhere south of Mill Street. Nobody enters moving water. PAR on the hour.", rotation 45, and "Safety's two lines …". | Clear | As it is. |
 
 ### 6. The Documentation Unit
@@ -1078,7 +1078,7 @@ Severity as before: **LOST** = could not finish the job; **SLOWED** = finished a
 | Job | What they saw | Severity | The best version |
 |---|---|---|---|
 | Print the 214 | "ACTIVITY LOG, ICS 214 · … · Prepared by Operations, 18 Oct 2026 02:02 · 2 NOTABLE ENTRIES (★) · 77 ENTRIES, OLDEST FIRST". | Clear | As it is. |
-| Print the 211 | "Checked in by Ana Ramirez, 512 555 0111, licence TX ···3746, verified · Ramirez, Lt. · swift water, EMT · checked in 23:08 · on scene 2 h 54 min · with Okafor …". | Clear | As it is. |
+| Print the 211 | "Checked in by Ana Ramirez, 512 555 0111, licence TX ···3746, verified · Ramirez, Lt. · swift water, EMT · checked in 23:08 · on scene 2h 54m · with Okafor …". | Clear | As it is. |
 | The situation report | The boxes "Situation, what happened and where it stands · Resources needed · Outlook for the next period · Save the words"; the assembled 209; Send by email ("mailto:?subject=Cedar Fork Flooding · Situation report …", to the EOC address once Settings holds one). | Clear | As it is. |
 | Replay | "Play · 00:58 · Last hour · This period · Whole incident · 10× 60× 600× · 3 units on the map · 00:58 Operations to everyone: Shelter is open …". | Clear | As it is. |
 | Who said what | "Find in the log" → "Bus barn" → "01:16 A-3: Bus barn · water waist deep · major damage · hazards ELEC · Open structure". | Clear | As it is. |
@@ -1412,8 +1412,8 @@ page's own measurements and the `people` and `members` suites).
 | Item | Who | What they saw | Verdict |
 |---|---|---|---|
 | The bar | Marcus | People \| Members first, "Cedar Fork Flooding", then Hours · Print 211 · Print bands · Expand · Close on one row with room to spare; the find box and the chips under it, gone on Members and back, still lit, on People. | Clear |
-| The cards | Priya | Three cards of 343 px: Unit 1 · Assigned · A-1 · Cedar Fork Fire Department · engine · 2 on the unit; Ramirez Lt. 2 h 50 min, Band 001 · entering A-1 16:40, Swift water EMT. Patel's "Band 004 · at High school gym 15:20 · 2 h 20 min ago" in orange; Hale "no band". | Clear |
-| The drawer | Marcus | A press on Ramirez: 340 px beside two columns of cards; On scene 2 h 50 min, since 14:50; Last seen entering A-1 16:40, by Unit 1 · band 001; With Okafor; the chips; Check out, Move to…, the buddy, Edit, Void band 001 "Never reused; kept on record.", Remove "Off the roster; kept on record, Put back undoes it."; six lines from the 214. Escape and Close put it away. | Clear |
+| The cards | Priya | Three cards of 343 px: Unit 1 · Assigned · A-1 · Cedar Fork Fire Department · engine · 2 on the unit; Ramirez Lt. 2h 50m, Band 001 · entering A-1 16:40, Swift water EMT. Patel's "Band 004 · at High school gym 15:20 · 2h 20m ago" in orange; Hale "no band". | Clear |
+| The drawer | Marcus | A press on Ramirez: 340 px beside two columns of cards; On scene 2h 50m, since 14:50; Last seen entering A-1 16:40, by Unit 1 · band 001; With Okafor; the chips; Check out, Move to…, the buddy, Edit, Void band 001 "Never reused; kept on record.", Remove "Off the roster; kept on record, Put back undoes it."; six lines from the 214. Escape and Close put it away. | Clear |
 | Add a person | the clerk | Add a person on Unit 3's card: the form in the drawer, "Add a person to Unit 3", the name box focused; Add to the unit, and the drawer opens on the new person with their check-in line. From the heading row the same form carries the unit select. | Clear |
 | Remove and Put back | Priya | Remove: the line stays on the card greyed, "removed 17:42" at its right, the count drops, the drawer offers Put back; Put back brings the line back. Nothing deleted. | Clear |
 | The Members tab | the administrator | Operations · 1 (Marcus Bell · opened the incident, nothing to press) and Units · 3, "Unit 1, engine · Assigned · A-1 · Ana Ramirez · 512 555 0111 · Cedar Fork Fire Department · ID checked ✓ 14:55"; Unit 2 "ID given, not checked · Check", and Check opens Unit 2's panel with the licence unfolded and Mark verified. | Clear |
@@ -1530,7 +1530,7 @@ the `people`, `rewalks`, `tags` and `credentials` suites).
 | Who is out | Marcus | A checked-out person's row is grey with the time in Out; a unit that checked out keeps "At check-out, not done: …" above its table. | Clear |
 | The bands | Priya | Band 001, seen entering A-1 15:03 in its own column, "no band" nowhere: the cell is empty. | Clear |
 | The paper | the clerk | Print preview: plain grey borders, the header row grey, each unit on one page where it fits, the header repeated when a table breaks. Light on paper whatever the screen. | Clear |
-| The email | the administrator | The emailed copy and Copy are the lines as before, "Ramirez, Lt. · swift water, EMT ✓ · own account · checked in 16:15 · on scene 3 h 2 min · with Okafor · band 001, seen entering A-1 15:03", nobody twice. | Clear |
+| The email | the administrator | The emailed copy and Copy are the lines as before, "Ramirez, Lt. · swift water, EMT ✓ · own account · checked in 16:15 · on scene 3h 2m · with Okafor · band 001, seen entering A-1 15:03", nobody twice. | Clear |
 | Dark | the clerk | The table's borders and the grey header follow the theme; the ✓ reads. | Clear |
 | The Layers note | Marcus | "Google Maps streets and satellite appear here once a Map Tiles API key is pasted into Incident settings, under the gear (Test the key is beside the box)." | Clear |
 
@@ -1551,7 +1551,7 @@ the print rules applied as a stylesheet on the page; the words through the `peop
 |---|---|---|---|
 | The head | the clerk | Four facts in a grid: Incident, Period (with the overdue words when the period has run over), Command, Prepared by. | Clear |
 | A unit | the clerk | "Unit 1, engine" bold, "Cedar Fork Fire Department · checked in by Ana Ramirez, 512 555 0111, licence TX ···3746, verified", A-1 in a box at the right; then Name, Rank, Qualifications, Checked in, On scene, Band · last seen, Out. | Clear |
-| A person | Priya | "Ramirez" with "own account · with Okafor" under it, Lt., "Swift water, EMT ✓", the time in, 2 h 51 min, "001 · entering A-1 18:46"; Patel's "004 · at High school gym 17:26 · 2 h 21 min ago" in orange. | Clear |
+| A person | Priya | "Ramirez" with "own account · with Okafor" under it, Lt., "Swift water, EMT ✓", the time in, 2h 51m, "001 · entering A-1 18:46"; Patel's "004 · at High school gym 17:26 · 2h 21m ago" in orange. | Clear |
 | No band | Priya | Hale and Dominguez read "no band" in grey. | Clear |
 | A checked-out unit | Marcus | The status in the division's place ("Checked out 02:10"), the Out column filled, "At check-out, not done: … · for the next crew: …" as the table's last line. | Clear |
 | The totals | Finance | "6 people checked in on 3 units · 6 on scene · 0 checked out", then By agency and On scene by qualification side by side, each with a People column, and the legend under them. | Clear |
@@ -1644,4 +1644,29 @@ numbers).
 - **Which ring is whose** on a shelter with three runs is told by colour and hover only; a count on the mark was not drawn.
 - **The box is per device:** a second laptop at the base shows the runs until its own box is pressed, as with a hidden picture.
 - **A run to a closed facility** still draws to it.
+
+## Re-walk after v76
+
+The incident line, broken out: Marcus at the base reading the header all evening, his relief arriving cold, the IC
+at a transfer of command, the clerk at the change of period, and a touch screen at the post, walked on 2026-10-18 in
+the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words through the `seeded`, `periods` and
+`ics100` suites and one screenshot of the base with the card open.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The line | Marcus | "Period 1 · overdue 4h 8m · 3 units · 6 divisions, 1 cleared · 1 hazard open ▾", the overdue in orange; the IC, the base and the hours gone from it. Five pieces, one alarm, read in a glance. | Clear |
+| A rest | his relief | Resting on the line opens the card under it; moving away closes it. Nothing to dismiss. | Learned once |
+| A click | his relief | The card stays, the caret turns blue. Four tiles: "4h 8m overdue" in orange with "Period 1 · 19:58 to 19:00" under it, "3 units, all assigned", "6 divisions" with the bar, "1 hazard open, Downed power line · A-2"; Start period 2 at the top; the names small at the foot. A tile goes where it says and the card goes with it. | Clear |
+| Overdue | the clerk | Start period 2 on the card's first row while the period is overdue; once period 2 runs the button is gone and the row reads started, planned to and the time left. | Clear |
+| Transfer of command | the IC | After the transfer the line is unchanged and the card's Command row reads the new IC; the units learn it from the message and the briefing, as before. | Clear |
+| The bar | Marcus | The search as a bar under the number, cleared green, in progress blue, not started hatched, the counts in one line under it; the legend's buttons go on filtering the map. The first draw's six rows and chips, walked once, read as a sheet and went. | Clear |
+| Touch | the post's tablet | A tap is the click (the suites press it as one): the card opens kept, a tap elsewhere closes it. Not tried on a real tablet this walk. | Clear |
+| Dark | Marcus | The card is the codes' card's panel and tokens, the orange the hazard ink; not looked at in dark this walk. | Not seen |
+
+**Still bites, small:**
+
+- **Twenty hazards or twenty units** make a tall card: every open one is listed, with no "and N more".
+- **The chips say how many, not which**: the map and the home panel's list say which.
+- **"Period 1" on the line, "OP 1" on the printed forms**: two words for one thing, by choice (ICS wants OP on paper).
+- **At the base's phone width** the card takes the screen's width under the header and its rows stack.
 

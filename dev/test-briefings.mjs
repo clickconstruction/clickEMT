@@ -146,7 +146,7 @@ t('the shift card carries the period\'s hours on scene, and warns the crew past 
   assert.ok(/ Safety is told past 12 hours on scene\. Check out from the menu/.test(S.text), S.text);
   assert.equal(S.warn, false);
   const over = fieldBriefing(stub({ period: { scene_hours: 2 } }), { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] }).find((s) => s.key === 'shift');
-  assert.ok(/Your crew has been on scene 2 h 45 min, past the period's 2 hours: Safety sees it; say when you need relief\./.test(over.text), over.text);
+  assert.ok(/Your crew has been on scene 2h 45m, past the period's 2 hours: Safety sees it; say when you need relief\./.test(over.text), over.text);
   assert.equal(over.warn, true);
   const off = fieldBriefing(stub({ period: { scene_hours: 0 } }), { now: new Date(at(0)).getTime(), me: d.member(U.u3), at: [30.2674, -97.7384] }).find((s) => s.key === 'shift');
   assert.ok(!/Safety/.test(off.text), off.text);
@@ -269,5 +269,5 @@ t('past its planned end the phone\'s briefing says so and tells the crew to stay
   const late = new Date(2026, 9, 17, 22, 0).getTime();
   const S = fieldBriefing(d, { now: late, me: d.member(U.u3), at: [30.2674, -97.7384] });
   assert.ok(S[0].text.startsWith('Cedar Fork Flooding, OP 1, planned end 19:00 has passed.'), S[0].text);
-  assert.ok(S[6].text.startsWith('This period was to end 19:00, 3 h ago; stay on until Operations starts the next period, when the next crew is briefed at staging.'), S[6].text);
+  assert.ok(S[6].text.startsWith('This period was to end 19:00, 3h ago; stay on until Operations starts the next period, when the next crew is briefed at staging.'), S[6].text);
 });

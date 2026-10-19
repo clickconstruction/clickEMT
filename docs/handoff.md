@@ -9,8 +9,9 @@ a change is shipped, how the work was run on 18 October, and where the open work
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
-- `main` is at **v74**, "Tell the base: one scale, a stuck flag, fewer words", live; v73, sign in by a code, came
-  just before it.
+- `main` is at **v76**, "The incident line, broken out: what changes on the line, the rest on a card", live since the
+  early morning of 19 October; v75, Runs that share a point, and the headless smoke runner (`npm run smoke`) landed
+  with it.
 - The first five things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
      `http://localhost:8766/field/?mock` (the phone). No build, no `npm install`, no account.
@@ -45,8 +46,10 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v74**, "Tell the base: one scale, a stuck flag, fewer words" (after v73, Sign in by a code; v72,
-  The 211 per the mock-up; v71, The 211 as a table; v70, A transport on the map). The service worker reads `v74`.
+- `main` is at **v76**, "The incident line, broken out: what changes on the line, the rest on a card" (after v75,
+  Runs that share a point; v74, Tell the base; v73, Sign in by a code). The service worker reads `v76`. Neither v75
+  nor v76 has a migration; `0038` is still the last applied and `0039` the next free number (a session may be
+  writing it for the 214's water words; see punchlist section 35).
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0038` in
   `supabase/migrations/` are all applied (`0038_tell_the_base.sql`, v74's, from its build session on 18 October,
   before the release landed). They were applied by hand with `dev/sbq.py` and are **not** recorded in
@@ -55,7 +58,12 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 - **The live database holds no incident yet** (checked on 18 October): everything so far was done in the mock and
   the suites. The first real incident, the first real invitation email and the first real sign-in code are all still
   to happen.
-- **Tests on `main` at v74:** `npm run check` and `npm test` pass. The full smoke run is 42 suites, 869 checks
+- **Tests on `main` at v76:** `npm run check` and `npm test` pass. The full smoke run was made in headless Chrome
+  (`npm run smoke`, the pane being off screen): 822 of 852 on the v75 tree and 817 of 836 on the v76 tree, every
+  missed suite passing alone afterwards (the misses are timing and row-level-security slips of a long headless run;
+  the handoff's rule, rerun alone before it counts, held). No rule test was run on the real database since v74:
+  the Mac that built v75 and v76 has no Supabase login, and neither release changed the database.
+- **Tests on `main` at v74** (the last run on the real database): `npm run check` and `npm test` pass. The full smoke run is 42 suites, 869 checks
   (868 of 869 on the rebased tree over v73, the one miss the known hover-timing flake in `seeded`, which passed 24 of
   24 alone). The SQL rule tests are 24 files, 426 checks, all passing on the real database: `accept` 4, `alertwords` 18, `bring` 3,
   `corners` 10, `credentials` 50, `decisions` 3, `deputy` 5, `evacuees` 28, `hazards` 5, `ics100` 33, `invites` 32,
@@ -82,6 +90,10 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   scale and a stuck flag (0038). Before
   that day: v38 to v48 from the walk at v37, v49 the front door, v50 to v53 from the walk at v48, v54 the transport
   board, v55 QR bands, v56 invitations by email.
+- **What shipped on 19 October,** early: v75 Runs that share a point (the pills in a column clear of the heading
+  arrow, the rings one inside the next, the Transport runs box in the Layers panel; punchlist section 34) with
+  `dev/smoke-headless.py`; v76 The incident line, broken out (what changes on the line with the alarm first, the rest
+  on a card of four tiles; durations as "4h 8m"; punchlist section 35, mock-up `try/mockups/incident-line.html`).
 - **Open work:** the walk's audit and leftovers are under [The walk of 18 October, and what is
   open](#the-walk-of-18-october-and-what-is-open). The fresh walk by Grace's routine (every persona, every job) is
   still to do after them. Trackers (tags phase 2) wait on the hardware Grace chooses.
@@ -327,7 +339,8 @@ know if the next person works the same way:
   it on its own port, commits one release and pushes the branch. Early in the day four sessions edited the shared
   checkout at once and collided; worktrees ended that. The worktrees on this Mac are local to it; the branches on
   `origin` (`imagery`, `mayday`, `passwordless`, `worktree-transports-211`, `claude/credentials-61131d`, all merged;
-  `claude/sleepy-rhodes-9aaea0`, v74, pending) can be deleted once v74 is on `main`.
+  `claude/sleepy-rhodes-9aaea0`, v74; `transports-stacks`, v75; `incident-line`, v76; all merged) can be deleted now
+  that v76 is on `main`.
 - **Todd types into a build session directly** when he wants to: he approved migration 0036 and the v66 push that
   way, and asked the audit session to start builds. A session's report may therefore carry his words that the
   coordinating chat never saw; read the report before relaying it, and take "Todd said" in it as his unless it

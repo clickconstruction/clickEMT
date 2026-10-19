@@ -419,7 +419,10 @@ and v61, with the 211 as a table as panel 10, v71 and v72), `people.html` (v65),
 `starters.html` (incident kinds and starter periods: two rows of buttons on the New incident sheet, a starter that
 pre-fills period 1, Flood in full and sixteen sketched, and the centre by address, an Address box with Google Places
 suggestions on the same sheet; drawn at v76 from the notes of 19 October, built as v77 and v78 with every decision as
-recommended and no migration).
+recommended and no migration)),
+`leftovers.html` (the four leftovers of the walk at v59 in punchlist section 15: the header row grouped as a labelled row,
+a new incident starting emptier with the codes first, every time in UTC on the clock's click, and the front door's
+pictures re-shot from headless Chrome; drawn 19 October at v76, not built; proposes two releases).
 
 The larger features before that were designed as mock-up canvases on claude.ai, private to Grace's account; ask her
 to share any you need. The punchlist repeats every decision that matters, so you can work without them.

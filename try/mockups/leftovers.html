@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: the walk's leftovers · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- A click-through mock-up, drawn 19 October 2026 at v76 (v77 and v78 on their branches), before anything is built, of
+     the four small leftovers of Todd's walk of the base at v59 that docs/punchlist.md section 15 still carries: the
+     header row grouped, a new incident starting emptier, every time in UTC as a device setting, and the front door's
+     screenshots, still the base at v33. One section per item, each live where it can be: the header in four shapes,
+     the base at four moments of a fresh incident, the screen swapped to UTC, the three pictures beside what they should
+     show. Then "is this the best we can do?", the decisions with the recommended answer first, and what each build
+     would touch, as four small releases or two. Made-up data (the mock's Cedar Fork Flooding at 19:36 CDT, which is
+     00:36 UTC the next day, so the day line shows). Nothing here writes anywhere; the buttons say what they would open. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 13px; }
+  .tabs a:hover { border-color: var(--grey); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.part { margin: 0 0 34px; scroll-margin-top: 70px; }
+  .intro { max-width: 820px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2.sec .sub { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; min-width: 0; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 460px; line-height: 1.45; }
+  .screen > .cap b { color: var(--ink); }
+  .screen.w { flex: 1 1 320px; }
+  .screen.w ul { margin: 6px 0 0; padding-left: 18px; } .screen.w li { margin: 0 0 6px; }
+  .panel { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .panel.wide { width: 100%; }
+  .k { margin: 12px 0 6px; } .k:first-child { margin-top: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .ask li { margin: 0 0 10px; line-height: 1.5; } .ask li q { color: var(--ink); } .ask li b { color: var(--ink); }
+  .decisions li { margin: 0 0 8px; line-height: 1.45; }
+  .decisions b { color: var(--ink); }
+  .chosen, .open { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; border-radius: 999px; padding: 1px 8px; vertical-align: 1px; }
+  .chosen { background: var(--tint-green); color: var(--cleared); }
+  .open { background: var(--tint-yellow); color: var(--hazard-ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .toast[hidden] { display: none; }
+  .states { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .states .btn.on { pointer-events: none; }
+  .states .gap { width: 10px; }
+
+  /* ---- the base's header, as base.css draws it (h1 17 px, the line 12.5 px muted, sm buttons, the pills at the right) */
+  .hdr { position: relative; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-sizing: border-box; max-width: 100%; }
+  .hdr .main { display: flex; flex-direction: column; min-width: 400px; flex: 1; }
+  @media (max-width: 720px) { .hdr .main { min-width: 0; flex-basis: 100%; } }
+  .hdr h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hdr .line { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .hdr .line .warn { color: var(--hazard-ink); font-weight: 600; } .hdr .line .sep { padding: 0 5px; color: var(--grey); } .hdr .line .caret { color: var(--grey); font-size: 10px; margin-left: 4px; }
+  .hdr .find { border: 1px solid var(--control-border); border-radius: 6px; padding: 3px 8px; font-size: 13px; min-height: 30px; width: 170px; background: var(--control-bg); color: var(--muted); display: inline-flex; align-items: center; box-sizing: border-box; }
+  .hdr .ppl { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 0 10px 0 8px; min-height: 30px; background: var(--soft); color: var(--ink-2); font-size: 12.5px; white-space: nowrap; }
+  .hdr .ppl b { color: var(--ink); }
+  .hdr .btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .hdr .grp { display: inline-flex; align-items: center; gap: 6px; }
+  .hdr .gl { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; margin-right: 2px; }
+  .hdr .dv { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  .hdr.nolabels .gl { display: none; }
+  .hdr .pills { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; }
+  .hdr .pill { font-size: 12px; }
+  .hdr .pill.clock { cursor: pointer; }
+  .hdr .pill .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--cleared-fill); vertical-align: 0; }
+  .hdr .gear { padding: 0 8px; } .hdr .chev { font-size: 10px; margin-left: 3px; color: var(--muted); }
+  .mwrap { position: relative; display: inline-block; }
+  .menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; display: flex; flex-direction: column; min-width: 180px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 4px; }
+  .menu.right { left: auto; right: 0; }
+  .menu[hidden] { display: none; }
+  .menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 0; }
+  .menu-item { border: 0; background: none; color: var(--ink); text-align: left; padding: 8px 10px; border-radius: 6px; font: inherit; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+  .menu-item:hover { background: var(--hover); }
+  .mbtn.on { background: var(--sel-bg); }
+  .hdr-wrap { padding-bottom: 4px; } .hdr-wrap.scroll { overflow-x: auto; }   /* scrolls only at a named width; a menu must not be clipped */
+  .hdr.fixed { max-width: none; flex: none; }
+  .readings { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
+  .readings .panel { width: auto; }
+  .readings ul { margin: 0; padding-left: 18px; } .readings li { margin: 0 0 6px; line-height: 1.45; font-size: 13.5px; }
+
+  /* ---- the base at a fresh incident: a small base, header to log, with the side panel */
+  .base { display: grid; grid-template-columns: minmax(0, 1fr) 300px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); font-size: 12.5px; }
+  .base .hd { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .base .hd h3 { margin: 0; font-size: 15px; font-weight: 600; } .base .hd .line { color: var(--muted); font-size: 12px; }
+  .base .hd .pills { margin-left: auto; display: inline-flex; gap: 6px; } .base .pill { font-size: 11.5px; }
+  .base .bars { grid-column: 1 / -1; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2); color: var(--muted); font-size: 12px; }
+  .base .tools { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .base .tools .k { margin: 0; } .base .tools .hint { flex: 1; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .base .tools .btn { pointer-events: none; }
+  .base .mapbox { position: relative; height: 250px; background: #E8ECE4; overflow: hidden; }
+  :root[data-theme="dark"] .base .mapbox { background: #202622; }
+  .base .mapbox svg { width: 100%; height: 100%; display: block; }
+  .base .mapsay { position: absolute; left: 10px; top: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: 12px; color: var(--muted); }
+  .base .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-2); }
+  .base .legend .sw { display: inline-block; width: 12px; height: 9px; border: 1.5px solid var(--open); margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
+  .base .legend .sw.active { border-color: var(--active); background: color-mix(in srgb, var(--active-fill) 30%, transparent); }
+  .base .legend .sw.primary { border-color: #2E8B57; background: #DDF0E4; } .base .legend .sw.cleared { border-color: var(--cleared); background: var(--tint-green); }
+  .base .legend .sw.bnd { border-style: dashed; border-color: var(--ink-2); } .base .legend .sw.run { border: 0; border-top: 2px dashed var(--accent); height: 0; }
+  .base .legend .n { color: var(--muted); margin-left: 4px; }
+  .base .logbox { border-top: 1px solid var(--line); }
+  .base .logh { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 5px 10px 4px; }
+  .base .logh .t { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .base .lchip { border: 1px solid var(--control-border); background: var(--control-bg); border-radius: 999px; padding: 1px 8px; font-size: 11px; color: var(--ink); }
+  .base .lchip.on { background: var(--accent); color: #fff; border-color: var(--accent); } .base .lchip .n { color: var(--muted); } .base .lchip.on .n { color: #fff; opacity: .85; }
+  .base .lrow { display: flex; gap: 8px; padding: 3px 10px; border-left: 3px solid var(--grey); align-items: baseline; }
+  .base .lrow .t { color: var(--muted); } .base .lrow.ops { border-left-color: var(--grey); } .base .lrow.status { border-left-color: #8CA6BF; }
+  .base .lsep { font-size: 10px; color: var(--muted); padding: 3px 10px 0; border-top: 1px dashed var(--line); letter-spacing: .04em; }
+  .base .noteform { display: flex; gap: 6px; padding: 6px 10px; } .base .noteform span { flex: 1; border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; color: var(--muted); background: var(--control-bg); }
+  .base .side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  .base .sideh { padding: 8px 12px 4px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .base .zl { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .base .zl .empty { padding: 4px 12px 2px; color: var(--muted); }
+  .base .zr { display: flex; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line-soft); }
+  .base .zr .pb { width: 18px; height: 18px; border-radius: 50%; background: var(--p2); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .base .zr .zm { flex: 1; min-width: 0; } .base .zr .zid { font-weight: 600; margin-right: 6px; } .base .zr .zs { color: var(--muted); font-size: 11.5px; display: block; }
+  .base .zr .sdot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--open); flex: none; }
+  .base .pn { padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .base .pn .k { margin: 6px 0 2px; } .base .pn .k:first-child { margin-top: 0; }
+  .base .pn .muted { font-size: 12px; line-height: 1.4; }
+  .base .pn .btn { pointer-events: none; }
+  .base .pn .codes { display: flex; gap: 10px; align-items: flex-start; }
+  .base .pn .qr { width: 64px; height: 64px; flex: none; border: 1px solid var(--line); border-radius: 6px; background: repeating-conic-gradient(var(--ink) 0 25%, var(--panel) 0 50%) 0 0 / 12px 12px; opacity: .85; }
+  .base .pn .big { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; letter-spacing: .08em; font-weight: 600; }
+  .base .pn .row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .base .pn .ur { display: flex; gap: 8px; align-items: center; padding: 4px 0; } .base .pn .ur .nm { font-weight: 600; } .base .pn .ur .st { color: var(--muted); font-size: 11.5px; }
+  .base .pn .kv { font-size: 12px; } .base .pn .kv .k { margin: 0; }
+  .base .pn .fade { opacity: .55; }
+  .base .pn .title { font-weight: 600; font-size: 13.5px; }
+  @media (max-width: 760px) { .base { grid-template-columns: 1fr; } .base .side { border-left: 0; border-top: 1px solid var(--line); } }
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .steps .btn.on { pointer-events: none; }
+  .words { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .words .panel { width: auto; } .words ul { margin: 0; padding-left: 18px; } .words li { margin: 0 0 6px; line-height: 1.45; font-size: 13.5px; }
+  .words .was { text-decoration: line-through; color: var(--muted); }
+
+  /* ---- every time in UTC: the clock, the log, the printed head, the Period sheet, the briefing's bar */
+  .utc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .utc-grid .panel { width: auto; }
+  .utc-grid .ttl { font-weight: 600; font-size: 13.5px; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .utc-grid .ttl .sub { font-weight: 400; }
+  .log2 .lsep { font-size: 10px; color: var(--muted); padding: 4px 0 1px; border-top: 1px dashed var(--line); letter-spacing: .04em; margin-top: 2px; }
+  .log2 .lrow { display: flex; gap: 8px; padding: 3px 0 3px 8px; border-left: 3px solid var(--line); align-items: baseline; font-size: 12.5px; }
+  .log2 .lrow .t { color: var(--muted); flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .log2 .lrow.notable .x { font-weight: 600; } .log2 .lrow .star { color: var(--hazard-ink); font-size: 12px; flex: none; }
+  .log2 .lrow.ops { border-left-color: var(--grey); } .log2 .lrow.clear { border-left-color: var(--cleared-fill); } .log2 .lrow.photo { border-left-color: var(--accent); } .log2 .lrow.hazard { border-left-color: var(--hazard); } .log2 .lrow.shelter { border-left-color: #6B8FC2; }
+  .paper { background: #fff; color: #1B1B18; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 12.5px; line-height: 1.5; }
+  :root[data-theme="dark"] .paper { background: #F4F2EC; }
+  .paper .ph { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #D8D5CD; padding-bottom: 4px; margin-bottom: 6px; }
+  .paper .ln { margin: 0; } .paper .ln.tl { color: #5C5A53; }
+  .paper .mono { font-size: 12px; }
+  .barrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); font-size: 13px; }
+  .barrow strong { font-size: 13.5px; } .barrow .muted { font-size: 12.5px; } .barrow .sp { flex: 1; } .barrow .btn { pointer-events: none; }
+  .swap { font-weight: 600; color: var(--accent-text); }
+  .hover-text { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--ink-2); background: var(--panel-2); }
+  .stay li { margin: 0 0 7px; line-height: 1.45; font-size: 13.5px; } .stay b { color: var(--ink); }
+
+  /* ---- the front door's pictures: today's three beside what each should show */
+  .shots { display: flex; flex-direction: column; gap: 18px; }
+  .shot { display: grid; grid-template-columns: minmax(280px, 520px) minmax(260px, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .shot { grid-template-columns: 1fr; } }
+  .shot img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.2); display: block; }
+  .shot .pic { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .shot .pic b { color: var(--ink); }
+  .shot .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 1000px) { .shot .cols { grid-template-columns: 1fr; } }
+  .shot .col { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .shot .col .k { margin: 0 0 6px; } .shot .col ul { margin: 0; padding-left: 18px; } .shot .col li { margin: 0 0 5px; line-height: 1.4; }
+  .shot .col.v78 { border-color: var(--accent); }
+  .shot .alt { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.4; } .shot .alt b { color: var(--ink-2); }
+  .mini { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); font-size: 12px; margin: 8px 0 0; }
+  .mini b { font-size: 13px; } .mini .line { color: var(--muted); width: 100%; }
+  .mini .tiles { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 6px; width: 100%; }
+  .mini .tile { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--panel); } .mini .tile .bg { font-size: 16px; font-weight: 600; display: block; } .mini .tile .wd { font-size: 11px; color: var(--ink-2); } .mini .tile.alarm .bg, .mini .tile.alarm .wd { color: var(--hazard-ink); }
+  .render ol { margin: 0; padding-left: 20px; } .render li { margin: 0 0 7px; line-height: 1.45; font-size: 13.5px; } .render b { color: var(--ink); }
+  .think { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .think .panel { width: auto; }
+  .think ul { margin: 0; padding-left: 18px; } .think li { margin: 0 0 7px; line-height: 1.45; }
+  .think .k { margin-top: 0; }
+  .touch li { margin: 0 0 6px; line-height: 1.45; }
+  .touch .k { margin-top: 10px; }
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 12px; }
+  .split .panel { width: auto; } .split .panel.rec { border-color: var(--accent); }
+  .split ul { margin: 0; padding-left: 18px; } .split li { margin: 0 0 6px; line-height: 1.45; font-size: 13.5px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: the walk's leftovers</span></div>
+  <div class="tabs">
+    <a href="#ask">The ask</a>
+    <a href="#header">The header row</a>
+    <a href="#empty">A new incident</a>
+    <a href="#utc">Every time in UTC</a>
+    <a href="#front">The front door</a>
+    <a href="#best">Best we can do?</a>
+    <a href="#decide">Decide</a>
+    <a href="#touch">What it touches</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>The walk's leftovers: four small things from 18 October</h1>
+  Todd walked the base at v59 on 18 October and most of what he marked shipped that day and the next (v60 to v76). Four small things were seen on the way and never decided; docs/punchlist.md section 15 carries them. Drawn 19 October at v76, with incident kinds, the centre by address and the 214's water words on their branches; nothing here is built. One section per item, live where it can be, then the thinking, the decisions with the recommended answer first, and the builds. Made-up data; press things.
+</div>
+
+<section class="part" id="ask">
+  <h2 class="sec">The ask <span class="sub">the four items, in the punchlist's words</span></h2>
+  <div class="panel wide">
+    <ol class="ask" style="margin:0;padding-left:22px">
+      <li><b>The header row grouped</b> (seen while drawing v58's labels): <q>thirteen buttons in one row is most of "too much going on"; the mock-up at /try/mockups/#discovery shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided.</q> Since then v60 folded Light, Settings, Switch incident and Sign out into the gear, so the row is nine buttons and the gear, and the pills sit at its end.</li>
+      <li><b>A new incident starting emptier</b> (v58): <q>a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes.</q> Written before v60 moved the codes behind the header's CEDAR7 pill.</li>
+      <li><b>Every time in UTC</b> (v59): <q>only the header clock swaps; the log, the 214 and the forms stay local. A device setting that swaps them all is the next cut if Zulu-time agencies ask.</q> v59 decided local first and a click for UTC, because a UTC clock beside a local log makes the clerk do arithmetic.</li>
+      <li><b>The front door's screenshots are the base at v33</b> (<span class="mono">images/front/</span>): <q>the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes.</q></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================ 1. THE HEADER ROW GROUPED -->
+<section class="part" id="header">
+  <h2 class="sec">The header row grouped, live <span class="sub">the row today, then the four groups; press any button, open the menus; Escape closes them</span></h2>
+  <div class="states">Show it as
+    <button class="btn sm" data-hmode="today" type="button">today, v76</button>
+    <button class="btn sm on" data-hmode="row" type="button">a labelled row</button>
+    <button class="btn sm" data-hmode="forms" type="button">Forms as the one menu</button>
+    <button class="btn sm" data-hmode="menus" type="button">four menus</button>
+    <span class="gap"></span> at
+    <button class="btn sm on" data-hwidth="auto" type="button">this width</button>
+    <button class="btn sm" data-hwidth="1280" type="button">1280</button>
+    <button class="btn sm" data-hwidth="1000" type="button">1000</button> <span class="sub">(a named width scrolls sideways on a narrower page)</span>
+  </div>
+  <div class="hdr-wrap"><div class="hdr" id="hdr" aria-label="The header"></div></div>
+  <div class="readings">
+    <div class="panel">
+      <div class="k">A labelled row <span class="chosen">recommended</span></div>
+      <ul>
+        <li>The same nine buttons, every one still one press, in four groups with a word over each and a thin line between: <b>This period</b> Period · Briefing, <b>Boards</b> People · Transports · Public, <b>Forms</b> Org chart · Sitrep · IAP, <b>The day</b> Replay.</li>
+        <li>The label is a word, not a control: nothing to open, nothing to learn. The row reads as four things instead of nine.</li>
+        <li>The gear moves to the right end beside the pills: the device and the account on the right, the incident's work on the left.</li>
+        <li>At 1280 the groups fit the buttons' row with the pills, as today. Below about 1100 the labels drop and the lines stay (press 1000 above).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">Forms as the one menu</div>
+      <ul>
+        <li>The three forms are printed a few times a period; a menu costs them a press and gains the row three buttons' width.</li>
+        <li>Period, Briefing, People, Transports, Public and Replay stay as they are: the ones pressed all day.</li>
+        <li>The fallback if the labelled row still reads long on the command post's screen.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">Four menus, set aside</div>
+      <ul>
+        <li>The shortest row and the slowest base: Period and People, the two most pressed, become two presses each.</li>
+        <li>A menu hides its words; the labels over the row say the same words and hide nothing.</li>
+        <li>What the gear does for the account is right for four things nobody presses hourly; it is wrong for the work.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 2. A NEW INCIDENT STARTING EMPTIER -->
+<section class="part" id="empty">
+  <h2 class="sec">A new incident starting emptier <span class="sub">the base as it opens on a fresh incident, four moments in; today beside the proposal</span></h2>
+  <div class="steps">
+    <button class="btn sm on" data-eview="new" type="button">Proposed</button>
+    <button class="btn sm" data-eview="today" type="button">Today, v76</button>
+    <span class="gap"></span> Moment:
+    <button class="btn sm on" data-estep="0" type="button">just opened</button>
+    <button class="btn sm" data-estep="1" type="button">the boundary drawn</button>
+    <button class="btn sm" data-estep="2" type="button">the first division</button>
+    <button class="btn sm" data-estep="3" type="button">the first unit joins</button>
+  </div>
+  <div class="base" id="base" aria-label="The base on a fresh incident"></div>
+  <div class="words">
+    <div class="panel">
+      <div class="k">What the home panel leads with</div>
+      <ul>
+        <li><b>The codes first</b>, while no unit has joined: the join code large with its QR, Print a join card, Copy the link, one line, "Phones join with this code." The same card the CEDAR7 pill opens (v60), drawn once, in the panel where the first Operations looks.</li>
+        <li><b>Then the facilities</b> with their Place buttons: the base, staging and the shelter are placed before the first phone arrives.</li>
+        <li><b>Then Incident</b>: the period, the base, when it opened, the lead agency. Nothing else until it has its first row.</li>
+        <li><b>The first unit joins</b> and the panel becomes today's: Units lead, the codes go back behind the pill, Message the field appears.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">The labels' words</div>
+      <ul>
+        <li>The divisions list: <span class="was">No divisions yet. Press Draw division and click the map to outline one.</span> → <b>Nothing here yet. Draw the boundary, then divisions inside it.</b> (ten words; today's names a button that is now called Division and skips the boundary).</li>
+        <li>After the boundary: <b>Boundary drawn. Now a division: an area for one unit.</b></li>
+        <li>On a division with no unit: <span class="was">No units have joined yet</span> → <b>No units yet. Phones join with CEDAR7.</b></li>
+        <li>The empty headings go: Messages, Sheltered, Transports, Channels, Public, Map imagery and the PAR each appear with their first row. The Hazards heading stays, with "none reported": Safety looks there.</li>
+        <li>Show me around keeps its nine labels and their words; the empty parts under them say "nothing here yet" themselves.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What the map and the log say</div>
+      <ul>
+        <li><b>The map says nothing.</b> It opens at the centre the New incident sheet set; the hint in the tools row is the one sentence, and Boundary is already lit (v60).</li>
+        <li><b>The legend hides its zero counts</b> and the Transport run entry until there is a run.</li>
+        <li><b>The log has its one line</b>, "Incident opened: Cedar Fork Flooding, operational period 1"; the filter chips show only the kinds that have a line, so All 1 · Operations 1 and no row of zeros.</li>
+        <li><b>The first division drawn:</b> its row appears, the legend says Not started 1, the line says 1 division, the log says "Division A-1 drawn, priority 2", and the panel opens on it to assign, as today.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 3. EVERY TIME IN UTC -->
+<section class="part" id="utc">
+  <h2 class="sec">Every time in UTC <span class="sub">click the clock: the header, the log, the 214, the Period sheet, the briefing and every form swap together</span></h2>
+  <div class="states">Click the clock, or:
+    <button class="btn sm on" data-utc="0" type="button">local, CDT</button>
+    <button class="btn sm" data-utc="1" type="button">UTC</button>
+    <span class="sub" id="utc-hover"></span>
+  </div>
+  <div class="hdr" id="hdr-utc" aria-label="The header with the clock"></div>
+  <div class="utc-grid" style="margin-top:14px">
+    <div class="panel">
+      <div class="ttl">Activity log · ICS 214 <span class="sub">on the base</span></div>
+      <div class="log2" id="log-utc"></div>
+    </div>
+    <div class="panel">
+      <div class="ttl">Print 214 <span class="sub">the printed head</span></div>
+      <div class="paper" id="paper-214"></div>
+      <div class="ttl" style="margin-top:12px">A 204, the IAP, the 207, the 209, the 211 <span class="sub">the same line on each</span></div>
+      <div class="paper" id="paper-204"></div>
+    </div>
+    <div class="panel">
+      <div class="ttl">The Period sheet <span class="sub">the side panel</span></div>
+      <div id="period-utc" style="font-size:13px;line-height:1.5"></div>
+      <div class="ttl" style="margin-top:12px">The briefing's bar</div>
+      <div class="barrow" id="brief-utc"></div>
+      <div class="ttl" style="margin-top:12px">A photo's panel, a hazard's row, a unit's last report</div>
+      <div id="bits-utc" style="font-size:13px;line-height:1.6"></div>
+    </div>
+  </div>
+  <div class="readings">
+    <div class="panel">
+      <div class="k">One setting, the clock's click</div>
+      <ul>
+        <li>Today's click swaps the clock alone (<span class="mono">ic.base.clock</span>, per device, like the theme). The cut: the same click swaps <b>every time on this screen</b>. There is never a UTC clock over a local log, which was v59's reason to keep the log local.</li>
+        <li>Every UTC time carries a <b>Z</b>: <span class="mono">00:36Z</span>. A local time stays bare, as ICS has it; the zone's short name sits on the clock and on the forms' head.</li>
+        <li>The toast on the click says it in a line: "Every time on this screen is UTC now" and back.</li>
+        <li>The date follows the time: at 19:36 CDT it is 20 October in UTC, so the 214's Prepared line, the log's day line and "yesterday" all move with it.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">How the printed forms say which it is</div>
+      <ul>
+        <li>One line in every form's head, in both modes: <b>Times local, CDT</b> or <b>Times UTC (Z)</b>. Two or three words that settle the question a mutual-aid reader has.</li>
+        <li>The Prepared line reads the same clock: "Prepared by Operations, 20 Oct 2026 00:44Z".</li>
+        <li>The printed 214's hour lines and every line's time swap with the screen; Copy as text carries the same words.</li>
+      </ul>
+    </div>
+    <div class="panel stay">
+      <div class="k">What stays local, and why</div>
+      <ul>
+        <li><b>The phone.</b> A crew reads the time on its wrist and its radio; the base's choice is a device setting and never reaches a phone. A Zulu agency's crews would get the same switch in the phone's own settings, later, if asked.</li>
+        <li><b>The date and time boxes</b> (a period's planned end, a picture's Taken at, Replay's Pick a time): the browser's picker is local by nature; their label says "local" while UTC is on.</li>
+        <li><b>The Hours CSV</b> already writes UTC and says so in its column names (<span class="mono">checked_in_utc</span>); the Hours page follows the screen.</li>
+        <li><b>"5 min ago", "4h 8m", "overdue 36m"</b>: durations have no zone.</li>
+        <li><b>The public photo set</b>: its captions are for the public, who read local time.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 4. THE FRONT DOOR'S SCREENSHOTS -->
+<section class="part" id="front">
+  <h2 class="sec">The front door's screenshots <span class="sub">the three base pictures as they are, the base at v33, and what each should show at v78</span></h2>
+  <div class="shots">
+
+    <div class="shot">
+      <div>
+        <img src="/images/front/base-map.jpg" width="1600" height="1000" alt="The front door's hero picture today: the base at v33" loading="lazy">
+        <div class="pic"><b>The hero, <span class="mono">base-map.jpg</span>.</b> Under "One picture of the incident, from the boat to the command post", with the phone's home screen composed over its right end. 1600 × 1000, light.</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="k">Today, the base at v33</div>
+          <ul>
+            <li>The second line as one sentence: "OP 1 · 16:31 to 19:00, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared".</li>
+            <li>Ten buttons in one row ending Dark · Settings · Switch incident · Sign out; "Join code CEDAR7" in words; the clock bare, 19:44.</li>
+            <li>Draw boundary and Draw division as equals; no head count, no Transports, no Public.</li>
+            <li>The side panel with the QR and the Operations code in the open; no transport runs on the map, none in the legend.</li>
+          </ul>
+        </div>
+        <div class="col v78">
+          <div class="k">At v78</div>
+          <ul>
+            <li>The header with the thin line, "Period 1 · to 19:00 · 3 units · 6 divisions, 1 cleared · 1 hazard open", and <b>its card open</b>, pinned: the four tiles and the names at the foot. If the labelled row lands first, the grouped row under it.</li>
+            <li>Find a person with the head count beside it; CEDAR7 · the green dot · 19:44 CDT at the right end with the gear.</li>
+            <li>Draw · Boundary · Division with the legend's marks, the hint, Layers.</li>
+            <li><b>The transport runs on the map</b>: Bus 2 on its dashed line to the gym, Ambulance 1's ring at the hospital; the Transport run entry in the legend.</li>
+            <li>The side panel: divisions by priority with their objectives, then the units (v61); the codes behind the pill.</li>
+          </ul>
+          <div class="mini"><b>Cedar Fork Flooding</b><span class="line">Period 1 <span style="color:var(--grey)">·</span> overdue 36m <span style="color:var(--grey)">·</span> 3 units <span style="color:var(--grey)">·</span> 6 divisions, 1 cleared <span style="color:var(--grey)">·</span> 1 hazard open ▾</span>
+            <div class="tiles"><div class="tile alarm"><span class="bg">36m</span><span class="wd">overdue</span></div><div class="tile"><span class="bg">3</span><span class="wd">units</span></div><div class="tile"><span class="bg">6</span><span class="wd">divisions</span></div><div class="tile"><span class="bg">1</span><span class="wd">hazard open</span></div></div></div>
+          <div class="alt"><b>Alt:</b> The base: the incident in one line with its card open, the map with six divisions, three units, a bus on its run, photo pins and a hazard; the divisions by priority and the units; the activity log.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <div>
+        <img src="/images/front/base-204.jpg" width="1600" height="1000" alt="Step 1's picture today: the Incident Action Plan at v33 with a division's 204 map" loading="lazy">
+        <div class="pic"><b>Step 1, <span class="mono">base-204.jpg</span>.</b> Under "Operations opens the incident and prints the join card. Draw the divisions, set their priorities, place the shelters and hospitals. The card carries a six-letter code and a QR."</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="k">Today, the base at v33</div>
+          <ul>
+            <li>The Incident Action Plan as a full-screen page, "OP 1 · 16:36 to 19:00 · 19:46" in its bar, scrolled to A-1's 204 with its map.</li>
+            <li>A good picture of the forms, under the step about the join card: it shows nothing the words say.</li>
+            <li>The pages have been windows over the map since v64; this one has no map behind it and no Expand.</li>
+          </ul>
+        </div>
+        <div class="col v78">
+          <div class="k">At v78</div>
+          <ul>
+            <li><b>The codes' card open</b> under CEDAR7 (v60): the QR, the code large, Copy, Invited members only, Print a join card, Copy the link, Print bands, and the Operations code as dots. The words of step 1, on the screen.</li>
+            <li>Behind it the base with the divisions coloured by priority and the facilities placed, S, SH, H and CP on the map: "draw the divisions, set their priorities, place the shelters and hospitals".</li>
+            <li>The Layers panel stays closed: open, it sits under the phone in the hero and crowds this one. The Google layers are a line in the panel, not a picture.</li>
+          </ul>
+          <div class="alt"><b>Alt:</b> The codes' card on the base: the join code CEDAR7 with its QR, Print a join card and Print bands, over the map with the divisions and the shelters placed.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="shot">
+      <div>
+        <img src="/images/front/base-org.jpg" width="1600" height="1000" alt="Step 3's picture today: the organization chart at v33" loading="lazy">
+        <div class="pic"><b>Step 3, <span class="mono">base-org.jpg</span>.</b> Under "The base sees everything, and the forms write themselves. The 214 line by line, the 211 with names, every 204 with its map, the 207, the 209 and the IAP, from what the crews sent."</div>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="k">Today, the base at v33</div>
+          <ul>
+            <li>The 207 as a full-screen page; "prepared 10/17/2026, 7:44:31 PM", the browser's own date form that v40 replaced with "17 Oct 2026 19:44".</li>
+            <li>The chart itself is right: the seats, Operations 1 : 5, the divisions with their units.</li>
+          </ul>
+        </div>
+        <div class="col v78">
+          <div class="k">At v78</div>
+          <ul>
+            <li><b>The Incident Action Plan</b> as a window over the dimmed map (v64), scrolled to A-1's 204 with its map: the form the step's words name first and the most striking one. The 207 moves out; the chart is a press away in the demo.</li>
+            <li>The bar reads "Cedar Fork Flooding · Period 1 · 16:36 to 19:00 · 19:46" and, if the UTC cut lands first, "Times local, CDT" in the form's head.</li>
+            <li>Copy as text · Print · Expand · Close in the bar, as built.</li>
+          </ul>
+          <div class="alt"><b>Alt:</b> The Incident Action Plan as a window over the map: a division's 204 with its resources, its assignment and its printed map.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="readings">
+    <div class="panel render">
+      <div class="k">The render as CLAUDE.md describes it (v33)</div>
+      <ol>
+        <li>The mock at <b>1280 × 800</b>, light theme, signed in as Operations; the phone at 375 × 812.</li>
+        <li><b>html2canvas-pro</b> loaded into the page and run on <span class="mono">#app</span> at scale 2, because the Browser pane's own screenshots are capped at the pane's width.</li>
+        <li>The map tiles fetched <b>through a CORS proxy</b> first: a canvas cannot draw a cross-origin tile.</li>
+        <li>The headings' spaces laid out as <b>blank inline blocks</b> before the render: html2canvas drops the spaces in letter-spaced small capitals.</li>
+        <li>The canvas saved as JPEG, <b>1600 wide</b> for the base and 750 for the phone.</li>
+      </ol>
+    </div>
+    <div class="panel render">
+      <div class="k">The ask: one screenshot per picture, from the mock at 1280 wide <span class="chosen">recommended</span></div>
+      <ol>
+        <li>Since v75 headless Chrome is on hand (<span class="mono">dev/smoke-headless.py</span>, its CDP class). <span class="mono">Page.captureScreenshot</span> with the metrics at 1280 × 800 and a device scale of 2 gives the true pixels: <b>no html2canvas, no proxy, no heading fix</b>.</li>
+        <li>A small <span class="mono">dev/front-shots.py</span>: open <span class="mono">?mock</span>, wait for the tiles, set the picture's state (click the line and pin the card; click CEDAR7; open the IAP and scroll to A-1), capture, and the same for the phone at 375 × 812 on <span class="mono">field/?mock</span>.</li>
+        <li>Save each as JPEG at the sizes the landing's <span class="mono">img</span> tags carry, 1600 × 1000 and 750 × 1624, through <span class="mono">sips</span>.</li>
+        <li>Replace the five files on the landing (the three here and the phone's two, home and PAR, shot in the same pass), update their alt texts, and replace CLAUDE.md's html2canvas paragraph with the script's name. The three phone pictures not on any page (briefing, desk, house) go.</li>
+        <li>Redo them when a screen changes, as the note says: the script makes it ten minutes.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ IS THIS THE BEST WE CAN DO? -->
+<section class="part" id="best">
+  <h2 class="sec">Is this the best we can do? <span class="sub">what each is for, what was set aside</span></h2>
+  <div class="think">
+    <div class="panel">
+      <div class="k">The header: what the row is for</div>
+      <ul>
+        <li>Nine doors, pressed all day by someone watching the map. The cost that matters is presses, not pixels: the labelled row adds none, the menus add one to the two most used.</li>
+        <li>Label 2 of Show me around already explains the row in these four groups; the row should look the way the label reads.</li>
+        <li><b>Set aside:</b> icons in place of words (a map app's icons are learned; a base is opened twice a year); a second row of buttons (the walk at v59 ended one); the forms moved into the Period panel (the IAP is the period's, the 207 and 209 are not); a row that changes shape with the window's width on its own (a row you cannot learn).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">The fresh incident: what the first minute is for</div>
+      <ul>
+        <li>One person, one screen, nothing on it yet. Three things to do in order: the boundary, the divisions, the phones in. The screen should say the next one and nothing else.</li>
+        <li>The labels (v58) say what each part is; the parts say what they lack. Two sets of words that never repeat each other.</li>
+        <li><b>Set aside:</b> a checklist or wizard ("2 of 3 done": a sheet over a map that already says it); a sample division to delete (nothing is deleted); hiding the log (its one line is the incident's first); labels with fresh-incident words (two sets of label words to keep in step); the codes in the panel for good (v60 put them behind the pill so they are never on a screen someone walks past; here they show only while no phone is in).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">UTC: what the switch is for</div>
+      <ul>
+        <li>A mutual-aid agency on Zulu time, or a base that spans a zone line. Everyone else never presses it. So it costs nothing to those who do not, and the whole screen to those who do.</li>
+        <li>The dangerous state is a mixed screen. One setting that moves everything is the fix; two settings bring the arithmetic back.</li>
+        <li><b>Set aside:</b> both times on every line ("19:36 / 00:36Z": twice the digits for everyone); a per-form switch (the clerk prints six forms); UTC on the phones by the base's choice (a crew's wrist is local); a Z on local times (ICS forms are local and bare); a time zone picker (the device's zone is the local one; UTC is the one other that matters).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">The pictures: what they are for</div>
+      <ul>
+        <li>A visitor's first look, before Try it. Each should show the thing the words beside it say, at the base as it is.</li>
+        <li>A picture is stale the week after a screen changes; the fix is a script that makes redoing them cheap, more than the pictures themselves.</li>
+        <li><b>Set aside:</b> a dark set beside the light one (the landing is light); an animated run (a picture loads first); rendering the base wider than 1280 (a laptop's width is what a reader has); the Layers panel open in the hero (under the phone).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What to watch after</div>
+      <ul>
+        <li>Whether the labels over the row read as headings of something below them, on the first open; label 2 names them, which should settle it.</li>
+        <li>Whether the first Operations misses Messages and the PAR before the first unit; both appear with it, and the briefing says so.</li>
+        <li>A UTC log crossing midnight: the day line above the hour line is the one new thing in the log; the same rule gives a local log its date past midnight, which it never had.</li>
+        <li>The pictures: re-shot once more when the starters land, since the New incident sheet is not on any of them and the header may gain the kind.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DECIDE -->
+<section class="part" id="decide">
+  <h2 class="sec">Decided here, and yours to decide</h2>
+  <div class="panel wide">
+    <div class="k">Decided here (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>No migration anywhere.</b> All four are the base's screen and the site's pictures; nothing is written to the database. <span class="chosen">chosen</span></li>
+      <li><b>The row keeps every button's words and hover text.</b> Only the order inside the groups and the gear's place change. <span class="chosen">chosen</span></li>
+      <li><b>The fresh incident's codes are the codes' card's own drawing</b> (<span class="mono">codesPopHtml</span>), shown in the panel while no unit has joined; not a second set of words. <span class="chosen">chosen</span></li>
+      <li><b>UTC is the clock's setting grown</b>, <span class="mono">ic.base.clock</span>, per device like the theme; no new key, no incident setting. <span class="chosen">chosen</span></li>
+      <li><b>The phone stays local.</b> The setting is the base's. <span class="chosen">chosen</span></li>
+      <li><b>The pictures stay JPEG at 1600 and 750 wide, light, the mock's seeded incident</b>, so the landing's markup does not change beyond the alt texts. <span class="chosen">chosen</span></li>
+    </ul>
+    <div class="k">Yours to decide (recommended first)</div>
+    <ul class="decisions">
+      <li><b>1. The row: labelled, one menu, or four.</b> Recommended: <b>a labelled row</b>, every button one press, a word over each group and a line between. Else Forms as the one menu; else four menus. <span class="open">open</span></li>
+      <li><b>2. The gear at the right end.</b> Recommended: <b>beside the pills</b>, the device and the account on the right. Else where it is, last of the buttons. <span class="open">open</span></li>
+      <li><b>3. The first group's name.</b> Recommended: <b>This period</b> over Period · Briefing, as the labels have it; the label names what the two share. Else "Now"; else no label on that group alone. <span class="open">open</span></li>
+      <li><b>4. The codes lead the home panel until the first unit joins.</b> Recommended: <b>yes</b>, then they go back behind the pill. Else as today, "No units have joined yet" first and the codes behind the pill from the start. <span class="open">open</span></li>
+      <li><b>5. The empty sections stay out until their first row.</b> Recommended: <b>yes</b>, Hazards excepted. Else every heading with "none yet", as today. <span class="open">open</span></li>
+      <li><b>6. The labels' words on a fresh incident.</b> Recommended: <b>unchanged</b>; the empty parts say "nothing here yet". Else a fresh-incident line for labels 4, 7 and 10. <span class="open">open</span></li>
+      <li><b>7. The clock's click swaps every time on the screen.</b> Recommended: <b>yes, one setting</b>. Else a "Times in UTC" item under the gear, the click on the clock alone as today. <span class="open">open</span></li>
+      <li><b>8. Z on every UTC time, and the zone line on every form's head in both modes.</b> Recommended: <b>yes</b>. Else "UTC" in words once per form and bare times. <span class="open">open</span></li>
+      <li><b>9. The phone.</b> Recommended: <b>local, always</b>, a phone setting later if a Zulu agency's crews ask. Else the same switch in the phone's settings now. <span class="open">open</span></li>
+      <li><b>10. How the pictures are made.</b> Recommended: <b>headless Chrome's own screenshot</b> by a small script in dev/. Else the html2canvas route as CLAUDE.md describes it. <span class="open">open</span></li>
+      <li><b>11. What each shows.</b> Recommended: <b>the hero with the incident card open and the runs on the map; step 1 the codes' card; step 3 the IAP's 204 as a window</b>. Else the Layers panel with the Google layers in the hero and the 207 kept for step 3. <span class="open">open</span></li>
+      <li><b>12. The phone's two pictures re-shot in the same pass.</b> Recommended: <b>yes</b>, home and PAR; the three not on any page removed. Else the base's three only. <span class="open">open</span></li>
+      <li><b>13. The releases.</b> Recommended: <b>two</b>: the header and the emptier start together, then UTC with the pictures shot from the first. Else four, one each, as the walk's releases went. <span class="open">open</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ WHAT IT TOUCHES -->
+<section class="part" id="touch">
+  <h2 class="sec">What each build would touch <span class="sub">no migration in any of them; the base only; the pictures touch no code</span></h2>
+  <div class="screens">
+    <div class="screen w">
+      <div class="panel wide">
+        <div class="k">The header row grouped · tiny, a v59-sized change</div>
+        <ul class="touch">
+          <li><b>index.html:</b> <span class="mono">.top-btns</span> becomes four <span class="mono">.top-group</span> spans, each a <span class="mono">.k</span> label and its buttons, a divider between; <span class="mono">.gear-wrap</span> moves into <span class="mono">.top-pills</span>; the buttons keep their actions, ids and titles.</li>
+          <li><b>base.css:</b> the group, the label, the divider; under 1100 px the labels hide.</li>
+          <li><b>discover.js:</b> label 2's line names the four groups.</li>
+          <li><b>The suites:</b> <span class="mono">seeded</span> reads the buttons' order and the gear's place; <span class="mono">around</span> reads label 2.</li>
+        </ul>
+        <div class="k">A new incident starting emptier · small, a v60-sized panel</div>
+        <ul class="touch">
+          <li><b>ui.js:</b> <span class="mono">zonesHtml</span>'s two empty lines (no boundary; a boundary and no division); <span class="mono">homeHtml</span> leads with the codes (<span class="mono">codesPopHtml</span>'s inner) while <span class="mono">data.units()</span> is empty, then the facilities and Incident; each section returns nothing until its first row, Hazards excepted; the division's "No units yet. Phones join with CEDAR7."; <span class="mono">logFiltersHtml</span> drops a chip at zero.</li>
+          <li><b>main.js:</b> the legend's counts hidden at zero, the Transport run entry hidden with no run.</li>
+          <li><b>The suites:</b> a check on a fresh incident in <span class="mono">periods</span> (which opens one): the words, the codes in the panel, the panel after the first unit; <span class="mono">seeded</span> and <span class="mono">join</span> unchanged, since the seeded incident has units.</li>
+        </ul>
+        <div class="k">Every time in UTC · small, but it touches every form</div>
+        <ul class="touch">
+          <li><b>rules.js:</b> <span class="mono">setClockUtc(on)</span> and a module flag read by <span class="mono">hhmm</span>, <span class="mono">whenText</span>, <span class="mono">dateText</span>, <span class="mono">dayHhmm</span> and a new <span class="mono">hourOf</span> for the log's hour lines, Z suffixed; <span class="mono">timesLine()</span> for the forms' head ("Times local, CDT" or "Times UTC (Z)"). The 130 call sites in ui.js, main.js and briefings.js do not change.</li>
+          <li><b>main.js:</b> the click sets the flag and redraws everything; <span class="mono">drawClock</span>'s words and title; the date and time boxes' labels say "local" while on.</li>
+          <li><b>ui.js:</b> <span class="mono">timesLine()</span> in the head of the 202 and IAP, 204, 207, 209, 211 and 214 and the briefing; <span class="mono">logHtml</span>'s hour line through the rule, with the day when it changes.</li>
+          <li><b>Tests:</b> <span class="mono">dev/test-rules.mjs</span> with a fixed date both ways; the <span class="mono">seeded</span> suite swaps and reads one log line and one form head.</li>
+        </ul>
+        <div class="k">The front door's screenshots · small; pictures, not code</div>
+        <ul class="touch">
+          <li><b>dev/front-shots.py:</b> new, on <span class="mono">smoke-headless.py</span>'s CDP class: five captures at 2×, through sips to the landing's sizes.</li>
+          <li><b>images/front/:</b> the five files replaced, three removed; <b>index.html:</b> the alt texts; <b>CLAUDE.md:</b> the html2canvas paragraph replaced by the script's name; <b>sw.js:</b> the version, since the shell caches index.html.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="split">
+    <div class="panel rec">
+      <div class="k">Two releases <span class="chosen">recommended</span></div>
+      <ul>
+        <li><b>The first:</b> the header grouped and the emptier start, "The header in four groups, and a quieter first minute". Both are the base's first look, both index.html, ui.js and base.css, one re-walk as the first Operations.</li>
+        <li><b>The second:</b> every time in UTC, with the front door's pictures shot from the first release's base so they show the grouped row. Its own suite change and its own re-walk as the mutual-aid clerk.</li>
+        <li>After the three on the branches land (incident kinds, the centre by address, the water words as v77 to v79), these would be v80 and v81.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">Four releases</div>
+      <ul>
+        <li>One each, as the walk's releases went, each a morning: the header, the fresh incident, UTC, the pictures.</li>
+        <li>Costs two more gates (check, test, the smoke run) and two more version bumps for phones to fetch; gains nothing a two-way split loses, since none of the four depends on another.</li>
+        <li>Right if the pictures are wanted before UTC is decided: then the pictures go third and UTC last.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let toastT = null;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); }
+
+  // ---------------------------------------------------------------- 1. the header row
+  // the nine buttons as index.html has them at v76, with their hover text shortened, in the four groups label 2 names
+  const GROUPS = [
+    { key: 'period', label: 'This period', items: [['Period', 'the Period panel: the hours, the objectives, the command'], ['Briefing', 'the shift-change briefing']] },
+    { key: 'boards', label: 'Boards', items: [['People', 'the People board'], ['Transports', 'the transport board'], ['Public', 'the Public information page']] },
+    { key: 'forms', label: 'Forms', items: [['Org chart', 'the organization chart, ICS 207'], ['Sitrep', 'the situation report, ICS 209'], ['IAP', 'the Incident Action Plan']] },
+    { key: 'day', label: 'The day', items: [['Replay', 'the Replay bar']] }
+  ];
+  const TODAY_ORDER = ['Period', 'Briefing', 'Org chart', 'People', 'Public', 'Transports', 'Sitrep', 'IAP', 'Replay'];
+  const allItems = () => GROUPS.flatMap((g) => g.items);
+  const btn = ([name, where]) => `<button class="btn sm" type="button" data-where="${esc(where)}">${esc(name)}</button>`;
+  const menuOf = (key, label, items, right) => `<span class="mwrap"><button class="btn sm mbtn" type="button" data-menu="${key}" aria-haspopup="menu" aria-expanded="false">${esc(label)}<span class="chev">▾</span></button><div class="menu${right ? ' right' : ''}" id="menu-${key}" role="menu" hidden>${items.map(([n, w]) => `<button class="menu-item" role="menuitem" type="button" data-where="${esc(w)}">${esc(n)}</button>`).join('')}</div></span>`;
+  const gear = () => menuOf('gear', '⚙', [['Incident settings…', 'Incident settings'], ['Dark', 'the dark theme'], ['Show me around', 'the labels over the screen'], ['Pages full screen', 'the pages as full screens'], ['Switch incident', 'the incident picker'], ['Sign out', 'the front door']], true);
+  const lineHtml = () => `<span class="line">Period 1<span class="sep">·</span><span class="warn">overdue 36m</span><span class="sep">·</span>3 units<span class="sep">·</span>6 divisions, 1 cleared<span class="sep">·</span>1 hazard open<span class="caret">▾</span></span>`;
+  const pillsHtml = (withGear, clockText, clockTitle, clockId) => `<span class="pills"><span class="pill mono" title="The join code for field phones. Click: the QR, the join card, the bands, the Operations code.">CEDAR7</span><span class="pill" title="Live since 16:36"><span class="dot"></span></span><button type="button" class="pill mono clock"${clockId ? ` id="${clockId}"` : ''} title="${esc(clockTitle)}">${esc(clockText)}</button>${withGear ? gear() : ''}</span>`;
+  let hmode = 'row', hwidth = 'auto';
+  function drawHeader() {
+    const h = $('hdr');
+    const main = `<div class="main"><h1>Cedar Fork Flooding</h1>${lineHtml()}</div><span class="find">Find a person</span><span class="ppl"><b>6</b> in the field</span>`;
+    let btns = '';
+    if (hmode === 'today') btns = `<span class="btns">${TODAY_ORDER.map((n) => btn(allItems().find((i) => i[0] === n))).join('')}${gear()}</span>`;
+    else if (hmode === 'menus') btns = `<span class="btns">${GROUPS.map((g) => menuOf(g.key, g.label, g.items)).join('')}</span>`;
+    else btns = `<span class="btns">${GROUPS.map((g, i) => (i ? '<span class="dv"></span>' : '') + `<span class="grp">` + (hmode === 'forms' && g.key === 'forms' ? menuOf(g.key, g.label, g.items) : `<span class="gl">${esc(g.label)}</span>${g.items.map(btn).join('')}`) + `</span>`).join('')}</span>`;
+    h.innerHTML = main + btns + pillsHtml(hmode !== 'today', '19:36 CDT', 'Local time (CDT). Click for UTC.');
+    h.style.width = hwidth === 'auto' ? '' : hwidth + 'px';
+    h.classList.toggle('fixed', hwidth !== 'auto'); h.parentElement.classList.toggle('scroll', hwidth !== 'auto');
+    h.classList.toggle('nolabels', hwidth === '1000');
+  }
+  function closeMenus(except) { for (const m of document.querySelectorAll('.menu')) if (m !== except) { m.hidden = true; const b = m.parentElement.querySelector('.mbtn'); if (b) { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); } } }
+
+  // ---------------------------------------------------------------- 2. a new incident starting emptier
+  let eview = 'new', estep = 0;
+  const ZONE_ROW = (unit) => `<div class="zr"><span class="pb">2</span><span class="zm"><span class="zid">A-1</span>Riverside Drive, east<span class="zs">Not started · ${unit ? 'Unit 1' : 'no unit yet'}${unit ? ' · 9 structures' : ''}</span></span><span class="sdot"></span></div>`;
+  const CODES = `<div class="k">Join code for field phones</div><div class="codes"><div class="qr" role="img" aria-label="QR code"></div><div><div class="big">CEDAR7</div><div class="row"><span class="btn sm">Print a join card</span><span class="btn sm">Copy the link</span></div><div class="muted" style="margin-top:4px">Phones join with this code.</div></div></div>`;
+  const FACIL = (placed) => `<div class="k">Facilities</div>${placed ? '<div class="ur"><span class="nm">CP</span><span>Cedar Fork High School</span><span class="st">command post</span></div>' : ''}<div class="row"><span class="muted" style="font-size:11.5px;align-self:center">Place:</span><span class="btn sm">Base</span><span class="btn sm">Staging</span><span class="btn sm">Shelter</span><span class="btn sm">Hospital</span></div>`;
+  const INC = `<div class="k">Incident</div><div class="kv"><span class="k">Period</span><span>1 · to 07:58</span><span class="k">Base</span><span>Cedar Fork High School</span><span class="k">Opened</span><span>19 Oct 2026 19:58</span><span class="k">Lead agency</span><span>Cedar Fork Fire Department</span></div>`;
+  const HAZ = `<div class="k">Hazards open · 0</div><div class="muted">None reported. A crew's Report hazard lands here, on the map and in the log.</div>`;
+  const UNITS1 = `<div class="k">Units · 2 people in the field on 1 unit</div><div class="ur"><span class="nm">Unit 1</span><span>engine · Ramirez, Okafor</span><span class="st">Available</span></div>`;
+  const MSG = `<div class="k">Message the field</div><div class="row"><span class="btn sm">Everyone</span><span class="muted" style="align-self:center">Type a message, or Safety message, PAR</span></div>`;
+  const todayHeads = `<div class="k">PAR</div><div class="muted">Asks every unit for a head count; each answers with one tap.</div>${HAZ}${MSG}<div class="k">Messages</div><div class="muted">No messages yet</div>${FACIL(false)}<div class="k">Transports</div><div class="muted">None yet. New run plans a bus, a van, an ambulance or a boat run from a pickup to a shelter or a hospital…</div><div class="k">Radio channels</div><div class="muted">None set</div><div class="k">Agencies on scene</div><div class="muted">No lead agency named yet. Name it under Incident below.</div><div class="k">Public information</div><div class="muted">0 photos cleared for the public.</div><div class="k">Map imagery</div><div class="muted">None over the map yet.</div>${INC}`;
+  const ZONEPANEL = (today) => `<div class="title">A-1 · Riverside Drive, east</div><div class="muted">Priority 2 · Not started · 0 of 9 structures</div><div class="k">Assign to</div><div class="muted">${today ? 'No units have joined yet' : 'No units yet. Phones join with CEDAR7.'}</div><div class="k">Assignment</div><div class="muted">Primary search of every structure, paint the marking on each…</div><div class="row"><span class="btn sm">Print its 204</span></div>`;
+  function baseState() {
+    const s = estep, today = eview === 'today';
+    const units = s >= 3 ? 1 : 0, zones = s >= 2 ? 1 : 0, boundary = s >= 1;
+    const line = `Period 1 <i>·</i> to 07:58 <i>·</i> ${units} unit${units === 1 ? '' : 's'} <i>·</i> ${zones} division${zones === 1 ? '' : 's'}`;
+    const hint = !boundary ? "Start with the boundary: the incident's outer edge, drawn once." : !zones ? 'Now divisions inside it: an area of the map for each unit.' : 'Click a division, a unit or a photo pin to open it.';
+    const log = [['19:58', 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1']];
+    if (boundary) log.unshift(['20:04', 'ops', 'Boundary drawn']);
+    if (zones) log.unshift(['20:11', 'ops', 'Division A-1 drawn, priority 2']);
+    if (units) log.unshift(['20:19', 'status', 'Unit 1, engine checked in as Lt. Ramirez, 512 555 0101, with 2 people']);
+    const chips = today ? [['All', log.length], ['Notable', 0], ['From the field', units], ['Messages', 0], ['Operations', log.length - units], ['Notes', 0]] : [['All', log.length], ['From the field', units], ['Operations', log.length - units]].filter((c) => c[1]);
+    let zl, pn;
+    if (today) {
+      zl = zones ? ZONE_ROW(units) : `<div class="empty">No divisions yet. Press Draw division and click the map to outline one.</div>`;
+      pn = s === 2 ? ZONEPANEL(true) : (units ? `${UNITS1}<div class="row"><span class="btn sm">People board</span></div>` : '<div class="muted">No units have joined yet.</div>') + todayHeads;
+    } else {
+      zl = zones ? ZONE_ROW(units) : `<div class="empty">${!boundary ? 'Nothing here yet. Draw the boundary, then divisions inside it.' : 'Boundary drawn. Now a division: an area for one unit.'}</div>`;
+      pn = s === 2 ? ZONEPANEL(false) : units ? `${UNITS1}${MSG}${HAZ}${FACIL(true)}${INC}` : `${CODES}${HAZ}${FACIL(s >= 1)}${INC}`;
+    }
+    const legend = today
+      ? `<span><span class="sw"></span>Not started<span class="n">${zones}</span></span><span><span class="sw active"></span>In progress<span class="n">0</span></span><span><span class="sw primary"></span>Primary search done<span class="n">0</span></span><span><span class="sw cleared"></span>Cleared<span class="n">0</span></span><span><span class="sw bnd"></span>Incident boundary</span><span><span class="sw run"></span>Transport run</span>`
+      : `<span><span class="sw"></span>Not started${zones ? `<span class="n">${zones}</span>` : ''}</span><span><span class="sw active"></span>In progress</span><span><span class="sw primary"></span>Primary search done</span><span><span class="sw cleared"></span>Cleared</span><span><span class="sw bnd"></span>Incident boundary</span>`;
+    return { today, units, zones, boundary, line, hint, log, chips, zl, pn, legend };
+  }
+  function mapSvg(st) {
+    const grid = Array.from({ length: 9 }, (_, i) => `<line x1="${i * 80}" y1="0" x2="${i * 80}" y2="250" stroke="currentColor" stroke-opacity=".08"/><line x1="0" y1="${i * 40}" x2="640" y2="${i * 40}" stroke="currentColor" stroke-opacity=".08"/>`).join('');
+    const river = `<path d="M0,150 C120,120 200,190 320,160 S520,120 640,170" fill="none" stroke="#7FB0D6" stroke-opacity=".7" stroke-width="10"/>`;
+    const bnd = st.boundary ? `<rect x="140" y="40" width="340" height="180" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="8 6"/>` : '';
+    const zone = st.zones ? `<polygon points="190,70 320,62 330,140 200,150" fill="var(--open)" fill-opacity=".18" stroke="var(--open)" stroke-width="2"/><g transform="translate(236,98)"><rect x="-26" y="-11" width="52" height="22" rx="11" fill="#fff" stroke="#8F8B82"/><circle cx="-13" cy="0" r="7" fill="#B86E00"/><text x="-13" y="3.5" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">2</text><text x="6" y="4" font-size="11" font-weight="700" fill="#1B1B18" text-anchor="middle">A-1</text></g>` : '';
+    const cp = st.boundary && !st.today || st.units ? `<g transform="translate(430,190)"><rect x="-11" y="-11" width="22" height="22" rx="5" fill="#1F4E79"/><text x="0" y="4" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">CP</text></g>` : '';
+    const unit = st.units ? `<g transform="translate(410,120)"><circle r="9" fill="#1F4E79" stroke="#fff" stroke-width="2"/><text x="0" y="-13" font-size="10" font-weight="700" fill="currentColor" text-anchor="middle">U1</text></g>` : '';
+    return `<svg viewBox="0 0 640 250" preserveAspectRatio="none" style="color:var(--ink)">${grid}${river}${bnd}${zone}${cp}${unit}</svg>`;
+  }
+  function drawBase() {
+    const st = baseState();
+    $('base').innerHTML = `
+      <div class="hd"><div><h3>Cedar Fork Flooding</h3><div class="line">${st.line.replace(/<i>·<\/i>/g, '<span style="color:var(--grey);padding:0 4px">·</span>')} <span style="color:var(--grey);font-size:10px">▾</span></div></div><span class="pills"><span class="pill mono">CEDAR7</span><span class="pill"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cleared-fill)"></span></span><span class="pill mono">${st.units ? '20:19' : st.zones ? '20:11' : st.boundary ? '20:04' : '19:58'} CDT</span></span></div>
+      <div class="bars">No emergency open · no safety message or PAR waiting on an answer</div>
+      <div>
+        <div class="tools"><span class="k">Draw</span><span class="btn sm${!st.boundary ? ' pri' : ''}">Boundary</span><span class="btn sm${st.boundary && !st.zones ? ' pri' : ''}">Division</span><span class="hint">${esc(st.hint)}</span><span class="btn sm">Layers</span></div>
+        <div class="mapbox">${mapSvg(st)}${st.today || st.boundary ? '' : ''}</div>
+        <div class="legend">${st.legend}</div>
+        <div class="logbox">
+          <div class="logh"><span class="t">▾ Activity log · ICS 214</span><span style="flex:1"></span>${st.chips.map((c, i) => `<span class="lchip${i === 0 ? ' on' : ''}">${c[0]} <span class="n">${c[1]}</span></span>`).join('')}<span class="btn sm" style="pointer-events:none">Print 214</span></div>
+          ${st.log.map((l, i) => `${i === 0 || l[0].slice(0, 2) !== st.log[i - 1][0].slice(0, 2) ? `<div class="lsep">${l[0].slice(0, 2)}:00 to ${l[0].slice(0, 2)}:59</div>` : ''}<div class="lrow ${l[1]}"><span class="t mono">${l[0]}</span><span>${esc(l[2])}</span></div>`).join('')}
+          <div class="noteform"><span>Add a note to the log</span><span class="btn sm" style="pointer-events:none">Add</span></div>
+        </div>
+      </div>
+      <aside class="side"><div class="sideh">Divisions by priority</div><div class="zl">${st.zl}</div><div class="pn">${st.pn}</div></aside>`;
+  }
+
+  // ---------------------------------------------------------------- 3. every time in UTC
+  // the device is in CDT (UTC−5): 19:36 on 19 October is 00:36Z on 20 October. Formatted here with a fixed offset
+  // so the page reads the same on any machine; the app would use the device's own zone.
+  const OFF = -5 * 60, T0 = Date.UTC(2026, 9, 20, 0, 36);
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const p2 = (n) => String(n).padStart(2, '0');
+  const shift = (ms, utc) => new Date(utc ? ms : ms + OFF * 60000);
+  const hm = (ms, utc) => { const d = shift(ms, utc); return p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + (utc ? 'Z' : ''); };
+  const hourOf = (ms, utc) => shift(ms, utc).getUTCHours();
+  const dayOf = (ms, utc) => { const d = shift(ms, utc); return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()]; };
+  const dt = (ms, utc) => { const d = shift(ms, utc); return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear() + ' ' + hm(ms, utc); };
+  const ago = (min) => T0 - min * 60000;
+  const LOG = [
+    [0, 'ops', 'Shelter open at Cedar Fork High School gym, Red Cross on site', true],
+    [0, 'ops', 'Objective 3 done: Shelter open and staffed at the high school'],
+    [4, 'clear', 'Structure cleared in A-2 (6 of 18)'],
+    [7, 'photo', 'Unit 3 sent a photo from A-2, facing S 180°: Blocked access'],
+    [9, 'shelter', 'Unit 3 sent Maria Alvarez, 78 from 112 Pecan Ln to Dell Seton Medical Center on Ambulance 1, needs oxygen'],
+    [44, 'hazard', 'Hazard in A-2: downed power line across the park entrance, act on now', true],
+    [65, 'status', 'Unit 3, swift-water team checked in as Jordan Lee Hale, 512 555 0133, with 2 people'],
+    [180, 'ops', 'Incident opened: Cedar Fork Flooding, operational period 1']
+  ];
+  const PERIOD = { starts: ago(180), ends: ago(36) };   // 16:36 to 19:00 local; overdue 36m
+  let utcOn = false;
+  function drawUtc() {
+    const u = utcOn, zone = u ? 'UTC (Z)' : 'local, CDT';
+    const clockText = u ? hm(T0, true).replace('Z', '') + ' UTC' : hm(T0, false) + ' CDT';
+    const clockTitle = u ? 'UTC. Click: every time on this screen local again (CDT).' : 'Local time (CDT). Click: every time on this screen in UTC.';
+    $('hdr-utc').innerHTML = `<div class="main"><h1>Cedar Fork Flooding</h1><span class="line">Period 1<span class="sep">·</span><span class="warn">overdue 36m</span><span class="sep">·</span>3 units<span class="sep">·</span>6 divisions, 1 cleared<span class="sep">·</span>1 hazard open<span class="caret">▾</span></span></div><span class="find">Find a person</span><span class="ppl"><b>6</b> in the field</span><span class="btns">${GROUPS.map((g, i) => (i ? '<span class="dv"></span>' : '') + `<span class="grp"><span class="gl">${esc(g.label)}</span>${g.items.map(btn).join('')}</span>`).join('')}</span>` + pillsHtml(true, clockText, clockTitle, 'clock-utc');
+    $('utc-hover').innerHTML = 'hover text: <span class="hover-text">' + esc(clockTitle) + '</span>';
+    for (const b of document.querySelectorAll('[data-utc]')) b.classList.toggle('on', b.dataset.utc === (u ? '1' : '0'));
+    // the log: hour lines, with the day above the first hour of a new day
+    let out = '', lastH = null, lastD = null;
+    for (const [min, kind, text, notable] of LOG) {
+      const ms = ago(min), h = hourOf(ms, u), d = dayOf(ms, u);
+      if (lastH === null || h !== lastH) out += `<div class="lsep">${lastD !== null && d !== lastD ? d + ' · ' : lastH === null && u ? d + ' · ' : ''}${p2(h)}:00 to ${p2(h)}:59</div>`;
+      lastH = h; lastD = d;
+      out += `<div class="lrow ${kind}${notable ? ' notable' : ''}"><span class="t">${hm(ms, u)}</span>${notable ? '<span class="star">★</span>' : ''}<span class="x">${esc(text)}</span></div>`;
+    }
+    $('log-utc').innerHTML = out;
+    const pline = `Operational period 1, ${hm(PERIOD.starts, u)} to ${hm(PERIOD.ends, u)} · the planned end passed 36m ago; the next period has not been started`;
+    $('paper-214').innerHTML = `<div class="ph">Activity log, ICS 214</div><p class="ln">Cedar Fork Flooding · base: Cedar Fork High School</p><p class="ln">${esc(pline)}</p><p class="ln">Incident Commander Dana Ruiz</p><p class="ln">Prepared by Operations, ${dt(T0 + 8 * 60000, u)}</p><p class="ln tl"><span class="swap">Times ${zone}</span></p><div class="ph" style="margin-top:8px">2 notable entries</div><p class="ln mono">${hm(ago(44), u)}  ★ Hazard in A-2: downed power line across the park entrance</p><p class="ln mono">${hm(ago(0), u)}  ★ Shelter open at Cedar Fork High School gym, Red Cross on site</p>`;
+    $('paper-204').innerHTML = `<div class="ph">Assignment, ICS 204 · Division A-1 · Riverside Drive, east</div><p class="ln">Cedar Fork Flooding · ${esc(pline.split(' · ')[0])}</p><p class="ln">Prepared by Operations, ${dt(T0 + 8 * 60000, u)}</p><p class="ln tl"><span class="swap">Times ${zone}</span></p>`;
+    $('period-utc').innerHTML = `<div style="font-weight:600;font-size:14px">Operational period 1 <span class="muted" style="font-weight:400">${hm(PERIOD.starts, u)} to ${hm(PERIOD.ends, u)} · overdue 36m</span></div><div style="background:var(--tint-orange);color:var(--hazard-ink);border-radius:8px;padding:6px 10px;font-size:12.5px;margin:6px 0">The planned end ${hm(PERIOD.ends, u)} passed 36m ago and the period is still open. Start period 2, or move the planned end below.</div><div class="muted" style="font-size:12.5px">Planned end <span class="mono" style="border:1px solid var(--control-border);border-radius:6px;padding:2px 6px;background:var(--control-bg)">2026-10-19 19:00</span>${u ? ' <b>local</b>' : ''} <span style="font-size:11.5px">(the browser's own box; local by nature)</span></div><div class="k" style="margin-top:8px">Objectives (ICS 202)</div><div style="font-size:12.5px"><strong>3.</strong> Shelter open and staffed at the high school <span class="muted">done ${hm(ago(0), u)}</span></div>`;
+    $('brief-utc').innerHTML = `<strong>Shift-change briefing</strong><span class="muted">Cedar Fork Flooding · OP 1 · ${hm(PERIOD.starts, u)} to ${hm(PERIOD.ends, u)} · ${hm(T0, u)}</span><span class="sp"></span><span class="btn sm">Copy as text</span><span class="btn sm">Print</span>`;
+    $('bits-utc').innerHTML = `<div><b>Photo</b> · Taken ${hm(ago(7), u)} · Unit 3 · A-2 · facing S 180°</div><div><b>Hazard</b> · <span class="mono">${hm(ago(44), u)}</span> Downed power line · A-2 · Unit 3 · acknowledged ${hm(ago(41), u)}</div><div><b>Unit 2</b> · last report ${u ? hm(ago(3), u) : '3 min ago'} <span class="muted">(within the hour it reads "3 min ago" either way; the stamp shows past it)</span></div><div><b>Replay</b> · This period · from ${hm(PERIOD.starts, u)}${u ? ' <span class="muted">· yesterday, 19 Oct</span>' : ''}</div>`;
+  }
+
+  // ---------------------------------------------------------------- wiring
+  document.addEventListener('click', (e) => {
+    const m = e.target.closest('[data-hmode]'); if (m) { hmode = m.dataset.hmode; for (const x of document.querySelectorAll('[data-hmode]')) x.classList.toggle('on', x === m); drawHeader(); return; }
+    const w = e.target.closest('[data-hwidth]'); if (w) { hwidth = w.dataset.hwidth; for (const x of document.querySelectorAll('[data-hwidth]')) x.classList.toggle('on', x === w); drawHeader(); return; }
+    const ev = e.target.closest('[data-eview]'); if (ev) { eview = ev.dataset.eview; for (const x of document.querySelectorAll('[data-eview]')) x.classList.toggle('on', x === ev); drawBase(); return; }
+    const es = e.target.closest('[data-estep]'); if (es) { estep = Number(es.dataset.estep); for (const x of document.querySelectorAll('[data-estep]')) x.classList.toggle('on', x === es); drawBase(); return; }
+    const uu = e.target.closest('[data-utc]'); if (uu) { utcOn = uu.dataset.utc === '1'; drawUtc(); return; }
+    if (e.target.closest('#clock-utc')) { utcOn = !utcOn; drawUtc(); toast(utcOn ? 'Every time on this screen is UTC now' : 'Every time on this screen is local again (CDT)'); return; }
+    const mb = e.target.closest('.mbtn');
+    if (mb) { const menu = mb.parentElement.querySelector('.menu'); const open = menu.hidden; closeMenus(menu); menu.hidden = !open; mb.classList.toggle('on', open); mb.setAttribute('aria-expanded', open ? 'true' : 'false'); return; }
+    if (!e.target.closest('.menu')) closeMenus();
+    const b = e.target.closest('[data-where]');
+    if (b) { closeMenus(); if (b.closest('.pill.clock')) return; toast('Would open ' + b.dataset.where); return; }
+    const c = e.target.closest('.pill.clock'); if (c && !c.closest('#hdr-utc')) toast('Would swap the clock to UTC (today) · see Every time in UTC below');
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+  drawHeader(); drawBase(); drawUtc();
+
+  const themeNow = () => document.documentElement.dataset.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };
+  $('theme-btn').addEventListener('click', () => { const next = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('ic.theme', next); } catch (e) {} drawTheme(); });
+  drawTheme();
+</script>
+</body>
+</html>

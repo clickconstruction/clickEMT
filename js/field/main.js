@@ -20,6 +20,7 @@ import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFr
 import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports, runCard, foldRuns } from '../shared/rules.js';   // the transport board (v54), the run cards (v66)
 import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, bandCodeNumber, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
 import { inviteFromSearch } from '../shared/rules.js';   // invitations by email (v56)
+import { signInAddress, codeSentText, codeErrorText, phoneDisplay } from '../shared/rules.js';   // sign in by a code (v73)
 import { CREDENTIAL_KINDS, credentialLabel, credentialState, idState, credentialOf } from '../shared/rules.js';   // claim a band, add your licences (v69)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
 // shared phone: kept per account here, and read from the account's own check-ins once they load.
@@ -207,24 +208,23 @@ async function drawAuthInvite() {
   if (!v || v.state === 'missing') { el.hidden = true; return; }
   el.hidden = false;
   el.innerHTML = `<div class="k">You're invited</div><div class="big">${esc(v.incident)}</div><div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>
-    <div class="muted small">${v.state === 'pending' ? 'The link from the email signs you in by itself the first time. Here, sign in with ' + esc(v.email) + ', or make the account with it.' : v.state === 'expired' ? 'This invitation has expired; ask ' + esc(v.by) + ' to send it again.' : v.state === 'withdrawn' ? 'This invitation was withdrawn.' : 'This invitation was accepted already; sign in to open the incident.'}</div>`;
+    <div class="muted small">${v.state === 'pending' ? 'The link from the email signs you in by itself. Here, a code to ' + esc(v.email) + ' does the same: no password, and the account is made with it if new.' : v.state === 'expired' ? 'This invitation has expired; ask ' + esc(v.by) + ' to send it again.' : v.state === 'withdrawn' ? 'This invitation was withdrawn.' : 'This invitation was accepted already; sign in to open the incident.'}</div>`;
   $('#auth-lead').hidden = true;
   const em = $('#auth-email'); if (em && !em.value) em.value = v.email;
 }
-// signed in: the check-in screen offers to accept, with a password the first time
+// signed in: the check-in screen offers to accept (the link signed them in; nothing to set since v73, a code to the address signs in next time)
 async function drawJoinInvite() {
   const el = $('#join-invite'); if (!el) return;
   const v = await peekInvite();
   if (!v) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
-  const me = (data.user && data.user.email || '').toLowerCase();
-  const fresh = data.user && data.user.last_sign_in_at && Date.now() - new Date(data.user.last_sign_in_at).getTime() < 10 * 60000;
-  const can = (v.state === 'pending' || v.state === 'accepted') && (!me || v.email === me);
+  const me = (data.user && data.user.email || '').toLowerCase(), who = data.accountText();
+  const other = !!(v.email && who && v.email !== me);   // signed in as someone else, or with a mobile number: an invitation is to an address
+  const can = (v.state === 'pending' || v.state === 'accepted') && !other;
   el.innerHTML = `<div class="invite-card"><div class="k">You're invited</div><div class="big">${esc(v.incident || 'an incident')}</div>
     ${v.state === 'missing' ? '<div>This invitation is not on record; ask Operations for a new one.</div>' : `<div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>`}
-    ${v.email && me && v.email !== me ? `<div class="invite-bad">This invitation is for ${esc(v.email)}; you are signed in as ${esc(me)}. Sign out and sign in with that address.</div>` : ''}
+    ${other ? `<div class="invite-bad">This invitation is for ${esc(v.email)}; you are signed in as ${esc(who)}. Sign out and sign in with that address.</div>` : ''}
     ${v.state === 'expired' ? '<div class="invite-bad">It has expired; ask them to send it again.</div>' : v.state === 'withdrawn' ? '<div class="invite-bad">It was withdrawn.</div>' : ''}
-    ${can && fresh ? `<form data-form="invite-password"><label class="k">Choose a password for next time<input class="input" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="8 or more characters"></label><button class="btn" type="submit">Save the password</button></form>` : ''}
     ${can ? `<button type="button" class="btn pri big" data-action="invite-accept">${v.role === 'ops' ? 'Join as Operations' : 'Check in'} · no code to type</button><div class="muted small">Your name and phone are asked first if they are not on record. The code form below is not needed.</div>` : ''}
     <button type="button" class="btn sm" data-action="invite-dismiss">Not this one</button></div>`;
 }
@@ -243,29 +243,53 @@ async function acceptInvite() {
 function pendingJoin() { try { return sessionStorage.getItem(JOIN_KEY) || ''; } catch (e) { return ''; } }
 function clearPendingJoin() { try { sessionStorage.removeItem(JOIN_KEY); } catch (e) { /* fine */ } }
 
-// ---- auth
-$('#auth-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const msg = $('#auth-msg'); msg.textContent = 'Signing in…'; msg.classList.remove('ok');
-  try { await data.signIn($('#auth-email').value.trim(), $('#auth-password').value); msg.textContent = ''; await showJoin(); }
-  catch (err) { msg.textContent = err.message || String(err); }
-});
-$('#auth-signup').addEventListener('click', async () => {
-  const msg = $('#auth-msg');
-  const email = $('#auth-email').value.trim(), password = $('#auth-password').value;
-  if (!email || password.length < 8) { msg.textContent = 'Enter an email and a password of at least 8 characters.'; return; }
+// ---- sign in by a code (v73): an email address or a mobile number, Send code, the six digits (or the email's link),
+// and in. No password anywhere; a new address or number makes its account on the first code.
+const auth = { to: null };   // signInAddress's { email } or { phone } once a code was sent; null while the box shows
+function authRedirect() {   // where the email's link lands: this page, carrying what was waiting so a new tab finds it again
+  const v = pendingInvite(), b = pendingBand(), j = pendingJoin();
+  const q = v ? 'invite=' + encodeURIComponent(v) : b ? 'band=' + encodeURIComponent(b) : j ? 'join=' + encodeURIComponent(j) : '';
+  return location.origin + location.pathname + (q ? '?' + q : '');
+}
+function drawAuthStep() {
+  const sent = !!auth.to;
+  $('#auth-ask').hidden = sent; $('#auth-enter').hidden = !sent;
+  if (sent) { const who = esc(auth.to.email || phoneDisplay(auth.to.phone)); $('#auth-sent').innerHTML = esc(codeSentText(auth.to)).replace(who, '<b>' + who + '</b>'); }
+}
+async function sendCode(again) {
+  const msg = $('#auth-msg'); msg.classList.remove('ok');
+  const to = again ? auth.to : signInAddress($('#auth-email').value);
+  if (!to || to.error) { msg.textContent = to ? to.error : ''; $('#auth-email').focus(); return; }
+  msg.textContent = 'Sending the code…';
   try {
-    const res = await data.signUp(email, password);
-    if (res.session) { msg.textContent = ''; await showJoin(); }
-    else { msg.textContent = 'Account created. Check your email to confirm it, then sign in.'; msg.classList.add('ok'); }
-  } catch (err) { msg.textContent = err.message || String(err); }
+    await data.sendCode(to, authRedirect());
+    auth.to = to; drawAuthStep(); $('#auth-otp').value = '';
+    msg.textContent = again ? 'Another code is on its way; the first one no longer works.' : ''; msg.classList.toggle('ok', !!again);
+    $('#auth-otp').focus();
+  } catch (err) { msg.textContent = codeErrorText(err); }
+}
+async function verifyCode() {
+  const msg = $('#auth-msg'); msg.classList.remove('ok');
+  const token = $('#auth-otp').value.replace(/\D/g, '');
+  if (token.length < 6) { msg.textContent = 'The code is six digits.'; $('#auth-otp').focus(); return; }
+  msg.textContent = 'Checking…';
+  try { await data.verifyCode(auth.to, token); clearAuth(); if (!$('#auth').hidden) await showJoin(); }   // the auth event may have moved on already
+  catch (err) { msg.textContent = codeErrorText(err); $('#auth-otp').focus(); $('#auth-otp').select(); }
+}
+function clearAuth() { auth.to = null; $('#auth-form').reset(); $('#auth-msg').textContent = ''; $('#auth-msg').classList.remove('ok'); drawAuthStep(); }
+$('#auth-form').addEventListener('submit', (e) => { e.preventDefault(); if (auth.to) verifyCode(); else sendCode(false); });
+$('#auth-form').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-auth]'); if (!b) return;
+  if (b.dataset.auth === 'resend') sendCode(true);
+  else { const was = $('#auth-email').value; clearAuth(); $('#auth-email').value = was; $('#auth-email').focus(); $('#auth-email').select(); }   // Use another address: the box again, the last one in it to fix
 });
+$('#auth-otp').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8); if (e.target.value.length === 6 && auth.to) verifyCode(); });   // six digits typed or filled in check by themselves
 
 // ---- check in
 async function showJoin() {
   show('join');
   window.scrollTo(0, 0);
-  $('#join-user').textContent = data.user ? data.user.email : '';
+  $('#join-user').textContent = data.accountText();
   const f = $('#join-form');
   if (state.joinFor !== (data.user && data.user.id)) { clearJoinForm(); state.joinFor = data.user && data.user.id; }
   if (!f.agency.value) { f.agency.value = lastAgency(); f.agency.dataset.prefill = f.agency.value; }
@@ -312,7 +336,7 @@ function clearJoinForm() {
   drawJoinPeople(); drawJoinKind();
 }
 function clearForms() {
-  $('#auth-form').reset(); $('#auth-msg').textContent = ''; $('#auth-msg').classList.remove('ok');
+  clearAuth();
   clearJoinForm(); state.joinFor = null; state.identShown = false;
   for (const id of ['id-name', 'id-phone', 'id-number', 'id-state']) $('#' + id).value = '';
   $('#join-mine').hidden = true; $('#join-list').innerHTML = ''; $('#join-title').textContent = 'Check in to an incident';
@@ -381,15 +405,6 @@ function joinPeopleList() {
   return state.joinPeople.filter((p) => p.name.trim()).map((p) => Object.assign({ name: p.name.trim(), role: p.role.trim(), qualifications: [...p.quals] }, (p.band || '').trim() ? { band: p.band.trim() } : {}));
 }
 
-// the password an invited person chooses on the check-in screen (v56)
-document.addEventListener('submit', async (e) => {
-  const form = e.target.closest('form[data-form="invite-password"]');
-  if (!form) return;
-  e.preventDefault();
-  const pw = form.password.value;
-  if (pw.length < 8) { toast('8 characters or more', true); return; }
-  try { await data.setPassword(pw); toast('Password saved'); form.remove(); } catch (err) { toast(err.message || String(err), true); }
-});
 $('#join-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target, msg = f.querySelector('[data-msg]');
@@ -1239,7 +1254,7 @@ function openClaim(code, peek) {
   $('#claim-title').textContent = bandLabel({ number: peek.number }) + ' · not on anyone yet';
   $('#claim-sub').textContent = peek.incident || '';
   $('#claim-name').value = p.full_name || '';
-  $('#claim-phone').value = p.phone || '';
+  $('#claim-phone').value = p.phone || (data.user && data.user.phone ? phoneDisplay(data.user.phone) : '');
   $('#claim-agency').value = agency;
   $('#claim-msg').textContent = '';
   pickClaimUnit();
@@ -1375,7 +1390,7 @@ function openIdentify() {
   const p = data.profile || {};
   state.ident = { read: null, photo: null, source: p.id_source || '' };
   $('#id-name').value = p.full_name || '';
-  $('#id-phone').value = p.phone || '';
+  $('#id-phone').value = p.phone || (data.user && data.user.phone ? phoneDisplay(data.user.phone) : '');   // signed in with a mobile number: it is the phone (v73)
   $('#id-number').value = p.licence_number || '';
   $('#id-state').value = p.licence_state || '';
   $('#id-msg').textContent = '';

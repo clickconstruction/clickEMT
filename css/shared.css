@@ -126,6 +126,12 @@ input, select, textarea { font: inherit; color: inherit; }
 .auth-card p { margin: 0; }
 .auth-card label { text-align: left; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .auth-card .btn.pri { margin-top: 6px; }
+/* sign in by a code (v73): the box step, then the code step; the mock's chip says the code it "sent" */
+.auth-step { display: flex; flex-direction: column; gap: 10px; }
+.code-sent { font-size: 14px; color: var(--muted); text-align: left; overflow-wrap: anywhere; }
+.code-sent b { color: var(--ink); }
+.auth-card #auth-otp { font-size: 22px; letter-spacing: .25em; text-align: center; font-variant-numeric: tabular-nums; }
+.mock-code { margin: 4px 0 0; font-size: 13px; color: var(--ink); background: var(--tint-orange); border: 1px solid var(--hazard); border-radius: 8px; padding: 6px 10px; }
 
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 2000; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .toast.bad { background: var(--danger); }

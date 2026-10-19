@@ -2,7 +2,7 @@
 
 For whoever picks up clickEMT next. This says where things stand, how to get it running, how a change is shipped,
 and where the open work is. The open work itself is in [punchlist.md](punchlist.md). Written 17 October 2026, brought
-up to date on 18 October 2026 at v72.
+up to date on 18 October 2026 at v73.
 
 ## What it is
 
@@ -23,7 +23,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v72**, "The 211 per the mock-up" (after v71, The 211 as a table, and v70, A transport on the map). The service worker reads `v72`.
+- `main` is at **v73**, "Sign in by a code, no password" (after v72, The 211 per the mock-up, v71, The 211 as a table, and v70, A transport on the map). The service worker reads `v73`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0034` in
   `supabase/migrations/` are all applied, and so are `0035_overlay_corners.sql` (v67), `0036_alert_words.sql` (v68) and `0037_credentials.sql` (v69), all on 18 October. They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
@@ -49,15 +49,15 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   that 0032 and 0033 had lost; v58 is Show me around, a label over each part of the base on a device's first open; v59 moved the header's
   pills to the end of the buttons row and made the clock swap between local and UTC; v60 took eight marks from Todd's
   walk of the base (shorter labels, the codes behind the pill, the connection's card, the head count, the drawing
-  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section; v62 made every confirmation a dialog of the app's own and gave a band's link on a signed-out phone its door; v63 gave Replay a time you name, every range starting at the first position, and a speed in words; v64 put the pages in windows over the dimmed map, with Expand to full screen; v65 redrew the People board as cards and a drawer, with the tabs first in its bar and the Members tab as two groups; v66 made the house record's Went to and On which run chip rows, with the base's arriving rows the same; v68 gave Need help now two rows of chips, what's wrong and what you need.; v69 made a band the door (scan it, say who you are, It's mine), put credentials on the account, pending until Operations confirms them from the queue, and the chips, the 211 and the 214 follow; v70 drew every open run on the base's map, the bus where the driver's phone is; v71 made the printed 211 a table per unit, and v72 redrew it as mock-up panel 10 (the unit header line, the band as a number, two small totals tables). v49 was the front door's redesign. Each release has its section
-  in [punchlist.md](punchlist.md) (1 to 14, 16 to 25, 27 to 31) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
+  buttons, the gear, Layers flipped, a division's hover card); v61 the ninth, the units section; v62 made every confirmation a dialog of the app's own and gave a band's link on a signed-out phone its door; v63 gave Replay a time you name, every range starting at the first position, and a speed in words; v64 put the pages in windows over the dimmed map, with Expand to full screen; v65 redrew the People board as cards and a drawer, with the tabs first in its bar and the Members tab as two groups; v66 made the house record's Went to and On which run chip rows, with the base's arriving rows the same; v68 gave Need help now two rows of chips, what's wrong and what you need.; v69 made a band the door (scan it, say who you are, It's mine), put credentials on the account, pending until Operations confirms them from the queue, and the chips, the 211 and the 214 follow; v70 drew every open run on the base's map, the bus where the driver's phone is; v71 made the printed 211 a table per unit, and v72 redrew it as mock-up panel 10 (the unit header line, the band as a number, two small totals tables). v73 made sign-in a six-digit code to an email address or a mobile number (or the email's link), no password anywhere, with the account made on the first code. v49 was the front door's redesign. Each release has its section
+  in [punchlist.md](punchlist.md) (1 to 14, 16 to 25, 27 to 32) and its "Re-walk after vN" in [walkthroughs.md](walkthroughs.md).
 - **Open, not yet ranked: the rest of Todd's walk.** Todd walked the base at v59 on 18 October and kept marking
   things; v60 took eight, v61 the units section, v62 the confirmations and the band door, v63 the Replay bar, v64 the pages as windows, v65 the People board, v66 the house record's two drop-downs and v68 the chips on Need help now (what's wrong, what you need). The rest are in punchlist section 15 ("From Todd's walk at v59"),
   most with a mock-up: Replay's time picker, imagery placed
   by its corners (v67), a transport on the map (v70), the 211 as a table (v71); what is left there is the header row grouped, a new incident starting emptier, the front door's screenshots, every time in UTC, the labels on the demo. The fresh walk by Grace's routine (every persona, every job) is still to do after them. The candidates already known are in punchlist section 15 (the
   "Still bites" items of the re-walks after v50 to v56, and a few seen in passing). Trackers (tags phase 2) wait on
   the hardware Grace chooses.
-- **Not yet seen working for real:** the first real invitation email. The Edge Function `invite` is deployed and
+- **Not yet seen working for real:** the first real code by email and by text message, and a real link's landing on clickemt.com (v73: the settings above come first; the Browser pane cannot receive email or a text message, so the mock's stand-in is what was tested); the first real invitation email. The Edge Function `invite` is deployed and
   refuses a call with no session, and the smoke suite drives the whole flow against the mock's stand-in, but no email
   has been sent from the live site. Send one to yourself from the Members tab: if the mail sender refuses, the row
   says "could not be sent: …" on the tab and in the 214.
@@ -66,10 +66,38 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   open comment in section 6 (a free pilot, and the 30-day clearing); and the questions in section 7 of the plan doc,
   asked before the three pieces were built and still unanswered there. Both docs are private to Grace's account; ask
   her to share them.
-- **The server code:** v56 added the app's first, the Edge Function `invite` (`supabase/functions/invite/`), deployed
+- **The server code:** v56 added the app's first, the Edge Function `invite` (`supabase/functions/invite/`; v73 changed only its email's words, "there is no password: next time, a six-digit code to this address does", and redeployed it on 18 October; it refuses a call with no session as before), deployed
   with `supabase functions deploy invite --project-ref cjwybuhogxyayjnuxpem --use-api` (the Supabase CLI's saved login;
   no Docker). Its secrets are the project's (`RESEND_API_KEY`, `RESEND_DEFAULT_FROM`, the Supabase keys) plus
   `APP_URL` (`https://clickemt.com`), set for this app.
+- **Settings the shared project needs for v73, not yet changed** (sign in by a code; the app side is built and tested
+  on the mock, nothing was changed on the project). Each is project-wide, so the charity app sees it too; Todd or the
+  main session sets them, in the dashboard of project `cjwybuhogxyayjnuxpem`:
+  1. **An SMS provider**, or a mobile number's code never sends and the door says "Text messages are not set up on this
+     server yet: sign in with your email address" (the email path works without it). Authentication → Providers →
+     Phone: Enable phone provider, pick the provider and paste its credentials. **Twilio Verify** is the one to pick:
+     Twilio sends the code, retries and rate-limits it, and Supabase needs only the Account SID, the Auth Token and the
+     Verify Service SID from the Twilio console (a Verify service costs per check, no phone number to rent). Twilio
+     programmable SMS (a number of your own, the same SID and token, a Message Service SID), MessageBird and Vonage are
+     the others. Leave "Enable phone confirmations" on. Fewer than a few hundred codes a month stay in cents.
+  2. **The Magic Link email template** must carry the code: Authentication → Email Templates → Magic Link, add
+     `{{ .Token }}` to the body (for example "Your code is {{ .Token }}. Or open this link: {{ .ConfirmationURL }}");
+     without it the email has the link alone and the code box on the form has nothing to take. This changes the charity
+     app's magic-link emails too, so word it for both. Keep the OTP length at 6 (Authentication → Providers → Email):
+     the forms check six digits by themselves.
+  3. **Custom SMTP** before a real incident: Supabase's built-in sender is rate limited to a few emails an hour and
+     meant for testing, so a check-in table of twenty phones would stall. Authentication → SMTP Settings: the project
+     already has a Resend account for the invite function (host `smtp.resend.com`, port 465, user `resend`, the API key
+     as the password, the sender the project's verified address, the same one `RESEND_DEFAULT_FROM` holds), then raise
+     the email rate limit under Authentication → Rate Limits.
+  4. **The redirect allow list** already carries `https://clickemt.com/**`, `http://localhost:8766/**` and
+     `http://localhost:8782/**` (set for v56): a code's email link lands on the page it was asked from, with `?join=`,
+     `?band=` or `?invite=` when one was waiting, which the `**` patterns cover. Check once that the first real link
+     lands on clickemt.com and not on the site URL (the charity app's).
+  Sign-ups stay on (`disable_signup = false`): a new address or number makes its account on its first code, and
+  turning them off would make an invitation the only way in. "Confirm email" may stay on: the code or the link
+  confirms in the same step. Accounts from before v73 keep their password in Supabase unused; a code to the same
+  address signs them in.
 - **Settings changed on the shared project** (18 October, for v56): the auth redirect allow list gained
   `https://clickemt.com/**`, `http://localhost:8766/**` and `http://localhost:8782/**` (without them Supabase sends an
   invitation's link to the site URL, which is the charity app's), and sign-ups were turned back on after the charity
@@ -105,7 +133,8 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 - **The Supabase project is shared** with a separate charity app. Everything of this app carries the `ic_` prefix;
   touch nothing else in that project. Its auth settings (sign-ups, the redirect allow list, the email hook) are
   project-wide: a change there reaches the charity app too, so change them only when this app needs it and write the
-  change down in "Where things stand" above.
+  change down in "Where things stand" above. The phone provider, the email templates and SMTP are project-wide too
+  (v73 needs them; see "Settings the shared project needs for v73").
 - **A function a migration redefines starts from its newest body.** `ic_join` and many triggers are redefined
   release after release; take the body from the highest-numbered migration that defines it
   (`grep -l "function public.ic_join" supabase/migrations/*.sql`), never an older one, or earlier work is lost on the

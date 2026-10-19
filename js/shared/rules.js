@@ -24,6 +24,53 @@ export function profileReady(p) { return !!(p && p.full_name && p.phone); }
 export function identityGiven(p) { return !!(p && (p.photo_path || p.licence_number)); }
 export const NO_ID_TEXT = 'identity not given';
 
+// ---- sign in by a code (v73): an email address or a mobile number, no password anywhere.
+// A mobile number as E.164: ten US digits get +1, a number written with its country code (+44…, 0044…, 1…) is
+// kept; anything else is null. Spaces, dots, dashes and brackets around the digits are ignored.
+export function phoneE164(s) {
+  const t = String(s || '').trim();
+  if (!t) return null;
+  const coded = /^(\+|00)/.test(t);
+  const digits = t.replace(/^(\+|00)/, '').replace(/[\s().-]/g, '');
+  if (!/^\d+$/.test(digits)) return null;
+  if (coded) return digits.length >= 8 && digits.length <= 15 && digits[0] !== '0' ? '+' + digits : null;
+  if (digits.length === 10 && /^[2-9]/.test(digits)) return '+1' + digits;
+  if (digits.length === 11 && digits[0] === '1' && /^[2-9]/.test(digits.slice(1))) return '+' + digits;
+  return null;
+}
+// the number as people write it: +1 512 555 0100 (or 15125550100, as Supabase keeps it) → 512 555 0100; another
+// country's keeps its +
+export function phoneDisplay(e164) {
+  const d = String(e164 || '').replace(/^\+/, '');
+  if (!d) return '';
+  if (d.length === 11 && d[0] === '1') return d.slice(1, 4) + ' ' + d.slice(4, 7) + ' ' + d.slice(7);
+  return '+' + d;
+}
+// what the sign-in box holds: { email } (lower case) or { phone } (E.164), else { error } with the reason
+export function signInAddress(s) {
+  const t = String(s || '').trim();
+  if (!t) return { error: 'Type your email address or your mobile number.' };
+  if (t.includes('@')) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) ? { email: t.toLowerCase() } : { error: 'That email address is not complete: it reads name@place.org.' };
+  if (/[a-z]/i.test(t)) return { error: 'An email address has an @; a mobile number is digits, like 512 555 0100.' };
+  const phone = phoneE164(t);
+  return phone ? { phone } : { error: 'A mobile number is ten digits, like 512 555 0100, or starts with its country code, like +44.' };
+}
+// the account's name on screen: the address, or the number for an account made with one
+export function accountText(user) { return user ? (user.email || phoneDisplay(user.phone || '')) : ''; }
+// the sentence under the code box once a code was sent
+export function codeSentText(to) {
+  return to && to.email ? `A six-digit code went to ${to.email}. Type it here, or open the link in the email: it signs you in by itself.` : `A text message with a six-digit code went to ${phoneDisplay(to && to.phone)}.`;
+}
+// Supabase's refusals in the app's words; anything else as it came
+export function codeErrorText(message) {
+  const m = String((message && message.message) || message || '');
+  if (/expired or is invalid|otp_expired|invalid.*(token|otp)|token.*invalid/i.test(m)) return 'That code is not right, or it has expired. Check the digits, or send another.';
+  if (/rate limit|too many/i.test(m)) return 'Too many codes asked for in a short time. Wait a minute and try again, or open the link in the email.';
+  if (/phone provider|sms provider|unsupported phone|sms.*not.*enabled|phone.*not.*enabled/i.test(m)) return 'Text messages are not set up on this server yet: sign in with your email address.';
+  if (/signups? not allowed/i.test(m)) return 'There is no account for that address and new accounts are off; ask Operations for an invitation.';
+  return m || 'Something went wrong; try again.';
+}
+
 export function milesText(m) {
   if (m == null) return '';
   const mi = m / 1609.344;

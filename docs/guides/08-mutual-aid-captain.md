@@ -4,7 +4,7 @@
 
 **Where you work.** The phone, and the base for the printed 204 and the join card someone hands you.
 
-**In the mock.** On the phone tab press **Menu**, **Sign out**, then **Create account** with any new email and a password of eight or more characters. Check in with the code `CEDAR7`.
+**In the mock.** On the phone tab press **Menu**, **Sign out**, then sign in with any new email or mobile number: **Send code**, the code the mock shows under the form, and the account is made. Check in with the code `CEDAR7`.
 
 ## Your jobs
 

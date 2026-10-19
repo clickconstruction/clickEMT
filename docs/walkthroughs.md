@@ -1563,3 +1563,32 @@ the print rules applied as a stylesheet on the page; the words through the `peop
 - **Paper, not seen on paper**: the print rules were checked as a stylesheet on the page, not through a printer or a PDF.
 - **A long roster** breaks across pages with the header row repeated; the unit's one-line header is not repeated.
 - **The 203, 204 and 209** are still lines; the mock-up says they can follow the same way.
+
+## Re-walk after v73
+
+Sign in by a code, no password: the newcomer at the check-in table with a phone, Rosa with a band, Ana with an
+invitation, Marcus opening the base, the administrator with a shared phone, walked on 2026-10-18 in the mock (the base
+at 1280 × 820, the phone at 375 × 812, dark theme; the words read through the `passwordless`, `newcomer`, `walkfix`,
+`invite` and `credentials` suites). The Browser pane receives no email and no text message, so the code was the one
+the stand-in shows under the form, and the link's landing was the stand-in's `#access_token` hash.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The base's door | Marcus | The landing's last card, "Running the base?": one box, Email or mobile number, Send code. Typed `ops@mock.local`, pressed Return: "A six-digit code went to ops@mock.local. Type it here, or open the link in the email: it signs you in by itself.", the code box with the cursor in it, Resend and Use another address under Sign in, the mock's chip with the code. | Clear |
+| A wrong code | Marcus | One digit off: "That code is not right, or it has expired. Check the digits, or send another.", the box selected to type over. The right six digits checked by themselves: the picker, "ops@mock.local" at the top, the form empty behind it. | Clear |
+| Resend | Marcus | Another code; "Another code is on its way; the first one no longer works." in green; the first code refused. | Clear |
+| The phone's door | the newcomer | "Sign in with your email or mobile number: a six-digit code comes back, no password, and a new address makes its account. You check in to the incident next." One box, Send code, nothing else. | Clear |
+| A bad number | the newcomer | `555 0199`: "A mobile number is ten digits, like 512 555 0100, or starts with its country code, like +44." Nothing sent. | Clear |
+| A mobile number | the newcomer | `(512) 555-0199`: "A text message with a six-digit code went to 512 555 0199.", the code box large and centred, Resend and Use another address side by side, the chip "Mock: the code for +15125550199 is 797086". The code: the check-in screen with "512 555 0199" where the address was, and Identify yourself open with Phone already 512 555 0199. | Clear |
+| A shared phone | the administrator | Sign out: the door back at the box, empty, no chip; the address box does not autofill. | Clear |
+| The band door | Rosa | `field/?band=…` on a signed-out phone: "Band 005 is waiting. Sign in and the scan goes through." above the one box; the code signs her in and the claim sheet opens as at v69, her phone filled in when she signed in with a number. | Clear |
+| The invitation on the base | Ana's chief | `/?invite=…` signed out: "You're invited · Cedar Fork Flooding · as a unit, Unit 4, by Marcus Bell · Cedar Fork Fire Department. Sign in below with j.ortiz@cedarfork.gov to accept it: a code to that address, no password. The link from the email signs you in by itself.", the address already in the box. | Clear |
+| The invitation on the phone | Ana | The card above the box with the same words, Send code with her address, the code, then "Check in · no code to type" with no password form under it; in as Unit 7. | Clear |
+| A link's landing | Ana | The page opened with the session in its hash: signed in at once, the hash gone, the check-in screen with "Code CEDAR7 came with the link" when the link carried `?join=`. | Clear |
+
+**Still bites, small:**
+
+- **Not seen for real**: no email and no text message left the pane. The first real code needs the project's settings (handoff.md: the SMS provider, `{{ .Token }}` in the Magic Link template, custom SMTP) and a phone in hand.
+- **The link lands in the browser the mail app picks**: a phone that signed in from an installed app and taps the email's link lands in the browser, not the app; the typed code stays in the app. The link carries `?join=` / `?band=` / `?invite=` so the new tab still finds what was waiting.
+- **A code's life**: Supabase's email code lasts an hour and a text message's code a minute or so by its defaults; the form says neither, only "or it has expired" when one is refused.
+- **An account made with a number cannot take an email invitation** (the invitation is to an address): the card says so and offers nothing; sign in with the address instead.

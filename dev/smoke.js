@@ -8,7 +8,7 @@
 // reports are sent through a second Data instance signed in as Unit 3, the same module the field
 // app uses, and after each one the test reads what the base's Data sees and what the page draws.
 import { Data } from '../js/shared/data.js';
-import { markingFor, ringToLatLngs, nextPass, nearestFacility, dayIso, cornersBox } from '../js/shared/rules.js';
+import { markingFor, ringToLatLngs, nextPass, nearestFacility, dayIso, cornersBox, accountText } from '../js/shared/rules.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (s, root = document) => root.querySelector(s);
@@ -45,6 +45,13 @@ const INC = () => M().ids.incident;
 const ZONE = (code) => M().ids.zones[code];
 const USERS = () => M().ids.users;
 
+// Sign a raw client in on the stand-in (v73): Send code, read the code it "sent", verify. An address or a mobile number.
+async function mockSignIn(c, to) {
+  const who = /@/.test(to) ? { email: to } : { phone: to };
+  const sent = await c.auth.signInWithOtp(who); if (sent.error) throw sent.error;
+  const v = await c.auth.verifyOtp(Object.assign({ token: M().codeFor(to), type: who.email ? 'email' : 'sms' }, who)); if (v.error) throw v.error;
+  return v.data;
+}
 // Reset the mock, make the page reopen the incident through its own handler, and open two Data
 // instances on it: the base's client (Operations) and a field client signed in as Unit 3.
 async function reload() {
@@ -56,6 +63,7 @@ async function reload() {
   M().reset();
   if (!$('#draw-btns').hidden) $('[data-action="cancel-draw"]').click();
   try { localStorage.setItem('ic.base.around', '1'); } catch (e) { /* storage blocked */ }   // the first open's labels (v58) stay off the suites; the around suite asks for them itself
+  try { sessionStorage.removeItem('ic.base.invite'); } catch (e) { /* storage blocked */ }   // an invitation's landing tried by hand in this tab would send the pop-out's boot to the picker (v73)
   if ($('#around .around-all')) $('#around .around-all').click();
   for (const s of ['#briefing', '#transports', '#public', '#people']) if ($(s) && !$(s).hidden) $(s + ' [data-action^="close-"]').click();   // a page left open would take the next suite's Escape (v64)
   const btn = document.createElement('button');
@@ -68,7 +76,7 @@ async function reload() {
   await base.init();
   await base.open(INC());
   const fc = window.supabase.createClient();
-  await fc.auth.signInWithPassword({ email: 'unit3@mock.local', password: 'any' });
+  await mockSignIn(fc, 'unit3@mock.local');
   field = new Data(fc);
   await field.init();
   await field.open(INC());
@@ -78,7 +86,7 @@ async function reload() {
 export async function run({ only } = {}) {
   const results = [];
   const check = (name, ok, detail = '') => results.push({ name, ok: !!ok, detail: String(detail).slice(0, 200) });
-  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, credentials, demo };
+  const suites = { seeded, baseActions, boundary, fieldReports, emergency, messages, accountability, people, periods, assignment, search, facilities, reports, agencies, publicInfo, replay, log, layers, zoneCard, join, identity, legend, sections, ics100, walkfix, evacuees, members, safetyset, parbyname, newcomer, checkIn, permissions, rewalks, transports, tags, invite, around, pages, credentials, passwordless, demo };
   for (const [name, fn] of Object.entries(suites)) {
     if (only && !only.includes(name)) continue;
     try { await reload(); await fn(check); } catch (e) { check(`${name}: threw`, false, e.stack || e.message); }
@@ -393,7 +401,7 @@ async function messages(check) {
   check('after Unit 3 answers, the bar waits on Unit 1 and Unit 2', await until(() => has('#safety', 'waiting on 2 units') && $$('#safety .bar-item').some((b) => /waiting on Unit 1, Unit 2(?!, Unit 3)/.test(b.title) && !/Unit 3/.test(b.title))), text('#safety'));
   for (const email of ['unit1@mock.local', 'unit2@mock.local']) {
     const c = window.supabase.createClient();
-    await c.auth.signInWithPassword({ email, password: 'any' });
+    await mockSignIn(c, email);
     const d = new Data(c);
     await d.init(); await d.open(INC());
     await d.ackMessage(s1.id, 'Acknowledged');
@@ -477,7 +485,7 @@ async function accountability(check) {
   await field.answerPar(par.id, true, 3);
   check('Unit 3 answers all accounted for with 3: the panel and the bar say so, and the log has the count', await until(() => has('#panel', 'unit 3', 'all accounted for (3)') && has('#safety', '1 of 3 answered')) && !!eventText(base, 'Unit 3: All accounted for (3)'), text('#safety'));
   const c1 = window.supabase.createClient();
-  await c1.auth.signInWithPassword({ email: 'unit1@mock.local', password: 'any' });
+  await mockSignIn(c1, 'unit1@mock.local');
   const d1 = new Data(c1);
   await d1.init(); await d1.open(INC());
   await d1.answerPar(par.id, false, 1);
@@ -889,7 +897,7 @@ async function reports(check) {
 // A new unit checks in with the code; Operations can open a second incident.
 async function checkIn(check) {
   const c = window.supabase.createClient();
-  await c.auth.signInWithPassword({ email: 'unit4@mock.local', password: 'any' });
+  await mockSignIn(c, 'unit4@mock.local');
   const d = new Data(c);
   await d.init();
   let bad = null;
@@ -933,7 +941,7 @@ async function permissions(check) {
   const r5 = await field.sb.from('ic_zones').delete().eq('id', ZONE('B-3'));
   check('nothing is deleted', !!r5.error && base.zone(ZONE('B-3')) && M().tables.ic_zones.some((z) => z.id === ZONE('B-3')), JSON.stringify(r5.error));
   const stranger = window.supabase.createClient();
-  await stranger.auth.signInWithPassword({ email: 'stranger@mock.local', password: 'any' });
+  await mockSignIn(stranger, 'stranger@mock.local');
   const s = new Data(stranger);
   await s.init();
   const e6 = await fail(() => s.open(INC()));
@@ -1354,7 +1362,7 @@ async function identity(check) {
   check('changing the name clears the verification', await until(() => base.profileOf(U.unit3) && !base.profileOf(U.unit3).verified_at && base.profileOf(U.unit3).full_name === 'Jordan L. Hale'), base.profileOf(U.unit3).full_name);
   // a new account: no profile, no check-in
   const c = window.supabase.createClient();
-  await c.auth.signInWithPassword({ email: 'newcomer@mock.local', password: 'any' });
+  await mockSignIn(c, 'newcomer@mock.local');
   const n = new Data(c);
   await n.init();
   const e3 = await (async () => { try { await n.join('CEDAR7', 'unit', 'Unit 9', null, null, 'Bastrop County FD', []); return null; } catch (e) { return e; } })();
@@ -1658,7 +1666,7 @@ async function ics100(check) {
   const hl = hurtLines(field, { unit: field.me(), at: [30.2674, -97.7384] });
   check('the hurt card names the medic on the unit, the emergency channel, the nearest hospital with its distance and directions, and the check-out reminder', hl.length === 4 && hl[0].text === 'Medic on your unit: Dominguez, paramedic. Hale is an EMT.' && hl[1].text.startsWith('Call it on TAC 9, emergency traffic') && /^Nearest hospital: Dell Seton Medical Center, 0\.8 mi\. 1500 Red River St\. Trauma center, 12 minutes from the base\. 512 555 0100\. No ambulance on scene/.test(hl[2].text) && hl[2].directions.includes('30.278') && hl[3].text.includes('Finance needs it for the claim'), hl.map((l) => l.text).join(' | '));
   const c4 = window.supabase.createClient();
-  await c4.auth.signInWithPassword({ email: 'unit4@mock.local', password: 'any' });
+  await mockSignIn(c4, 'unit4@mock.local');
   const d4 = new Data(c4); await d4.init();
   await d4.saveProfile({ full_name: 'Sam Smoke', phone: '512 555 0144', licence_number: 'S1122334', licence_state: 'TX', id_source: 'typed' });
   await d4.join('CEDAR7', 'unit', 'Unit 4', null, null, 'Bastrop County', [{ name: 'Novak', role: '', qualifications: ['boat'] }], 'boat');
@@ -1717,7 +1725,7 @@ async function ics100(check) {
 async function rewalks(check) {
   const u = USERS(), b2 = ZONE('B-2'), PPL = M().ids.people;
   // the front door's sign-in card says what is true (the card is hidden while signed in: read its text, not its screen)
-  check('the front door\'s sign-in card no longer promises an account from the agency', /Sign in, or create an account with any email and a password\. Whoever opens an incident is its Operations and decides who else runs the base/.test($('#auth').textContent) && !/account your agency gave you/.test($('#auth').textContent), $('#auth-form p.muted').textContent);
+  check('the front door\'s sign-in card says a code, no password, and who is Operations (v73)', /No password: type your email or mobile number and a six-digit code comes back[\s\S]*Whoever opens an incident is its Operations and decides who else runs the base/.test($('#auth').textContent) && !/account your agency gave you/.test($('#auth').textContent) && !$('#auth-password') && !$('#auth-signup'), $('#auth-form p.muted').textContent);
   // the chime's first click: the quiet line says so until a real click or key arrives (the suite's events are synthetic, so it stays)
   check('the bar\'s quiet line says to click once so the base can ring', has('#bars-quiet', 'no emergency open', 'click anywhere once so the base can ring'), text('#bars-quiet'));
   // a street address on a facility: the card, the join card's Getting there and the 204's Where to go
@@ -1842,7 +1850,7 @@ async function transports(check) {
     const u2mark = () => $$('#map .umark').find((m) => m.querySelector('.ulab').textContent === 'U2') || null;
     check('the three open runs are on the map: a pill and a dashed line each, Bus 2\'s pill on Unit 2\'s phone (its driver, en route), Bus 3\'s on its route (planned), Ambulance 1\'s (arrived); the pill\'s title is the run\'s line', $$('#map .tr-mark').length === 3 && $$('#map .tr-line').length === 3 && !!mark('Bus 2') && mark('Bus 2').classList.contains('veh') && mark('Bus 2').classList.contains('st-en_route') && at(mark('Bus 2')) === at(u2mark()) && !!mark('Bus 3') && mark('Bus 3').classList.contains('route') && mark('Bus 3').classList.contains('st-planned') && !!mark('Ambulance 1') && mark('Ambulance 1').classList.contains('st-arrived') && /^bus 2 · pecan park pickup → high school gym · left \d\d:\d\d · expected \d\d:\d\d · 4 of 40 · unit 2's phone \d\d:\d\d$/.test(mark('Bus 2').title.toLowerCase()), $$('#map .tr-mark').map((m) => m.className + ' ' + m.textContent).join(' | ') + ' · ' + (mark('Bus 2') ? mark('Bus 2').title : ''));
     const c2 = window.supabase.createClient();
-    await c2.auth.signInWithPassword({ email: 'unit2@mock.local', password: 'any' });
+    await mockSignIn(c2, 'unit2@mock.local');
     const boat = new Data(c2); await boat.init(); await boat.open(INC());
     const wasAt = at(mark('Bus 2'));
     await boat.upsertPosition({ lat: 30.2590, lng: -97.7424, heading: 190, accuracy: 5 });
@@ -2314,7 +2322,7 @@ async function invite(check) {
     check('the codes\' card has Invited members only beside the code, off', !!box && !box.checked, text('#codes-pop').slice(0, 400));
     box.checked = true; box.dispatchEvent(new Event('change', { bubbles: true }));
     check('switched on: the incident says so, the 214 says the code is off, the panel too', await until(() => base.incident.invite_only === true) && await until(() => eventText(base, 'Invited members only: the join code is off')) && await until(() => has('#codes-pop', 'the join code is off')), logTexts()[0]);
-    const e1 = await (async () => { const fc = window.supabase.createClient(); await fc.auth.signInWithPassword({ email: 'stranger@mock.local', password: 'any' }); const D = new Data(fc); await D.init(); try { await D.join('CEDAR7', 'unit', 'Unit 9', null, 1, 'x', [], 'engine'); return null; } catch (e) { return e; } finally { D.close(); } })();
+    const e1 = await (async () => { const fc = window.supabase.createClient(); await mockSignIn(fc, 'stranger@mock.local'); const D = new Data(fc); await D.init(); try { await D.join('CEDAR7', 'unit', 'Unit 9', null, 1, 'x', [], 'engine'); return null; } catch (e) { return e; } finally { D.close(); } })();
     check('with the code off, a stranger with CEDAR7 is told the incident is by invitation', !!e1 && /by invitation; ask operations/i.test(e1.message), e1 && e1.message);
     await field.join('CEDAR7', 'unit', 'Unit 3', null, 2, 'Cedar Fork Fire Department', [], 'swift_water');
     check('a member still checks in by code', !!field.me() && field.me().status !== 'checked_out');
@@ -2323,16 +2331,16 @@ async function invite(check) {
     P = await phoneFrame('&nobody&invite=' + base.invite(v.id).token, { signedOut: true });
     check('the link opens the phone signed out with the invitation card: the incident, as a unit, Unit 7, by Marcus Bell, the address on the form', !!P.ready && await until(() => P.shown('#auth-invite'), 8000) && /you're invited cedar fork flooding as a unit, unit 7, by marcus bell/.test(P.text('#auth-invite')) && P.$('#auth-email').value === 'ana.lopez@cedarfork.gov', P.text('#auth-invite'));
     check('the card is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
-    P.$('#auth-password').value = 'walkfix-pw'; P.$('#auth-signup').click();
+    check('the card says the link signs in by itself and a code to that address does the same, no password (v73)', /a code to ana\.lopez@cedarfork\.gov does the same: no password/.test(P.text('#auth-invite')), P.text('#auth-invite'));
+    P.$('#auth-form').requestSubmit();   // the address is on the form already: Send code
+    check('Send code with the invitation\'s address: the code step names it', await until(() => P.shown('#auth-enter'), 5000) && /code went to ana\.lopez@cedarfork\.gov/.test(P.text('#auth-sent')), P.text('#auth-sent'));
+    P.$('#auth-otp').value = P.frame.contentWindow.__mock.codeFor('ana.lopez@cedarfork.gov'); P.$('#auth-form').requestSubmit();
     await until(() => P.shown('#join'), 8000);
-    check('signed in with that address, the check-in screen offers the invitation: Check in · no code to type, and a password for next time', await until(() => P.shown('#join-invite') && P.$('#join-invite [data-action="invite-accept"]'), 8000) && /check in · no code to type/.test(P.text('#join-invite')) && !!P.$('#join-invite form[data-form="invite-password"]'), P.text('#join-invite'));
+    check('signed in with that address, the check-in screen offers the invitation: Check in · no code to type, and no password step (v73)', await until(() => P.shown('#join-invite') && P.$('#join-invite [data-action="invite-accept"]'), 8000) && /check in · no code to type/.test(P.text('#join-invite')) && !P.$('#join-invite form') && !/password/.test(P.text('#join-invite')), P.text('#join-invite'));
     await until(() => P.shown('#s-identify'), 5000);
     P.$('#id-name').value = 'Ana Lopez'; P.$('#id-phone').value = '512 555 0170';
     await P.act('id-save');
     await until(() => !P.shown('#s-identify'), 5000);
-    P.$('#join-invite form[data-form="invite-password"] input[name="password"]').value = 'walkfix-pw-2';
-    P.$('#join-invite form[data-form="invite-password"]').requestSubmit();
-    check('the password is saved', await until(() => P.$('#toast') && /password saved/i.test(P.$('#toast').textContent), 4000) && await until(() => !P.$('#join-invite form[data-form="invite-password"]'), 3000), P.$('#toast') && P.$('#toast').textContent);
     P.$('#join-invite [data-action="invite-accept"]').click();
     check('Check in by invitation: in as Unit 7 with no code, the invitation accepted, both lines in the 214', await until(() => P.shown('#app') && P.$('#me-name').textContent === 'Unit 7', 15000) && await until(() => base.invite(v.id).accepted_at && base.members().some((m) => m.unit_name === 'Unit 7'), 10000) && await until(() => eventText(base, 'Ana Lopez accepted the invitation from Operations') && eventText(base, 'Unit 7 checked in by invitation as Ana Lopez, 512 555 0170, identity not given with 1 person'), 10000), logTexts().slice(0, 3).join(' | '));
     await members();
@@ -2505,7 +2513,7 @@ async function demo(check) {
 // ---- the walkthrough fixes (v25): each as the persona who hit it met it. The phone is the field app at
 // 375 px in a frame beside the base; its own mock copies the base's data over the BroadcastChannel and
 // opens signed in as Unit 3. The frame goes before the suite ends, so the next reset is not undone by it.
-async function phoneFrame(extra = '', { signedOut = false } = {}) {   // extra: more of the address, like '&band=CODE' (v55); signedOut: opened with &nobody (v56)
+async function phoneFrame(extra = '', { signedOut = false, waitFor = '' } = {}) {   // extra: more of the address, like '&band=CODE' (v55); signedOut: opened with &nobody (v56); waitFor: a selector the frame is ready at, for a link's landing (v73)
   await new Promise((r) => { try { const req = indexedDB.deleteDatabase('incident-map'); req.onsuccess = req.onerror = req.onblocked = () => r(); } catch (e) { r(); } });   // an earlier frame's unsent entries would block this one's
   const frame = document.createElement('iframe');
   frame.src = '/field/?mock' + extra;
@@ -2530,13 +2538,91 @@ async function phoneFrame(extra = '', { signedOut = false } = {}) {   // extra: 
       return out;
     }
   };
-  P.ready = await until(() => signedOut ? P.$('#auth') && !P.$('#auth').hidden : P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 20000);   // a hidden pane throttles the frame's timers
+  P.ready = await until(() => waitFor ? P.shown(waitFor) : signedOut ? P.$('#auth') && !P.$('#auth').hidden : P.$('#app') && !P.$('#app').hidden && P.$('#me-name').textContent === 'Unit 3', 20000);   // a hidden pane throttles the frame's timers
   return P;
 }
-async function phoneSignIn(P, email, signUp) {
-  P.$('#auth-email').value = email; P.$('#auth-password').value = 'walkfix-pw';
-  if (signUp) P.$('#auth-signup').click(); else P.$('#auth-form').requestSubmit();
-  return until(() => P.shown('#join') && P.$('#join-user').textContent === email, 5000);
+async function phoneSignIn(P, to) {   // the door (v73): the address or number, Send code, the code the frame's mock "sent", in; a new address makes its account on the way
+  P.$('#auth-email').value = to; P.$('#auth-form').requestSubmit();
+  if (!await until(() => P.shown('#auth-enter'), 5000)) return false;
+  P.$('#auth-otp').value = P.frame.contentWindow.__mock.codeFor(to); P.$('#auth-form').requestSubmit();
+  return until(() => P.shown('#join') && (!/@/.test(to) || P.$('#join-user').textContent === to.toLowerCase()), 5000);
+}
+
+// Sign in by a code (v73): no password anywhere. The base's landing form sends a code to an email and takes it (a
+// wrong one refused, Resend a new one that retires the first, Use another address back to the box, six digits
+// checking by themselves); the phone's door takes a mobile number (a bad one refused with the reason before anything
+// is sent), its code signs in and the Identify sheet's phone is filled from it; Sign out clears the door; a link's
+// landing (the mock stands in for the magic link with #access_token=mock-<id>) opens signed in with the join code the
+// link carried. The invitation's landing with no password step is in the invite suite.
+async function passwordless(check) {
+  let P = null;
+  const press = (action) => { const b = document.createElement('button'); b.dataset.action = action; b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); };
+  try {
+    // ---- the base: sign out to the landing
+    press('sign-out');
+    await until(() => !$('#auth').hidden, 5000);
+    await wait(250);   // the handler's clearAuth() runs after the sign-out resolves; a submit before it would be wiped
+    check('signed out, the landing\'s sign-in is one box, Email or mobile number, and Send code: no password box, no Create account, the code step put away', !$('#auth').hidden && !!$('#auth-form #auth-email') && !$('#auth-password') && !$('#auth-signup') && /email or mobile number/i.test($('#auth-ask label').textContent) && $('#auth-ask button[type="submit"]').textContent.trim() === 'Send code' && $('#auth-enter').hidden && !$('#auth-form .mock-code'), $('#auth-form').innerText.slice(0, 300));
+    $('#auth-email').value = 'ana lopez'; $('#auth-form').requestSubmit(); await wait(80);
+    check('words that are neither an address nor a number are refused with the reason, nothing sent', /email address has an @/.test($('#auth-msg').textContent) && $('#auth-enter').hidden && !$('#auth-form .mock-code'), $('#auth-msg').textContent);
+    $('#auth-email').value = ' Ops@Mock.local '; $('#auth-form').requestSubmit();
+    check('Send code: the code step, the sentence naming the address lower case and the link, the code box as a one-time code, Resend and Use another address, and the stand-in\'s chip with the code', await until(() => !$('#auth-enter').hidden, 5000) && $('#auth-ask').hidden && /a six-digit code went to ops@mock\.local\. type it here, or open the link in the email/i.test($('#auth-sent').textContent) && $('#auth-otp').getAttribute('autocomplete') === 'one-time-code' && $('#auth-otp').getAttribute('inputmode') === 'numeric' && !!$('#auth-form [data-auth="resend"]') && !!$('#auth-form [data-auth="other"]') && await until(() => $('#auth-form .mock-code') && /mock: the code for ops@mock\.local is \d{6}/i.test($('#auth-form .mock-code').textContent)) && document.activeElement === $('#auth-otp'), text('#auth-form'));
+    const code1 = M().codeFor('ops@mock.local');
+    check('the chip shows the code the stand-in sent', $('#auth-form .mock-code b').textContent === code1, code1);
+    $('#auth-otp').value = String((Number(code1) + 1) % 1000000).padStart(6, '0'); $('#auth-form').requestSubmit();
+    check('a wrong code is refused with the reason, the code step stays', await until(() => /not right, or it has expired/.test($('#auth-msg').textContent), 5000) && !$('#auth-enter').hidden && !$('#auth').hidden, $('#auth-msg').textContent);
+    $('#auth-otp').value = '12'; $('#auth-form').requestSubmit(); await wait(50);
+    check('two digits are not a code', /code is six digits/.test($('#auth-msg').textContent), $('#auth-msg').textContent);
+    $('#auth-form [data-auth="resend"]').click();
+    check('Resend: another code, the message and the chip say so', await until(() => M().codeFor('ops@mock.local') !== code1, 5000) && await until(() => /another code is on its way; the first one no longer works/i.test($('#auth-msg').textContent)) && $('#auth-msg').classList.contains('ok') && $('#auth-form .mock-code b').textContent === M().codeFor('ops@mock.local'), $('#auth-msg').textContent);
+    $('#auth-otp').value = code1; $('#auth-form').requestSubmit();
+    check('the first code no longer works', await until(() => /not right, or it has expired/.test($('#auth-msg').textContent), 5000), $('#auth-msg').textContent);
+    $('#auth-form [data-auth="other"]').click();
+    check('Use another address: the box again with the address in it to fix, the code step and the message gone', !$('#auth-ask').hidden && $('#auth-enter').hidden && $('#auth-msg').textContent === '' && $('#auth-email').value === ' Ops@Mock.local ' && document.activeElement === $('#auth-email'), $('#auth-email').value);
+    $('#auth-email').value = 'ops@mock.local'; $('#auth-form').requestSubmit();
+    await until(() => !$('#auth-enter').hidden, 5000);
+    $('#auth-otp').value = M().codeFor('ops@mock.local'); $('#auth-otp').dispatchEvent(new Event('input', { bubbles: true }));   // six digits typed: no button to press
+    check('six digits typed check by themselves: in as Operations on the picker, the account named, the chip gone, the form reset', await until(() => !$('#pick').hidden && $('#pick-user').textContent === 'ops@mock.local', 8000) && $('#auth').hidden && !$('#auth-form .mock-code') && $('#auth-email').value === '' && $('#auth-enter').hidden, $('#pick-user').textContent);
+    $(`#pick-list [data-action="open-incident"][data-id="${INC()}"]`).click();
+    check('the incident opens again', await until(() => !$('#app').hidden && $('#inc-name').textContent === 'Cedar Fork Flooding', 8000));
+    check('an account made with a number is read as the number on screen, an address as itself (rules)', accountText({ phone: '15125550199' }) === '512 555 0199' && accountText({ email: 'ops@mock.local' }) === 'ops@mock.local' && accountText(null) === '');
+
+    // ---- the phone: a mobile number at the door
+    P = await phoneFrame('&nobody', { signedOut: true });
+    check('the phone\'s door: one box, Send code, no password, the lead says email or mobile number and no password', !!P.ready && !P.$('#auth-password') && !P.$('#auth-signup') && /email or mobile number: a six-digit code comes back, no password/.test(P.text('#auth-lead')) && P.shown('#auth-ask') && !P.shown('#auth-enter') && P.$('#auth-email').getAttribute('autocomplete') === 'off', P.text('#auth'));
+    check('the door is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#auth-email').value = '555 0199'; P.$('#auth-form').requestSubmit(); await wait(80);
+    check('a number that is not a mobile number is refused with the reason, nothing sent', /ten digits, like 512 555 0100/.test(P.text('#auth-msg')) && !P.shown('#auth-enter') && !P.$('.mock-code'), P.text('#auth-msg'));
+    P.$('#auth-email').value = '(512) 555-0199'; P.$('#auth-form').requestSubmit();
+    check('a mobile number: the sentence says a text message went to 512 555 0199, and the code went to +15125550199', await until(() => P.shown('#auth-enter'), 5000) && /a text message with a six-digit code went to 512 555 0199\./.test(P.text('#auth-sent')) && !!P.frame.contentWindow.__mock.codes.get('15125550199') && /mock: the code for \+15125550199 is \d{6}/.test(P.text('#auth-form .mock-code')), P.text('#auth-sent') + ' | ' + P.text('#auth-form .mock-code'));
+    check('the code step is whole at 375 px', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#auth-otp').value = P.frame.contentWindow.__mock.codeFor('(512) 555-0199'); P.$('#auth-form').requestSubmit();
+    check('the code signs the number in: the check-in screen names it, and Identify yourself opens with the phone filled in from the sign-in and the name empty', await until(() => P.shown('#join') && P.text('#join-user') === '512 555 0199', 8000) && await until(() => P.shown('#s-identify'), 5000) && P.$('#id-phone').value === '512 555 0199' && P.$('#id-name').value === '', P.text('#join-user') + ' / ' + P.$('#id-phone').value);
+    check('the account was made with the number and no address', P.frame.contentWindow.__mock.users.some((u) => u.phone === '15125550199' && !u.email), JSON.stringify(P.frame.contentWindow.__mock.users.slice(-1)));
+    await P.act('id-cancel');
+    await P.act('sign-out');
+    await until(() => P.shown('#auth'), 5000);
+    check('Sign out clears the door: the box empty, the code step put away, the chip gone', P.$('#auth-email').value === '' && P.$('#auth-otp').value === '' && P.shown('#auth-ask') && !P.shown('#auth-enter') && !P.$('.mock-code'), P.text('#auth'));
+
+    // ---- a link's landing: the page opens signed in, the hash gone, with the join code the link carried
+    const c = window.supabase.createClient();
+    const made = await mockSignIn(c, 'link.landing@mock.local');
+    P.frame.remove(); P = null;
+    P = await phoneFrame('&nobody&join=CEDAR7#access_token=mock-' + made.user.id + '&token_type=bearer&type=magiclink', { waitFor: '#join' });
+    check('a link\'s landing: the phone opens signed in with no sign-in form, the hash gone from the address, the account named, the code the link carried on the check-in form with its sentence', !!P.ready && !P.shown('#auth') && P.text('#join-user') === 'link.landing@mock.local' && P.$('#join-form').code.value === 'CEDAR7' && /code cedar7 came with the link/.test(P.text('#join-code-note')) && !/access_token/.test(P.frame.contentWindow.location.hash) && /join=/.test(P.frame.contentWindow.location.search) === false, P.frame.contentWindow.location.href);
+    check('a new account: Identify yourself opens over the form, the phone empty since the sign-in was by email', await until(() => P.shown('#s-identify'), 5000) && P.$('#id-phone').value === '' && P.$('#id-name').value === '', P.$('#id-phone').value);
+  } finally {
+    if (P) P.frame.remove();
+    for (const k of Object.keys(localStorage)) if (/^ic\.field\./.test(k)) localStorage.removeItem(k);
+    if ($('#app').hidden) {   // whatever happened, the next suite needs the base signed in as Operations with the incident open
+      try {
+        if (!$('#auth').hidden) { $('#auth-form [data-auth="other"]') && $('#auth-form [data-auth="other"]').click(); $('#auth-email').value = 'ops@mock.local'; $('#auth-form').requestSubmit(); await until(() => !$('#auth-enter').hidden, 5000); $('#auth-otp').value = M().codeFor('ops@mock.local'); $('#auth-form').requestSubmit(); await until(() => !$('#pick').hidden, 8000); }
+        const row = $(`#pick-list [data-action="open-incident"][data-id="${INC()}"]`); if (row) row.click();
+        await until(() => !$('#app').hidden, 8000);
+      } catch (e) { console.warn('passwordless: could not put the base back', e); }
+    }
+    await wait(100);
+  }
 }
 
 // The newcomer's door (v39): the sign-in screen with a code waiting, the code's sentence on the form, the
@@ -2550,7 +2636,7 @@ async function newcomer(check) {
       P.frame.contentWindow.sessionStorage.setItem('ic.field.join', 'CEDAR7');   // as the front door's code box leaves it
       await P.act('sign-out');
       await until(() => P.shown('#auth'), 5000);
-      check('with a code waiting, the sign-in screen says the code is ready and that any email makes an account, with Create account beside Sign in', P.shown('#auth-code') && /code cedar7 is ready/.test(P.text('#auth-code')) && /make an account with any email/.test(P.text('#auth-code')) && !P.shown('#auth-lead') && P.$('#auth-signup').classList.contains('btn') && !P.$('#auth-signup').classList.contains('link'), P.text('#auth-code'));
+      check('with a code waiting, the sign-in screen says the code is ready and that an email or a mobile number gets a code, no password (v73): one box and Send code', P.shown('#auth-code') && /code cedar7 is ready/.test(P.text('#auth-code')) && /with your email or mobile number: a six-digit code comes back, no password/.test(P.text('#auth-code')) && !P.shown('#auth-lead') && !P.$('#auth-password') && !P.$('#auth-signup') && P.$('#auth-ask button[type="submit"]').textContent.trim() === 'Send code', P.text('#auth-code'));
       await phoneSignIn(P, 'newcomer@mock.local', true);
       check('after Create account the code is on the form with its sentence, and Identify yourself is open over it', P.$('#join-form').code.value === 'CEDAR7' && P.shown('#join-code-note') && /came with the link/.test(P.text('#join-code-note')) && !P.$('#s-identify').hidden, P.text('#join-code-note'));
       check('the people rows are folded for someone on their own, and the unit box says a name will do', !P.shown('#join-people') && /your own name will do/.test(P.text('#join-unit-hint')) && /or your name/.test(P.$('#join-form').unit.placeholder), P.$('#join-form').unit.placeholder);
@@ -2753,11 +2839,11 @@ async function walkfix(check) {
     check('Nearby lists the boat ramp with directions (Rosa)', await until(() => /boat ramp/.test(P.text('#nearby'))) && P.$$('#nearby .near').some((r) => /low-water crossing ramp/i.test(r.textContent) && r.querySelector('a.btn[href*="google.com/maps/dir"]')), P.text('#nearby'));
 
     // a shared phone: sign out, and the next person finds nothing of the last
-    P.$('#auth-email').value = 'unit3@mock.local'; P.$('#auth-password').value = 'typed-by-the-last-person';
+    P.$('#auth-email').value = 'unit3@mock.local'; P.$('#auth-otp').value = '123456';
     await P.act('menu');
     await P.act('sign-out');
     await until(() => P.shown('#auth'));
-    check('after Sign out the sign-in form is empty, and the password does not autofill (the administrator)', P.$('#auth-email').value === '' && P.$('#auth-password').value === '' && P.$('#auth-password').getAttribute('autocomplete') === 'off', `${P.$('#auth-email').value} / ${P.$('#auth-password').value ? 'a password' : ''} / ${P.$('#auth-password').getAttribute('autocomplete')}`);
+    check('after Sign out the sign-in form is empty, the address and the code boxes, back at the box step, and the address does not autofill (the administrator; a code, no password, v73)', P.$('#auth-email').value === '' && P.$('#auth-otp').value === '' && P.shown('#auth-ask') && !P.shown('#auth-enter') && P.$('#auth-email').getAttribute('autocomplete') === 'off' && !P.$('#auth-password'), `${P.$('#auth-email').value} / ${P.$('#auth-otp').value} / ${P.$('#auth-email').getAttribute('autocomplete')}`);
     // the shelter desk volunteer: a new account, a name and a phone, no licence
     await phoneSignIn(P, 'walk-desk@mock.local', true);
     check('a new account sees the check-in form alone: no empty "already in" list above it', P.shown('#join-form') && !P.shown('#join-mine') && P.$('#join-title').textContent === 'Check in to an incident' && P.$('#join-form').agency.value === '', P.text('#join'));
@@ -2995,7 +3081,7 @@ async function evacuees(check) {
 
     // the rules: another unit cannot change a record it did not make; the crew can correct its own; nothing is deleted
     const c1 = window.supabase.createClient();
-    await c1.auth.signInWithPassword({ email: 'unit1@mock.local', password: 'any' });
+    await mockSignIn(c1, 'unit1@mock.local');
     const u1 = new Data(c1); await u1.init(); await u1.open(INC());
     let refused = false;
     try { await u1.updateEvacuee(rec('Lopez, Ana').id, { status: 'unknown' }); } catch (e) { refused = true; }
@@ -3028,7 +3114,7 @@ async function members(check) {
     check('the join box and the join card do not carry it', !$('#codes-pop .join-box').textContent.includes(opsCode) && !joinCardTextOf().includes(opsCode));
     // the role follows the code
     const c = window.supabase.createClient();
-    await c.auth.signInWithPassword({ email: 'relief@mock.local', password: 'any' });
+    await mockSignIn(c, 'relief@mock.local');
     relief = new Data(c); await relief.init();
     await relief.saveProfile({ full_name: 'Relief Chief', phone: '512 555 0177', licence_number: 'R5551212', licence_state: 'TX', date_of_birth: '1979-05-05', address: '4 Oak St, Cedar Fork', id_source: 'typed' });
     const e1 = await (async () => { try { await relief.join('CEDAR7', 'ops', 'Operations'); return null; } catch (e) { return e; } })();
@@ -3164,7 +3250,7 @@ async function safetyset(check) {
     const U = USERS();
     // ---- the water clock: in, overdue, probably left running, out; the rows, the panel, the reports, the log
     const boat = window.supabase.createClient();
-    await boat.auth.signInWithPassword({ email: 'unit2@mock.local', password: 'any' });
+    await mockSignIn(boat, 'unit2@mock.local');
     const u2 = new Data(boat); await u2.init(); await u2.open(INC());
     check('the period carries a rotation of 45 minutes, and the briefing tells a boat crew about it and the boat ramp', base.rotationMinutes() === 45);
     await u2.setInWater(U.unit2, new Date().toISOString());
@@ -3253,7 +3339,7 @@ async function safetyset(check) {
     check('the Layers panel lists Google Maps from the incident\'s key', $$('#layers-pop input[type="radio"]').some((r) => r.dataset.layer === 'google-satellite'), $$('#layers-pop input[type="radio"]').map((r) => r.dataset.layer).join(' '));
     document.body.click();
     const c2 = window.supabase.createClient();
-    await c2.auth.signInWithPassword({ email: 'ops@mock.local', password: 'any' });
+    await mockSignIn(c2, 'ops@mock.local');
     const d2 = new Data(c2); await d2.init();
     const made = await d2.createIncident({ name: 'Settings carry test', period: 'OP 1', base: '', lat: null, lng: null, zoom: 14 });
     const madeRow = M().tables.ic_incidents.find((i) => i.id === made.id);
@@ -3326,7 +3412,7 @@ async function parbyname(check) {
   try {
     const U = USERS();
     // check-ins: a count with no names stands; names come off the count; neither is unknown
-    const mk = async (email) => { const c = window.supabase.createClient(); await c.auth.signInWithPassword({ email, password: 'any' }); const d = new Data(c); await d.init(); await d.saveProfile({ full_name: 'Test ' + email.split('@')[0], phone: '512 555 0199' }); return d; };
+    const mk = async (email) => { const c = window.supabase.createClient(); await mockSignIn(c, email); const d = new Data(c); await d.init(); await d.saveProfile({ full_name: 'Test ' + email.split('@')[0], phone: '512 555 0199' }); return d; };
     const u9 = await mk('counted@mock.local');
     await u9.join('CEDAR7', 'unit', 'Unit 9', null, 3, 'Sheriff', [], 'other');
     await until(() => base.member(u9.user.id));

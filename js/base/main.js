@@ -3,6 +3,7 @@
 import { Data } from '../shared/data.js';
 import { BaseMap } from './map.js';
 import { logSinceHtml, zonesHtml, panelHtml, zoneModalHtml, logHtml, logFiltersHtml, imageryHtml, layersPopHtml, hoursHtml, hoursCsvText, joinCardHtml, joinCardText, fieldJoinUrl, maydayHtml, safetyHtml, briefingHtml, briefingText, form204Html, form204Text, form214Html, form214Text, sitrepHtml, sitrepText, sitrepFormHtml, iapHtml, iapText, form211Html, form211Text, orgHtml, orgText, transferDialogHtml, peopleBoardHtml, peopleChipsHtml, findPersonHtml, placeListHtml, placeListText, settingsDialogHtml, publicPageHtml, transportsPageHtml, transportFormFields, bandsSheetHtml, bandsSheetText, esc, codesPopHtml, zoneHoverHtml, headCountHtml, liveHtml, placeCardHtml } from './ui.js';
+import { signInAddress, codeSentText, codeErrorText, phoneDisplay } from '../shared/rules.js';   // sign in by a code (v73)
 import { whenText, dateText, nextZoneCode, hhmm, hhmmUtc, zoneShort, centroid, periodLabel, zoneAt as zoneAtRule, markingFor, unitLabel as unitLabelOf, replayIndex, sampleAt, replayWindow as replayWindowRule, replayWindowLabel, replayPickCheck, dayIso, transferText, kindText, wherePatch, evacueeWho, evacueeWhere, FACILITY_KINDS, transportLabel, TRANSPORT_STATUS, bandLabel, inviteFromSearch, cornersBox, overlayCorners, credentialLabel, REJECT_REASONS } from '../shared/rules.js';
 import { currentTheme, toggleTheme, storedTheme } from '../shared/theme.js';
 import { availableLayers, storedLayer, setOverlayHidden, setGoogleKey, testGoogleKey } from '../shared/layers.js';
@@ -86,23 +87,43 @@ $('#door-form').addEventListener('submit', (e) => {
   location.href = joinUrl(code, new URL('field/', location.href)) + (/[?&](mock|demo)\b/.test(location.search) ? '&demo' : '');
 });
 
-$('#auth-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const msg = $('#auth-msg');
-  msg.textContent = 'Signing in…'; msg.classList.remove('ok');
-  try { await data.signIn($('#auth-email').value.trim(), $('#auth-password').value); msg.textContent = ''; await showPicker(); }
-  catch (err) { msg.textContent = err.message || String(err); }
-});
-$('#auth-signup').addEventListener('click', async () => {
-  const msg = $('#auth-msg');
-  const email = $('#auth-email').value.trim(), password = $('#auth-password').value;
-  if (!email || password.length < 8) { msg.textContent = 'Enter an email and a password of at least 8 characters.'; return; }
+// ---- sign in by a code (v73): an email address or a mobile number, Send code, the six digits (or the email's link),
+// and in. No password anywhere; a new address or number makes its account on the first code.
+const auth = { to: null };   // signInAddress's { email } or { phone } once a code was sent; null while the box shows
+function authRedirect() { const t = pendingInvite(); return location.origin + location.pathname + (t ? '?invite=' + encodeURIComponent(t) : ''); }   // where the email's link lands: this page, with the invitation it came with
+function drawAuthStep() {
+  const sent = !!auth.to;
+  $('#auth-ask').hidden = sent; $('#auth-enter').hidden = !sent;
+  if (sent) { const who = esc(auth.to.email || phoneDisplay(auth.to.phone)); $('#auth-sent').innerHTML = esc(codeSentText(auth.to)).replace(who, '<b>' + who + '</b>'); }
+}
+async function sendCode(again) {
+  const msg = $('#auth-msg'); msg.classList.remove('ok');
+  const to = again ? auth.to : signInAddress($('#auth-email').value);
+  if (!to || to.error) { msg.textContent = to ? to.error : ''; $('#auth-email').focus(); return; }
+  msg.textContent = 'Sending the code…';
   try {
-    const res = await data.signUp(email, password);
-    if (res.session) { msg.textContent = ''; await showPicker(); }
-    else { msg.textContent = 'Account created. Check your email to confirm it, then sign in.'; msg.classList.add('ok'); }
-  } catch (err) { msg.textContent = err.message || String(err); }
+    await data.sendCode(to, authRedirect());
+    auth.to = to; drawAuthStep(); $('#auth-otp').value = '';
+    msg.textContent = again ? 'Another code is on its way; the first one no longer works.' : ''; msg.classList.toggle('ok', !!again);
+    $('#auth-otp').focus();
+  } catch (err) { msg.textContent = codeErrorText(err); }
+}
+async function verifyCode() {
+  const msg = $('#auth-msg'); msg.classList.remove('ok');
+  const token = $('#auth-otp').value.replace(/\D/g, '');
+  if (token.length < 6) { msg.textContent = 'The code is six digits.'; $('#auth-otp').focus(); return; }
+  msg.textContent = 'Checking…';
+  try { await data.verifyCode(auth.to, token); clearAuth(); if (!$('#auth').hidden) await showPicker(); }   // the auth event may have moved on already
+  catch (err) { msg.textContent = codeErrorText(err); $('#auth-otp').focus(); $('#auth-otp').select(); }
+}
+function clearAuth() { auth.to = null; $('#auth-form').reset(); $('#auth-msg').textContent = ''; $('#auth-msg').classList.remove('ok'); drawAuthStep(); }
+$('#auth-form').addEventListener('submit', (e) => { e.preventDefault(); if (auth.to) verifyCode(); else sendCode(false); });
+$('#auth-form').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-auth]'); if (!b) return;
+  if (b.dataset.auth === 'resend') sendCode(true);
+  else { const was = $('#auth-email').value; clearAuth(); $('#auth-email').value = was; $('#auth-email').focus(); $('#auth-email').select(); }   // Use another address: the box again, the last one in it to fix
 });
+$('#auth-otp').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8); if (e.target.value.length === 6 && auth.to) verifyCode(); });   // six digits typed or filled in check by themselves
 
 // ---- picker
 // ---- an invitation's link (v56): ?invite=<token> in the address, kept through sign-in, accepted on the picker
@@ -130,24 +151,23 @@ async function drawLandingInvite() {
   if (!v || v.state === 'missing') { el.hidden = true; return; }
   el.hidden = false;
   el.innerHTML = `<div class="k">You're invited</div><div class="big">${esc(v.incident)}</div><div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>
-    <div class="muted" style="font-size:13px">${v.state === 'pending' ? 'Sign in below with ' + esc(v.email) + ' to accept it. The link from the email signs you in by itself the first time and asks for a password.' : v.state === 'expired' ? 'This invitation has expired; ask ' + esc(v.by) + ' to send it again.' : v.state === 'withdrawn' ? 'This invitation was withdrawn.' : v.state === 'accepted' ? 'This invitation was accepted already; sign in to open the incident.' : ''}</div>`;
+    <div class="muted" style="font-size:13px">${v.state === 'pending' ? 'Sign in below with ' + esc(v.email) + ' to accept it: a code to that address, no password. The link from the email signs you in by itself.' : v.state === 'expired' ? 'This invitation has expired; ask ' + esc(v.by) + ' to send it again.' : v.state === 'withdrawn' ? 'This invitation was withdrawn.' : v.state === 'accepted' ? 'This invitation was accepted already; sign in to open the incident.' : ''}</div>`;
   const em = $('#auth-email'); if (em && !em.value) em.value = v.email;
 }
-// signed in: the picker offers to accept, with a password the first time
+// signed in: the picker offers to accept (the link signed them in; nothing to set since v73, a code to the address signs in next time)
 async function drawPickInvite() {
   const el = $('#pick-invite'); if (!el) return;
   const v = await peekInvite();
   if (!v) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
-  const me = (data.user && data.user.email || '').toLowerCase();
-  const fresh = data.user && data.user.last_sign_in_at && Date.now() - new Date(data.user.last_sign_in_at).getTime() < 10 * 60000;
-  const can = v.state === 'pending' || v.state === 'accepted';
+  const me = (data.user && data.user.email || '').toLowerCase(), who = data.accountText();
+  const other = !!(v.email && who && v.email !== me);   // signed in as someone else, or with a mobile number: an invitation is to an address
+  const can = (v.state === 'pending' || v.state === 'accepted') && !other;
   el.innerHTML = `<div class="pick-invite"><div class="k">You're invited</div><div class="big">${esc(v.incident || 'an incident')}</div>
     ${v.state === 'missing' ? '<div>This invitation is not on record; ask Operations for a new one.</div>' : `<div>as <strong>${esc(inviteAs(v))}</strong>, by ${esc(v.by)}${v.agency ? ' · ' + esc(v.agency) : ''}</div>`}
-    ${v.email && me && v.email !== me ? `<div class="inv-bad">This invitation is for ${esc(v.email)}; you are signed in as ${esc(me)}. Sign out and sign in with that address.</div>` : ''}
+    ${other ? `<div class="inv-bad">This invitation is for ${esc(v.email)}; you are signed in as ${esc(who)}. Sign out and sign in with that address.</div>` : ''}
     ${v.state === 'expired' ? '<div class="inv-bad">It has expired; ask them to send it again.</div>' : v.state === 'withdrawn' ? '<div class="inv-bad">It was withdrawn.</div>' : ''}
-    ${can && fresh ? `<form data-form="invite-password"><label style="flex:1;min-width:200px">Choose a password for next time <input name="password" type="password" minlength="8" autocomplete="new-password" placeholder="8 or more characters"></label><button class="btn sm" type="submit">Save the password</button></form>` : ''}
-    <div class="row-btns">${can && (!me || v.email === me) ? `<button class="btn pri sm" data-action="invite-accept">${v.role === 'ops' ? 'Join as Operations' : 'Check in'} · ${esc(v.incident)}</button>` : ''}<button class="btn sm" data-action="invite-dismiss">Not now</button></div></div>`;
+    <div class="row-btns">${can ? `<button class="btn pri sm" data-action="invite-accept">${v.role === 'ops' ? 'Join as Operations' : 'Check in'} · ${esc(v.incident)}</button>` : ''}<button class="btn sm" data-action="invite-dismiss">Not now</button></div></div>`;
 }
 async function acceptInvite() {
   const v = state.invite; if (!v) return;
@@ -160,7 +180,7 @@ async function acceptInvite() {
 }
 async function showPicker() {
   show('pick');
-  $('#pick-user').textContent = data.user ? data.user.email : '';
+  $('#pick-user').textContent = data.accountText();
   drawPickInvite();
   const list = $('#pick-list');
   list.innerHTML = '<p class="muted">Loading…</p>';
@@ -1096,7 +1116,7 @@ document.addEventListener('click', async (e) => {
   if (btn.closest('#gear-menu')) setGearOpen(false);   // v60: a menu item chosen closes the menu
   try {
     switch (act) {
-      case 'sign-out': localStorage.removeItem(LAST_INCIDENT); await data.signOut(); show('auth'); break;
+      case 'sign-out': localStorage.removeItem(LAST_INCIDENT); await data.signOut(); clearAuth(); show('auth'); break;
       case 'open-incident': await openIncident(id); break;
       case 'switch-incident': closeReplay(); data.close(); localStorage.removeItem(LAST_INCIDENT); await showPicker(); break;
       case 'use-my-location': {
@@ -1522,10 +1542,6 @@ document.addEventListener('submit', async (e) => {
         else toast((r && r.error) || 'Could not send', true);
       } catch (e) { toast(e.message || String(e), true); }
       queueDraw(); drawPeople();
-    } else if (form.dataset.form === 'invite-password') {
-      const pw = form.password.value;
-      if (pw.length < 8) { toast('8 characters or more', true); return; }
-      try { await data.setPassword(pw); toast('Password saved'); form.remove(); } catch (e) { toast(e.message || String(e), true); }
     } else if (form.dataset.form === 'transport-add' || form.dataset.form === 'transport-edit') {   // the board's New run and Edit (v54)
       const fields = transportFormFields(form);
       if (!fields.to_facility_id) { toast('Say where to: place a shelter or a hospital first', true); return; }

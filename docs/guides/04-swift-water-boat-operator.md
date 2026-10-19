@@ -4,7 +4,7 @@
 
 **Where you work.** The phone.
 
-**In the mock.** Press **Menu**, **Sign out**, and sign in as `unit2@mock.local` with any password of eight or more characters. Tap Cedar Fork Flooding under "Incidents you are already in". You are Unit 2, a boat crew from Travis County Rescue, on B-1 with Nguyen and Patel.
+**In the mock.** Press **Menu**, **Sign out**, and sign in as `unit2@mock.local`: **Send code**, then the code the mock shows under the form (no password). Tap Cedar Fork Flooding under "Incidents you are already in". You are Unit 2, a boat crew from Travis County Rescue, on B-1 with Nguyen and Patel.
 
 ## Your jobs
 

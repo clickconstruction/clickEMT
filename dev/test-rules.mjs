@@ -1,6 +1,6 @@
 // Checks for js/shared/rules.js, the rules both views share. Run: node dev/test-rules.mjs
 import assert from 'node:assert/strict';
-import { hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS } from '../js/shared/rules.js';
+import { phoneE164, phoneDisplay, signInAddress, accountText, codeSentText, codeErrorText, hhmmUtc, zoneShort, hazardWords, ALERT_WRONG, ALERT_NEEDS, alertWords, alertCodes, alertChange, sceneMinutes, sortHazards, urgencyRank, sceneStart, stintText, revisitWords, revisitHhmm, SCENE_HOURS_DEFAULT, sceneOver, peopleOverScene, sceneLine, sceneText, sinceSummary, whenText, dateText, periodState, periodLabel, periodLine, compass, nextZoneCode, ringToLatLngs, latLngsToPolygon, pointInPolygon, zoneAt, centroid, distanceM, markingFor, sortZones, zoneStatusText, pct, commandText, agenciesOn, agencyLine, replayIndex, sampleAt, samplesBefore, replayWindow, replayWindowLabel, dayHhmm, replayPickCheck, dayIso, profileReady, identityGiven, NEARBY_KINDS, UNIT_KINDS, kindText, NEEDS, needsText, evacueeWho, evacueeWhere, evacueeFrom, whereValue, wherePatch, countIn, needsIn, hasName, placeWordsOf, evacueeMatch, placeCounts, needsTotalsText, bedsText, peopleShelteredLine, bandFromScan, bandFromSearch, bandCodeNumber, bandLabel, bandUrl, tagOf, lastSeen, seenStale, seenWords, lastSeenText, seenGuess, runCard, foldRuns, RUN_FOLD, cornersBox, cornersOk, boxCorners, overlayCorners, CREDENTIAL_KINDS, REJECT_REASONS, credentialLabel, credentialText, credentialExpired, credentialsOf, credentialOf, pendingCredentials, credentialState, idState, personQuals, qualChipText, qualsTextWith, mapRuns, runState, runGeometry, RUN_FRESH_MS } from '../js/shared/rules.js';
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('ok', name); }
@@ -106,6 +106,45 @@ t('a run on the map (v70): the open runs, their points and their state', () => {
   assert.equal(g7.line, null);
   assert.deepEqual(g7.label, g7.to, 'nothing but the destination: the label sits there');
   assert.equal(runGeometry({ status: 'planned' }, opts).label, null, 'no destination on the map: nothing to draw');
+});
+
+t('sign in by a code (v73): a mobile number as E.164, the number as people write it, what the box holds, the words', () => {
+  assert.equal(phoneE164('512 555 0100'), '+15125550100', 'ten US digits get +1');
+  assert.equal(phoneE164('(512) 555-0100'), '+15125550100');
+  assert.equal(phoneE164('1 512 555 0100'), '+15125550100', 'eleven with the 1');
+  assert.equal(phoneE164('+1 512 555 0100'), '+15125550100');
+  assert.equal(phoneE164('+44 7700 900123'), '+447700900123', 'a country code is kept');
+  assert.equal(phoneE164('0044 7700 900123'), '+447700900123', '00 is the + written out');
+  assert.equal(phoneE164('+1.512.555.0100'), '+15125550100');
+  assert.equal(phoneE164('555 0100'), null, 'seven digits is not a mobile number');
+  assert.equal(phoneE164('0512 555 0100'), null, 'a US number never starts with 0 or 1');
+  assert.equal(phoneE164('1125550100'), null);
+  assert.equal(phoneE164('+0 123 456 789'), null, 'a country code never starts with 0');
+  assert.equal(phoneE164('+1234567'), null, 'too short with a code');
+  assert.equal(phoneE164('+1234567890123456'), null, 'past fifteen digits');
+  assert.equal(phoneE164('512 555 01OO'), null, 'letters are not digits');
+  assert.equal(phoneE164(''), null);
+  assert.equal(phoneE164(null), null);
+  assert.equal(phoneDisplay('+15125550100'), '512 555 0100');
+  assert.equal(phoneDisplay('15125550100'), '512 555 0100', 'as Supabase keeps it, no +');
+  assert.equal(phoneDisplay('+447700900123'), '+447700900123');
+  assert.equal(phoneDisplay(''), '');
+  assert.deepEqual(signInAddress(' Ana.Lopez@CedarFork.gov '), { email: 'ana.lopez@cedarfork.gov' }, 'an address, lower case');
+  assert.deepEqual(signInAddress('(512) 555-0100'), { phone: '+15125550100' });
+  assert.match(signInAddress('').error, /email address or your mobile number/);
+  assert.match(signInAddress('ana@cedarfork').error, /not complete/);
+  assert.match(signInAddress('ana lopez').error, /has an @/);
+  assert.match(signInAddress('555 0100').error, /ten digits, like 512 555 0100/);
+  assert.equal(accountText({ email: 'ops@mock.local' }), 'ops@mock.local');
+  assert.equal(accountText({ phone: '15125550199' }), '512 555 0199', 'an account made with a number');
+  assert.equal(accountText(null), '');
+  assert.equal(codeSentText({ email: 'ops@mock.local' }), 'A six-digit code went to ops@mock.local. Type it here, or open the link in the email: it signs you in by itself.');
+  assert.equal(codeSentText({ phone: '+15125550199' }), 'A text message with a six-digit code went to 512 555 0199.');
+  assert.match(codeErrorText('Token has expired or is invalid'), /^That code is not right/);
+  assert.match(codeErrorText({ message: 'Email rate limit exceeded' }), /^Too many codes/);
+  assert.match(codeErrorText('Unsupported phone provider'), /^Text messages are not set up/);
+  assert.match(codeErrorText('Signups not allowed for otp'), /^There is no account/);
+  assert.equal(codeErrorText('Failed to fetch'), 'Failed to fetch', 'anything else as it came');
 });
 
 console.log(n + ' checks passed');

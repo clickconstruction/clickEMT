@@ -1,6 +1,6 @@
 // The one place both views talk to Supabase. Holds the open incident's rows in memory, keeps them
 // fresh through Realtime, and offers the writes the views need. Views never call window.sb directly.
-import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials, mapRuns, runGeometry } from './rules.js';
+import { profileReady, identityGiven, missingOnPar, parOpen, hazardUrgent, zoneAccepted, SCENE_HOURS_DEFAULT, credentialsOf, pendingCredentials, mapRuns, runGeometry, accountText } from './rules.js';
 
 const LIVE_TABLES = ['ic_members', 'ic_zones', 'ic_positions', 'ic_photos', 'ic_hazards', 'ic_alerts', 'ic_events', 'ic_messages', 'ic_message_acks', 'ic_periods', 'ic_objectives', 'ic_structures', 'ic_facilities', 'ic_overlays', 'ic_people', 'ic_requests', 'ic_period_agencies', 'ic_commands', 'ic_evacuees', 'ic_ops_codes', 'ic_transports', 'ic_tags', 'ic_seen', 'ic_invites'];
 const BUCKET = 'ic-photos';
@@ -56,15 +56,23 @@ export class Data {
     });
     return this.user;
   }
-  async signIn(email, password) {
-    const { error } = await this.sb.auth.signInWithPassword({ email, password });
+  // Sign in by a code (v73): no password anywhere. `to` is signInAddress's { email } or { phone } (E.164).
+  // signInWithOtp sends a six-digit code (the email carries a link that signs in by itself too: its session lands in
+  // the page's hash, where getSession() in init() and onAuthStateChange see it) and makes the account on the first
+  // code for a new address or number; verifyOtp signs in with the code typed. redirectTo is where the email's link
+  // lands: the page itself, with whatever was waiting (?join=, ?band=, ?invite=) so a new tab finds it again.
+  async sendCode(to, redirectTo) {
+    const req = to.email ? { email: to.email, options: { shouldCreateUser: true, emailRedirectTo: redirectTo } } : { phone: to.phone, options: { shouldCreateUser: true } };
+    const { error } = await this.sb.auth.signInWithOtp(req);
     if (error) throw error;
   }
-  async signUp(email, password) {
-    const { data, error } = await this.sb.auth.signUp({ email, password });
+  async verifyCode(to, token) {
+    const { data, error } = await this.sb.auth.verifyOtp(to.email ? { email: to.email, token, type: 'email' } : { phone: to.phone, token, type: 'sms' });
     if (error) throw error;
     return data;
   }
+  // the account's name on screen: the address, or the number for an account made with one
+  accountText() { return accountText(this.user); }
   async signOut() { this.close(); await this.sb.auth.signOut(); }
 
   // ---- incidents
@@ -421,8 +429,6 @@ export class Data {
   // the addresses this account invited on earlier incidents, not yet on this one
   async roster() { const { data, error } = await this.sb.rpc('ic_roster', { p_incident: this.store.incident.id }); if (error) throw error; return data || []; }
   async setInviteOnly(on) { return this.updateIncident({ invite_only: !!on }); }
-  // the first sign-in from an invitation's link: the password is set once
-  async setPassword(password) { const { error } = await this.sb.auth.updateUser({ password }); if (error) throw error; }
   // the facility a unit works at: a shelter desk's shelter (ic_members.facility_id)
   async setUnitFacility(userId, facilityId) { return this.updateMember(userId, { facility_id: facilityId || null }); }
 

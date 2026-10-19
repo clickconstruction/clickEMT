@@ -231,6 +231,8 @@ body { background: var(--bg-2); }
 /* the sign-in screen with a join code waiting (v39) */
 .code-ready { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--tint-green, #e8f3e8); color: var(--ink); font-size: 14.5px; line-height: 1.4; }
 .code-ready .mono { letter-spacing: .1em; }
+.auth-again { justify-content: stretch; }   /* the code step's Resend and Use another address, two thumbs wide (v73) */
+.auth-again .btn { flex: 1; min-height: 44px; }
 
 /* ---- the transport board (v54): the desk's Arriving by run, the driver's run card, the house record's On select */
 .arrive-run { border: 2px solid var(--active); background: var(--tint-blue); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }

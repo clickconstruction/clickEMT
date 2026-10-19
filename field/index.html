@@ -37,16 +37,23 @@
 <body>
 
 <div id="auth" class="auth" hidden>
-  <form id="auth-form" class="auth-card">
+  <form id="auth-form" class="auth-card" novalidate>
     <img src="../icons/icon-192.png" alt="" width="64" height="64">
     <h1>Field</h1>
     <div id="auth-invite" class="invite-card" hidden></div>
-    <p id="auth-code" class="code-ready" hidden>Code <strong class="mono" id="auth-code-text"></strong> is ready. Sign in below, or make an account with any email and a password: it takes a minute, and only this incident's Operations sees who you are.</p>
+    <p id="auth-code" class="code-ready" hidden>Code <strong class="mono" id="auth-code-text"></strong> is ready. Sign in below with your email or mobile number: a six-digit code comes back, no password, and only this incident's Operations sees who you are.</p>
     <p id="auth-band" class="code-ready" hidden><strong id="auth-band-text"></strong> is waiting. Sign in and the scan goes through.<span class="band-note">An Incident Map band identifies a person to the incident's team only; on its own it tells you nothing. Not on the team? Hand it back to them.</span></p>
-    <p class="muted" id="auth-lead">Sign in, or make an account with any email and a password: it takes a minute. You check in to the incident next.</p>
-    <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
-    <label>Password <input id="auth-password" type="password" autocomplete="off" required minlength="8"></label>
-    <div class="row-btns"><button type="submit" class="btn pri">Sign in</button><button type="button" id="auth-signup" class="btn">Create account</button></div>
+    <p class="muted" id="auth-lead">Sign in with your email or mobile number: a six-digit code comes back, no password, and a new address makes its account. You check in to the incident next.</p>
+    <div class="auth-step" id="auth-ask">
+      <label>Email or mobile number <input id="auth-email" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="name@agency.gov or 512 555 0100" required></label>
+      <button type="submit" class="btn pri">Send code</button>
+    </div>
+    <div class="auth-step" id="auth-enter" hidden>
+      <p class="code-sent" id="auth-sent"></p>
+      <label>The code <input id="auth-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="six digits"></label>
+      <button type="submit" class="btn pri">Sign in</button>
+      <div class="row-btns auth-again"><button type="button" class="btn" data-auth="resend">Resend</button><button type="button" class="btn" data-auth="other">Use another address</button></div>
+    </div>
     <p id="auth-msg" class="msg" role="status"></p>
   </form>
 </div>

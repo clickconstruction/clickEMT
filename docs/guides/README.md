@@ -23,7 +23,7 @@ A guide for each of the twelve people the app is designed around (`docs/personas
 
 ## Being each persona in the mock
 
-The base tab is signed in as Operations (`ops@mock.local`) and the phone tab as Unit 3 (`unit3@mock.local`). Any password of eight or more characters signs a seeded address in; any other email with Create account is someone new, who checks in with the code `CEDAR7`.
+The base tab is signed in as Operations (`ops@mock.local`) and the phone tab as Unit 3 (`unit3@mock.local`). **Send code** with a seeded address signs that person in (the mock shows the code under the form; no password); any other email or mobile number is someone new, whose account is made with the first code and who checks in with the code `CEDAR7`.
 
 | Persona | On the phone, sign in as |
 |---|---|

@@ -590,7 +590,7 @@ function invitesHtml(data, state) {
         <label>Role <select name="role" class="sel"><option value="unit">Unit</option><option value="ops">Operations</option></select></label>
         <label>Unit name <input name="unit" maxlength="60" placeholder="Unit 4 (optional)" autocomplete="off"></label>
       </div>
-      <div class="row-btns"><button class="btn pri sm" type="submit">Send the invitation</button><span class="muted" style="font-size:12.5px;flex:1">One link in one email. The person sets a password once and lands in this incident as the role you chose; their name and phone are asked as today. The link works for seven days, once.</span></div>
+      <div class="row-btns"><button class="btn pri sm" type="submit">Send the invitation</button><span class="muted" style="font-size:12.5px;flex:1">One link in one email. It signs the person in (no password: a code to the address does, next time) and lands them in this incident as the role you chose; their name and phone are asked as today. The link works for seven days, once.</span></div>
     </form>
     ${pending.length ? `<div class="k">Invited, not yet in · ${pending.length}</div><div class="inv-list">${pending.map(row).join('')}</div>` : ''}
     ${accepted.length ? `<div class="k">Accepted · ${accepted.length}</div><div class="inv-list">${accepted.map(row).join('')}</div>` : ''}

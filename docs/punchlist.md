@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v73**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v74**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0038**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -50,6 +50,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 29 | v70 A transport on the map: every open run as a dashed line and a pill, the bus where the driver's phone is (shipped 18 October) | small | v69 | Marcus, his relief, the IC, the desk, a driver |
 | 30 | v71 The 211 as a table: a table per unit, the totals as a small one, the text and the email keeping the lines (shipped 18 October) | small | v70 | the clerk, Priya, Marcus, the administrator |
 | 31 | v72 The 211 per the mock-up: the unit header line, the band as a number, the totals as two small tables (shipped 18 October) | small | v71 | the clerk, Finance, Priya |
+| 32 | v73 Sign in by a code, no password: an email or a mobile number, Send code, the six digits or the email's link (shipped 18 October; the project's SMS provider, email template and SMTP still to set) | small to medium | v71 | everyone at a door: the newcomer, Rosa, Ana, Marcus, the administrator |
 
 ---
 
@@ -1078,6 +1079,46 @@ section is its figure alone) in js/base/ui.js; `.f211-head`, `.uh`, `table.t211`
 rules in base.css; `row211` in dev/smoke.js and the `people`, `rewalks`, `tags` and `credentials` checks on the
 panel's words; "Built as v72" on the mock-up page. Full run 838 of 838 across 40 suites; check and test pass; every rule
 test on the real database, 23 files, 409 of 409; no migration.
+## 32. v73 Sign in by a code, no password
+
+**Why.** Todd, 18 October: "I want to get away from passwords and I want all verification to come via email and
+text message." A password is one more thing to make up at a check-in table with wet gloves, to forget by the next
+season and to type wrong on a phone at night, and the shared phones of the walkthroughs autofilled the last
+person's. The account's own address or number is the proof.
+
+**Built.** One door on both views. The base's landing form and the phone's sign-in sheet have one box, "Email or
+mobile number", and **Send code**. A six-digit code comes back by email or by text message (the email carries a link
+that signs you in by itself as well); type it (six digits check by themselves, and a phone offers the text message's
+code above the keyboard) and you are in. No password anywhere: not at sign-in, not for a new account (a new address
+or number makes its account on its first code), not after an invitation (the link signs the person in as before; the
+"choose a password" form after it is gone). Under the code box: **Resend** (another code; the first stops working)
+and **Use another address** (back to the box, the address still in it to fix). A mobile number is read as +1 and ten
+digits, or kept with the country code it was written with; a number that is neither is refused with the reason
+before anything is sent, so are words with no @. The picker and the check-in screen name the account by its address
+or its number, and a phone signed in with a number has it filled in on Identify yourself and the claim sheet. The
+email's link lands on the page it was asked from with whatever was waiting there (`?join=`, `?band=`, `?invite=`), so
+a link opened in a new tab still finds the code or the band. The door's banners (a code waiting, a band waiting, an
+invitation) sit above the box as before, their words changed from "any email and a password" to a code. Accounts
+from before keep working: the password stays in Supabase unused, and a code to the same address signs them in.
+
+*Decided:* the code and the link in one email (Supabase sends both when the Magic Link template carries
+`{{ .Token }}`), so a laptop types the code and a phone taps the link; the account made on the first code rather than
+a separate Create account step; the mobile number normalised in rules.js and tested, never guessed past ten US digits
+or a written country code; six digits verify by themselves (a wrong code selects the box to type over); the password
+column left alone in Supabase (nothing deleted; nothing offers it); the invite Edge Function's email words changed
+("there is no password: next time, a six-digit code to this address does") and nothing else in it; no migration
+(`ic_profiles` already has the phone). The project's settings are not the app's to change: an SMS provider, the
+template's `{{ .Token }}` and custom SMTP are listed in handoff.md for Todd. Not built: a code by voice call, a second
+factor, remembering the device, a sign-in from the band's QR alone.
+
+**Shipped** 18 October 2026 as `Sign in by a code, no password (v73)`: `phoneE164` / `phoneDisplay` /
+`signInAddress` / `accountText` / `codeSentText` / `codeErrorText` in rules.js (dev/test-rules.mjs), `sendCode` /
+`verifyCode` / `accountText` in data.js (`signIn`, `signUp` and `setPassword` gone), the forms in index.html and
+field/index.html (`#auth-ask`, `#auth-enter`, `#auth-otp`), the block in both main.js files, `.auth-step` /
+`.code-sent` / `.mock-code` in shared.css, the mock's `signInWithOtp` / `verifyOtp` / `codeFor` and its landing
+stand-in (`SEED_VERSION` 36), `mockSignIn` / `phoneSignIn` and the `passwordless` suite in dev/smoke.js (every suite
+that signed in goes through the code). Full run on the rebased tree 860 of 861 across 41 suites (189 s in the Browser pane at 1280 × 820), the one miss the hover card's half second in `seeded`, which passes alone (24 of 24; the known pointer timing), and 861 of 861 before the rebase; check and test pass; no migration; every rule test in `supabase/tests/` run on the real database, 23 files, 409 of 409 (no SQL changed). Until the
+project's settings are set, the email's link signs in on its own and a mobile number's code does not send.
 
 ## Done before this list
 

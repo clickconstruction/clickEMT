@@ -14,7 +14,7 @@
   const TAB = Math.random().toString(36).slice(2, 10);
   // Bump when the seed or the tables change: a tab only adopts another tab's data from the same version,
   // so a tab left open on older code cannot hand this one tables it does not understand.
-  const SEED_VERSION = 35;
+  const SEED_VERSION = 36;
   const SRC = document.currentScript && document.currentScript.src;
   const RULES_URL = SRC ? new URL('../js/shared/rules.js', SRC).href : new URL(FIELD ? '../js/shared/rules.js' : 'js/shared/rules.js', location.href).href;
 
@@ -1241,14 +1241,14 @@
       else if (m.kind === 'state' && m.to === TAB && m.version === SEED_VERSION && !settled && !adopted) { adopted = m; resolveHello(); }
       else if (m.kind === 'change' && settled && m.version === SEED_VERSION) for (const c of m.changes) { absorb(c.table, c.type, c.row); deliver(c); }
       else if (m.kind === 'file') files.set(m.path, m.blob);
-      else if (m.kind === 'user' && !users.some((u) => u.email === m.user.email)) users.push(m.user);   // an account made in another tab
+      else if (m.kind === 'user' && !users.some((u) => u.id === m.user.id)) users.push(m.user);   // an account made in another tab
     };
     bc.postMessage({ kind: 'hello', from: TAB, version: SEED_VERSION });
     setTimeout(resolveHello, 250);
   } else resolveHello();
   const ready = Promise.all([import(RULES_URL), hello]).then(([m]) => {
     R = m;
-    if (adopted) { tables = adopted.tables; for (const [p, b] of adopted.files || []) files.set(p, b); for (const u of adopted.users || []) if (!users.some((x) => x.email === u.email)) users.push(u); } else reset();
+    if (adopted) { tables = adopted.tables; for (const [p, b] of adopted.files || []) files.set(p, b); for (const u of adopted.users || []) if (!users.some((x) => x.id === u.id)) users.push(u); } else reset();
     settled = true;
   });
 
@@ -1820,25 +1820,65 @@
     })
   });
 
-  // ---- auth: any email and password; a known address is that seeded person, anything else a new one
-  function userFor(email) {
-    const e = String(email || '').trim().toLowerCase() || 'someone@mock.local';
-    let u = users.find((x) => x.email === e);
-    if (!u) { u = { id: uuid(), email: e, aud: 'authenticated', role: 'authenticated' }; users.push(u); if (bc) bc.postMessage({ kind: 'user', from: TAB, user: u }); }
+  // ---- auth (v73): a code to an email address or a mobile number, no password. signInWithOtp "sends" a six-digit
+  // code and shows it under the sign-in form (this is the stand-in: nothing is sent anywhere), verifyOtp checks it and
+  // signs in. A known address is that seeded person; a new address or number makes its account on the first code, as
+  // shouldCreateUser does. A number is kept as Supabase keeps it: the digits with no +.
+  const codes = new Map();   // the address or number → the code last sent to it (a new one replaces it)
+  const keyOf = (to) => (to.email ? String(to.email).trim().toLowerCase() : String(to.phone || '').replace(/^\+/, ''));
+  function userFor(to) {
+    const email = to.email ? keyOf(to) : '', phone = to.email ? '' : keyOf(to);
+    let u = users.find((x) => (email && x.email === email) || (phone && x.phone === phone));
+    if (!u) { u = Object.assign({ id: uuid(), aud: 'authenticated', role: 'authenticated' }, email ? { email } : { phone }); users.push(u); if (bc) bc.postMessage({ kind: 'user', from: TAB, user: u }); }
     return u;
   }
+  function codeFor(to) {   // the code last sent to an address or a number, written any way (the suites read it)
+    const k = /@/.test(to) ? String(to).trim().toLowerCase() : String(to).replace(/\D/g, '');
+    for (const [key, code] of codes) if (key === k || (!k.includes('@') && k && key.endsWith(k))) return code;
+    return null;
+  }
+  function showCode(to, code) {   // the chip under the sign-in form, while the form is on screen; the console always
+    console.info('mock: the code for ' + (to.email || '+' + to.phone) + ' is ' + code);
+    const form = document.getElementById('auth-form');
+    if (!form || !form.getClientRects().length) return;
+    let el = form.querySelector('.mock-code');
+    if (!el) { el = document.createElement('p'); el.className = 'mock-code'; form.appendChild(el); }
+    el.textContent = 'Mock: the code for ' + (to.email || '+' + to.phone) + ' is ';
+    const b = document.createElement('b'); b.textContent = code; el.appendChild(b);
+  }
+  function hideCode() { for (const el of document.querySelectorAll('#auth-form .mock-code')) el.remove(); }
   function makeClient() {
+    // a link's landing, stood in: #access_token=mock-<user id> in the address opens signed in as that account, as
+    // supabase-js does with a magic link's hash, and the hash goes (the account may have been made in another tab, so
+    // it is looked up once the tabs have talked)
+    let landing = (/[#&]access_token=mock-([^&]+)/.exec(location.hash) || [])[1] || null;
     const client = { user: NOBODY ? null : FIELD ? users[3] : users[0], listeners: new Set() };
+    const land = () => { if (!landing) return; const u = users.find((x) => x.id === landing); landing = null; if (!u) return; client.user = Object.assign(u, { last_sign_in_at: now() }); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* fine */ } };
     const session = () => (client.user ? { access_token: 'mock-' + client.user.id, token_type: 'bearer', expires_in: 3600, user: client.user } : null);
     const fire = (event) => { const s = session(); for (const cb of [...client.listeners]) { try { cb(event, s); } catch (e) { console.error(e); } } };
     client.auth = {
-      async getSession() { await ready; return { data: { session: session() }, error: null }; },
-      async getUser() { await ready; return { data: { user: client.user }, error: client.user ? null : { message: 'Auth session missing!' } }; },
-      onAuthStateChange(cb) { client.listeners.add(cb); setTimeout(() => cb('INITIAL_SESSION', session()), 0); return { data: { subscription: { unsubscribe() { client.listeners.delete(cb); } } } }; },
-      async signInWithPassword({ email }) { await ready; client.user = Object.assign(userFor(email), { last_sign_in_at: now() }); fire('SIGNED_IN'); return { data: { user: client.user, session: session() }, error: null }; },
-      async signUp({ email }) { await ready; client.user = Object.assign(userFor(email), { last_sign_in_at: now() }); fire('SIGNED_IN'); return { data: { user: client.user, session: session() }, error: null }; },
-      async updateUser() { await ready; return { data: { user: client.user }, error: client.user ? null : { message: 'Auth session missing!' } }; },
-      async signOut() { client.user = null; fire('SIGNED_OUT'); return { error: null }; }
+      async getSession() { await ready; land(); return { data: { session: session() }, error: null }; },
+      async getUser() { await ready; land(); return { data: { user: client.user }, error: client.user ? null : { message: 'Auth session missing!' } }; },
+      onAuthStateChange(cb) { client.listeners.add(cb); ready.then(() => { land(); cb('INITIAL_SESSION', session()); }); return { data: { subscription: { unsubscribe() { client.listeners.delete(cb); } } } }; },
+      async signInWithOtp({ email, phone, options }) {
+        await ready;
+        const to = email ? { email } : phone ? { phone } : null;
+        if (!to || !keyOf(to)) return { data: { user: null, session: null }, error: { message: 'An email address or phone number is required', status: 400 } };
+        if (options && options.shouldCreateUser === false && !users.some((x) => (to.email && x.email === keyOf(to)) || (to.phone && x.phone === keyOf(to)))) return { data: { user: null, session: null }, error: { message: 'Signups not allowed for otp', status: 422 } };
+        const code = String(100000 + Math.floor(Math.random() * 900000));
+        codes.set(keyOf(to), code); showCode(to.email ? { email: keyOf(to) } : { phone: keyOf(to) }, code);
+        return { data: { user: null, session: null, messageId: null }, error: null };
+      },
+      async verifyOtp({ email, phone, token }) {
+        await ready;
+        const to = email ? { email } : { phone };
+        const key = keyOf(to);
+        if (!key || !codes.has(key) || codes.get(key) !== String(token || '').trim()) return { data: { user: null, session: null }, error: { message: 'Token has expired or is invalid', status: 403, code: 'otp_expired' } };
+        codes.delete(key); hideCode();
+        client.user = Object.assign(userFor(to), { last_sign_in_at: now() }); fire('SIGNED_IN');
+        return { data: { user: client.user, session: session() }, error: null };
+      },
+      async signOut() { client.user = null; hideCode(); fire('SIGNED_OUT'); return { error: null }; }
     };
     client.from = (table) => builder(client, table);
     // the Edge Function `invite`, stood in: the rows the function would write, and the link the email would carry
@@ -1915,7 +1955,7 @@
   try { localStorage.setItem(FIELD ? 'ic.field.incident' : 'ic.base.incident', INC); } catch (e) { /* storage blocked */ }
   window.__mock = {
     get tables() { return tables; }, set tables(v) { tables = v; },
-    files, urls, reset, geo, tab: TAB, users,
+    files, urls, reset, geo, tab: TAB, users, codes, codeFor,   // the sign-in codes the stand-in "sent" (v73)
     ids: { incident: INC, users: U, zones: Z, photos: P, hazard: H1, messages: MSG, period: PER, objectives: OBJ, structures: ST, facilities: FAC, overlays: OVL, people: PEOPLE, requests: REQ, agencies: AGY, commands: CMD, evacuees: EV, opsCode: OPS_CODE, credentials: CRED },
     tracksFor: (user) => tables.ic_tracks.filter((t) => t.user_id === user),
     ready: () => ready

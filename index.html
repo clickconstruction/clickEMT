@@ -120,13 +120,19 @@
         <p class="after"><a href="try/">Try it as any role first</a>, no account needed.</p>
       </div>
       <div id="land-invite" class="land-invite" hidden></div>
-        <form id="auth-form" class="auth-card">
+        <form id="auth-form" class="auth-card" novalidate>
         <h2>Running the base?</h2>
-        <p class="muted">Sign in, or create an account with any email and a password. Whoever opens an incident is its Operations and decides who else runs the base, with the Operations code on the home panel; field units join with the six-letter code instead.</p>
-        <label>Email <input id="auth-email" type="email" autocomplete="username" required></label>
-        <label>Password <input id="auth-password" type="password" autocomplete="current-password" required minlength="8"></label>
-        <button type="submit" class="btn pri">Sign in</button>
-        <button type="button" id="auth-signup" class="btn link">Create account</button>
+        <p class="muted">No password: type your email or mobile number and a six-digit code comes back (the email carries a link that signs you in as well); a new address makes its account on the first code. Whoever opens an incident is its Operations and decides who else runs the base, with the Operations code on the home panel; field units join with the six-letter code instead.</p>
+        <div class="auth-step" id="auth-ask">
+          <label>Email or mobile number <input id="auth-email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="name@agency.gov or 512 555 0100" required></label>
+          <button type="submit" class="btn pri">Send code</button>
+        </div>
+        <div class="auth-step" id="auth-enter" hidden>
+          <p class="code-sent" id="auth-sent"></p>
+          <label>The code <input id="auth-otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="six digits"></label>
+          <button type="submit" class="btn pri">Sign in</button>
+          <div class="row-btns auth-again"><button type="button" class="btn link" data-auth="resend">Resend</button><button type="button" class="btn link" data-auth="other">Use another address</button></div>
+        </div>
         <p id="auth-msg" class="msg" role="status"></p>
       </form>
     </div>

@@ -64,7 +64,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   - v80 The header in four groups (This period · Boards · Forms · The day, the gear beside the pills) and a quieter
     first minute on a fresh incident (section 39, `leftovers.html`).
   - Also that day: `dev/smoke-headless.py` (`npm run smoke`), and the Google Maps key in `config.js`.
-- **Branch `leftovers`** (`4450af0`): v81, every time in UTC on the clock's click, with Z, and the front door's
+- **Branch `leftovers`**, one commit ahead of `main`: v81, every time in UTC on the clock's click, with Z, and the front door's
   pictures re-shot by `dev/front-shots.py`. Check and test pass; a targeted headless run was 290 of 292, the misses
   the `log` suite's star checks, and `log` passed 23 of 23 alone. The full headless run was not made: its build
   session stopped on a usage limit, and the coordinating chat committed its work so it would survive the hand-off.

@@ -998,7 +998,7 @@
     if (table === 'ic_members' && (r.kind || '') !== (old.kind || '') && !quiet) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + (r.kind ? ' is a ' + KIND_TEXT[r.kind] : ': kind cleared'));
     if (table === 'ic_members' && (r.in_water_since || null) !== (old.in_water_since || null)) {   // in and out of the water, with the minutes
       if (r.in_water_since && !old.in_water_since) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + ' in the water');
-      else if (!r.in_water_since && old.in_water_since) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + ' out of the water after ' + Math.max(0, Math.round((Date.now() - new Date(old.in_water_since).getTime()) / 60000)) + ' min');
+      else if (!r.in_water_since && old.in_water_since) log(changes, r.incident_id, uid, 'status', label(r.incident_id, r.user_id) + ' out of the water after ' + R.durationText(Math.max(0, Math.round((Date.now() - new Date(old.in_water_since).getTime()) / 60000))));   // ic_duration_text (0039, v79): "45m", "1h 5m"
     }
     let memberDone = false;
     if (table === 'ic_members' && (r.removed_at || null) !== (old.removed_at || null)) {   // ic_member_after: removed or put back

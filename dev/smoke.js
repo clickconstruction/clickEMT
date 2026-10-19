@@ -3366,11 +3366,11 @@ async function safetyset(check) {
     check('and so does the situation report', has('#briefing-page', 'in the water', 'unit 2'), text('#briefing-page').slice(-300));
     $('[data-action="close-briefing"]').click();
     $('#panel [data-action="unit-water"]').click();
-    check('Operations takes the crew out, with the minutes in the log', await until(() => !base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 out of the water after 140 min')), logTexts()[0]);
+    check('Operations takes the crew out, with the minutes in the log', await until(() => !base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 out of the water after 2h 20m')), logTexts()[0]);
     await u2.setInWater(U.unit2, new Date(Date.now() - 12 * 60000).toISOString());
     await until(() => base.member(U.unit2).in_water_since);
     await u2.checkOut({ ticks: {}, open: [], note: '' });
-    check('checking out ends the clock', await until(() => base.member(U.unit2).status === 'checked_out' && !base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 out of the water after 12 min')));
+    check('checking out ends the clock', await until(() => base.member(U.unit2).status === 'checked_out' && !base.member(U.unit2).in_water_since) && await until(() => eventText(base, 'Unit 2 out of the water after 12m')));
     await u2.join('CEDAR7', 'unit', 'Unit 2', null, null, null, null, 'boat');
     await until(() => base.member(U.unit2).status !== 'checked_out');
     // the rotation on the period sheet, printed on the 204 and the 208, carried into the next period
@@ -3403,7 +3403,7 @@ async function safetyset(check) {
       await base.setInWater(U.unit3, new Date(Date.now() - 65 * 60000).toISOString());
       check('the next rotation asks again', await until(() => /swap the crew/.test(P.text('#water-row')), 8000), P.text('#water-row'));
       P.$('#water-row [data-action="water-toggle"]').click();
-      check('one tap out, with the minutes', await until(() => !/in the water \d/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 8000) && await until(() => !base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 out of the water after 65 min'), 8000), logTexts()[0]);
+      check('one tap out, with the minutes', await until(() => !/in the water \d/.test(P.text('#water-row')) && !!P.$('#water-row [data-action="water-toggle"]'), 8000) && await until(() => !base.member(U.unit3).in_water_since, 70000) && await until(() => eventText(base, 'Unit 3 out of the water after 1h 5m'), 8000), logTexts()[0]);
       check('the Agency box\'s placeholder is a plain example now', (P.$('#join-form input[name="agency"]') || {}).placeholder === 'e.g. Red Cross, county sheriff', (P.$('#join-form input[name="agency"]') || {}).placeholder);
       P.frame.remove(); P = null;
     }

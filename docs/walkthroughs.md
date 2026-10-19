@@ -1718,3 +1718,20 @@ the mock at 1280 × 900 in headless Chrome (`dev/smoke-headless.py`), the words 
 - **"Period 1" on the line, "OP 1" on the printed forms**: two words for one thing, by choice (ICS wants OP on paper).
 - **At the base's phone width** the card takes the screen's width under the header and its rows stack.
 
+
+## Re-walk after v79
+
+The 214's water words: Rosa coming out of the water, the Safety Officer and the clerk reading the 214, walked on
+2026-10-19 in the mock in headless Chrome (`dev/smoke-headless.py`) through the `safetyset` suite, and on the real
+database through `supabase/tests/waterwords.sql` once 0039 was applied.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| Out of the water | Rosa | The toast "Out of the water after 1h 5m" and the 214's "Unit 3 out of the water after 1h 5m" say the same thing; at v76 the toast said 1h 5m and the log 65 min. | Clear |
+| The 214 | the Safety Officer | "Unit 2 in the water", "Unit 2 out of the water after 2h 20m", and the row above it "probably left running (2h 20m)": one way of saying a duration on the board and in the log. | Clear |
+| A check-out | the clerk | "Unit 2 out of the water after 12m", then "Unit 2 checked out", as before with the new words. | Clear |
+| The live 214 | the clerk | On the real database, Boat 1 in and out at 45 minutes, 65 minutes, two hours and a check-out at 12: "after 45m", "after 1h 5m", "after 2h", "after 12m", and no line says "min". | Clear |
+
+**Still bites, small:**
+
+- **The rotation lines** ("rotation in the water every 30 minutes", "set the default rotation to 30 minutes in the water") say "minutes" in full: a setting, not a duration, left as it is.

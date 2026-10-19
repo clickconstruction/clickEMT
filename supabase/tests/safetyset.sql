@@ -49,13 +49,13 @@ select public.ic_join((select code2 from t_ctx), 'unit', 'Boat 1', null, 2, 'Tra
 update public.ic_members set in_water_since = now() - interval '38 minutes' where incident_id = (select inc2 from t_ctx) and user_id = (select boat from t_ctx);
 insert into t_r select exists (select 1 from public.ic_events where incident_id = (select inc2 from t_ctx) and text = 'Boat 1 in the water'), 'going in the water is one line';
 update public.ic_members set in_water_since = null where incident_id = (select inc2 from t_ctx) and user_id = (select boat from t_ctx);
-insert into t_r select exists (select 1 from public.ic_events where incident_id = (select inc2 from t_ctx) and text = 'Boat 1 out of the water after 38 min'), 'coming out says how long';
+insert into t_r select exists (select 1 from public.ic_events where incident_id = (select inc2 from t_ctx) and text = 'Boat 1 out of the water after 38m'), 'coming out says how long';
 update public.ic_members set in_water_since = now() + interval '2 hours' where incident_id = (select inc2 from t_ctx) and user_id = (select boat from t_ctx);
 insert into t_r select in_water_since <= now(), 'a phone clock ahead is pulled back to now' from public.ic_members where incident_id = (select inc2 from t_ctx) and user_id = (select boat from t_ctx);
 update public.ic_members set in_water_since = now() - interval '12 minutes' where incident_id = (select inc2 from t_ctx) and user_id = (select boat from t_ctx);
 select public.ic_check_out((select inc2 from t_ctx), null);
 insert into t_r select in_water_since is null and status = 'checked_out', 'checking out ends the clock' from public.ic_members where incident_id = (select inc2 from t_ctx) and user_id = (select boat from t_ctx);
-insert into t_r select exists (select 1 from public.ic_events where incident_id = (select inc2 from t_ctx) and text = 'Boat 1 out of the water after 12 min'), 'and says how long it ran';
+insert into t_r select exists (select 1 from public.ic_events where incident_id = (select inc2 from t_ctx) and text = 'Boat 1 out of the water after 12m'), 'and says how long it ran';
 -- a photo the crew sent
 select public.ic_join((select code2 from t_ctx), 'unit', 'Boat 1', null, 2, 'Travis County Rescue', null, 'boat');
 with p as (insert into public.ic_photos (incident_id, user_id, note, storage_path, lat, lng) values ((select inc2 from t_ctx), (select boat from t_ctx), 'Waterline on the bridge', (select inc2 from t_ctx) || '/x/p.jpg', 30.26, -97.74) returning id) update t_ctx set photo = p.id from p;

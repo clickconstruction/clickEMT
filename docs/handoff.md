@@ -52,17 +52,23 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   to its point through Places; the Geocoding web service refuses a referrer-restricted key by design, so the module
   never calls it. The Supabase CLI on the user's Mac reaches the
   project since 19 October (`supabase login`), so `dev/sbq.py` applies migrations and runs the rule tests there; all
-  24 files, 426 checks, passed on 19 October. Neither v75
-  nor v76 has a migration; `0038` is still the last applied and `0039` the next free number (a session may be
-  writing it for the 214's water words; see punchlist section 35).
+  24 files, 426 checks, passed on 19 October. None of v75
+  to v78 has a migration. **`0039_water_words.sql` (v79, branch `water-words`) was applied on 19 October** from its
+  build session with `dev/sbq.py`: the 214 now reads "Unit 2 out of the water after 45m", as every other duration has
+  since v76 (punchlist section 38). The next free migration number is `0040`.
 - **Database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0038` in
   `supabase/migrations/` are all applied (`0038_tell_the_base.sql`, v74's, from its build session on 18 October,
   before the release landed). They were applied by hand with `dev/sbq.py` and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table or column) rather than reading that table.
-  The next free migration number is **0039**.
+  `0039_water_words.sql` (v79's) was applied the same way on 19 October from its build session, before the release
+  landed: no table or column, the 214's water line through `ic_duration_text`. The next free migration number is
+  **0040**.
 - **The live database holds no incident yet** (checked on 18 October): everything so far was done in the mock and
   the suites. The first real incident, the first real invitation email and the first real sign-in code are all still
   to happen.
+- **Tests on `main` at v79** (branch `water-words` on the v78 tree, 19 October, before landing): `npm run check` and
+  `npm test` pass; the `safetyset` suite headless 39 of 39 alone, first time, on the rebased tree (served on 8768; before the rebase a first run had missed three at the phone half when the hidden frame's outbox landed its tap late, the known timing miss, and passed 39 of 39 alone on the next run). The SQL rule tests on the real database after
+  0039 was applied: 25 files, 439 checks, all passing: `accept` 4, `alertwords` 18, `bring` 3, `corners` 10, `credentials` 50, `decisions` 3, `deputy` 5, `evacuees` 28, `hazards` 5, `ics100` 33, `invites` 32, `joincount` 10, `members` 44, `newcomer` 3, `par` 10, `parbyname` 10, `people` 28, `rewalks` 10, `safetyset` 23, `scene` 9, `tags` 28, `tellbase` 17, `transports` 33, `walkfix` 10, `waterwords` 13.
 - **Tests on `main` at v76:** `npm run check` and `npm test` pass. The full smoke run was made in headless Chrome
   (`npm run smoke`, the pane being off screen): 822 of 852 on the v75 tree and 817 of 836 on the v76 tree, every
   missed suite passing alone afterwards (the misses are timing and row-level-security slips of a long headless run;
@@ -295,7 +301,7 @@ own port with `PORT=8798 python3 dev/serve.py 8798`; the suites read whatever po
   own after-22:00 flake, under Known misses), so rerun a missed suite alone before it counts, as the rule above says.
 - **SQL rule tests**, against the real database: `python3 dev/sbq.py supabase/tests/<file>.sql`. Each runs in one
   transaction that rolls back, so nothing is left behind, and returns rows that should all say `ok: true`. Run all
-  of them (23 files at v73) before a release, not only the new one.
+  of them (25 files at v79) before a release, not only the new one.
 
 ## Database access
 

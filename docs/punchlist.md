@@ -13,8 +13,8 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v79**, and each new migration takes the
-next free number in `supabase/migrations/`, so the next is **0039**. After each release, walk the screens it touched
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v80**, and each new migration takes the
+next free number in `supabase/migrations/`, so the next is **0040**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
 | # | What | Size | After | Serves |
@@ -56,6 +56,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 35 | v76 The incident line, broken out: what changes on the line with the alarm first, the rest on a card a rest or a click opens (built 18 October) | small | v75 | Marcus, his relief, the IC, the clerk, every base |
 | 36 | v77 Incident kinds and starter periods: two rows of buttons on the New incident sheet, a starter that writes period 1's lines as Operations' own, × hides an objective (built 19 October) | small to medium | v76 | a first-time Operations, Marcus, Dana, every phone's briefing |
 | 37 | v78 The centre by address: an Address box on the New incident sheet, Google Places suggestions as you type, one press sets the centre (built 19 October) | small | v77 | a first-time Operations, Marcus, the IC |
+| 38 | v79 The 214's water words as 45m: the one duration the database writes reads as the app does, `ic_duration_text` in SQL (built 19 October; migration 0039, applied) | small | v78 | the Safety Officer, the clerk, Rosa, anyone reading the 214 |
 
 ---
 
@@ -1397,6 +1398,34 @@ in baseActions, log and tags, each passing alone afterwards (log 23 of 23 and ta
 19 of 19 twice on its second and third runs, its one miss the zone-drawn check that reads the log's newest line
 before the page has drawn it). One real
 lookup from localhost:8766 as above. No migration, so no rule test on the real database.
+
+## 38. v79 The 214's water words as 45m
+
+**Why.** v76 made every duration in the app read "4h 8m", "45m", "12h", from the one formatter in rules.js, and left
+one behind on purpose: the 214's "Unit 2 out of the water after 45 min" is written by the database (0020's
+`ic_member_after`), so it needed a migration, and the v76 note said so. The phone's toast said "Out of the water
+after 1h 5m" while the log under it said "after 65 min": two ways of saying one thing.
+
+**Built.** Migration `0039_water_words.sql`: `ic_duration_text(minutes)`, the SQL twin of `durationText` (minutes
+under an hour as "45m", else the hours and the minutes left over, "1h 5m", "2h"; nothing, or a clock ahead, reads
+"0m"), and `ic_member_after` redefined from 0020's body, the newest, with the water line alone changed: "Unit 2 out
+of the water after 45m" / "after 1h 5m" / "after 2h". No table or column changes. The mock's line goes through
+`R.durationText`; the `safetyset` suite's three out-of-the-water checks read the new words; rule test
+`supabase/tests/waterwords.sql` (the formatter's values, in and out under an hour, over an hour and on the hour, a
+check-out, the old words written nowhere, 0020's check-out line still coming); `supabase/tests/safetyset.sql`'s two
+water lines moved to the new words. `VERSION` v79.
+
+*Decided:* a SQL function rather than words in the trigger, so the next trigger that writes a duration (none does
+today) says the same thing; the rotation lines ("rotation in the water every 30 minutes", "set the default rotation
+to 30 minutes in the water") are a setting, not a duration, and keep their word.
+
+*How it was built:* written on 19 October after midnight as v77 on a Mac with no Supabase login, so 0039 waited; by
+the morning v77 and v78 had landed from branch `starters` and the CLI was logged in, so the branch was rebased onto
+`main`, renumbered v79, and 0039 applied from the build session on Todd's standing word, as 0038 was.
+
+**Built** 19 October 2026 as `The 214's water words as 45m (v79)` on branch `water-words`: migration 0039 applied on
+the real database with `dev/sbq.py`; every rule test on the real database, 25 files, 439 of 439 (`waterwords` 13, `safetyset` 23 with its two moved lines, the 23 others as at v74); `npm run check` and `npm test` pass; the `safetyset` suite
+headless (`dev/smoke-headless.py`) 39 of 39 alone, first time, on the rebased tree (served on 8768; before the rebase a first run had missed three at the phone half when the hidden frame's outbox landed its tap late, the known timing miss, and passed 39 of 39 alone on the next run).
 
 ## Done before this list
 

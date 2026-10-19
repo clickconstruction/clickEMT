@@ -26,7 +26,7 @@ const DEFAULT_VIEW = [30.2672, -97.7431, 12];
 
 const $ = (sel) => document.querySelector(sel);
 const data = window.sb ? new Data(window.sb) : null;
-const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
+const state = { tr: { add: false, edit: null, open: null, gone: false }, printTags: null, roster: null, invite: null, selected: null, newZone: null, pendingPolygon: null, oosFor: null, periodNext: false, printZone: null, print: null, placeZone: null, placeKind: null, replay: null, log: loadLogPrefs(), modalZone: null, highlight: null, layersOpen: false, placing: null, hoursPeriod: null, people: { q: '', quals: new Set(), add: false, addFixed: false, addUnit: null, tab: 'people', edit: null, open: null, menu: null }, board: loadBoardPref(), transfer: null, find: { top: '', home: '' }, evAdd: null, runsOpen: new Set(), printFacility: null, armed: false, identOpen: null, gearOpen: false, codesOpen: false, opsShown: false, liveOpen: false, lastUpdate: null, liveSince: null, version: null, updateReady: false };
 function loadBoardPref() { try { return localStorage.getItem(BOARD_KEY) === 'status' ? 'status' : 'kind'; } catch (e) { return 'kind'; } }
 function loadLogPrefs() {
   let saved = {};
@@ -1180,6 +1180,9 @@ document.addEventListener('click', async (e) => {
       case 'tr-step': { const t = data.transport(id); if (!t) break; const done = await data.updateTransport(id, { status: btn.dataset.status }); toast(transportLabel(done) + ': ' + TRANSPORT_STATUS[done.status].toLowerCase()); queueDraw(); drawTransports(); break; }
       case 'tr-withdraw': { const t = data.transport(id); if (t && await askConfirm({ title: `Withdraw ${esc(transportLabel(t))}?`, text: 'It stays in the history and can be put back. The people on it keep their records.', ok: 'Withdraw' })) { await data.updateTransport(id, { archived_at: new Date().toISOString() }); state.tr.edit = null; toast(transportLabel(t) + ' withdrawn'); queueDraw(); drawTransports(); } break; }
       case 'tr-restore': { const t = data.transport(id); await data.updateTransport(id, { archived_at: null }); toast((t ? transportLabel(t) : 'The run') + ' is back'); queueDraw(); drawTransports(); break; }
+      // the arriving rows' run cards (v66): put a record on a run, or take it off (v54's select), and open the folded cards
+      case 'ev-transport': { const done = await data.putOnTransport(id, btn.dataset.run || null); const t = btn.dataset.run ? data.transport(btn.dataset.run) : null; toast(evacueeWho(done) + (t ? ' on ' + transportLabel(t) : ' off the run') + ': ' + evacueeWhere(done, (fid) => data.facility(fid))); queueDraw(); break; }
+      case 'ev-runs-more': state.runsOpen.add(id); queueDraw(); break;
       case 'tr-take-off': { const ev = data.evacuee(id); const done = await data.putOnTransport(id, null); toast(evacueeWho(done || ev) + ' taken off the run'); queueDraw(); drawTransports(); break; }
       case 'close-public': closePublic(); break;
       case 'print-211': openOverlay('211'); break;
@@ -1374,12 +1377,6 @@ document.addEventListener('change', async (e) => {
     if (sel.dataset.select === 'ev-where') {
       const ev = data.evacuee(sel.dataset.id);
       if (ev) { const done = await data.updateEvacuee(ev.id, wherePatch(sel.value, { facilityOf: (fid) => data.facility(fid), current: ev })); toast(evacueeWho(done) + ': ' + evacueeWhere(done, (fid) => data.facility(fid))); }
-      sel.blur(); queueDraw();
-    }
-    if (sel.dataset.select === 'ev-transport') {   // put a record on a run, or take it off (v54)
-      const done = await data.putOnTransport(sel.dataset.id, sel.value || null);
-      const t = sel.value ? data.transport(sel.value) : null;
-      toast(evacueeWho(done) + (t ? ' on ' + transportLabel(t) : ' off the run') + ': ' + evacueeWhere(done, (fid) => data.facility(fid)));
       sel.blur(); queueDraw();
     }
     if (sel.dataset.select === 'unit-facility') { await data.setUnitFacility(sel.dataset.id, sel.value || null); sel.blur(); toast(unitLabelOf(data.member(sel.dataset.id)) + (sel.value ? ' works at ' + (data.facility(sel.value).name || 'the shelter') : ': no shelter chosen')); queueDraw(); }

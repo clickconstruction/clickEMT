@@ -746,6 +746,19 @@ export function runLine(t, evacuees, opts = {}) {
   const to = t.to_facility_id && opts.facilityOf ? opts.facilityOf(t.to_facility_id) : null;
   return `${transportLabel(t)} · ${transportFrom(t, opts)} → ${to ? (to.name || facilityKind(to.kind)[1]) : 'a facility'} · ${transportTimes(t, opts.now)} · ${capacityText(transportOnBoard(evacuees, t).people, t.capacity)}`;
 }
+// a run as a card in a chip row (v66): the label and where it goes ("Bus 3 → High school gym") over the times and
+// the seats (sub), `own` when it leaves from the crew's division (zoneId), the whole line (runLine) for the title
+export function runCard(t, evacuees, opts = {}) {
+  const to = t.to_facility_id && opts.facilityOf ? opts.facilityOf(t.to_facility_id) : null;
+  return { label: transportLabel(t), to: to ? (to.name || facilityKind(to.kind)[1]) : 'a facility', sub: `${transportTimes(t, opts.now)} · ${capacityText(transportOnBoard(evacuees, t).people, t.capacity)}`, own: !!opts.zoneId && t.from_zone_id === opts.zoneId, title: runLine(t, evacuees, opts) };
+}
+// more than three run cards fold to the first two and the one chosen, with "N more" (v66); open shows them all
+export const RUN_FOLD = 3;
+export function foldRuns(list, chosenId, open) {
+  if (open || list.length <= RUN_FOLD) return { shown: list, hidden: 0 };
+  const shown = list.filter((t, i) => i < 2 || t.id === chosenId);
+  return { shown, hidden: list.length - shown.length };
+}
 // the situation report's line, counts only: "Transports: 2 under way with 19 people in transit, 1 planned, 1 arrived, 0 done"
 export function transportsLine(transports, evacuees) {
   const live = transports.filter((t) => !t.archived_at);

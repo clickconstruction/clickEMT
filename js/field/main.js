@@ -17,7 +17,7 @@ import { startScan } from './scan.js';
 import { parseLicence, looksLikeLicence, licenceExpired, licenceTail } from '../shared/licence.js';
 import { REQUEST_KINDS, REQUEST_STATUS, URGENCY as URGENCY_WORDS, requestLine, DEMOB_ITEMS, demobOpen } from '../shared/rules.js';
 import { NEEDS, LEFT_CHOICES, PERSON_PLACES, evacueeWho, evacueeWhere, evacueeFrom, evacueeMatch, whereValue, wherePatch, countIn, needsIn, needsText, placeCounts, bedsText } from '../shared/rules.js';
-import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports } from '../shared/rules.js';   // the transport board (v54)
+import { TRANSPORT_STATUS, transportNext, transportLabel, transportFrom, transportOnBoard, aboardText, capacityText, transportLate, transportTimes, runsTo, openRuns, sortTransports, runCard, foldRuns } from '../shared/rules.js';   // the transport board (v54), the run cards (v66)
 import { SEEN_KINDS, bandLabel, bandNumber, bandFromScan, bandFromSearch, bandCodeNumber, tagOf, lastSeen, lastSeenText, seenWords, seenGuess } from '../shared/rules.js';   // people and tags (v55)
 import { inviteFromSearch } from '../shared/rules.js';   // invitations by email (v56)
 // The agency a check-in prefills is the one this account gave last time, never the last unit's on a
@@ -1577,39 +1577,52 @@ $('#st-people').addEventListener('input', () => {
   if (n > state.st.help) { state.st.help = n; $('#help-count').textContent = n; }
 });
 
-// The crew's rows under People needing help: who, their condition, where they went. Each becomes a
-// record linked to the house, on its way when sent to a shelter, so the desk sees "from 112 Pecan Ln".
-function stWhereOptions(sel) {
-  const places = data.facilities().filter((f) => PERSON_PLACES.includes(f.kind)).sort((a, b) => PERSON_PLACES.indexOf(a.kind) - PERSON_PLACES.indexOf(b.kind));
-  return places.map((f) => `<option value="f:${f.id}"${sel === 'f:' + f.id ? ' selected' : ''}>Went to ${esc(placeLabel(f))} (${esc(facilityKind(f.kind)[1].toLowerCase())})</option>`).join('')
-    + LEFT_CHOICES.map(([v, label]) => `<option value="${v}"${sel === v ? ' selected' : ''}>${esc(label)}</option>`).join('');
+// The crew's rows under People needing help: who, their condition, where they went (Went to as a chip row: the
+// shelters, then the hospitals, each by name, then the ways of leaving; v66) and, when open runs go there, On which
+// run as cards. Each becomes a record linked to the house, on its way when sent to a shelter, so the desk sees
+// "from 112 Pecan Ln".
+function stPlaces() { return data.facilities().filter((f) => PERSON_PLACES.includes(f.kind)).sort((a, b) => PERSON_PLACES.indexOf(a.kind) - PERSON_PLACES.indexOf(b.kind)); }
+function stWhereChips(r, i) {
+  return stPlaces().map((f) => `<button class="chip${r.where === 'f:' + f.id ? ' on' : ''}" data-action="st-where" data-i="${i}" data-v="f:${f.id}" title="${esc(facilityKind(f.kind)[1])}">${esc(placeLabel(f))}</button>`).join('')
+    + LEFT_CHOICES.map(([v, label]) => `<button class="chip${r.where === v ? ' on' : ''}" data-action="st-where" data-i="${i}" data-v="${v}">${esc(label)}</button>`).join('');
 }
 function blankStPerson() {
   const st = state.st, shelters = data.facilities().filter((f) => f.kind === 'shelter');
   const near = st && st.lat != null ? nearestFacility(shelters, 'shelter', st.lat, st.lng) : null;
   const f = near ? near.facility : shelters[0];
-  return { who: '', cond: '', where: f ? 'f:' + f.id : 'unknown', run: '' };
+  return { who: '', cond: '', where: f ? 'f:' + f.id : 'unknown', run: '', more: false };
 }
-// the runs a crew can put its people on: planned or loading, its own division's first (v54)
-function stRuns() { return openRuns(data.transports(), { zoneId: state.st && state.st.zoneId }); }
-function stRunOptions(sel) {
-  const ev = data.evacuees();
-  return `<option value=""${sel ? '' : ' selected'}>Not on a run</option>` + stRuns().map((t) => `<option value="${t.id}"${sel === t.id ? ' selected' : ''}>On ${esc(transportLabel(t))} · ${esc(transportFrom(t, { facilityOf, zoneOf: (id) => data.zone(id) }))} → ${esc(placeLabel(data.facility(t.to_facility_id)))} · ${esc(transportTimes(t))} · ${esc(capacityText(transportOnBoard(ev, t).people, t.capacity))}</option>`).join('');
+// the runs a crew can put its people on: planned or loading (a bus that has left takes nobody), going where the row
+// says, its own division's first (v54, v66)
+function stRuns(r) {
+  const fid = r.where && r.where.startsWith('f:') ? r.where.slice(2) : null;
+  return fid ? openRuns(data.transports(), { zoneId: state.st && state.st.zoneId }).filter((t) => t.to_facility_id === fid) : [];
+}
+// On which run as cards: Not on a run first, then each run going there, folded past three (foldRuns); a run chosen
+// that goes elsewhere (put on from the base) is still shown, never hidden
+function stRunCards(r, i) {
+  const list = stRuns(r), chosen = r.run ? data.transport(r.run) : null;
+  if (chosen && !list.includes(chosen)) list.push(chosen);
+  if (!list.length) return '';
+  const ev = data.evacuees(), { shown, hidden } = foldRuns(list, r.run, r.more);
+  return `<div class="k st-k">On which run</div><div class="chips runs" role="group" aria-label="On which run">
+    <button class="rcard${r.run ? '' : ' on'}" data-action="st-run" data-i="${i}" data-v="">Not on a run</button>
+    ${shown.map((t) => { const c = runCard(t, ev, { facilityOf, zoneOf: (id) => data.zone(id), zoneId: state.st.zoneId }); const z = c.own ? data.zone(t.from_zone_id) : null; return `<button class="rcard${r.run === t.id ? ' on' : ''}${transportLate(t) ? ' late' : ''}" data-action="st-run" data-i="${i}" data-v="${t.id}" title="${esc(c.title)}"><span class="l1"><strong>${esc(c.label)}</strong> → ${esc(c.to)}${z ? `<span class="own" title="leaves from your division">${esc(z.code)}</span>` : ''}</span><span class="l2">${esc(c.sub)}</span></button>`; }).join('')}
+    ${hidden ? `<button class="rcard more" data-action="st-runs-more" data-i="${i}">${hidden} more</button>` : ''}</div>`;
 }
 function syncStPeople() {
   for (const el of document.querySelectorAll('#st-people [data-stp]')) { const r = state.st.people[Number(el.dataset.i)]; if (r) r[el.dataset.stp] = el.value; }
 }
 function drawStPeople() {
   const st = state.st;
-  const hasRuns = stRuns().length > 0;
   const on = st.id ? data.evacuees().filter((e) => e.structure_id === st.id) : [];
   setHtml($('#st-people'), on.map((e) => `<div class="st-on"><strong>${esc(evacueeWho(e))}</strong>${e.note ? ' · ' + esc(e.note) : ''}<span class="muted"> · ${esc(evacueeWhere(e, facilityOf))}</span></div>`).join('')
-    + st.people.map((r, i) => `<div class="st-row${hasRuns ? ' has-run' : ''}">
+    + st.people.map((r, i) => `<div class="st-row">
       <input class="input" data-stp="who" data-i="${i}" value="${esc(r.who)}" placeholder="Who: a name, or &quot;family of 4&quot;" autocapitalize="words" autocomplete="off" maxlength="120" aria-label="Who">
       <input class="input" data-stp="cond" data-i="${i}" value="${esc(r.cond)}" placeholder="Condition: on oxygen, stable" autocomplete="off" maxlength="200" aria-label="Condition">
-      <select class="input" data-stp="where" data-i="${i}" aria-label="Went to" title="Went to">${stWhereOptions(r.where, true)}</select>
-      ${hasRuns ? `<select class="input" data-stp="run" data-i="${i}" aria-label="On which run" title="On which run: the record rides with it and the desk sees it under the run">${stRunOptions(r.run)}</select>` : ''}
-      <button type="button" class="btn pp-x" data-action="st-person-x" data-i="${i}" aria-label="Remove this row" title="Remove this row">×</button></div>`).join(''));
+      <button type="button" class="btn pp-x" data-action="st-person-x" data-i="${i}" aria-label="Remove this row" title="Remove this row">×</button>
+      <div class="k st-k">Went to</div><div class="chips where" role="group" aria-label="Went to">${stWhereChips(r, i)}</div>
+      ${stRunCards(r, i)}</div>`).join(''));
 }
 // ---- a structure: who was there and what state it is in
 // a clock time typed on the sheet, as the next such moment: today, or tomorrow when it has passed
@@ -1867,6 +1880,11 @@ document.addEventListener('click', async (e) => {
       case 'zone-clear': openClear(); break;
       case 'pass': state.pass = btn.dataset.v; { const z = myZone(); $('#clear-title').textContent = state.pass === 'secondary' ? 'Mark ' + (z ? z.code : '') + ' clear' : 'Finish the search of ' + (z ? z.code : ''); } drawClear(); break;
       case 'occ': syncStPeople(); state.st.occ = btn.dataset.v; drawStructure(); break;
+      // a person row's Went to and On which run (v66): a run tapped sets the place from its destination; a place tapped
+      // that the run does not go to takes the person off it, so the row always says what Save sends
+      case 'st-where': { syncStPeople(); const r = state.st.people[Number(btn.dataset.i)]; if (!r) break; r.where = btn.dataset.v; const t = r.run ? data.transport(r.run) : null; if (t && 'f:' + t.to_facility_id !== r.where) { r.run = ''; toast(transportLabel(t) + ' does not go there: off the run'); } drawStPeople(); break; }
+      case 'st-run': { syncStPeople(); const r = state.st.people[Number(btn.dataset.i)]; if (!r) break; r.run = btn.dataset.v; const t = r.run ? data.transport(r.run) : null; if (t) r.where = 'f:' + t.to_facility_id; drawStPeople(); break; }
+      case 'st-runs-more': { syncStPeople(); const r = state.st.people[Number(btn.dataset.i)]; if (r) r.more = true; drawStPeople(); break; }
       case 'water': syncStPeople(); state.st.water = state.st.water === Number(btn.dataset.v) ? null : Number(btn.dataset.v); drawStructure(); break;
       case 'damage': syncStPeople(); state.st.damage = btn.dataset.v; drawStructure(); break;
       case 'shaz': { syncStPeople(); const i = Number(btn.dataset.i); if (state.st.haz.has(i)) state.st.haz.delete(i); else state.st.haz.add(i); drawStructure(); break; }

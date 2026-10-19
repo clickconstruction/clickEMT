@@ -1808,12 +1808,15 @@ async function transports(check) {
     // ---- the gym card: the typed Expected line gave way to the runs coming here; a record is put on a run from its row
     await openFacility(gym);
     check('the gym card lists the runs coming here, the typed Expected line gives way, and each run has its next step', !$('#panel input[name="expected"]') && has('#panel .ev-box.coming', 'coming here · 3 runs', 'bus 2 from pecan park pickup', 'en route', '4 people in 1 record: family of 4', 'van 4 from a-2', 'loading', 'nobody listed on it yet', 'bus 3 from a-1') && has('#panel', 'the runs on the transports board say who is coming') && $$('#panel .ev-box.coming [data-action="tr-step"]').length === 3, text('#panel .ev-box.coming').slice(0, 300));
-    const sel = $('#panel [data-select="ev-transport"]');
-    check('the family on its way has an On-run select set to Bus 2, offering the runs coming here', !!sel && sel.value === run('Bus 2').id && [...sel.options].map((o) => o.textContent).join('|') === 'Not on a run|Bus 2 · Pecan Park pickup · en route|Van 4 · A-2 Pecan Mobile Home Park · loading|Bus 3 · A-1 Riverside Drive, east · planned', sel && [...sel.options].map((o) => o.textContent).join('|'));
-    sel.value = run('Bus 3').id; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    // the arriving row's On which run is a row of cards (v66), the same as the phone's, Not on a run first
+    const cards = () => $$(`#panel .ev-r[data-ev="${rec('family of 4').id}"] .chips.runs .rcard`);
+    const tops = () => cards().map((c) => (c.querySelector('.l1') || c).textContent.trim()).join('|');
+    const litRun = () => { const on = cards().filter((c) => c.classList.contains('on')); return on.length === 1 ? on[0].dataset.run : null; };
+    check('the family on its way has run cards with Bus 2 lit, offering the runs coming here with their times and seats, no drop-down', tops() === 'Not on a run|Bus 2 → High school gym|Van 4 → High school gym|Bus 3 → High school gym' && litRun() === run('Bus 2').id && /^left \d\d:\d\d · expected \d\d:\d\d · 4 of 40$/.test(cards()[1].querySelector('.l2').textContent) && !$('#panel [data-select="ev-transport"]') && $(`#panel .ev-r[data-ev="${rec('family of 4').id}"]`).classList.contains('runs'), tops());
+    cards().find((c) => c.dataset.run === run('Bus 3').id).click();
     check('moving them to Bus 3 is one line in the log, the record still on its way to the gym', await until(() => rec('family of 4').transport_id === run('Bus 3').id) && rec('family of 4').status === 'on_the_way' && rec('family of 4').facility_id === gym && await until(() => eventText(base, 'Operations put family of 4 from 112 Pecan Ln on Bus 3 to High school gym')), logTexts()[0]);
-    const sel2 = await until(() => { const x = $('#panel [data-select="ev-transport"]'); return x && x.value === run('Bus 3').id ? x : null; });
-    sel2.value = run('Bus 2').id; sel2.dispatchEvent(new Event('change', { bubbles: true }));
+    await until(() => litRun() === run('Bus 3').id);
+    cards().find((c) => c.dataset.run === run('Bus 2').id).click();
     await until(() => rec('family of 4').transport_id === run('Bus 2').id);
     check('and back on Bus 2 for the desk', rec('family of 4').transport_id === run('Bus 2').id && await until(() => eventText(base, 'Operations put family of 4 from 112 Pecan Ln on Bus 2 to High school gym')), logTexts()[0]);
 
@@ -1824,10 +1827,19 @@ async function transports(check) {
     await P.act('addr-clear');
     P.$('#structure-label').value = '116 Pecan Ln';
     await P.act('help-up');
-    const rs = P.$('#st-people [data-stp="run"]');
-    check('the first person counted opens a row with On which run: Van 4 (loading from A-2, the crew\'s own division) first, Bus 3 next, Bus 2 (gone) not offered', !!rs && [...rs.options].map((o) => o.textContent.replace(/ · (leaves|loading since) \d\d:\d\d( · expected \d\d:\d\d)?/, '')).join('|') === 'Not on a run|On Van 4 · A-2 Pecan Mobile Home Park → High school gym · 0 of 12|On Bus 3 · A-1 Riverside Drive, east → High school gym · 0 of 40' && P.$('#st-people .st-row').classList.contains('has-run'), rs && [...rs.options].map((o) => o.textContent).join('|'));
-    check('the sheet is whole at 375 px with the run select', P.sideways().length === 0, P.sideways().join('; '));
-    P.$('#st-people [data-stp="who"]').value = 'Patel, family of 2'; P.$('#st-people [data-stp="cond"]').value = 'wet, cold'; P.$('#st-people [data-stp="where"]').value = 'f:' + gym; rs.value = van.id;
+    const rowCards = () => P.$$('#st-people .st-row .chips.runs .rcard');
+    const rowTops = () => rowCards().map((c) => (c.querySelector('.l1') || c).textContent.trim()).join('|');
+    const litIn = (sel) => { const on = P.$$('#st-people .st-row ' + sel + ' .on'); return on.length === 1 ? on[0].dataset.v : null; };
+    check('the first person counted opens a row with On which run as cards: Not on a run lit, Van 4 (loading from A-2, the crew\'s own division, marked) first, Bus 3 next, Bus 2 (gone) not offered', rowTops() === 'Not on a run|Van 4 → High school gymA-2|Bus 3 → High school gym' && litIn('.chips.runs') === '' && /^loading since \d\d:\d\d · expected \d\d:\d\d · 0 of 12$/.test(rowCards()[1].querySelector('.l2').textContent) && rowCards()[1].querySelector('.own').textContent === 'A-2' && !rowCards()[2].querySelector('.own'), rowTops());
+    check('the sheet is whole at 375 px with the run cards', P.sideways().length === 0, P.sideways().join('; '));
+    P.$('#st-people [data-stp="who"]').value = 'Patel, family of 2'; P.$('#st-people [data-stp="cond"]').value = 'wet, cold';
+    P.$(`#st-people [data-action="st-run"][data-v="${van.id}"]`).click();
+    check('a run tapped lights its card and keeps Went to at the gym and the typed words', litIn('.chips.runs') === van.id && litIn('.chips.where') === 'f:' + gym && P.$('#st-people [data-stp="who"]').value === 'Patel, family of 2', litIn('.chips.runs'));
+    P.$('#st-people [data-action="st-where"][data-v="f:' + M().ids.facilities[3] + '"]').click();
+    check('Dell Seton tapped takes them off Van 4, which does not go there, says so, and no run row shows since no open run goes to the hospital', litIn('.chips.where') === 'f:' + M().ids.facilities[3] && !P.$('#st-people .chips.runs') && /van 4 does not go there: off the run/.test(P.text('#toast')), P.text('#toast'));
+    P.$('#st-people [data-action="st-where"][data-v="f:' + gym + '"]').click();
+    check('the gym tapped again brings the cards back with Not on a run lit', rowTops() === 'Not on a run|Van 4 → High school gymA-2|Bus 3 → High school gym' && litIn('.chips.runs') === '', rowTops());
+    P.$(`#st-people [data-action="st-run"][data-v="${van.id}"]`).click();
     await P.act('save-structure');
     const patel = await until(() => rec('Patel, family of 2'), 70000);
     check('saved, the record is on Van 4 and on its way to the gym, and the log names the run', !!patel && patel.transport_id === van.id && patel.status === 'on_the_way' && patel.facility_id === gym && patel.count === 2 && await until(() => eventText(base, 'Unit 3 sent Patel, family of 2 from 116 Pecan Ln to High school gym on Van 4'), 10000), logTexts()[0]);
@@ -2628,17 +2640,27 @@ async function evacuees(check) {
     check('seeded: 9 people in 3 records at the gym, a family of 4 on its way from Unit 3, Maria Alvarez sent to Dell Seton', base.evacuees().filter((e) => e.facility_id === gym && e.status === 'here').reduce((n, e) => n + e.count, 0) === 9 && rec('family of 4').status === 'on_the_way' && rec('family of 4').logged_by === USERS().unit3 && rec('Maria Alvarez, 78').status === 'moved' && rec('Maria Alvarez, 78').facility_id === dell && base.facility(gym).beds === 60);
 
     // ---- a crew's house record (Unit 3's phone): People needing help gains rows
+    // three more runs to the gym first, so the row's cards fold past three (v66); the sheet draws its rows once, when opened
+    for (const [label, mins] of [['Bus 7', 200], ['Van 8', 220], ['Boat run 9', 240]]) await base.addTransport(uuid(), { kind: label.startsWith('Bus') ? 'bus' : label.startsWith('Van') ? 'van' : 'boat', label, from_text: 'Staging, east lot', to_facility_id: gym, capacity: 12, leaves_at: new Date(Date.now() + mins * 60000).toISOString(), expected_at: new Date(Date.now() + (mins + 25) * 60000).toISOString(), status: 'planned' });
     P = await phoneFrame();
     check('the field app opens at 375 px as Unit 3', !!P.ready);
     await P.act('briefed');
     await P.act('addr-clear');
     P.$('#structure-label').value = '114 Pecan Ln';
     await P.act('help-up');
-    check('the first person counted opens a row: who, condition, went to, the nearest shelter first', P.$$('#st-people .st-row').length === 1 && P.$('#st-people [data-stp="where"]').value === 'f:' + gym && [...P.$('#st-people [data-stp="where"]').options].map((o) => o.textContent).join('|') === 'Went to High school gym (shelter)|Went to Dell Seton Medical Center (hospital)|With family|Own transport|Not known', [...P.$('#st-people [data-stp="where"]').options].map((o) => o.textContent).join('|'));
+    // Went to is a chip row and On which run a row of cards (v66): the words from rules.js, the nearest shelter lit
+    const whereChips = (i) => P.$$('#st-people .st-row')[i].querySelectorAll('.chips.where .chip');
+    const runTops = (i) => [...P.$$('#st-people .st-row')[i].querySelectorAll('.chips.runs .rcard')].map((c) => (c.querySelector('.l1') || c).textContent.trim());
+    const lit = (i, sel) => { const c = [...P.$$('#st-people .st-row')[i].querySelectorAll(sel + ' .on')]; return c.length === 1 ? c[0].dataset.v : null; };
+    check('the first person counted opens a row: who, condition, Went to as chips (the shelter, the hospital, the ways of leaving) with the nearest shelter lit, no drop-down', P.$$('#st-people .st-row').length === 1 && lit(0, '.chips.where') === 'f:' + gym && [...whereChips(0)].map((c) => c.textContent).join('|') === 'High school gym|Dell Seton Medical Center|With family|Own transport|Not known' && !P.$('#st-people select'), [...whereChips(0)].map((c) => c.textContent).join('|'));
     await P.act('st-person-add');
-    const fill = (i, who, cond, where) => { P.$$('#st-people [data-stp="who"]')[i].value = who; P.$$('#st-people [data-stp="cond"]')[i].value = cond; P.$$('#st-people [data-stp="where"]')[i].value = where; };
+    check('On which run under the place: Not on a run first and lit, Bus 3 then the three new runs, folded past three to the first two and "2 more"; Bus 2, which has left, is not offered', runTops(0).join('|') === 'Not on a run|Bus 3 → High school gym|Bus 7 → High school gym|2 more' && lit(0, '.chips.runs') === '', runTops(0).join('|'));
+    P.$$('#st-people .st-row')[0].querySelector('[data-action="st-runs-more"]').click();
+    check('More opens them all', runTops(0).join('|') === 'Not on a run|Bus 3 → High school gym|Bus 7 → High school gym|Van 8 → High school gym|Boat run 9 → High school gym' && /^leaves \d\d:\d\d · expected \d\d:\d\d · 0 of 40$/.test(P.$$('#st-people .st-row')[0].querySelector('.chips.runs .rcard[data-v] .l2').textContent), runTops(0).join('|'));
+    const fill = (i, who, cond, where) => { P.$$('#st-people [data-stp="who"]')[i].value = who; P.$$('#st-people [data-stp="cond"]')[i].value = cond; P.$$('#st-people .st-row')[i].querySelector(`[data-action="st-where"][data-v="${where}"]`).click(); };
     fill(0, 'Reyes, family of 2', 'cold, a cat', 'f:' + gym);
     fill(1, 'Mr. Okafor, 81', 'on oxygen, short of breath', 'f:' + dell);
+    check('a place tapped lights its chip and keeps the typed words; no open run goes to Dell Seton, so Mr. Okafor\'s row has no run row', lit(1, '.chips.where') === 'f:' + dell && P.$$('#st-people [data-stp="who"]')[1].value === 'Mr. Okafor, 81' && !P.$$('#st-people .st-row')[1].querySelector('.chips.runs') && !!P.$$('#st-people .st-row')[0].querySelector('.chips.runs'), lit(1, '.chips.where'));
     P.$('#st-people').dispatchEvent(new P.frame.contentWindow.Event('input', { bubbles: true }));
     check('the help count follows the rows: a family of 2 and one man is 3', P.text('#help-count') === '3', P.text('#help-count'));
     check('the structure sheet is whole at 375 px with its rows', P.sideways().length === 0, P.sideways().join('; '));

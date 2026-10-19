@@ -137,6 +137,14 @@
   .fcard .title { font-size: 16px; font-weight: 600; } .fcard .title span { font-size: 12.5px; color: var(--muted); font-weight: 400; }
   .fcard .form select { border: 1px solid var(--control-border); border-radius: 8px; padding: 9px 10px; font: inherit; font-size: 15px; background: var(--control-bg); color: var(--ink); }
   @media (max-width: 720px) { .sheet { padding: 12px; } .obj { grid-template-columns: 22px auto minmax(0, 1fr) auto; } .obj .tag { display: none; } }
+
+  /* the sixteen starters, reread (drawn at v83) */
+  .rr { margin: 14px 0 22px; }
+  .rr .st td.p { background: var(--soft); }
+  .rr .st td.chg { box-shadow: inset 3px 0 0 var(--accent, #4a7bd0); }
+  .rr .wc { font-size: 10.5px; color: var(--muted); margin-left: 6px; white-space: nowrap; }
+  .rr .wc.bad { color: #c0392b; font-weight: 700; }
+  .rr td.why { color: var(--muted); font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -279,6 +287,19 @@
           <thead><tr><th>Starter</th><th>Adds to the standing three</th><th>Safety message</th><th>Water · hours</th><th>Bring</th><th>Place first</th><th>Expect</th><th></th></tr></thead>
           <tbody id="st-body"></tbody>
         </table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="reread">
+  <h2 class="sec">The sixteen starters, reread <span class="sub">drawn 19 October at v83: each thin starter read as a crew of its kind would, today's words beside the proposal, every line counted · <span id="rr-over"></span></span></h2>
+  <div class="screens">
+    <div class="screen w" style="flex-basis:100%">
+      <div class="panel wide">
+        <div class="k">What changes <span class="sub">· Flood stays as it is; the standing three stay first on every starter; nothing is built until these are read</span></div>
+        <p class="note">Each block is one starter: the objectives it adds to the standing three, the safety message, the water rotation and the hours on scene, what to bring, the facilities to place first and the units to expect. Today's words on the left, the proposal on the right with a mark on what changed, and the word count on every line (twelve at most, the rule <span class="mono">dev/test-rules.mjs</span> holds). The line under each block says what a crew of that kind would have missed in today's words. The proposal is this page's data until it is read and said yes to; then it is one edit to <span class="mono">STARTERS</span> in rules.js, a Node test run, and a release of its own.</p>
+        <div id="rr-body"></div>
       </div>
     </div>
   </div>
@@ -710,6 +731,104 @@
   const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };
   $('theme-btn').addEventListener('click', () => { const next = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('ic.theme', next); } catch (e) {} drawTheme(); });
   drawTheme();
+</script>
+
+<script>
+(function () {
+  const TODAY = {"wildfire":{"objectives":["Homes in the fire’s path emptied first","The line held where it can be","Every evacuee counted at the shelter"],"notes":"Two ways out and a lookout posted. Watch the wind.","rotation":0,"scene":16,"bring":"Nomex, a fire shelter, eye protection, water for the day","places":["icp","staging","helispot","shelter"],"units":["engine","drone","ambulance","volunteer"]},"storm":{"objectives":["Downed lines reported and marked","Roads open for ambulances","Shelter open for homes without power"],"notes":"Every downed line is live. Chainsaw PPE on.","rotation":0,"scene":12,"bring":"Chainsaw PPE, lights, rain gear, water","places":["icp","staging","shelter","pod"],"units":["engine","search","pump","volunteer"]},"winter":{"objectives":["Warming shelter open and staffed","Welfare checks on the list done","Roads open for ambulances"],"notes":"Cold kills slowly: rotate crews in. Generators outside, never in.","rotation":0,"scene":12,"bring":"Layers, hand warmers, chains, a hot drink","places":["icp","shelter","pod"],"units":["engine","ambulance","volunteer","shelter_desk"]},"fire":{"objectives":["Everyone out and counted","The fire kept to the building","Utilities off"],"notes":"Collapse zone marked. Air checked. PAR every twenty minutes.","rotation":0,"scene":12,"bring":"Spare bottles, rehab water","places":["icp","staging"],"units":["engine","ambulance"]},"hazmat":{"objectives":["Hot, warm and cold zones set and held","Downwind homes emptied","The product named before anyone goes in"],"notes":"Upwind and uphill. Nobody in without the suit for it.","rotation":0,"scene":12,"bring":"Binoculars, the ERG, the suits for the level","places":["icp","staging","shelter"],"units":["engine","ambulance"]},"collapse":{"objectives":["Everyone who was inside accounted for","Voids searched and marked","Utilities off at the building"],"notes":"A second collapse is likely. Nobody under anything unshored.","rotation":0,"scene":12,"bring":"Helmets, dust masks, marking paint, lights","places":["icp","staging","hospital"],"units":["search","k9","drone","engine","ambulance"]},"crash":{"objectives":["Every patient triaged and moved","The road closed both ways","Fuel and the load made safe"],"notes":"Traffic is the second crash. Vests on, a blocker across the lane.","rotation":0,"scene":12,"bring":"Vests, cones, lights","places":["icp","staging","hospital"],"units":["ambulance","engine"]},"utility":{"objectives":["Hospitals and nursing homes on the list checked","A warming or cooling shelter open","Welfare checks on the list done"],"notes":"Carbon monoxide in homes with generators. Downed lines are live.","rotation":0,"scene":12,"bring":"CO meters, lights, water","places":["icp","shelter","pod"],"units":["volunteer","shelter_desk","engine"]},"mci":{"objectives":["Every patient triaged and tagged","Moved by priority, the hospitals told","The scene held secure"],"notes":"Scene secure before entry. Gloves and eye protection.","rotation":0,"scene":12,"bring":"Triage tags, gloves, blankets","places":["icp","staging","hospital"],"units":["ambulance","engine"]},"outbreak":{"objectives":["Cases listed and their contacts reached","A point of distribution open","Shelter staff in the right PPE"],"notes":"Masks and distance. Hands washed between people.","rotation":0,"scene":12,"bring":"Masks, gloves, sanitiser","places":["pod","shelter","hospital"],"units":["volunteer","shelter_desk","ambulance"]},"swift":{"objectives":["The last known point and time set","Downstream points watched","Crews out of the water on the rotation"],"notes":"Nobody in moving water without a PFD and a line. Rotate.","rotation":45,"scene":12,"bring":"PFDs, throw bags, dry bags, a radio each","places":["icp","ramp","staging"],"units":["swift_water","boat","drone","k9"]},"wilderness":{"objectives":["The last known point and time set","Segments assigned and walked","Trails and roads out watched"],"notes":"Pairs, never alone. Check in on the hour.","rotation":0,"scene":12,"bring":"Water, layers, a light, a GPS","places":["icp","staging"],"units":["search","k9","drone","volunteer"]},"urban":{"objectives":["Every address listed","Every structure searched and marked","Utilities off where crews go in"],"notes":"Mark every door. Nobody in an unmarked structure alone.","rotation":0,"scene":12,"bring":"Marking paint, lights, dust masks","places":["icp","staging"],"units":["search","k9","drone","engine"]},"parade":{"objectives":["The route closed and held","Medical tents staffed along the route","Lost children brought to one place"],"notes":"Heat and crowds. Water at every post.","rotation":0,"scene":12,"bring":"Vests, water, a radio each","places":["icp","staging","hospital"],"units":["ambulance","volunteer","engine"]},"festival":{"objectives":["Gates and exits held open","Medical tent staffed through the night","Lost children brought to one place"],"notes":"Heat, crowds and alcohol. Count the exits.","rotation":0,"scene":12,"bring":"Vests, water, lights","places":["icp","staging","hospital"],"units":["ambulance","volunteer"]},"game":{"objectives":["Traffic routes held before and after","Medical posts staffed in the stands","Exits clear through the final whistle"],"notes":"Crowds move at once. Keep the exits clear.","rotation":0,"scene":12,"bring":"Vests, a radio each, water","places":["icp","staging","hospital"],"units":["ambulance","volunteer","engine"]}};
+  const PROPOSED = {
+  "wildfire": { "why": "A wildfire crew reads LCES first: lookouts, communications, escape routes, safety zones. The old line had two of the four, and \"the line held where it can be\" gave a crew nothing to act on.",
+    "objectives": ["Homes in the fire's path emptied, zone by zone", "Structures defended only where crews have a way out", "The fire held at a line crews can get out of", "Every evacuee counted at the shelter"],
+    "notes": "Lookouts, radio checks, two ways out, a safety zone. Watch the wind.", "rotation": 0, "scene": 16,
+    "bring": "Nomex, gloves, a fire shelter, eye protection, water for the day", "places": ["icp", "staging", "helispot", "shelter"], "units": ["engine", "drone", "ambulance", "volunteer"] },
+  "storm": { "why": "After the wind the first job is the search of what it hit; the old row had no search at all. One route for ambulances says what \"roads open\" is for, and the next cell is the thing a storm crew forgets.",
+    "objectives": ["Every damaged structure searched and marked", "Downed lines reported, marked and kept clear", "One route to the hospital open for ambulances", "A shelter open for homes without power or a roof"],
+    "notes": "Every line is live. Chainsaw PPE on. Watch for the next cell.", "rotation": 0, "scene": 12,
+    "bring": "Chainsaw PPE, lights, rain gear, marking paint, water", "places": ["icp", "staging", "shelter", "pod"], "units": ["engine", "search", "drone", "pump", "ambulance", "volunteer"] },
+  "winter": { "why": "Who dies in a winter storm: the person on oxygen when the power goes, and the family with the generator in the garage. The list has an order now, and the generator check is an objective, not only a warning.",
+    "objectives": ["A warming shelter open and staffed before dark", "Every welfare check on the list made, oxygen homes first", "One route to the hospital kept open", "Generators and grills outside at every home checked"],
+    "notes": "Cold kills slowly: rotate crews in. Generators and grills outside, never in.", "rotation": 0, "scene": 12,
+    "bring": "Layers, hand warmers, chains, a shovel, a hot drink", "places": ["icp", "staging", "shelter", "pod"], "units": ["engine", "ambulance", "volunteer", "shelter_desk"] },
+  "fire": { "why": "A structure fire crew works primary search, confinement, exposures, utilities and rehab, in that order; \"everyone out and counted\" named the first without the search, and rehab was missing.",
+    "objectives": ["Primary search done and everyone counted", "The fire held to the building, exposures covered", "Utilities off at the building", "Every crew through rehab after two bottles"],
+    "notes": "Collapse zone marked and kept. Air checked. PAR every twenty minutes.", "rotation": 0, "scene": 12,
+    "bring": "Spare bottles, rehab water, a thermal camera", "places": ["icp", "staging"], "units": ["engine", "ambulance"] },
+  "hazmat": { "why": "Identify from a distance, isolate, then decide; decon before anyone goes in. Shelter in place is the other answer for downwind homes, and upstream matters as much as upwind.",
+    "objectives": ["The product named from a distance before anyone goes in", "Hot, warm and cold zones set, marked and held", "Downwind homes emptied or told to shelter in place", "Decon set up before the first entry"],
+    "notes": "Upwind, uphill, upstream. Nobody in without the right suit and a partner.", "rotation": 0, "scene": 12,
+    "bring": "Binoculars, the ERG, the suits for the level, decon water", "places": ["icp", "staging", "shelter", "hospital"], "units": ["engine", "ambulance"] },
+  "collapse": { "why": "Surface victims come out before anyone goes into a void, and utilities go off before anyone goes in at all; the old row had the voids and the utilities, not the order. Listening needs quiet.",
+    "objectives": ["Everyone who was inside accounted for, by name", "Surface victims out first, then the voids searched and marked", "Utilities off at the building before anyone goes in", "Nothing entered that is not shored"],
+    "notes": "A second collapse is likely. Nobody under anything unshored. Quiet for listening.", "rotation": 0, "scene": 12,
+    "bring": "Helmets, dust masks, marking paint, lights, a pry bar", "places": ["icp", "staging", "hospital"], "units": ["search", "k9", "drone", "engine", "ambulance"] },
+  "crash": { "why": "The old row read well. A patient's line now says where it ends, the road stays closed until the last one has gone, and batteries join fuel and the load.",
+    "objectives": ["Every patient triaged, tagged and on the way to hospital", "The road closed both ways until the last patient has gone", "Fuel, batteries and the load made safe"],
+    "notes": "Traffic is the second crash. Vests on, a blocker across the lane.", "rotation": 0, "scene": 12,
+    "bring": "Vests, cones, lights, triage tags", "places": ["icp", "staging", "hospital"], "units": ["ambulance", "engine"] },
+  "utility": { "why": "A long outage is about the people whose machines stopped: oxygen, dialysis, the water plant. Dark signals are the crash nobody counts.",
+    "objectives": ["Hospitals, nursing homes and the water plant checked for power", "Oxygen and dialysis patients on the list reached first", "A warming or cooling shelter open, with power", "Water and ice at a point of distribution"],
+    "notes": "Generators mean carbon monoxide. Downed lines are live. Dark signals: four-way stops.", "rotation": 0, "scene": 12,
+    "bring": "CO meters, lights, water, the list of who is on oxygen", "places": ["icp", "shelter", "pod"], "units": ["volunteer", "shelter_desk", "engine", "ambulance"] },
+  "mci": { "why": "START triage has a clock and a rule, triage without treating; the treatment areas and the dead apart are what the first fifteen minutes build. Families to one place is the question the scene gets most.",
+    "objectives": ["Every patient triaged and tagged in the first fifteen minutes", "Treatment areas set: red, yellow, green, the dead apart", "Moved by priority, the hospitals told what is coming", "The scene held secure, families sent to one place"],
+    "notes": "Scene secure before entry. Gloves and eye protection. Triage, do not treat.", "rotation": 0, "scene": 12,
+    "bring": "Triage tags, tape for the areas, gloves, blankets", "places": ["icp", "staging", "hospital"], "units": ["ambulance", "engine"] },
+  "outbreak": { "why": "Contact tracing has a deadline, a point of distribution is judged by its line, and the public hears one message or none. Symptomatic staff go home: the rule that keeps a shelter from becoming the outbreak.",
+    "objectives": ["Every case listed and its contacts reached within a day", "A point of distribution open and its line moving", "Shelter and desk staff in the right PPE every shift", "One message to the public, said the same everywhere"],
+    "notes": "Masks and distance. Hands washed between people. Anyone with symptoms goes home.", "rotation": 0, "scene": 12,
+    "bring": "Masks, gloves, sanitiser, a thermometer", "places": ["icp", "pod", "shelter", "hospital"], "units": ["volunteer", "shelter_desk", "ambulance"] },
+  "swift": { "why": "The search starts at the last seen point and runs downstream; spotters at bridges and bends are how a person in the water is found. Reach, throw, row, go is the order every swift-water crew is taught.",
+    "objectives": ["The last seen point and time set, the search downstream", "Spotters downstream at every bridge and bend", "Shore first: reach, throw, row, then go", "Crews out of the water on the rotation"],
+    "notes": "PFDs on anyone near the water. Nobody in without a line.", "rotation": 45, "scene": 12,
+    "bring": "PFDs, throw bags, dry bags, a radio each, a whistle each", "places": ["icp", "ramp", "staging"], "units": ["swift_water", "boat", "drone", "k9", "ambulance"] },
+  "wilderness": { "why": "Who the person is decides where they went; hasty teams run the trails and drainages before anyone grids a segment, and a segment is not done until its coverage is said.",
+    "objectives": ["The last seen point and time set, and who the person is", "Hasty teams on the trails and drainages first", "Trails and roads out of the area watched", "Segments assigned and walked, each one's coverage reported"],
+    "notes": "Pairs, never alone. Check in on the hour. Call, then listen.", "rotation": 0, "scene": 12,
+    "bring": "Water, layers, a light, a GPS, a whistle", "places": ["icp", "staging", "helispot"], "units": ["search", "k9", "drone", "volunteer"] },
+  "urban": { "why": "A wide-area search is addresses and sectors first, the mark on every door, and the hazards a crew found written where the next crew reads them.",
+    "objectives": ["Every address in the area listed and sectored", "Every structure searched and marked at the door", "Utilities off at any structure crews go in", "Hazards on the mark and on the map"],
+    "notes": "Mark the door going in and coming out. Nobody inside alone.", "rotation": 0, "scene": 12,
+    "bring": "Marking paint, lights, dust masks, a pry bar", "places": ["icp", "staging"], "units": ["search", "k9", "drone", "engine"] },
+  "parade": { "why": "Cross streets are where a vehicle gets onto a route; medical posts need a spacing and a time; an ambulance lane is the thing a parade forgets until it needs one.",
+    "objectives": ["The route closed and held, a blocker at every cross street", "A medical post every quarter mile, staffed before the start", "An ambulance lane kept clear the whole route", "Lost children brought to one place, the place announced"],
+    "notes": "Heat and crowds. Water at every post. Watch the cross streets.", "rotation": 0, "scene": 12,
+    "bring": "Vests, water, a radio each, sunscreen", "places": ["icp", "staging", "hospital"], "units": ["ambulance", "volunteer", "engine"] },
+  "festival": { "why": "Exits are counted, lit and staffed or they are not exits; the crush happens at the stage front; and a storm cell empties a field faster than any gate can take.",
+    "objectives": ["Every exit open, lit and staffed", "The medical tent staffed through the night", "Crowd density watched at the stage front", "Lost children brought to one place"],
+    "notes": "Heat, crowds, alcohol. Count the exits. Weather empties a field fast.", "rotation": 0, "scene": 12,
+    "bring": "Vests, water, lights, a radio each", "places": ["icp", "staging", "hospital"], "units": ["ambulance", "volunteer"] },
+  "game": { "why": "A game's hazards are the walk out and the field rush, and lightning in the stands; who holds the field at the whistle is agreed with security before the gates open or not at all.",
+    "objectives": ["Traffic routes held before and after, one lane for ambulances", "Medical posts staffed in the stands before the gates open", "Exits clear through the final whistle and the walk out", "Who holds the field at the final whistle, agreed beforehand"],
+    "notes": "Crowds move at once. Keep the exits clear. Lightning clears the stands.", "rotation": 0, "scene": 12,
+    "bring": "Vests, a radio each, water", "places": ["icp", "staging", "hospital"], "units": ["ambulance", "volunteer", "engine"] }
+}
+;
+  const ORDER = [['Natural hazard', [['wildfire', 'Wildfire'], ['storm', 'Storm'], ['winter', 'Winter storm']]], ['Human-caused', [['fire', 'Structure fire'], ['hazmat', 'Hazmat'], ['collapse', 'Collapse'], ['crash', 'Crash'], ['utility', 'Utility failure']]], ['Medical and public health', [['mci', 'Mass casualty'], ['outbreak', 'Outbreak']]], ['Search and rescue', [['swift', 'Swift water'], ['wilderness', 'Wilderness'], ['urban', 'Urban']]], ['Planned event', [['parade', 'Parade'], ['festival', 'Festival'], ['game', 'Game']]]];
+  const FAC = { icp: 'Command post', staging: 'Staging area', base: 'Base', camp: 'Camp', shelter: 'Shelter', pod: 'Point of distribution', hospital: 'Hospital', ramp: 'Boat ramp', helibase: 'Helibase', helispot: 'Helispot', other: 'Other' };
+  const UN = { engine: 'engines', boat: 'boat crews', swift_water: 'swift-water teams', high_water: 'high-water vehicles', ambulance: 'ambulances', search: 'search teams', k9: 'K9 teams', drone: 'drone teams', pump: 'pump crews', shelter_desk: 'shelter desks', volunteer: 'volunteers', other: 'other units' };
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const words = (t) => String(t).trim().split(/\s+/).length;
+  let over = 0;
+  const line = (t) => { const n = words(t); if (n > 12) over++; return esc(t) + '<span class="wc' + (n > 12 ? ' bad' : '') + '">' + n + '</span>'; };
+  const lines = (arr) => arr.map(line).join('<br>');
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const row = (label, a, b, draw, changed) => '<tr><td>' + esc(label) + '</td><td>' + draw(a) + '</td><td class="p' + (changed ? ' chg' : '') + '">' + draw(b) + '</td></tr>';
+  const blocks = [];
+  for (const [group, subs] of ORDER) for (const [code, label] of subs) {
+    const t = TODAY[code], p = PROPOSED[code];
+    if (!t || !p) continue;
+    blocks.push('<div class="rr"><div class="k">' + esc(label) + ' <span class="sub">· ' + esc(group) + '</span></div><table class="st"><thead><tr><th style="width:13%">Item</th><th style="width:42%">Today</th><th>Proposed</th></tr></thead><tbody>'
+      + row('Adds to the standing three', t.objectives, p.objectives, lines, !same(t.objectives, p.objectives))
+      + row('Safety message', t.notes, p.notes, line, t.notes !== p.notes)
+      + row('Water · hours', t, p, (x) => esc((x.rotation ? x.rotation + 'm' : 'off') + ' · ' + x.scene + 'h'), t.rotation !== p.rotation || t.scene !== p.scene)
+      + row('Bring', t.bring, p.bring, line, t.bring !== p.bring)
+      + row('Place first', t.places, p.places, (x) => esc(x.map((c) => FAC[c] || c).join(', ')), !same(t.places, p.places))
+      + row('Expect', t.units, p.units, (x) => esc(x.map((u) => UN[u] || u).join(', ')), !same(t.units, p.units))
+      + '<tr><td colspan="3" class="why"><b>Why.</b> ' + esc(p.why) + '</td></tr></tbody></table></div>');
+  }
+  const body = document.getElementById('rr-body'); if (body) body.innerHTML = blocks.join('');
+  const o = document.getElementById('rr-over'); if (o) o.textContent = over + ' line' + (over === 1 ? '' : 's') + ' over twelve words';
+})();
 </script>
 </body>
 </html>

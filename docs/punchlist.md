@@ -1511,8 +1511,16 @@ pass and the three unused ones removed; the pictures named for what they show, s
 `setClockUtc` / `clockUtcOn` / `hourOf` / `sameDay` / `timesLine` and the mode in `hhmm`, `dateText`, `dayHhmm` and
 `revisitWords` in rules.js; the hour line, the forms' heads and the boxes' labels in ui.js; the click, the title, the
 toast and the public set's file name in main.js; `dev/front-shots.py` and the five pictures; index.html's alt texts;
-the rules tests' v81 block; the `seeded` suite's four v81 checks; `npm run check` and `npm test` pass. Not yet landed: the build session stopped on a usage limit before its full headless smoke run finished, and its work was committed on branch `leftovers` by the coordinating chat. The targeted headless run on the v81 tree was 290 of 292, the two misses the `log` suite's star checks, and `log` alone 23 of 23. Still to do before landing: the full headless run with every missed suite rerun alone, and a look at the five pictures at their sizes on the front door (base-map was looked at, and reads). No
-migration, no rule test.
+the rules tests' v81 block; the `seeded` suite's four v81 checks; `npm run check` and `npm test` pass. The build session stopped on a usage limit during its full headless run, and the
+coordinating chat committed its work on branch `leftovers` so it would survive; the session then finished the run on
+that commit's tree (served on 8770): 914 of 923 across 42 suites, the misses rerun alone, `evacuees` 54 of 54, `log`
+23 of 23, `walkfix` 46 of 46, and `tags` 36 of 37 twice then 37 of 37 (its "a voided band is refused on the phone"
+types the band before the void reaches the phone frame, which then shows the camera's own failure words; the race the
+handoff records at v75; `main` at v80 passed it twice alone). Every printed form opened in each clock in headless
+Chrome, each head saying which, the planned end's box labelled "(local)" with UTC on. The five pictures looked at on the
+front door at 1280: the hero and steps 2 and 3 read; step 1's tile (4:3, cropping the 16:10 shot at both sides) cut the
+codes' card at its right edge, so that tile is anchored right (`.shot.right`), in a second commit. No migration, no rule
+test.
 
 ## Done before this list
 

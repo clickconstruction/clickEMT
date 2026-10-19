@@ -11,8 +11,8 @@ Two views of one incident: the base (the map at the command post) and the phone 
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
 - `main` is at **v80**, "The header in four groups, and a quieter first minute", live since late morning on 19
-  October. **v81**, "Every time in UTC, and the front door's pictures", is built and committed on branch `leftovers`,
-  one commit ahead of `main`, and **not landed**: its full smoke run comes first. That is the first item under
+  October. **v81**, "Every time in UTC, and the front door's pictures", is built on branch `leftovers`, two commits
+  ahead of `main`, its full smoke run made and its pictures looked at; **not landed** until `main` is fast-forwarded. That is the first item under
   [Open work, in order](#open-work-in-order).
 - The first six things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
@@ -64,11 +64,12 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   - v80 The header in four groups (This period · Boards · Forms · The day, the gear beside the pills) and a quieter
     first minute on a fresh incident (section 39, `leftovers.html`).
   - Also that day: `dev/smoke-headless.py` (`npm run smoke`), and the Google Maps key in `config.js`.
-- **Branch `leftovers`**, one commit ahead of `main`: v81, every time in UTC on the clock's click, with Z, and the front door's
+- **Branch `leftovers`**, two commits ahead of `main`: v81, every time in UTC on the clock's click, with Z, and the front door's
   pictures re-shot by `dev/front-shots.py`. Check and test pass; a targeted headless run was 290 of 292, the misses
-  the `log` suite's star checks, and `log` passed 23 of 23 alone. The full headless run was not made: its build
-  session stopped on a usage limit, and the coordinating chat committed its work so it would survive the hand-off.
-  Punchlist section 40 says what is left.
+  the `log` suite's star checks, and `log` passed 23 of 23 alone. Its build session stopped on a usage limit, the
+  coordinating chat committed its work so it would survive, and the session then made the full headless run, 914 of
+  923, every missed suite passing alone (punchlist section 40), and anchored step 1's picture in a second commit.
+  Punchlist section 40 has the counts.
 - **The database:** Supabase project `cjwybuhogxyayjnuxpem` ("charity-tooling"). Migrations `0001` to `0039` in
   `supabase/migrations/` are all applied, by hand with `dev/sbq.py`, and are **not** recorded in
   `supabase_migrations.schema_migrations`, so check for an object (a table, a column, a function) rather than
@@ -167,10 +168,9 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 The product owner set this order on 19 October.
 
-1. **Land v81.** On branch `leftovers`: rebase on `main` if it moved, serve the checkout on its own port, run the
-   full headless smoke run, rerun each missed suite alone, look at the five pictures in `images/front/` at their
-   sizes on the front door, fill section 40's counts, then fast-forward `main`, run check and test, push, and confirm
-   `https://clickemt.com/sw.js` reads `v81`. Then "main is at" here.
+1. **Land v81.** Branch `leftovers` has had its full headless run, its reruns, the look at the five pictures and
+   section 40's counts. What is left: fast-forward `main` to it (`git merge --ff-only`), run check and test, push, and
+   confirm `https://clickemt.com/sw.js` reads `v81`. Then "main is at" here.
 2. **The sign-in settings** on the shared project, the list above: an SMS provider, `{{ .Token }}` in the Magic Link
    template, custom SMTP. Each on the owner's word, in the Supabase dashboard with the owner signed in, and each
    written down here once changed.

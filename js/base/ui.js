@@ -222,7 +222,7 @@ export function layersPopHtml(data, state) {
     </div>    <div class="lp-col">
       <div class="k">Map underneath</div>
       ${availableLayers().map((l) => `<label class="lp-row"><input type="radio" name="base-layer" value="${l.id}" data-action="layer-pick" data-layer="${l.id}"${cur === l.id ? ' checked' : ''}><span class="lp-name">${esc(l.name)}</span><span class="muted">${esc(l.source || '')}</span></label>`).join('')}
-      ${googleKey() ? '' : '<div class="muted lp-note">Google Maps streets and satellite appear here once a Map Tiles API key is set in config.js.</div>'}
+      ${googleKey() ? '' : '<div class="muted lp-note">Google Maps streets and satellite appear here once a Map Tiles API key is pasted into Incident settings, under the gear (Test the key is beside the box).</div>'}
     </div>`;
 }
 
@@ -786,26 +786,44 @@ export function form211Sections(data) {
   const creds = data.credentials();
   const members = data.members().sort((a, b) => (a.role === 'ops') - (b.role === 'ops') || (a.unit_name || '').localeCompare(b.unit_name || '')).filter((m) => !m.rides_with && (m.role === 'unit' || data.unitPeople(m.user_id).length));
   const personLine211 = (px) => { const q = qualsTextWith(px, creds); return px.name + (px.role ? ', ' + px.role : '') + (q ? ' · ' + q : '') + (px.claimed_by ? ' · own account' : ''); };
+  // the page draws each unit as a table (v71): the unit's lines (who checked it in, what it left undone) and a row per
+  // person; the text (the copy, the email) keeps the lines below, so figureOnly tells sectionsHtml to draw the figure alone
+  const cell211 = (px, m) => {
+    const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
+    const tg = tagOf(data.tags(true), { personId: px.id }), sn = tg ? lastSeen(data.seen(), [tg.id]) : null;
+    const sub = [px.agency && px.agency !== m.agency ? px.agency : '', buddy ? 'with ' + buddy.name : '', px.claimed_by ? 'own account' : '', px.notes || ''].filter(Boolean).join(' · ');
+    return `<tr${px.checked_out_at ? ' class="out"' : ''}><td><b>${esc(px.name)}</b>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</td><td>${esc(px.role || '')}</td><td>${esc(qualsTextWith(px, creds))}</td><td class="t">${hhmm(px.checked_in_at)}</td><td>${esc(onSceneText(px))}</td><td>${tg ? esc(bandLabel(tg) + (sn ? ', ' + lastSeenText(sn, seenOpts(data)) : '')) : ''}</td><td class="t">${px.checked_out_at ? hhmm(px.checked_out_at) : ''}</td></tr>`;
+  };
+  const table211 = (m, rows, head) => head.map((l) => `<p>${esc(l)}</p>`).join('') + (rows.length
+    ? `<table class="t211"><thead><tr><th>Name</th><th>Rank</th><th>Qualifications</th><th>Checked in</th><th>On scene</th><th>Band, last seen</th><th>Out</th></tr></thead><tbody>${rows.map((px) => cell211(px, m)).join('')}</tbody></table>`
+    : `<p class="muted">${esc(m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`)}</p>`);
   for (const m of members) {
     const rows = data.unitPeople(m.user_id);
     const zone = data.zones().find((z) => z.assigned_to === m.user_id && z.status === 'active');
+    const head = [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${identityGiven(p) ? (p.verified_at ? ', verified' : ', not verified') : ', ' + NO_ID_TEXT + (p.verified_at ? ', verified in person' : ', not verified')}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean);
     S.push({ title: `${unitWithKind(m)}${m.agency ? ' · ' + m.agency : ''} · ${STATUS_LABEL[m.status] || m.status}${zone ? ' · ' + zone.code : ''}${m.status === 'checked_out' && m.checked_out_at ? ' ' + hhmm(m.checked_out_at) : ''}`,
-      lines: [(() => { const p = data.profileOf(m.user_id); return p ? `Checked in by ${p.full_name}${p.phone ? ', ' + p.phone : ''}${p.licence_number ? ', licence ' + p.licence_state + ' ' + licenceTail(p.licence_number) : ''}${identityGiven(p) ? (p.verified_at ? ', verified' : ', not verified') : ', ' + NO_ID_TEXT + (p.verified_at ? ', verified in person' : ', not verified')}` : 'Checked in by an account with no identity given'; })(), (m.status === 'checked_out' && m.demob && Array.isArray(m.demob.open) && m.demob.open.length ? 'At check-out, not done: ' + m.demob.open.join(', ') + (m.demob.note ? ' · for the next crew: ' + m.demob.note : '') : null)].filter(Boolean).concat(rows.length ? rows.map((px) => {
+      lines: head.concat(rows.length ? rows.map((px) => {
         const buddy = px.buddy_id ? data.person(px.buddy_id) : null;
         const tg = tagOf(data.tags(true), { personId: px.id }), sn = tg ? lastSeen(data.seen(), [tg.id]) : null;   // v55
         return `${personLine211(px)}${px.agency && px.agency !== m.agency ? ' · ' + px.agency : ''} · checked in ${hhmm(px.checked_in_at)} · ${px.checked_out_at ? 'checked out ' + hhmm(px.checked_out_at) : 'on scene ' + onSceneText(px)}${buddy ? ' · with ' + buddy.name : ''}${tg ? ' · band ' + bandNumber(tg.number) + (sn ? ', ' + lastSeenText(sn, seenOpts(data)) : '') : ''}${px.notes ? ' · ' + px.notes : ''}`;
-      }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]) });
+      }) : [m.crew ? `No names on record · crew as typed: ${m.crew}${m.crew_count != null ? ' · ' + m.crew_count + ' people' : ''} · checked in ${hhmm(m.joined_at)}` : `No names on record · checked in ${hhmm(m.joined_at)}`]),
+      figure: table211(m, rows, head), figureOnly: true });
   }
   const on = data.peopleOn();
   const byAgency = new Map();
   for (const px of all) byAgency.set(px.agency || 'No agency named', (byAgency.get(px.agency || 'No agency named') || 0) + 1);
   const quals = QUALIFICATIONS.map(([q, label]) => [label, on.filter((px) => (px.qualifications || []).includes(q)).length]).filter((x) => x[1] > 0);
+  const agencies = [...byAgency.entries()].sort((a, b) => b[1] - a[1]);
+  const legend = all.some((px) => px.claimed_by) ? '✓ confirmed by Operations · (pending) submitted, not yet confirmed · (not accepted) refused, the reason on the person\'s card · a plain word is the lead\'s' : null;
+  const trow = (k, v) => `<tr><th>${esc(k)}</th><td class="n">${esc(String(v))}</td></tr>`;
   S.push({ title: 'Totals', lines: [
     `${all.length} ${all.length === 1 ? 'person' : 'people'} checked in on ${data.units().length} unit${data.units().length === 1 ? '' : 's'} · ${on.length} on scene · ${all.length - on.length} checked out`,
-    all.length ? 'By agency: ' + [...byAgency.entries()].sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a} ${n}`).join(' · ') : null,
+    all.length ? 'By agency: ' + agencies.map(([a, n]) => `${a} ${n}`).join(' · ') : null,
     quals.length ? 'On scene by qualification: ' + quals.map(([l, n]) => `${l} ${n}`).join(' · ') : null,
-    all.some((px) => px.claimed_by) ? '✓ confirmed by Operations · (pending) submitted, not yet confirmed · (not accepted) refused, the reason on the person\'s card · a plain word is the lead\'s' : null
-  ].filter(Boolean) });
+    legend
+  ].filter(Boolean),
+  // the page's totals as a small table (v71): the counts, then a row per agency and per qualification on scene
+  figure: `<table class="t211 t211-totals"><tbody>${trow('Checked in', all.length)}${trow('On scene', on.length)}${trow('Checked out', all.length - on.length)}${trow('Units', data.units().length)}${agencies.length ? '<tr class="grp"><th colspan="2">By agency</th></tr>' + agencies.map(([a, n]) => trow(a, n)).join('') : ''}${quals.length ? '<tr class="grp"><th colspan="2">On scene by qualification</th></tr>' + quals.map(([l, n]) => trow(l, n)).join('') : ''}</tbody></table>${legend ? `<p class="muted">${esc(legend)}</p>` : ''}`, figureOnly: true });
   return S;
 }
 
@@ -1644,11 +1662,12 @@ export function iapSections(data) {
   return S;
 }
 
-// A section is its title and lines; one may also carry a figure (the division's map, already
-// HTML), which the page draws after the lines and the text leaves out.
+// A section is its title and lines; one may also carry a figure (the division's map, the 211's table, already
+// HTML), which the page draws after the lines and the text leaves out; with figureOnly (v71) the page draws the
+// figure in place of the lines, which the text keeps.
 // A line that starts with two spaces is drawn indented under the line before (a person under a unit).
 // A line that starts with "! " is a warning (something missing), drawn orange; the text keeps the mark.
-function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${s.lines.map((l) => { const depth = (/^( *)/.exec(l)[1].length / 2) | 0; return `<p${l.startsWith('! ') ? ' class="warn"' : depth >= 2 ? ' class="sub sub2"' : depth === 1 ? ' class="sub"' : ''}>${esc(l.trim().replace(/^! /, ''))}</p>`; }).join('')}${s.figure || ''}</section>`).join(''); }
+function sectionsHtml(S) { return S.map((s) => `<section${s.figure ? ' class="has-map"' : ''}><h2>${esc(s.title)}</h2>${(s.figureOnly ? [] : s.lines).map((l) => { const depth = (/^( *)/.exec(l)[1].length / 2) | 0; return `<p${l.startsWith('! ') ? ' class="warn"' : depth >= 2 ? ' class="sub sub2"' : depth === 1 ? ' class="sub"' : ''}>${esc(l.trim().replace(/^! /, ''))}</p>`; }).join('')}${s.figure || ''}</section>`).join(''); }
 function sectionsText(S) { return S.map((s) => s.title.toUpperCase() + '\n' + s.lines.map((l) => '  ' + l).join('\n')).join('\n\n'); }
 
 export function briefingHtml(data) { return sectionsHtml(briefingSections(data)); }

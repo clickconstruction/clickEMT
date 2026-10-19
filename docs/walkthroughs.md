@@ -1516,3 +1516,26 @@ screenshots).
 - **A pickup typed in words has no dot**, so Bus 2's line starts at the vehicle; a pickup clicked on the map is still section 15's item from v54.
 - **Two runs to one shelter** stack two rings on its mark; the colours tell them apart, the hover names them.
 - **Two runs on one phone** (Unit 2 driving Bus 2 and Van 4 in the suite) stack two pills; the second is read on hover.
+
+## Re-walk after v71
+
+The 211 as a table: the clerk printing the Check-in list at the end of the period, Priya reading it for the
+qualifications, Marcus checking who is still on scene, the administrator with the emailed copy, walked on 2026-10-18 in
+the mock at 1280 × 820 (the page in light and in dark, the print preview through headless Chrome; the words read through
+the `people`, `rewalks`, `tags` and `credentials` suites).
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The page | the clerk | Under "Unit 1, engine · Cedar Fork Fire Department · Assigned · A-1": "Checked in by Ana Ramirez, 512 555 0111, licence TX ···3746, verified", then a table, Name · Rank · Qualifications · Checked in · On scene · Band, last seen · Out, Ramirez (Lt., swift water, EMT ✓, own account under the name) and Okafor (paramedic, boat, with Ramirez) each a row. Three tables, then Totals as a small table: Checked in 6, On scene 6, Checked out 0, Units 3, By agency, On scene by qualification. | Clear |
+| Who is out | Marcus | A checked-out person's row is grey with the time in Out; a unit that checked out keeps "At check-out, not done: …" above its table. | Clear |
+| The bands | Priya | Band 001, seen entering A-1 15:03 in its own column, "no band" nowhere: the cell is empty. | Clear |
+| The paper | the clerk | Print preview: plain grey borders, the header row grey, each unit on one page where it fits, the header repeated when a table breaks. Light on paper whatever the screen. | Clear |
+| The email | the administrator | The emailed copy and Copy are the lines as before, "Ramirez, Lt. · swift water, EMT ✓ · own account · checked in 16:15 · on scene 3 h 2 min · with Okafor · band 001, seen entering A-1 15:03", nobody twice. | Clear |
+| Dark | the clerk | The table's borders and the grey header follow the theme; the ✓ reads. | Clear |
+| The Layers note | Marcus | "Google Maps streets and satellite appear here once a Map Tiles API key is pasted into Incident settings, under the gear (Test the key is beside the box)." | Clear |
+
+**Still bites, small:**
+
+- **Seven columns at 870 px**: a long qualifications list or a long band line wraps to two lines in its cell; the page stays whole.
+- **A rider's row** (v69) is a person row under the unit, as on the board; nothing marks that the phone is theirs beyond "own account".
+- **No hours column**: On scene is the current stretch's words; the Hours sheet has the totals per person.

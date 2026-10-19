@@ -28,6 +28,9 @@ function autoConfirm(on) {
   autoConfirmObs = new MutationObserver(press); autoConfirmObs.observe(dlg, { attributes: true, attributeFilter: ['open'] }); press();
 }
 const logTexts = () => $$('#log .log-row').map((r) => r.innerText.replace(/\s+/g, ' ').trim());
+// the 211's tables (v71): the row whose name cell starts with the name, and a row's cells as lower-case text
+const row211 = (name) => $$('#briefing-page .t211 tbody tr').find((r) => r.children[0].textContent.trim().toLowerCase().startsWith(name.toLowerCase())) || null;
+const cells211 = (name) => { const r = row211(name); return r ? [...r.children].map((c) => c.innerText.replace(/\s+/g, ' ').trim().toLowerCase()) : []; };
 const eventText = (data, t) => data.events().find((e) => e.text === t) || null;
 const uuid = () => crypto.randomUUID();
 const tinyPng = () => new Promise((resolve) => { const c = document.createElement('canvas'); c.width = 40; c.height = 30; const g = c.getContext('2d'); g.fillStyle = 'rgba(90,120,80,0.8)'; g.fillRect(0, 0, 40, 30); c.toBlob(resolve, 'image/png'); });
@@ -602,7 +605,17 @@ async function people(check) {
 
   $('#people [data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', 'check-in list (ics 211)'));
-  check('Print 211 lists everyone by unit with when they checked in and out, and the totals', ['check-in list, ics 211', 'unit 1, engine · cedar fork fire department · assigned · a-1', 'ramirez, lt. · swift water, emt ✓ · own account · checked in', 'on scene', 'smith, probie · rope · checked in', 'checked out', 'unit 2, boat crew · travis county rescue', 'nguyen, capt. · swift water, boat (pending) · own account', 'with patel', 'new guy, driver · checked in', 'totals', '8 people checked in on 3 units · 7 on scene · 1 checked out', 'by agency: cedar fork fire department 6 · travis county rescue 2', 'on scene by qualification: swift water 3'].every((t) => has('#briefing-page', t)), text('#briefing-page').slice(0, 900));
+  check('Print 211 is a table per unit under the unit\'s line (v71): a row per person with name, rank, qualifications, checked in, on scene, band and out, the checked-out greyed, nobody listed twice, and the totals as a small table', (() => {
+    const ram = cells211('ramirez'), smith = cells211('smith'), ngu = cells211('nguyen'), ng = cells211('new guy');
+    return has('#briefing-page', 'check-in list, ics 211', 'unit 1, engine · cedar fork fire department · assigned · a-1', 'unit 2, boat crew · travis county rescue', 'totals')
+      && $$('#briefing-page .t211').length === 4 && $$('th', $('#briefing-page .t211 thead')).map((h) => h.textContent).join('|') === 'Name|Rank|Qualifications|Checked in|On scene|Band, last seen|Out'
+      && ram[0].startsWith('ramirez') && ram[0].includes('own account') && ram[1] === 'lt.' && ram[2] === 'swift water, emt ✓' && /^\d\d:\d\d$/.test(ram[3]) && /^\d+ (h|min)/.test(ram[4]) && ram[6] === ''
+      && smith[0].startsWith('smith') && smith[1] === 'probie' && smith[2] === 'rope' && /^\d\d:\d\d$/.test(smith[6]) && row211('smith').classList.contains('out')
+      && ngu[1] === 'capt.' && ngu[2] === 'swift water, boat (pending)' && ngu[0].includes('with patel') && ngu[0].includes('own account')
+      && ng[0].startsWith('new guy') && ng[1] === 'driver'
+      && !has('#briefing-page', 'ramirez, lt. · swift water') && !has('#briefing-page', '8 people checked in on 3 units')
+      && has('#briefing-page .t211-totals', 'checked in 8', 'on scene 7', 'checked out 1', 'units 3', 'by agency', 'cedar fork fire department 6', 'travis county rescue 2', 'on scene by qualification', 'swift water 3');
+  })(), JSON.stringify([cells211('ramirez'), cells211('smith'), cells211('nguyen')]) + ' · ' + text('#briefing-page .t211-totals'));
   $('[data-action="close-briefing"]').click();
   await until(() => $('#briefing').hidden);
   $('#people [data-action="close-people"]').click();
@@ -1771,7 +1784,7 @@ async function rewalks(check) {
   check('the board counts the current stretch: "0 min · back in" on the line, "0 min, since now · back in" in the drawer', await until(() => /0 min · back in/.test(text(`#people-page .pp-line[data-person="${PPL[2]}"]`))) && await (async () => { $(`#people-page .pp-line[data-person="${PPL[2]}"]`).click(); return until(() => /0 min, since \d\d:\d\d · back in/.test(text(`#people-page .pp-drawer[data-person="${PPL[2]}"]`))); })(), text(`#people-page .pp-line[data-person="${PPL[2]}"]`));
   $('[data-action="print-211"]').click();
   await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
-  check('the 211 keeps every stretch: checked in at the first check-in', has('#briefing-page', 'nguyen, capt. · swift water, boat (pending) · own account · checked in ' + new Date(was).toTimeString().slice(0, 5)), text('#briefing-page').slice(0, 500));
+  check('the 211 keeps every stretch: checked in at the first check-in', cells211('nguyen')[3] === new Date(was).toTimeString().slice(0, 5) && cells211('nguyen')[1] === 'capt.' && cells211('nguyen')[2] === 'swift water, boat (pending)', JSON.stringify(cells211('nguyen')));
   $('[data-action="close-briefing"]').click(); await until(() => $('#briefing').hidden);
   $('[data-action="close-people"]').click(); await until(() => $('#people').hidden);
   // they're all found: a crew whose whole boat was out of contact, one press on the base
@@ -2245,7 +2258,7 @@ async function credentials(check) {
     check('the board\'s chips follow: Rosa "EMT ✓" with own account on Unit 2\'s card, Nguyen "Boat ✗" with the reason in the title, and nothing to confirm', await until(() => { const r = base.people().find((p) => p.name === 'Rosa Alvarez'); return r && chips(r.id).join('|') === 'EMT ✓' && !!row(r.id).querySelector('.pp-own') && row(r.id).closest('.pp-card').dataset.unit === U.unit2; }, 10000) && chips(PPL[2]).join('|') === 'Swift water|Boat ✗' && row(PPL[2]).querySelector('.badge.cred-rejected').title === 'not accepted: expired' && has('#people-page', 'nothing to confirm'), chips(PPL[2]).join('|'));
     $('#people .briefing-bar [data-action="print-211"]').click();
     await until(() => !$('#briefing').hidden && has('#briefing-title', '211'));
-    check('the 211 prints the confirmed with a tick, the refused marked, a plain word the lead\'s, own account on her line, and the legend', has('#briefing-page', 'rosa alvarez · emt ✓ · own account') && has('#briefing-page', 'nguyen, capt. · swift water, boat (not accepted) · own account') && has('#briefing-page', 'okafor · boat, paramedic') && has('#briefing-page', '✓ confirmed by operations · (pending) submitted'), (text('#briefing-page').match(/rosa alvarez[^\n]{0,120}/) || [''])[0]);
+    check('the 211 prints the confirmed with a tick, the refused marked, a plain word the lead\'s, own account under her name, and the legend', cells211('rosa alvarez')[2] === 'emt ✓' && cells211('rosa alvarez')[0].includes('own account') && cells211('nguyen')[2] === 'swift water, boat (not accepted)' && cells211('nguyen')[0].includes('own account') && cells211('okafor')[2] === 'boat, paramedic' && has('#briefing-page', '✓ confirmed by operations · (pending) submitted'), JSON.stringify([cells211('rosa alvarez'), cells211('nguyen'), cells211('okafor')]));
     $('[data-action="close-briefing"]').click();
     closeBoard();
     // the division's hover card gains who is qualified for what

@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v71**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v72**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0038**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -48,6 +48,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 27 | v68 Need help now: what's wrong and what you need, two rows of chips on the emergency sheet (shipped 18 October) | small | v67 | Ana, Moreno, Marcus, every phone |
 | 28 | v69 Claim a band, submit licences, Operations confirms: the band as the door, credentials on the account, pending until confirmed (built 18 October) | medium, v55-sized | v68 | Rosa, the newcomer, Reyes, Marcus, Priya, the clerk |
 | 29 | v70 A transport on the map: every open run as a dashed line and a pill, the bus where the driver's phone is (shipped 18 October) | small | v69 | Marcus, his relief, the IC, the desk, a driver |
+| 30 | v71 The 211 as a table: a table per unit, the totals as a small one, the text and the email keeping the lines (shipped 18 October) | small | v70 | the clerk, Priya, Marcus, the administrator |
 
 ---
 
@@ -470,11 +471,6 @@ list is what Todd marked walking the base at v59 on 18 October that v60 did not 
 
 **From Todd's walk at v59, mocked up and waiting:**
 
-- **The 211 as a table** (Todd, 18 October, of the printed Check-in list: "I like the idea of this but I don't like
-  the execution"): the 211 is a form and forms are tables; today it is the same run of "·"-separated lines every paper
-  uses. A table per unit (Name · Rank · Qualifications · Checked in · On scene · Band, last seen · Out) under a one-line
-  unit header, the totals as a small table; the text and email versions keep the lines. The papers already take a
-  `figure` per section. Not drawn yet.
 - **The People board's bar and tabs** (Todd, 18 October): Close wraps to a second row at the left while Print 211 is cut
   off at the right; the qualification chips and the search sit above both tabs though they filter only People, and a lit
   chip stays lit on Members. The tabs first, the search and chips inside the People tab, Close last at the right. Sent
@@ -1023,6 +1019,36 @@ the blank click in js/base/main.js; `runShowBtn` on the board's rows and the hom
 js/base/ui.js; `.tr-mark` / `.tr-line` / `.sw.run` / `.tr-home` in base.css; the legend entry in index.html; the mock
 gives Bus 2 Unit 2 as its driver, so its phone is the bus (`SEED_VERSION` 35); the `transports` smoke suite gains 11
 checks (45). Full run 838 of 838 across 40 suites; check and test pass; no migration.
+
+## 30. v71 The 211 as a table
+
+**Why.** Todd, 18 October, of the printed Check-in list: "I like the idea of this but I don't like the execution." The
+211 is a form, and forms are tables; it was the same run of "·"-joined lines every paper uses, a person's eight facts in
+one sentence, eight sentences under a unit.
+
+**Built.** On the page and on paper, each unit is a table under its line: the unit's heading as before ("Unit 1, engine
+· Cedar Fork Fire Department · Assigned · A-1"), then "Checked in by …" with the identity words and, for a checked-out
+unit, what it left undone, then one row per person: Name (the agency when it differs from the unit's, the buddy, "own
+account" and the notes in small type under it) · Rank · Qualifications (v69's ✓ and (pending) as before) · Checked in ·
+On scene · Band, last seen · Out. A checked-out person's row is grey. A unit with no names keeps its one line. The totals
+are a small two-column table: Checked in, On scene, Checked out, Units, then a row per agency and per qualification on
+scene; the credentials legend under it. Nobody is printed twice: the page draws the table in place of the person lines.
+The copy and the email (`form211Text`) keep every line word for word, so the suites that read the 211's words still do.
+Print CSS gives the tables plain grey borders, repeats the header row on a new page and keeps a row whole; a unit's
+section is kept on one page where it fits (the `has-map` rule a figure already had). Rides along: the Layers panel's note
+now says a Map Tiles API key is pasted into Incident settings, under the gear, not "set in config.js" (true since v28).
+
+*Decided:* one flag on a section, `figureOnly`, so `sectionsHtml` draws the figure in place of the lines and
+`sectionsText` never sees it; the unit's own lines (who checked it in, what it left undone) ride inside the figure as
+paragraphs, so the table sits under them as on a paper form; the buddy, the agency and the notes go under the name
+rather than into three more columns, which would not fit 870 px; the totals as rows, not a sentence. Not built: a
+signature line per person, a column for the hours (the Hours sheet has them).
+
+**Shipped** 18 October 2026 as `The 211 as a table (v71)`: `form211Sections` (`cell211`, `table211`, the totals'
+`figure`) and `sectionsHtml`'s `figureOnly` in js/base/ui.js; `.t211` / `.t211-totals` and their print rules in
+base.css; the Layers note in `layersPopHtml`; `row211` / `cells211` in dev/smoke.js, the `people`, `rewalks` and
+`credentials` suites' 211 checks reading the rows. Full run 838 of 838 across 40 suites; check and test pass; no
+migration.
 
 ## Done before this list
 

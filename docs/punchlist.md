@@ -516,6 +516,11 @@ Walk first, then rank, as before.
 - **A checked-out membership still lists under "Incidents you are already in"** (Reyes; v53). One tap reopens it and
   the check-in brings the people back.
 - **A unit's invitation opened on a laptop** lands on the base as a unit (v56). The link sends units to the field app.
+- **The incident line, broken out** (the walk at v74, 18 October: "too much information too compacted too quickly";
+  mock-up `try/mockups/incident-line.html`, not yet decided): the header's second line keeps what changes (the period,
+  overdue in orange or the planned end, the units, the divisions and cleared, the hazards) and a rest of half a second
+  or a click opens a card with the whole picture broken out, six rows each with the place it is worked, Start the next
+  period on it when overdue; the times, the IC and the base move to the card. No migration; a v60-sized panel.
 - **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided.
 - **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes.
 - **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes.

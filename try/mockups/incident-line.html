@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: the incident line · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- A click-through mock-up, drawn 18 October 2026 at v75 before anything is built, of the note on the base header's
+     second line: "Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4 h 8 min, IC Dana Ruiz · Base: Cedar Fork
+     High School · 3 units · 6 divisions, 1 cleared · 1 hazard open — is too much information too compacted too
+     quickly. I would like to be able to hover over this and have a modal appear of a breakout of that information."
+     The line as it is today, the line thinned to what changes with the alarm first, and the card that opens on a rest
+     or a click with the whole picture broken out, each row with a link to where it is worked. Made-up data (the mock's
+     Cedar Fork Flooding at 23:08, and the same incident at 16:20 when nothing is overdue). Nothing here writes
+     anywhere; the card's links say what they would open. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 13px; }
+  .tabs a:hover { border-color: var(--grey); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.part { margin: 0 0 34px; scroll-margin-top: 70px; }
+  .intro { max-width: 820px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2.sec .sub { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; min-width: 0; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 440px; line-height: 1.45; }
+  .screen > .cap b { color: var(--ink); }
+  .screen.w { flex: 1 1 320px; }
+  .screen.w ul { margin: 6px 0 0; padding-left: 18px; } .screen.w li { margin: 0 0 6px; }
+  .panel { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .panel.wide { width: 100%; }
+  .k { margin: 12px 0 6px; } .k:first-child { margin-top: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .decisions li { margin: 0 0 8px; line-height: 1.45; }
+  .decisions b { color: var(--ink); }
+  .chosen, .open { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; border-radius: 999px; padding: 1px 8px; vertical-align: 1px; }
+  .chosen { background: var(--tint-green); color: var(--cleared); }
+  .open { background: var(--tint-yellow); color: var(--hazard-ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .toast[hidden] { display: none; }
+
+  /* ---- the base's header, as base.css draws it (h1 17 px, the line 12.5 px muted) */
+  .hdr { position: relative; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .hdr .main { display: flex; flex-direction: column; min-width: 400px; flex: 1; }   /* base.css: wide enough that the buttons wrap under it (v60) */
+  @media (max-width: 720px) { .hdr .main { min-width: 0; flex-basis: 100%; } }
+  .hdr h1 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hdr .sub { font-size: 12.5px; }
+  .hdr .btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .hdr .btns .btn { pointer-events: none; opacity: .8; }
+  .hdr .pills { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; }
+  .hdr .pill { font-size: 12px; }
+  .hdr .pill .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--cleared-fill); margin-right: 5px; vertical-align: 0; }
+
+  /* today's line, with the seven facts marked */
+  .marks { display: flex; flex-wrap: wrap; gap: 14px 0; padding-top: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.9; }
+  .marks .f { position: relative; border-bottom: 2px solid var(--accent); padding-bottom: 1px; white-space: nowrap; }
+  .marks .f.alarm { border-bottom-color: var(--hazard); }
+  .marks .f.name { border-bottom-color: var(--grey); }
+  .marks .f.count { border-bottom-color: var(--cleared-fill); }
+  .marks .f .n { position: absolute; left: 0; top: -14px; font-size: 10px; font-weight: 700; color: var(--ink); }
+  .marks .sep { padding: 0 4px; }
+  .kinds { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  .kinds span { display: inline-flex; align-items: center; gap: 6px; }
+  .kinds i { display: inline-block; width: 14px; height: 0; border-bottom: 2px solid var(--accent); }
+  .kinds i.alarm { border-bottom-color: var(--hazard); } .kinds i.name { border-bottom-color: var(--grey); } .kinds i.count { border-bottom-color: var(--cleared-fill); }
+
+  /* the proposed line: one control under the name; a rest or a click opens the card */
+  .inc-line { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; padding: 2px 8px 2px 0; margin-left: 0; border-radius: 999px; cursor: pointer; text-align: left; white-space: normal; line-height: 1.5; }
+  .inc-line:hover, .inc-line.on { color: var(--ink-2); }
+  .inc-line .warn { color: var(--hazard-ink); font-weight: 600; }
+  .inc-line .caret { color: var(--grey); font-size: 10px; margin-left: 2px; }
+  .inc-line.on .caret { color: var(--accent-text); }
+  .inc-line:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .inc-line .sep { padding: 0 5px; color: var(--grey); }
+
+  /* the card: .pop as base.css draws the codes' and the connection's cards, under the line at the left */
+  .inc-pop { position: absolute; left: 12px; top: calc(100% - 6px); z-index: 20; width: min(560px, calc(100% - 24px)); background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px 14px; box-sizing: border-box; text-align: left; font-size: 13px; }
+  .inc-pop[hidden] { display: none; }
+  .inc-pop .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+  .inc-pop .head b { font-size: 14px; }
+  .ic-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line-soft); }
+  .ic-row:first-of-type { border-top: 0; }
+  .ic-row .lab { color: var(--muted); font-size: 12px; padding-top: 2px; }
+  .ic-row .facts { min-width: 0; line-height: 1.45; }
+  .ic-row .facts b { font-weight: 600; }
+  .ic-row .facts .warn { color: var(--hazard-ink); font-weight: 600; }
+  .ic-row .facts .small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .ic-row .acts { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .ic-row .acts .btn { min-height: 26px; padding: 0 9px; font-size: 12px; }
+  .ic-row .acts .btn.pri { min-height: 26px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); border-radius: 999px; padding: 1px 9px 1px 6px; font: inherit; font-size: 12px; cursor: pointer; margin: 2px 4px 2px 0; }
+  .chip:hover { border-color: var(--grey); }
+  .chip .sw { display: inline-block; width: 11px; height: 8px; border: 1.5px solid #7A776F; border-radius: 2px; }
+  .chip .sw.active { background: rgba(47,111,179,.35); border-color: #24588F; }
+  .chip .sw.cleared { background: rgba(46,139,87,.45); border-color: #1F6B42; }
+  .chip .sw.open { background: repeating-linear-gradient(45deg, var(--soft) 0 2px, var(--dot-off) 2px 3px); }
+  .inc-pop .foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 11.5px; }
+  @media (max-width: 720px) { .ic-row { grid-template-columns: 1fr; } .ic-row .acts { justify-content: flex-start; } .inc-pop { left: 0; width: 100%; } }
+
+  /* the state switch above the proposed header */
+  .states { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+  .states .btn.on { pointer-events: none; }
+
+  /* the thinking */
+  .think { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .think .panel { width: auto; }
+  .think ul { margin: 0; padding-left: 18px; } .think li { margin: 0 0 7px; line-height: 1.45; }
+  .think .k { margin-top: 0; }
+  .touch li { margin: 0 0 6px; line-height: 1.45; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: the incident line</span></div>
+  <div class="tabs">
+    <a href="#today">Today</a>
+    <a href="#proposed">The line and the card</a>
+    <a href="#best">Best we can do?</a>
+    <a href="#decide">Decide</a>
+    <a href="#touch">What it touches</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>The incident line, broken out</h1>
+  The note, 18 October, walking the base at v74: <q>Cedar Fork Flooding / OP 1 · 19:58 to 19:00 · overdue 4 h 8 min, IC Dana Ruiz · Base: Cedar Fork High School · 3 units · 6 divisions, 1 cleared · 1 hazard open — is too much information too compacted too quickly. I would like to be able to hover over this and have a modal appear of a breakout of that information.</q>
+  Drawn at v75, before anything is built. Two changes, one piece: the line under the incident's name keeps only what changes during the day, the alarm first; and resting on it, or clicking it, opens a card with the whole picture broken out, each row with the place it is worked. Made-up data; rest on the line below, click it, press its buttons.
+</div>
+
+<section class="part" id="today">
+  <h2 class="sec">Today, as built <span class="sub">the header at v74, the second line as drawAll writes it</span></h2>
+  <div class="hdr" aria-label="The header as built">
+    <div class="main">
+      <h1>Cedar Fork Flooding</h1>
+      <span class="sub muted" id="today-line"></span>
+    </div>
+    <span class="btns"><span class="btn sm">Period</span><span class="btn sm">Briefing</span><span class="btn sm">Org chart</span><span class="btn sm">People</span><span class="btn sm">Public</span><span class="btn sm">Transports</span></span>
+    <span class="pills"><span class="pill">CEDAR7</span><span class="pill"><span class="dot"></span>23:08 CDT</span></span>
+  </div>
+  <div class="screens" style="margin-top:12px">
+    <div class="screen w" style="flex-basis:100%">
+      <div class="panel wide">
+        <div class="cap" style="margin-bottom:12px"><b>Seven facts in one grey line.</b> The marks say what kind of thing each one is.</div>
+        <div class="marks" id="today-marks"></div>
+        <div class="kinds"><span><i></i>a time</span><span><i class="alarm"></i>the one alarm</span><span><i class="name"></i>a name that does not change</span><span><i class="count"></i>a count that does</span></div>
+        <p class="note">Four kinds of thing in one sentence, read all day as a status row. The two names (IC, base) and the planned hours never change between periods; the alarm, the one thing on the line that asks for anything, sits fourth, in the same grey as the rest. There is nothing to press: the Period button is three inches away, and the counts open nothing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="proposed">
+  <h2 class="sec">The line and the card <span class="sub">rest on the line for half a second, or click it; Escape or a click elsewhere closes it</span></h2>
+  <div class="states">Show it <button class="btn sm on" data-state="overdue" type="button">at 23:08, overdue</button><button class="btn sm" data-state="ontime" type="button">at 16:20, in time</button></div>
+  <div class="hdr" id="hdr">
+    <div class="main">
+      <h1>Cedar Fork Flooding</h1>
+      <button class="inc-line" id="inc-line" type="button" aria-expanded="false" aria-controls="inc-pop" title="The period, the command, the base, the units, the divisions and the hazards, broken out"></button>
+    </div>
+    <span class="btns"><span class="btn sm">Period</span><span class="btn sm">Briefing</span><span class="btn sm">Org chart</span><span class="btn sm">People</span><span class="btn sm">Public</span><span class="btn sm">Transports</span></span>
+    <span class="pills"><span class="pill">CEDAR7</span><span class="pill"><span class="dot"></span><span id="clock">23:08 CDT</span></span></span>
+    <div class="inc-pop" id="inc-pop" hidden role="region" aria-label="The incident, broken out"></div>
+  </div>
+  <div class="screens" style="margin-top:16px">
+    <div class="screen w">
+      <div class="cap"><b>The line keeps what changes.</b> The period's number, the alarm (or the planned end while there is none), the units, the divisions with how many are cleared, the hazards open. Overdue is orange and second, right after the period it belongs to. The times, the IC and the base move to the card: they are the same at 23:08 as they were at 19:58. A caret says it opens.
+        <ul>
+          <li><b>Rest half a second</b> and the card opens, as a division's row does (v60); move away and it goes.</li>
+          <li><b>Click</b> and it stays, the caret blue, so the links can be pressed; Escape or a click elsewhere closes it. A tap on a touch screen is the click.</li>
+          <li><b>It is a card, not a dialog:</b> the map keeps moving under it and nothing has to be dismissed.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="screen w">
+      <div class="cap"><b>The card is the breakout.</b> Six rows, one per kind of thing, each with its facts whole and a button to where it is worked.
+        <ul>
+          <li><b>Operational period:</b> started, planned to, and the alarm in words; <b>Start period 2</b> right there when it is overdue, since that is the one action the line has ever asked for.</li>
+          <li><b>Command:</b> the IC and the two chiefs the line could not fit; Org chart.</li>
+          <li><b>Base:</b> the name and the lead agency.</li>
+          <li><b>Units:</b> the count by status, then each unit, its kind and its division; Units scrolls the home panel there, People opens the board.</li>
+          <li><b>Divisions:</b> the count, then a chip per state that filters the map as the legend's buttons do; the list itself is on the home panel, always.</li>
+          <li><b>Hazards:</b> each open hazard in a line: kind, where, when, by whom.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="best">
+  <h2 class="sec">Is this the best we can do? <span class="sub">what the line is for, what was cut, what was set aside</span></h2>
+  <div class="think">
+    <div class="panel">
+      <div class="k">What the line is for</div>
+      <ul>
+        <li>It is read all day, in the corner of the eye, by someone watching the map. A status row, not a sentence: the alarm first, the counts next, nothing that stays the same.</li>
+        <li>Three questions it must answer at a glance: is the period overdue, how many units are out, how much is left to clear. Each is now its own short piece.</li>
+        <li>Everything else is a hover away and a click to keep.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What was cut from the line, and why it is safe</div>
+      <ul>
+        <li><b>19:58 to 19:00:</b> the planned hours matter twice a day, at the start and the hand-over; the card and the Period panel have them.</li>
+        <li><b>IC Dana Ruiz:</b> the IC changes by a transfer of command, which tells every unit, opens the briefing and writes a notable line (v24); nobody learns it from the header.</li>
+        <li><b>Base: Cedar Fork High School:</b> set once at the opening; the join card and the briefing carry it to the people who need it.</li>
+        <li><b>OP</b> becomes <b>Period</b>: plainer, and the button beside it says the same word.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">Set aside</div>
+      <ul>
+        <li><b>A chip per fact in the header</b>, each opening its own panel: a second row of controls under thirteen buttons, the "too much going on" the walk at v59 named; the card gives the same links in one place.</li>
+        <li><b>A real modal</b> (a dialog) on hover: a hover must never trap, a dialog needs a close, and the map stops being watched while it is up.</li>
+        <li><b>Hover only:</b> a touch screen has no hover, and a card that goes when the pointer moves cannot be clicked into. Click keeps it.</li>
+        <li><b>Keep the line as it is and add the card:</b> the card does not fix the line; the note was about the line.</li>
+        <li><b>Wrap the line onto two rows:</b> more room for the same compaction.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What to watch after</div>
+      <ul>
+        <li>Whether anyone misses the IC's name on screen. If they do, it goes back as the last piece, after the counts, not the second.</li>
+        <li>Whether the card wants the join code and the connection too: today those have their own cards under their pills (v60), and three cards in one header is enough.</li>
+        <li>At the base's phone width the line wraps to two rows and the card takes the width under it; nothing else changes.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="decide">
+  <h2 class="sec">Decided here, and yours to decide</h2>
+  <div class="panel wide">
+    <div class="k">Decided here (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>A card, not a dialog.</b> The codes' and the connection's cards under the header's pills (v60) are the pattern; this one hangs under the line at the left. <span class="chosen">chosen</span></li>
+      <li><b>Rest half a second or click; click keeps it.</b> The division card's rule for the rest (v60), the connection card's for the click; Escape and a click elsewhere close it. <span class="chosen">chosen</span></li>
+      <li><b>One rule writes both.</b> The line's pieces and the card's rows come from one function in rules.js, so they never disagree, and a Node test reads them. <span class="chosen">chosen</span></li>
+      <li><b>No migration.</b> Everything on the card is already in the period, the incident, the members, the zones and the hazards. <span class="chosen">chosen</span></li>
+    </ul>
+    <div class="k">Yours to decide (recommended first)</div>
+    <ul class="decisions">
+      <li><b>What the line keeps.</b> Recommended: <b>the period, the alarm or the planned end, the units, the divisions and cleared, the hazards</b>; the times, the IC and the base live on the card. The other way keeps every fact on the line and only adds the card. <span class="open">open</span></li>
+      <li><b>Overdue in orange, second.</b> Recommended: <b>yes</b>, the one alarm reads as one; the other way leaves the line all grey as today. <span class="open">open</span></li>
+      <li><b>Start period 2 on the card.</b> Recommended: <b>yes, when overdue only</b>: the line's one ask gets its one button, and the Period panel opens on the hand-over as it does from its own button; the other way keeps the card to facts and links. <span class="open">open</span></li>
+      <li><b>The divisions as chips that filter the map.</b> Recommended: <b>yes</b>, they are the legend's buttons with the counts on them; the other way is plain words. <span class="open">open</span></li>
+      <li><b>"Period 1" or "OP 1".</b> Recommended: <b>Period 1</b> on the line and "Operational period 1" on the card, the vocabulary the base already uses (v4's list); OP stays on the printed forms, where ICS wants it. <span class="open">open</span></li>
+      <li><b>The card's width.</b> Recommended: <b>560 px</b>, so each row is one line at 1280 wide; the other way matches the codes' card at 400 and wraps the units. <span class="open">open</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="part" id="touch">
+  <h2 class="sec">What a build would touch <span class="sub">a v60-sized panel: no migration, the base only, one release</span></h2>
+  <div class="screens">
+    <div class="screen w">
+      <div class="panel wide">
+        <ul class="touch">
+          <li><b>rules.js:</b> <span class="mono">incidentLine({ period, units, zones, hazards }, now)</span> returns the line's pieces (words and kind) and <span class="mono">incidentCard(…)</span> the rows; both tested in <span class="mono">dev/test-rules.mjs</span>.</li>
+          <li><b>index.html:</b> <span class="mono">#inc-sub</span> becomes a button, <span class="mono">.inc-line</span>, with <span class="mono">aria-expanded</span>; <span class="mono">#inc-pop</span> beside it, a <span class="mono">.pop</span> like <span class="mono">#codes-pop</span>.</li>
+          <li><b>ui.js:</b> <span class="mono">incidentPopHtml(data, state)</span> draws the rows; the chips carry <span class="mono">data-action="legend-status"</span> so the map's filter is the same code.</li>
+          <li><b>main.js:</b> <span class="mono">drawAll</span> writes the line from the rule; a 500 ms rest timer like the division card's; <span class="mono">state.incOpen</span> for the click; Escape and the click-elsewhere rule the codes' card uses; <span class="mono">period-next</span> from the card.</li>
+          <li><b>base.css:</b> <span class="mono">.inc-line</span>, <span class="mono">.inc-pop</span>, <span class="mono">.ic-row</span>, the chips; the phone-width rule.</li>
+          <li><b>The suites:</b> <span class="mono">seeded</span> and <span class="mono">periods</span> read <span class="mono">#inc-sub</span> for "overdue" today and would read the line and the card instead; one new check for the rest, the click and Escape.</li>
+          <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, the punchlist's section, "Built as vN" here, the re-walk; the discover labels (v58) say "the incident's name and its state" and keep saying it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let toastT = null;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); }
+
+  // the mock's Cedar Fork Flooding, as the seed has it
+  const DATA = {
+    name: 'Cedar Fork Flooding', opened: '19:58', agency: 'Cedar Fork Fire Department', base: 'Cedar Fork High School',
+    period: { number: 1, starts: '19:58', ends: '19:00' },
+    command: { ic: 'Dana Ruiz', ops: 'Marcus Bell', safety: 'Priya Natarajan' },
+    units: [{ name: 'Unit 1', kind: 'engine', where: 'A-1', status: 'assigned' }, { name: 'Unit 2', kind: 'boat crew', where: 'B-1', status: 'assigned' }, { name: 'Unit 3', kind: 'on foot', where: 'A-2', status: 'assigned' }],
+    zones: { active: ['A-1', 'A-2', 'B-1'], primary: [], cleared: ['A-3'], open: ['B-2', 'B-3'] },
+    hazards: [{ kind: 'Downed power line', note: 'across the park entrance', zone: 'A-2', at: '22:49', by: 'Unit 3' }]
+  };
+  const STATES = { overdue: { clock: '23:08 CDT', overMin: 248, leftMin: 0 }, ontime: { clock: '16:20 CDT', overMin: 0, leftMin: 160 } };
+  let state = 'overdue';
+  const dur = (min) => min < 60 ? min + ' min' : (Math.floor(min / 60) + ' h ' + (min % 60 ? (min % 60) + ' min' : '')).trim();
+  const zonesN = (z) => z.active.length + z.primary.length + z.cleared.length + z.open.length;
+
+  // today's line: the formula in drawAll at v74
+  function todayLine(d, st) {
+    const period = 'OP ' + d.period.number + ' · ' + d.period.starts + ' to ' + d.period.ends + (st.overMin ? ' · overdue ' + dur(st.overMin) : '') + ', IC ' + d.command.ic;
+    return [period, 'Base: ' + d.base, d.units.length + ' units', zonesN(d.zones) + ' divisions, ' + d.zones.cleared.length + ' cleared', d.hazards.length ? d.hazards.length + ' hazard' + (d.hazards.length === 1 ? '' : 's') + ' open' : null].filter(Boolean).join(' · ');
+  }
+  // the same line with its facts marked
+  function todayMarks(d, st) {
+    const f = [
+      ['time', 'OP ' + d.period.number + ' · ' + d.period.starts + ' to ' + d.period.ends],
+      st.overMin ? ['alarm', 'overdue ' + dur(st.overMin)] : null,
+      ['name', 'IC ' + d.command.ic],
+      ['name', 'Base: ' + d.base],
+      ['count', d.units.length + ' units'],
+      ['count', zonesN(d.zones) + ' divisions, ' + d.zones.cleared.length + ' cleared'],
+      d.hazards.length ? ['count', d.hazards.length + ' hazard' + (d.hazards.length === 1 ? '' : 's') + ' open'] : null
+    ].filter(Boolean);
+    return f.map(([k, t], i) => `<span class="f ${k}"><span class="n">${i + 1}</span>${esc(t)}</span>` + (i < f.length - 1 ? `<span class="sep">${i === 0 && st.overMin ? '·' : i === 1 && st.overMin ? ',' : '·'}</span>` : '')).join('');
+  }
+
+  // the proposed line: the pieces one rule would return (incidentLine in rules.js)
+  function linePieces(d, st) {
+    const z = d.zones, n = zonesN(z);
+    return [
+      { k: 'period', t: 'Period ' + d.period.number },
+      st.overMin ? { k: 'alarm', t: 'overdue ' + dur(st.overMin) } : { k: 'time', t: 'to ' + d.period.ends },
+      { k: 'count', t: d.units.length + ' unit' + (d.units.length === 1 ? '' : 's') },
+      { k: 'count', t: n + ' division' + (n === 1 ? '' : 's') + (z.cleared.length ? ', ' + z.cleared.length + ' cleared' : '') },
+      d.hazards.length ? { k: 'count', t: d.hazards.length + ' hazard' + (d.hazards.length === 1 ? '' : 's') + ' open' } : null
+    ].filter(Boolean);
+  }
+  function drawLine() {
+    const st = STATES[state];
+    $('inc-line').innerHTML = linePieces(DATA, st).map((p) => `<span class="${p.k === 'alarm' ? 'warn' : ''}">${esc(p.t)}</span>`).join('<span class="sep">·</span>') + '<span class="caret" aria-hidden="true">▾</span>';
+    $('clock').textContent = st.clock;
+    $('today-line').textContent = todayLine(DATA, STATES.overdue);
+    $('today-marks').innerHTML = todayMarks(DATA, STATES.overdue);
+  }
+
+  // the card's rows (incidentCard in rules.js): label, the facts, the places it is worked
+  function cardRows(d, st) {
+    const z = d.zones, n = zonesN(z);
+    const byStatus = {}; for (const u of d.units) byStatus[u.status] = (byStatus[u.status] || 0) + 1;
+    const statusWords = Object.entries(byStatus).map(([s, c]) => (c === d.units.length ? 'all ' : c + ' ') + { assigned: 'assigned', available: 'available', oos: 'out of service' }[s]).join(', ');
+    const chips = [['active', z.active.length + ' in progress', 'In progress'], ['primary', z.primary.length + ' with the primary search done', 'Primary search done'], ['cleared', z.cleared.length + ' cleared', 'Cleared'], ['open', z.open.length + ' not started', 'Not started']].filter((c, i) => [z.active, z.primary, z.cleared, z.open][i].length);
+    return [
+      { label: 'Operational period', facts: `<b>${d.period.number}</b> · started ${d.period.starts} · planned to ${d.period.ends}` + (st.overMin ? ` · <span class="warn">overdue ${dur(st.overMin)}</span>` : ` · ${dur(st.leftMin)} left`), acts: [['Period', 'the Period panel'], st.overMin ? ['Start period ' + (d.period.number + 1), 'Start next period: the Period panel, on the hand-over', 'pri'] : null].filter(Boolean) },
+      { label: 'Command', facts: `IC <b>${esc(d.command.ic)}</b> · Operations ${esc(d.command.ops)} · Safety ${esc(d.command.safety)}`, acts: [['Org chart', 'the organization chart, ICS 207']] },
+      { label: 'Base', facts: `<b>${esc(d.base)}</b> · ${esc(d.agency)} leads`, acts: [] },
+      { label: 'Units', facts: `<b>${d.units.length}</b> on scene, ${statusWords}<span class="small">${d.units.map((u) => `${esc(u.name)}, ${esc(u.kind)}, in ${esc(u.where)}`).join(' · ')}</span>`, acts: [['Units', 'the home panel, at its units'], ['People', 'the People board']] },
+      { label: 'Divisions', facts: `<b>${n}</b>&nbsp; ` + chips.map(([k, t, word]) => `<button class="chip" type="button" data-filter="${k}" data-word="${esc(word)}"><span class="sw ${k}"></span>${esc(t)}</button>`).join(''), acts: [] },
+      { label: 'Hazards', facts: d.hazards.length ? d.hazards.map((h) => `<b>${esc(h.kind)}</b> ${esc(h.note)} · ${esc(h.zone)} · ${esc(h.at)} by ${esc(h.by)}`).join('<br>') : 'None open', acts: [['Hazards', 'the open hazards, where Safety looks']] }
+    ];
+  }
+  function drawCard() {
+    const rows = cardRows(DATA, STATES[state]);
+    $('inc-pop').innerHTML = `<div class="head"><b>${esc(DATA.name)}</b><span class="muted">opened ${esc(DATA.opened)} by Operations</span></div>` +
+      rows.map((r) => `<div class="ic-row"><span class="lab">${esc(r.label)}</span><span class="facts">${r.facts}</span><span class="acts">${r.acts.map(([t, where, cls]) => `<button class="btn sm${cls ? ' ' + cls : ''}" type="button" data-where="${esc(where)}">${esc(t)}</button>`).join('')}</span></div>`).join('') +
+      `<div class="foot">${pinned ? 'Open until Escape or a click elsewhere' : 'Click the line to keep this open'}</div>`;
+  }
+
+  // open on a rest of half a second (the division card's rule), keep on a click, close on Escape or a click elsewhere
+  let pinned = false, restT = null, leaveT = null;
+  const line = $('inc-line'), pop = $('inc-pop');
+  function openCard(keep) { clearTimeout(leaveT); pinned = pinned || !!keep; drawCard(); pop.hidden = false; line.setAttribute('aria-expanded', 'true'); line.classList.toggle('on', pinned); }
+  function closeCard() { clearTimeout(restT); clearTimeout(leaveT); pinned = false; pop.hidden = true; line.setAttribute('aria-expanded', 'false'); line.classList.remove('on'); }
+  line.addEventListener('mouseenter', () => { if (pop.hidden) { clearTimeout(restT); restT = setTimeout(() => openCard(false), 500); } else clearTimeout(leaveT); });
+  line.addEventListener('mouseleave', () => { clearTimeout(restT); if (!pinned) leaveT = setTimeout(closeCard, 250); });
+  pop.addEventListener('mouseenter', () => clearTimeout(leaveT));
+  pop.addEventListener('mouseleave', () => { if (!pinned) leaveT = setTimeout(closeCard, 250); });
+  line.addEventListener('click', () => { if (pinned) closeCard(); else openCard(true); });
+  document.addEventListener('click', (e) => {
+    if (!pop.hidden && !e.target.closest('#inc-pop') && !e.target.closest('#inc-line')) closeCard();
+    const b = e.target.closest('[data-where]'); if (b) toast('Would open ' + b.dataset.where);
+    const c = e.target.closest('[data-filter]'); if (c) toast('Would show only the divisions ' + c.dataset.word.toLowerCase() + ' on the map, as the legend does');
+    const s = e.target.closest('[data-state]'); if (s) { state = s.dataset.state; for (const x of document.querySelectorAll('[data-state]')) x.classList.toggle('on', x === s); drawLine(); if (!pop.hidden) drawCard(); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) closeCard(); });
+  drawLine();
+
+  const themeNow = () => document.documentElement.dataset.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };
+  $('theme-btn').addEventListener('click', () => { const next = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('ic.theme', next); } catch (e) {} drawTheme(); });
+  drawTheme();
+</script>
+</body>
+</html>

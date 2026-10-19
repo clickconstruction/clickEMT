@@ -153,12 +153,15 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 Nothing here is code. Each was left for Todd on purpose, and none was done as of the evening of 18 October.
 
-- **The Google Maps key.** The Layers picker lists Google streets and satellite only when a Map Tiles API key is
-  present, and there is none anywhere: `config.js` on `main` carries `window.GOOGLE_MAPS_KEY = ''` (that file is
-  public, so a key there must be restricted to `https://clickemt.com/*` in Google Cloud), and the incident setting
-  (gear → Incident settings → Google Maps key, with a Test button) has no incident to sit on yet. The way to see it:
-  open the first real incident on clickemt.com, gear → Incident settings, paste the key, press Test. Until then the
-  picker offers Streets and Satellite (Esri) only. Nobody but Todd handles the key.
+- **The Google Maps key** is set (19 October, early morning, by the user with Claude driving the console): `config.js`
+  on `main` carries a browser key from Google Cloud project `clicktooling-drive` (the account robert@douglasmining.com),
+  named "clickEMT browser key", restricted to the HTTP referrers `https://clickemt.com/*` and `http://localhost:8766/*`
+  and to three APIs, Map Tiles API (the Google layers in the Layers picker), Places API (New) and Geocoding API (for
+  the address lookup drawn in `try/mockups/starters.html`, not built yet). Those three are the only Maps APIs enabled
+  on the project. The file is public, so the referrer restriction is what keeps the key safe; a key with that
+  restriction cannot be tested with curl, only from a page on one of those sites (the Test button under gear →
+  Incident settings, or `testGoogleKey` in js/shared/layers.js from `http://localhost:8766/?mock`). The incident
+  setting under the gear is still there for an incident that wants a key of its own.
 - **The three settings for sign-in by a code** (the list above): an SMS provider, `{{ .Token }}` in the Magic Link
   template (this one touches the charity app's emails), custom SMTP. Without the first, mobile numbers cannot sign in;
   without the second, the email has only the link; without the third, twenty phones at a check-in table stall.

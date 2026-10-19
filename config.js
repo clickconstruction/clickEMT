@@ -7,4 +7,4 @@ window.SUPABASE_ANON_KEY = 'sb_publishable_mY04D4GZBph7ss23Hh_FNg_t34i1uZr';
 // Google Maps streets and satellite appear in the map's layer picker when this holds a Google
 // Maps Platform key with the Map Tiles API enabled, restricted to this site's address (a browser
 // key; billing applies). Empty: Streets (OpenStreetMap) and Satellite (Esri) only.
-window.GOOGLE_MAPS_KEY = '';
+window.GOOGLE_MAPS_KEY = 'AIzaSyCfv0BEnuclBjn7VFMRRtf7tiyNyp8lReE';   // a browser key, restricted to clickemt.com and localhost:8766 and to Map Tiles, Places (New) and Geocoding (19 October 2026)

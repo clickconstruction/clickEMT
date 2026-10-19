@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: tell the base · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- A click-through mock-up, drawn 18 October 2026 at v71 before anything is built, of Todd's note on the phone's
+     two "tell the base" sheets, Message Operations and Ask for something: "I think that we can make this page
+     visually better. The urgency seems to be a scale, maybe we should show it like a scale. But we shouldn't confuse
+     the scale of need for Message Operations with the Ask for Something; take a holistic look at these two and help
+     me find a way to make these as good as possible, given a disaster's needs." The two sheets as they are today
+     (screenshots, tell-the-base-*-v71.webp), one anatomy for both, each sheet redrawn at 375 px in light and dark
+     (the phone frames carry their own palette, copied from shared.css), the scale's states, the base's rows and the
+     214, the decisions, the build. One shared state: the light and dark frames of one sheet mirror each other, and
+     Send reaches the base below. Made-up data (Cedar Fork Flooding; Unit 3, Hale and Dominguez, in A-2 Pecan Mobile
+     Home Park). Nothing here writes anywhere. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 13px; }
+  .tabs a:hover { border-color: var(--grey); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.part { margin: 0 0 34px; scroll-margin-top: 70px; }
+  .intro { max-width: 820px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2.sec .sub { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 375px; line-height: 1.45; }
+  .screen > .cap b { color: var(--ink); }
+  .screen.w { flex: 1 1 320px; } .screen.w > .cap { max-width: 420px; }
+  .screen.w ul { margin: 6px 0 0; padding-left: 18px; } .screen.w li { margin: 0 0 6px; }
+  .stepno { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; margin-right: 4px; vertical-align: -4px; }
+  .shot { width: 375px; max-width: 100%; border-radius: 18px; border: 1px solid var(--line); display: block; }
+  .panel { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .panel.wide { width: 100%; }
+  .k { margin: 12px 0 6px; } .k:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .decisions li { margin: 0 0 8px; line-height: 1.45; }
+  .decisions b { color: var(--ink); }
+  .mono { font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .toast[hidden] { display: none; }
+  .flowbar { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .flowbar .clock { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ---- the anatomy: five slots, two sheets */
+  .anat { display: grid; grid-template-columns: 170px 1fr 1fr; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); font-size: 14px; }
+  .anat > div { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); border-right: 1px solid var(--line-soft); line-height: 1.45; }
+  .anat > div:nth-child(3n) { border-right: 0; }
+  .anat .an-h { background: var(--panel-2); font-weight: 700; }
+  .anat .an-h.m { color: var(--accent-text); } .anat .an-h.a { color: var(--ask-text); }
+  .anat .an-s { background: var(--panel-2); font-weight: 600; color: var(--ink-2); }
+  .anat .an-s small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .anat .span2 { grid-column: 2 / 4; border-right: 0; }
+  .anat .sub { display: block; }
+  .anat .bb { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px; border-radius: 10px; color: #fff; font-weight: 600; font-size: 14px; }
+  .anat .bb.m { background: var(--accent); } .anat .bb.a { background: var(--ask); }
+  .anat .redl { color: var(--danger); text-decoration: underline; }
+  .anat .mini-scale { display: inline-flex; border: 1px solid var(--control-border); border-radius: 8px; overflow: hidden; vertical-align: middle; margin: 0 4px; }
+  .anat .mini-scale span { padding: 2px 8px; font-size: 12px; font-weight: 600; border-right: 1px solid var(--control-border); border-bottom: 3px solid var(--danger); }
+  .anat .mini-scale span:nth-child(2) { border-bottom-color: var(--hazard); } .anat .mini-scale span:last-child { border-right: 0; border-bottom-color: var(--active-fill); }
+
+  /* ---- the phone: the field's sheet as field.css draws it, inside a frame that carries its own palette */
+  :root { --ask: #146C7A; --ask-text: #146C7A; }
+  :root[data-theme="dark"] { --ask: #2E8A9A; --ask-text: #5FC0D0; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ask: #2E8A9A; --ask-text: #5FC0D0; } }
+  .phone { width: 375px; min-height: 720px; background: var(--bg-2); border: 10px solid #0b0b0d; border-radius: 36px; padding: 16px 16px 0; box-shadow: 0 8px 28px rgba(0,0,0,.35); font-size: 14px; display: flex; flex-direction: column; gap: 12px; color: var(--ink); position: relative; font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  .phone.light { color-scheme: light;
+    --bg: #E9E7E1; --bg-2: #F7F6F2; --panel: #fff; --panel-2: #FBFAF8; --hover: #F6F5F1; --sel-bg: #EAF0F7;
+    --line: #D8D5CD; --line-soft: #EFEDE8; --control-bg: #fff; --control-border: #C9C5BB; --grey: #8F8B82; --dot-off: #B5B1A6;
+    --ink: #1B1B18; --ink-2: #3E3C36; --muted: #5C5A53; --soft: #F1EFEA; --halo: #fff;
+    --accent: #1F4E79; --accent-ink: #163A5B; --accent-text: #1F4E79;
+    --open: #7A776F; --active: #24588F; --active-fill: #2F6FB3; --cleared: #1F6B42; --cleared-fill: #2E8B57;
+    --hazard: #D9822B; --hazard-ink: #9A5A14; --danger: #B3261E;
+    --tint-green: #DDF0E4; --tint-blue: #E0EAF6; --tint-orange: #FBE9D6; --tint-red: #F8E1DF;
+    --ask: #146C7A; --ask-text: #146C7A; --map-ground: #EEEBE3; --map-road: #fff; --map-road-edge: #D8D5CD; --map-water: #BFD6E6; }
+  .phone.dark { color-scheme: dark;
+    --bg: #121412; --bg-2: #171A18; --panel: #1E211F; --panel-2: #242826; --hover: #272B29; --sel-bg: #243140;
+    --line: #363B37; --line-soft: #2B2F2C; --control-bg: #262A28; --control-border: #4A4F4B; --grey: #8F8B82; --dot-off: #5E635F;
+    --ink: #ECEAE4; --ink-2: #CBC8C0; --muted: #9D9A92; --soft: #2B2F2C; --halo: #121412;
+    --accent: #3A7DC4; --accent-ink: #8FB9E6; --accent-text: #8FB9E6;
+    --open: #9A978F; --active: #8FB9E6; --active-fill: #2F6FB3; --cleared: #7FD3A3; --cleared-fill: #2E8B57;
+    --hazard: #D9822B; --hazard-ink: #F0B06A; --danger: #C9362C;
+    --tint-green: #1E3A2B; --tint-blue: #22344A; --tint-orange: #45301A; --tint-red: #44221F;
+    --ask: #2E8A9A; --ask-text: #5FC0D0; --map-ground: #2A2E2B; --map-road: #3A3F3B; --map-road-edge: #4A4F4B; --map-water: #243846; }
+  .phone.m { --sheet: var(--accent); --sheet-text: var(--accent-text); }
+  .phone.a { --sheet: var(--ask); --sheet-text: var(--ask-text); }
+  .phone.still { opacity: .92; } .phone.still button { pointer-events: none; }
+  .phone h2 { margin: 0; font-size: 22px; font-weight: 600; }
+  .phone p { margin: 0; font-size: 16px; line-height: 1.35; }
+  .phone .ph-h { display: flex; align-items: center; gap: 10px; }
+  .phone .ph-ic { width: 30px; height: 30px; border-radius: 9px; background: var(--sheet); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .phone .ph-ic svg { width: 18px; height: 18px; }
+  .phone .purpose { color: var(--muted); font-size: 14px; margin-top: -4px; }
+  .phone .k { margin: 2px 0 -4px; }
+  .phone .input { border: 1px solid var(--control-border); border-radius: 10px; padding: 10px 12px; font-size: 16px; min-height: 48px; background: var(--control-bg); color: var(--ink); width: 100%; font-family: inherit; }
+  .phone .input::placeholder { color: var(--muted); opacity: .8; }
+  .phone label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .phone .row-2 { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+  .phone .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .phone .chip { border: 1px solid var(--control-border); background: var(--control-bg); border-radius: 999px; padding: 8px 14px; font-size: 14px; min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; font-family: inherit; color: var(--ink); }
+  .phone .chip.on { background: var(--sheet); color: #fff; border-color: var(--sheet); }
+  /* the quick starts: words you tap to put in the box, quote-styled, never a row of choices */
+  .phone .quick { display: flex; flex-wrap: wrap; gap: 0 14px; margin-top: -6px; }
+  .phone .quick button { min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; font-style: italic; color: var(--sheet-text); padding: 0 2px; cursor: pointer; font-family: inherit; text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-color: var(--grey); }
+  .phone .quick button::before { content: '\201C'; opacity: .55; margin-right: 1px; } .phone .quick button::after { content: '\201D'; opacity: .55; margin-left: 1px; }
+  /* the scale: three steps on one bar, hot to cool; the chosen step fills with its colour */
+  .phone .scale { display: flex; border: 1px solid var(--control-border); border-radius: 12px; overflow: hidden; background: var(--control-bg); }
+  .phone .step { flex: 1 1 0; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 16px; font-weight: 600; color: var(--ink); border-right: 1px solid var(--control-border); border-bottom: 4px solid var(--dot-off); cursor: pointer; font-family: inherit; padding: 0 4px; white-space: nowrap; }
+  .phone .step:last-child { border-right: 0; }
+  .phone .step.s-now { border-bottom-color: var(--danger); } .phone .step.s-nightfall { border-bottom-color: var(--hazard); } .phone .step.s-tomorrow { border-bottom-color: var(--active-fill); }
+  .phone .step.on.s-now { background: var(--danger); color: #fff; } .phone .step.on.s-nightfall { background: var(--hazard); color: #1B1B18; } .phone .step.on.s-tomorrow { background: var(--active-fill); color: #fff; }
+  .phone .step.on { border-right-color: transparent; }
+  .phone .step .tick { font-size: 14px; }
+  /* the flag under the scale: a consequence, not a time */
+  .phone .flag { display: flex; align-items: center; gap: 10px; min-height: 48px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--control-bg); padding: 0 12px; font-size: 15px; font-weight: 500; color: var(--ink); cursor: pointer; font-family: inherit; text-align: left; margin-top: -4px; }
+  .phone .flag .fic { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--grey); flex: none; position: relative; }
+  .phone .flag .fic::after { content: ''; position: absolute; left: 3px; right: 3px; top: 7px; height: 4px; background: var(--grey); border-radius: 2px; }
+  .phone .flag.on { border: 2px solid var(--danger); background: var(--tint-red); color: var(--danger); font-weight: 700; padding: 0 11px; }
+  .phone .flag.on .fic { border-color: var(--danger); background: var(--danger); } .phone .flag.on .fic::after { background: #fff; }
+  .phone .flag .tick { margin-left: auto; }
+  /* where: one switch row on both sheets */
+  .phone .where { display: flex; align-items: center; gap: 12px; min-height: 48px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--control-bg); padding: 6px 12px; cursor: pointer; font-family: inherit; color: var(--ink); text-align: left; width: 100%; }
+  .phone .sw { width: 44px; height: 26px; border-radius: 13px; background: var(--dot-off); position: relative; flex: none; transition: background .15s; }
+  .phone .sw .knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.35); transition: left .15s; }
+  .phone .where.on .sw { background: var(--sheet); } .phone .where.on .sw .knob { left: 21px; }
+  .phone .where-w { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .phone .where-t { font-size: 15px; font-weight: 600; } .phone .where.on .where-t { color: var(--sheet-text); }
+  .phone .where-s { font-size: 12.5px; color: var(--muted); }
+  .phone .mapbox { height: 160px; border-radius: 10px; border: 1px solid var(--line); background: var(--map-ground); position: relative; overflow: hidden; margin-top: -4px; }
+  .phone .mapbox svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .phone .pin { position: absolute; left: 50%; top: 50%; width: 22px; height: 20px; margin: -22px 0 0 -11px; border-radius: 7px 7px 7px 1px; background: var(--accent); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .phone .pin::after { content: ''; position: absolute; left: 4px; top: 5px; width: 10px; height: 2px; background: #fff; box-shadow: 0 4px 0 #fff; }
+  .phone .pin.p-now { background: var(--danger); } .phone .pin.p-nightfall { background: var(--hazard); }
+  .phone .hint { font-size: 12.5px; color: var(--muted); margin-top: -6px; }
+  .phone .mine { display: flex; flex-direction: column; }
+  .phone .req-row { display: flex; align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
+  .phone .req-row:last-child { border-bottom: 0; }
+  .phone .req-dot { width: 10px; height: 10px; border-radius: 5px; flex: none; background: var(--dot-off); }
+  .phone .req-dot.asked { background: var(--hazard); } .phone .req-dot.approved, .phone .req-dot.ordered { background: var(--active-fill); } .phone .req-dot.filled { background: var(--cleared-fill); }
+  .phone .muted.small { font-size: 12.5px; color: var(--muted); }
+  .phone .help-link { min-height: 44px; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 13.5px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-family: inherit; width: 100%; }
+  .phone .sheet-btns { margin-top: auto; display: flex; gap: 10px; flex: none; padding: 8px 0 16px; background: var(--bg-2); }   /* sticky to the screen's bottom on the real phone (v42); static in a frame on a long page */
+  .phone .sheet-btns .btn { flex: 1; min-height: 54px; font-size: 16px; border-radius: 14px; cursor: pointer; font-family: inherit; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; }
+  .phone .sheet-btns .btn.send { flex: 1.5; background: var(--sheet); color: #fff; border-color: var(--sheet); font-weight: 600; }
+
+  /* ---- the scale's states */
+  .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .state { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .state .phone { width: auto; min-height: 0; border: 0; border-radius: 0; padding: 0; box-shadow: none; background: none; gap: 6px; }
+  .state .phone .step { font-size: 14px; min-height: 44px; }
+  .state .phone .flag { font-size: 13.5px; min-height: 42px; }
+  .state .cap { color: var(--muted); line-height: 1.4; }
+  .state .cap b { color: var(--ink); }
+  .state .reads { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px dashed var(--line); }
+  .state .reads .row { gap: 6px; }
+  .state .reads .t { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+  /* ---- the base */
+  .badge { white-space: nowrap; }
+  .badge.stuck { background: var(--tint-red); color: var(--danger); border: 1px solid var(--danger); padding: 1px 7px; }
+  .mrow { border-left: 3px solid var(--line); padding: 4px 8px; font-size: 12.5px; display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; background: var(--panel-2); }
+  .mrow.new { border-left-color: var(--accent); }
+  .mrow-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .mrow-top .who { font-weight: 600; } .mrow-top .t { color: var(--muted); }
+  .mrow-text { font-size: 13.5px; }
+  .mrow-state { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+  .ack.ok { color: var(--cleared); } .ack.wait { color: var(--hazard-ink); }
+  .req { border: 1px solid var(--line); border-left: 4px solid var(--grey); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; font-size: 13px; background: var(--panel-2); }
+  .req.urg-now { border-left-color: var(--danger); } .req.urg-nightfall { border-left-color: var(--hazard); } .req.urg-tomorrow { border-left-color: var(--active-fill); }
+  .req.req-filled, .req.req-declined { opacity: .8; }
+  .req-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+  .req-line { font-size: 14px; font-weight: 600; }
+  .req-answer { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+  .req-answer input { flex: 1 1 140px; min-width: 0; border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 8px; font-size: 12.5px; min-height: 30px; background: var(--control-bg); color: var(--ink); }
+  .badge.st-req-asked { background: var(--tint-orange); color: var(--hazard-ink); } .badge.st-req-approved, .badge.st-req-ordered { background: var(--tint-blue); color: var(--active); } .badge.st-req-filled { background: var(--tint-green); color: var(--cleared); }
+  .d-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+  .brief p { margin: 0 0 4px; font-size: 13px; line-height: 1.45; }
+  .brief .sub { padding-left: 14px; }
+  .log { font-size: 13px; }
+  .log-row { display: flex; gap: 10px; padding: 4px 8px; border-left: 3px solid var(--grey); align-items: baseline; }
+  .log-row.new { background: var(--tint-blue); border-left-color: var(--accent); }
+  .log-row .t { color: var(--muted); flex: none; font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12px; }
+  .log-row .x { flex: 1; min-width: 0; }
+  .log-row .llink { color: var(--accent-text); text-decoration: underline; margin-left: auto; flex: none; font-size: 12px; }
+
+  /* ---- the build */
+  .cols2 { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px 28px; }
+  .cols2 h3 { font-size: 14px; margin: 14px 0 4px; } .cols2 h3:first-child { margin-top: 0; }
+  .cols2 p, .cols2 li { font-size: 13.5px; line-height: 1.5; margin: 0 0 6px; color: var(--ink-2); }
+  .cols2 ul { padding-left: 18px; margin: 0 0 8px; }
+  .cols2 b { color: var(--ink); }
+  pre.sql { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.5; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+  pre.sql .c { color: var(--muted); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); }
+  table.tbl td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; line-height: 1.4; }
+  table.tbl td:first-child { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  @media (max-width: 900px) { .cols2 { grid-template-columns: 1fr; } .anat { grid-template-columns: 120px 1fr 1fr; } }
+  @media (max-width: 640px) { .anat { grid-template-columns: 1fr; } .anat > div { border-right: 0; } .anat .span2 { grid-column: auto; } }
+  @media (max-width: 480px) { .phone, .panel { width: 100%; } main { padding: 12px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: tell the base</span></div>
+  <div class="tabs">
+    <a href="#today">Today</a>
+    <a href="#anatomy">One anatomy</a>
+    <a href="#sheets">The sheets</a>
+    <a href="#scale">The scale</a>
+    <a href="#base">The base</a>
+    <a href="#decide">Decide</a>
+    <a href="#build">Build</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>Tell the base: Message Operations and Ask for something</h1>
+  Todd, 18 October: <q>I think that we can make this page visually better. The urgency seems to be a scale, maybe we should show it like a scale. But we shouldn't confuse the scale of need for Message Operations with the Ask for Something; take a holistic look at these two and help me find a way to make these as good as possible, given a disaster's needs.</q>
+  Drawn at v71, before anything is built. Both sheets tell the base one thing: what, how soon, where, send. One order, one scale, two colours, so a unit learns it once and never mistakes one for the other. "Blocks further operations" comes off the scale: it is not a time. Need help now stays apart and red. Made-up data; press the buttons: the light and dark frames of one sheet are the same phone, and Send reaches the base below.
+</div>
+
+<!-- ============================================================ TODAY -->
+<section class="part" id="today">
+  <h2 class="sec">Today, as built <span class="sub">the two sheets at v71, as Todd sent them</span></h2>
+  <div class="screens">
+    <div class="screen">
+      <img class="shot" src="tell-the-base-message-v71.webp" alt="Message Operations as built at v71" width="375">
+      <div class="cap"><b>Message Operations.</b> Four pills for urgency that read as a list of equals, and the fourth is not a time. Three rows of pills that look the same: the urgency, then the suggestions under the box. Urgency is asked before the words. Where is a button, and the map comes only after.</div>
+    </div>
+    <div class="screen">
+      <img class="shot" src="tell-the-base-ask-v71.webp" alt="Ask for something as built at v71" width="375">
+      <div class="cap"><b>Ask for something.</b> Two lines of intro. The same urgency words, this time last, and "Act on now" lit before anyone chose it. The place is a line of grey text. Where the message asks for its spot, the request takes it quietly.</div>
+    </div>
+    <div class="screen w">
+      <div class="cap">
+        <b>What the two have in common</b> is more than what sets them apart: both tell the base one thing and ask how soon and where. Today they ask in a different order and draw the same question two ways.
+        <ul>
+          <li><b>Urgency is a time scale</b>, now · before dark · tomorrow, and a scale should look like one: one bar, hot to cool.</li>
+          <li><b>"Blocks further operations" is a consequence</b>, not a point on that scale. It says what happens to the unit's work, so it goes under the scale as a flag, on its own.</li>
+          <li><b>The two sheets must not be mistaken</b>: a message is read and answered by Operations; a request is worked by Logistics in steps. Same order, different colour, the button names who gets it.</li>
+          <li><b>Fewer words</b>: one line of purpose, headings of one or two words, the "for a person in danger" sentence as a small red link.</li>
+          <li><b>Gloves and rain</b>: every control 44 px or taller, the chosen state unmistakable in both themes, Send under the thumb.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ ANATOMY -->
+<section class="part" id="anatomy">
+  <h2 class="sec">One anatomy for both <span class="sub">the same five slots in the same order; what each holds</span></h2>
+  <div class="anat">
+    <div class="an-h"></div><div class="an-h m">Message Operations</div><div class="an-h a">Ask for something</div>
+    <div class="an-s">1 · Title <small>one line of purpose</small></div>
+    <div><b>Message Operations</b><span class="sub">Operations reads it and answers here.</span></div>
+    <div><b>Ask for something</b><span class="sub">Logistics works it; you see each step here.</span></div>
+    <div class="an-s">2 · What</div>
+    <div>Your words, in the box. Four quick starts under it, quote-styled: tap one and it is in the box.</div>
+    <div>The kind (the seven chips), how many, what exactly, then your words.</div>
+    <div class="an-s">3 · How soon <small>"Needed by" on the request</small></div>
+    <div class="span2">One scale on one bar, the same control on both: <span class="mini-scale"><span>Now</span><span>Before dark</span><span>Tomorrow</span></span> hot to cool. A second tap clears it. Under it, one flag: <b>We're stuck until this is sorted</b> (the request's: until it comes).</div>
+    <div class="an-s">4 · Where</div>
+    <div class="span2">One switch row, the same on both: <b>Your spot goes with it</b>, the division named under it, on when the phone has a fix. The message shows the small map and the pin to drag once it is on; the request names the division it is for.</div>
+    <div class="an-s">5 · Send <small>the button names who gets it</small></div>
+    <div><span class="bb m">Send to Operations</span></div>
+    <div><span class="bb a">Send to Logistics</span></div>
+    <div class="an-s">The foot</div>
+    <div class="span2"><span class="redl">Someone in danger? Need help now</span>, small and red, the same on both. Need help now itself stays apart, red, one tap.</div>
+  </div>
+  <p class="note">Blue is the message (the app's own colour, Operations). Teal is the request (Logistics): the icon by the title, the switch and the Send button carry it, nothing else. The scale's colours are the scale's, red · orange · blue, whichever sheet it sits on, so a lit step means the same thing everywhere.</p>
+</section>
+
+<!-- ============================================================ THE SHEETS -->
+<section class="part" id="sheets">
+  <h2 class="sec">The sheets, at 375 px <span class="sub">light and dark are the same phone; press things, then look at the base below</span></h2>
+  <div class="flowbar">
+    <span>The story is at <span class="clock" id="clock">17:52</span></span>
+    <button class="btn sm" data-act="reset" type="button">Reset to 17:52</button>
+    <span>Unit 3 (Hale, Dominguez) is in A-2 Pecan Mobile Home Park; the road out is under water at the bridge. Sunset is 18:52.</span>
+  </div>
+  <div class="screens">
+    <div class="screen"><div class="phone m light" id="m-light"></div></div>
+    <div class="screen"><div class="phone m dark" id="m-dark"></div></div>
+    <div class="screen w">
+      <div class="cap">
+        <span class="stepno">1</span><b>Message Operations.</b> One line says who reads it. The box first: the thing to say is the first thing asked. The four quick starts sit under it as words in quotes, smaller, no border; tap one and it is in the box, and they go once the box has words, as today.
+        <ul>
+          <li><b>How soon</b> is the scale: three steps on one bar, Now · Before dark · Tomorrow, hot to cool, 52 px tall. A step lit fills with its colour and gets a tick; nothing lit is allowed and means what it says today, no word on urgency.</li>
+          <li><b>We're stuck until this is sorted</b> is a flag under the scale, off by default. On, it turns red with a tick: a different shape from the scale's fill, so the two never read as one control.</li>
+          <li><b>Where</b> is a switch, on when the phone has a fix: the division under it, the small map with the pin to drag, the pin in the step's colour. Off hides the map and the message goes without a spot.</li>
+          <li><b>Send to Operations</b> in blue, the red link above it. Cancel puts the sheet back as it was.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="screens" style="margin-top:24px">
+    <div class="screen"><div class="phone a light" id="a-light"></div></div>
+    <div class="screen"><div class="phone a dark" id="a-dark"></div></div>
+    <div class="screen w">
+      <div class="cap">
+        <span class="stepno">2</span><b>Ask for something.</b> The same five slots in the same order, teal. The kind chips as today, nothing lit for you; how many and what exactly beside each other; your words under them.
+        <ul>
+          <li><b>Needed by</b> is the same scale, the same words, the same colours. The flag reads "until it comes". Nothing lit means no rush, which the base already has words for.</li>
+          <li><b>Where</b> is the same switch row, already on: "Your spot goes with it · For A-2 Pecan Mobile Home Park, where you are". Off, the request is still for A-2 and goes without the spot.</li>
+          <li><b>Your requests today</b> stays on the sheet under Where, each with its dot and its step; Logistics' answer lands here (press Approve on the base below).</li>
+          <li><b>Send to Logistics</b> in teal; Send with no kind chosen says so.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ THE SCALE -->
+<section class="part" id="scale">
+  <h2 class="sec">The scale's states <span class="sub">what the unit sees, and how each reads on the base and in the 214</span></h2>
+  <div class="states" id="states"></div>
+  <p class="note">The home panel orders by step, Now first, then Before dark, Tomorrow, nothing; among equals the stuck ones first. The count badge on the requests' heading, "N to act on now", counts the Now step and every stuck one. Today's four-way rank (now, blocking, nightfall, tomorrow) becomes three steps and a flag.</p>
+</section>
+
+<!-- ============================================================ THE BASE -->
+<section class="part" id="base">
+  <h2 class="sec">The base, the same moment <span class="sub">the home panel's rows and the 214 follow the phones above; Acknowledge and Approve reach the phone</span></h2>
+  <div class="screens">
+    <div class="screen">
+      <div class="panel" id="basemsgs"></div>
+      <div class="cap"><b>Messages</b>, the home panel's rows as <span class="mono">messageRowHtml</span> draws them. The step's badge as today (red, orange, blue), the new <span class="badge stuck">Stuck</span> badge beside it, outlined so it is not a second step. Acknowledge is Operations' answer; the phone's inbox sees it.</div>
+    </div>
+    <div class="screen">
+      <div class="panel" id="basereqs"></div>
+      <div class="cap"><b>Requests (213RR)</b>, a card per open request as <span class="mono">requestCardHtml</span> draws it: the step, Stuck, the status, then who and where. Approve writes a line and the phone's row changes. The base's own form keeps its By when select with the same three words and No rush.</div>
+    </div>
+    <div class="screen">
+      <div class="panel" id="baselog"></div>
+      <div class="cap"><b>The 214</b>, written by the database, never by the app: the message with its words in brackets after who to whom, the request with them after the division. "stuck" is the flag's word on paper too. Under it, <b>Resources needed</b> as the briefing and the sitrep print it.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ DECIDE -->
+<section class="part" id="decide">
+  <h2 class="sec">Decided here, and yours to decide</h2>
+  <div class="panel wide">
+    <div class="k">Decided here (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>One order on both sheets</b>: title and one line of purpose, what, how soon, where, send. Headings are one or two words. Nothing is lit for you: not a kind, not a step.</li>
+      <li><b>The scale is one control, drawn by one function</b> (<span class="mono">scaleHtml</span> on the phone), three steps on one bar with the hot-to-cool line under them, 52 px, a second tap clears. Its colours are the badges' today: red, orange, blue. Its words are the badges' too, so what the unit pressed is what Operations reads.</li>
+      <li><b>The flag sits under the scale on both sheets</b>, off by default, and reads as a different shape when on (a red outline and tint with a tick, not a fill). The message's words are "We're stuck until this is sorted", the request's "We're stuck until it comes".</li>
+      <li><b>The quick starts are words in quotes</b>, smaller, no border, 44 px to tap, gone once the box has words. The list is <span class="mono">QUICK</span> (and <span class="mono">QUICK_DESK</span> for a shelter desk) as today.</li>
+      <li><b>Where is one switch row on both</b>, on when the phone has a fix. The message shows the small map and the pin under it; the request names the division. Off on the request still leaves the division on it.</li>
+      <li><b>Two colours</b>: blue for the message (the app's own), teal for the request, on the icon, the switch and the Send button only. The button names who gets it. If one blue reads better, the icon and the button's words still tell them apart.</li>
+      <li><b>The red link at the foot of both</b>, "Someone in danger? Need help now", 44 px. Need help now itself is untouched.</li>
+      <li><b>Report a hazard keeps its chips</b> for now. It reads the same list, so its words shorten with it; drawing it as the scale is its own walk.</li>
+    </ul>
+    <div class="k">Yours to decide</div>
+    <ul class="decisions">
+      <li><b>Where "stuck" lives.</b> Recommended: <b>a column</b>, <span class="mono">blocking boolean</span> on <span class="mono">ic_messages</span> and <span class="mono">ic_requests</span> (migration 0038); the urgency check loses its fourth word, and the rows that said "blocking" become Now and stuck in the same migration. The other way keeps the fourth value and only draws it apart: no migration, but then a message is stuck <i>or</i> now, never both, the request can never say it, and the base cannot sort by step and flag. The column costs one migration and one rule test; it is the one that says the true thing.</li>
+      <li><b>The words on the scale.</b> Recommended: <b>Now · Before dark · Tomorrow</b> everywhere, on the phone, the badge and the 214 ("Unit 3 to Operations (now, stuck): …"). The other way keeps "Act on now / Before nightfall / Can wait until tomorrow" on the base and the paper and shortens only the phone, two lists to keep in step.</li>
+      <li><b>The flag's word on the base.</b> Recommended: <b>Stuck</b>, the same word the unit pressed, on the badge and in the 214. The other is <b>Blocking</b>, ICS's word and today's code word; plainer on a form, less plain at a glance.</li>
+      <li><b>The flag on the request too.</b> Recommended: <b>yes</b>, the same slot and the same column, because "needed now" and "we are idle until it comes" are different things to Logistics, and one anatomy is the point. The other way puts it on the message only, as today's data has it.</li>
+      <li><b>The request's default.</b> Recommended: <b>nothing chosen</b> means no rush and the unit picks; today every request is "Act on now" unless someone unpicks it, which makes the word worth less each time. The other way keeps today's quiet default.</li>
+      <li><b>The spot on the message by default.</b> Recommended: <b>on</b> when the phone has a fix, the switch turns it off; nearly every message is about a place, and the request already does this. The other way is today's: off until tapped.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ BUILD -->
+<section class="part" id="build">
+  <h2 class="sec">What a build would touch <span class="sub">a v41-sized release: one migration if the flag becomes a column, rules.js, both views, the mock, a rule test, two suites</span></h2>
+  <div class="panel wide">
+    <div class="cols2">
+      <div>
+        <h3>The phone</h3>
+        <ul>
+          <li><b>field/index.html</b>: <span class="mono">#s-compose</span> and <span class="mono">#s-ask</span> rewritten in the one order; the icon by the title, the purpose line, <span class="mono">#compose-scale</span> / <span class="mono">#ask-scale</span>, <span class="mono">#compose-flag</span> / <span class="mono">#ask-flag</span>, <span class="mono">#compose-where</span> / <span class="mono">#ask-where</span> as the switch row, the red link, Send to Operations.</li>
+          <li><b>js/field/main.js</b>: <span class="mono">scaleHtml(sheet, chosen)</span> and <span class="mono">flagHtml</span> drawn by <span class="mono">drawCompose</span> and <span class="mono">drawAsk</span>; <span class="mono">state.composeU</span> and <span class="mono">state.ask.urgency</span> keep the step (empty by default), <span class="mono">state.composeStuck</span> / <span class="mono">state.ask.stuck</span> the flag; <span class="mono">state.composeLoc</span> set from <span class="mono">sensors.pos</span> when the sheet opens; <span class="mono">sendCompose</span> / <span class="mono">sendAsk</span> send <span class="mono">blocking</span>; the inbox's <span class="mono">messageRow</span> draws the Stuck badge.</li>
+          <li><b>css/field.css</b>: <span class="mono">.scale</span>, <span class="mono">.step</span>, <span class="mono">.flag</span>, <span class="mono">.where</span>, <span class="mono">.sw</span>, <span class="mono">.quick</span>, <span class="mono">.ph-ic</span>, the teal token <span class="mono">--ask</span> in both themes.</li>
+        </ul>
+        <h3>The words, once</h3>
+        <ul>
+          <li><b>js/shared/rules.js</b>: <span class="mono">URGENCY</span> becomes the three steps with the new words; <span class="mono">STUCK_WORDS</span> (the two sentences, the badge's word); <span class="mono">urgencyLabel</span>, <span class="mono">URGENCY_RANK</span> (three steps, the flag first among equals), <span class="mono">urgencyWords(u, blocking)</span> for the 214 and the briefing ("now, stuck"); <span class="mono">dev/test-rules.mjs</span>.</li>
+          <li><b>SQL</b>: <span class="mono">ic_urgency_label</span> says the three words; <span class="mono">ic_log_message</span> (0010) and <span class="mono">ic_request_after</span> (0015) add ", stuck"; hazards keep the fourth word in <span class="mono">ic_urgency_label</span> until their own walk.</li>
+        </ul>
+        <h3>The base</h3>
+        <ul>
+          <li><b>js/base/ui.js</b>: <span class="mono">messageRowHtml</span> and <span class="mono">requestCardHtml</span> draw <span class="mono">.badge.stuck</span>; <span class="mono">requestsHtml</span>'s By when select and its count badge; <span class="mono">URG_RANK</span>; the briefing's Resources needed line; the hazard rows read the shorter words with no change of their own.</li>
+          <li><b>css/shared.css</b>: <span class="mono">.badge.stuck</span>; <span class="mono">.badge.urg-blocking</span> and <span class="mono">.mpin.urg-blocking</span> go.</li>
+        </ul>
+        <h3>The mock, the tests</h3>
+        <ul>
+          <li><b>dev/mock-supabase.js</b>: <span class="mono">DEFAULTS</span> (<span class="mono">blocking: false</span>), the two checks, the log lines in <span class="mono">afterInsert</span>, one stuck message in the seed, <span class="mono">SEED_VERSION</span>.</li>
+          <li><b>Rule test</b> <span class="mono">supabase/tests/tellbase.sql</span>, rolled back: the three words and nothing else pass the check; a stuck message's line says "(now, stuck)"; a request's "for A-2, before dark, stuck"; the old "blocking" rows read Now and stuck.</li>
+          <li><b>Smoke</b>: <span class="mono">fieldReports</span> (the message's words and badge, the spot on by default) and <span class="mono">sections</span> (the request's line and card); every suite that reads "act on now" or "before nightfall" (the hazards in <span class="mono">fieldReports</span>, the <span class="mono">parbyname</span> and <span class="mono">newcomer</span> suites) reads the new words.</li>
+          <li><b>sw.js</b> bumps; docs/punchlist.md gets its section; docs/walkthroughs.md a re-walk of both sheets. A day or two.</li>
+        </ul>
+      </div>
+      <div>
+<pre class="sql"><span class="c">-- 0038_stuck.sql (sketch), only if the flag becomes a column</span>
+alter table ic_messages add column blocking boolean not null default false;
+alter table ic_requests add column blocking boolean not null default false;
+
+<span class="c">-- the rows that said it the old way say it the new way</span>
+update ic_messages set urgency = 'now', blocking = true where urgency = 'blocking';
+alter table ic_messages drop constraint ic_messages_urgency_check;
+alter table ic_messages add constraint ic_messages_urgency_check
+  check (urgency in ('', 'now', 'nightfall', 'tomorrow'));
+<span class="c">-- ic_requests already allows the three; ic_hazards keeps its four for now</span>
+
+create or replace function ic_urgency_label(p text) returns text … <span class="c">-- = urgencyLabel():
+  -- 'now' | 'before dark' | 'tomorrow'; 'blocking' stays 'blocks further operations' for a hazard</span>
+
+create or replace function ic_log_message() … <span class="c">-- 0010's body, the bracket rebuilt:
+  -- ' (' || concat_ws(', ', nullif(ic_urgency_label(new.urgency), ''),
+  --                        case when new.blocking then 'stuck' end) || ')'
+  -- → 'Unit 3 to Operations (now, stuck): Road blocked at the bridge · location attached'</span>
+
+create or replace function ic_request_after() … <span class="c">-- 0015's body, the same words:
+  -- 'Unit 3 asked for 2 pumps for A-2, now, stuck: to drain the cul-de-sac'</span>
+
+<span class="c">-- rules.js</span>
+export const URGENCY = [['now', 'Now'], ['nightfall', 'Before dark'], ['tomorrow', 'Tomorrow']];
+export const STUCK_WORDS = { badge: 'Stuck', message: "We're stuck until this is sorted", request: "We're stuck until it comes" };
+export function urgencyWords(u, blocking) { … }   <span class="c">-- 'now, stuck' / 'before dark' / 'stuck' / ''</span></pre>
+        <table class="tbl" style="margin-top:14px">
+          <thead><tr><th>Where</th><th>Today</th><th>Drawn here</th></tr></thead>
+          <tbody>
+            <tr><td>The phone</td><td>Four pills: Act on now · Before nightfall · Can wait until tomorrow · Blocks further operations</td><td>One bar: Now · Before dark · Tomorrow; the flag under it</td></tr>
+            <tr><td>The badge</td><td>Act on now (red) · Blocks further operations (red)</td><td>Now (red) · Stuck (red outline), side by side</td></tr>
+            <tr><td>The 214, a message</td><td>Unit 3 to Operations (act on now): …</td><td>Unit 3 to Operations (now, stuck): …</td></tr>
+            <tr><td>The 214, a request</td><td>Unit 3 asked for 2 pumps for A-2, act on now: …</td><td>Unit 3 asked for 2 pumps for A-2, now, stuck: …</td></tr>
+            <tr><td>Resources needed</td><td>2 pumps for A-2, act on now · asked</td><td>2 pumps for A-2, now, stuck · asked</td></tr>
+            <tr><td>The data</td><td><span class="mono">urgency</span> in now · nightfall · tomorrow · blocking</td><td><span class="mono">urgency</span> in now · nightfall · tomorrow, <span class="mono">blocking</span> true or false</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  let toastT = null;
+  const toast = (text) => { const t = $('toast'); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); };
+
+  // ---- the words, as rules.js would hold them
+  const STEPS = [['now', 'Now'], ['nightfall', 'Before dark'], ['tomorrow', 'Tomorrow']];
+  const stepLabel = (u) => (STEPS.find((s) => s[0] === u) || ['', ''])[1];
+  const STUCK = { badge: 'Stuck', msg: "We're stuck until this is sorted", ask: "We're stuck until it comes" };
+  const KINDS = [['people', 'More hands'], ['water', 'Boat or water team'], ['medical', 'Ambulance'], ['fuel', 'Fuel'], ['equipment', 'Pump, lights, equipment'], ['supplies', 'Food, water, supplies'], ['other', 'Other']];
+  const kindLabel = (k) => (KINDS.find((x) => x[0] === k) || ['', 'Other'])[1];
+  const QUICK = ['Need more hands', 'Water rising here', 'Road blocked', 'Done here, what next?'];
+  const STATUS = { asked: 'Asked', approved: 'Approved', ordered: 'Ordered, on the way', filled: 'Filled', declined: 'Could not fill' };
+  const RANK = { now: 0, nightfall: 1, tomorrow: 2, '': 3 };
+  const ZONE = { code: 'A-2', name: 'Pecan Mobile Home Park' };
+  const UNIT = 'Unit 3';
+  const urgencyWords = (u, stuck) => [stepLabel(u).toLowerCase(), stuck ? 'stuck' : ''].filter(Boolean).join(', ');
+  const requestLine = (r) => (r.qty > 1 ? r.qty + ' ' : r.qty === 1 ? '1 ' : '') + (r.what || kindLabel(r.kind).toLowerCase());
+
+  // ---- the story
+  let S;
+  function reset() {
+    S = {
+      clock: 17 * 60 + 52,
+      msg: { text: '', u: '', stuck: false, loc: true },
+      ask: { kind: '', qty: 1, what: '', note: '', u: '', stuck: false, loc: true },
+      messages: [
+        { id: 'm1', at: 17 * 60 + 31, who: 'Unit 1', u: 'nightfall', stuck: false, text: 'Lights needed on Riverside before dark', loc: true, acked: 17 * 60 + 33, seed: true },
+      ],
+      requests: [
+        { id: 'r1', at: 17 * 60 + 27, who: 'Unit 1', zone: 'A-1', kind: 'equipment', qty: 4, what: 'portable lights', note: 'No street lights, search runs past dark', u: 'nightfall', stuck: false, status: 'asked', answer: '', statusAt: null, seed: true },
+        { id: 'r0', at: 16 * 60 + 50, who: 'Operations', zone: '', kind: 'fuel', qty: 1, what: 'fuel truck, diesel', note: 'At staging by 18:00', u: 'nightfall', stuck: false, status: 'ordered', answer: 'County yard, due 17:45', statusAt: 17 * 60 + 5, seed: true },
+      ],
+      log: [
+        { at: 16 * 60 + 50, text: 'Operations asked for 1 fuel truck, diesel, before dark: At staging by 18:00', seed: true },
+        { at: 17 * 60 + 5, text: 'Request for 1 fuel truck, diesel (Operations) ordered: County yard, due 17:45', seed: true },
+        { at: 17 * 60 + 27, text: 'Unit 1 asked for 4 portable lights for A-1, before dark: No street lights, search runs past dark', seed: true },
+        { at: 17 * 60 + 31, text: 'Unit 1 to Operations (before dark): Lights needed on Riverside before dark · location attached', seed: true },
+        { at: 17 * 60 + 33, text: 'Operations acknowledged Unit 1: Copy', seed: true },
+      ],
+    };
+    draw();
+  }
+  const tick = () => { S.clock += 1; };
+  const log = (text) => { S.log.push({ at: S.clock, text }); };
+
+  // ---- the controls, drawn once for both sheets
+  const ICONS = {
+    m: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+    a: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M3 8l9-4 9 4v9l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v9"/></svg>',
+  };
+  const scaleHtml = (sheet, u) => `<div class="scale" role="radiogroup" aria-label="${sheet === 'msg' ? 'How soon' : 'Needed by'}">${STEPS.map(([v, l]) => `<button type="button" class="step s-${v}${u === v ? ' on' : ''}" data-act="u" data-sheet="${sheet}" data-v="${v}" aria-pressed="${u === v}">${u === v ? '<span class="tick">✓</span>' : ''}${l}</button>`).join('')}</div>`;
+  const flagHtml = (sheet, on) => `<button type="button" class="flag${on ? ' on' : ''}" data-act="stuck" data-sheet="${sheet}" aria-pressed="${on}"><span class="fic"></span><span>${esc(STUCK[sheet])}</span>${on ? '<span class="tick">✓</span>' : ''}</button>`;
+  const whereHtml = (sheet, on) => {
+    const t = on ? 'Your spot goes with it' : 'Your spot stays off it';
+    const s = sheet === 'ask' ? (on ? `For ${ZONE.code} ${ZONE.name}, where you are` : `Still for ${ZONE.code} ${ZONE.name}`) : (on ? `${ZONE.code} ${ZONE.name} · drag the pin below` : 'Operations gets your words alone');
+    return `<button type="button" class="where${on ? ' on' : ''}" data-act="loc" data-sheet="${sheet}" aria-pressed="${on}"><span class="sw"><span class="knob"></span></span><span class="where-w"><span class="where-t">${t}</span><span class="where-s">${esc(s)}</span></span></button>`;
+  };
+  const mapHtml = (u) => `<div class="mapbox" aria-label="Where this message is about">
+      <svg viewBox="0 0 343 160" preserveAspectRatio="xMidYMid slice">
+        <rect x="0" y="0" width="343" height="160" fill="var(--map-ground)"/>
+        <path d="M0 118 C60 112 90 140 150 132 S260 118 343 128 L343 160 L0 160 Z" fill="var(--map-water)"/>
+        <path d="M-5 40 L348 52" stroke="var(--map-road-edge)" stroke-width="12"/><path d="M-5 40 L348 52" stroke="var(--map-road)" stroke-width="9"/>
+        <path d="M120 -5 L132 165" stroke="var(--map-road-edge)" stroke-width="10"/><path d="M120 -5 L132 165" stroke="var(--map-road)" stroke-width="7"/>
+        <path d="M200 46 L214 130" stroke="var(--map-road-edge)" stroke-width="8"/><path d="M200 46 L214 130" stroke="var(--map-road)" stroke-width="5"/>
+        <path d="M20 95 L120 90" stroke="var(--map-road-edge)" stroke-width="7"/><path d="M20 95 L120 90" stroke="var(--map-road)" stroke-width="4"/>
+        <path d="M60 60 L300 64 L310 125 L170 140 L55 120 Z" fill="var(--accent)" fill-opacity=".08" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <text x="66" y="78" font-size="11" font-weight="700" fill="var(--accent-text)" font-family="IBM Plex Sans, system-ui, sans-serif">A-2</text>
+      </svg>
+      <span class="pin${u === 'now' ? ' p-now' : u === 'nightfall' ? ' p-nightfall' : ''}"></span>
+    </div>
+    <div class="hint">Drag the pin to the exact place.</div>`;
+  const helpLink = () => `<button type="button" class="help-link" data-act="help">Someone in danger? Need help now</button>`;
+
+  function msgHtml() {
+    const m = S.msg;
+    return `<div class="ph-h"><span class="ph-ic">${ICONS.m}</span><h2>Message Operations</h2></div>
+      <p class="purpose">Operations reads it and answers here.</p>
+      <div class="k">Your words</div>
+      <input class="input" data-in="msg-text" value="${esc(m.text)}" placeholder="What Operations should know" maxlength="500" autocomplete="off">
+      <div class="quick"${m.text.trim() ? ' hidden' : ''}>${QUICK.map((q) => `<button type="button" data-act="quick" data-text="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <div class="k">How soon</div>
+      ${scaleHtml('msg', m.u)}
+      ${flagHtml('msg', m.stuck)}
+      <div class="k">Where</div>
+      ${whereHtml('msg', m.loc)}
+      ${m.loc ? mapHtml(m.u) : ''}
+      ${helpLink()}
+      <div class="sheet-btns"><button class="btn" type="button" data-act="cancel-msg">Cancel</button><button class="btn send" type="button" data-act="send-msg">Send to Operations</button></div>`;
+  }
+  function askHtml() {
+    const a = S.ask;
+    const mine = S.requests.filter((r) => r.who === UNIT);
+    return `<div class="ph-h"><span class="ph-ic">${ICONS.a}</span><h2>Ask for something</h2></div>
+      <p class="purpose">Logistics works it; you see each step here.</p>
+      <div class="k">What</div>
+      <div class="chips">${KINDS.map(([v, l]) => `<button type="button" class="chip${a.kind === v ? ' on' : ''}" data-act="kind" data-v="${v}" aria-pressed="${a.kind === v}">${esc(l)}</button>`).join('')}</div>
+      <div class="row-2">
+        <label class="f">How many<input class="input" type="number" inputmode="numeric" min="1" max="9999" data-in="ask-qty" value="${a.qty}"></label>
+        <label class="f">What exactly<input class="input" data-in="ask-what" value="${esc(a.what)}" placeholder="swift-water team" maxlength="120" autocomplete="off"></label>
+      </div>
+      <label class="f">Your words<input class="input" data-in="ask-note" value="${esc(a.note)}" placeholder="Why, and where" maxlength="300" autocomplete="off"></label>
+      <div class="k">Needed by</div>
+      ${scaleHtml('ask', a.u)}
+      ${flagHtml('ask', a.stuck)}
+      <div class="k">Where</div>
+      ${whereHtml('ask', a.loc)}
+      <div class="k">Your requests today</div>
+      <div class="mine">${mine.length ? mine.map((r) => `<div class="req-row"><span class="req-dot ${r.status}"></span><span style="flex:1"><strong>${esc(requestLine(r))}</strong><br><span class="muted small">${STATUS[r.status]}${r.answer ? ' · ' + esc(r.answer) : ''} · ${hhmm(r.statusAt || r.at)}${r.u || r.stuck ? ' · ' + esc(urgencyWords(r.u, r.stuck)) : ''}</span></span></div>`).join('') : '<div class="muted small">Nothing asked yet.</div>'}</div>
+      ${helpLink()}
+      <div class="sheet-btns"><button class="btn" type="button" data-act="cancel-ask">Cancel</button><button class="btn send" type="button" data-act="send-ask">Send to Logistics</button></div>`;
+  }
+
+  // ---- the scale's states, drawn still
+  function statesHtml() {
+    const rows = [
+      { u: '', stuck: false, cap: '<b>Nothing chosen.</b> The bar with its hot-to-cool line and nothing lit. Allowed on both sheets; the message carries no word, the request means no rush.', badge: '', log: 'Unit 3 to Operations: Water rising here · location attached', req: '2 pumps for A-2 · asked' },
+      { u: 'now', stuck: false, cap: '<b>Now.</b> Red fill, white words, a tick. The pin on the map turns red too.', badge: '<span class="badge urg-now">Now</span>', log: 'Unit 3 to Operations (now): …', req: '2 pumps for A-2, now · asked' },
+      { u: 'nightfall', stuck: false, cap: '<b>Before dark.</b> Orange fill, dark words. The one step that names the clock: sunset is on the briefing.', badge: '<span class="badge urg-nightfall">Before dark</span>', log: 'Unit 3 to Operations (before dark): …', req: '2 pumps for A-2, before dark · asked' },
+      { u: 'tomorrow', stuck: false, cap: '<b>Tomorrow.</b> Blue fill. The cool end; the next operational period.', badge: '<span class="badge urg-tomorrow">Tomorrow</span>', log: 'Unit 3 to Operations (tomorrow): …', req: '2 pumps for A-2, tomorrow · asked' },
+      { u: 'now', stuck: true, cap: '<b>Now, and stuck.</b> The flag on under the lit step: a red outline and tint, a different shape from the fill. The two badges sit side by side on the base.', badge: '<span class="badge urg-now">Now</span> <span class="badge stuck">Stuck</span>', log: 'Unit 3 to Operations (now, stuck): …', req: '2 pumps for A-2, now, stuck · asked' },
+      { u: '', stuck: true, cap: '<b>Stuck, no step.</b> Possible, rare: the flag alone. It still sorts with the Now step and counts "to act on now".', badge: '<span class="badge stuck">Stuck</span>', log: 'Unit 3 to Operations (stuck): …', req: '2 pumps for A-2, stuck · asked' },
+    ];
+    return rows.map((r) => `<div class="state"><div class="phone m light still">${scaleHtml('msg', r.u)}${flagHtml('msg', r.stuck)}</div><div class="cap">${r.cap}</div>
+      <div class="reads"><div class="row"><span class="t">badge</span>${r.badge || '<span class="muted">none</span>'}</div><div class="row"><span class="t">214</span><span>${esc(r.log)}</span></div><div class="row"><span class="t">213RR</span><span>${esc(r.req)}</span></div></div></div>`).join('');
+  }
+
+  // ---- the base
+  const sortReq = (list) => list.slice().sort((a, b) => (RANK[a.u] - RANK[b.u]) || ((b.stuck ? 1 : 0) - (a.stuck ? 1 : 0)) || (a.at - b.at));
+  function msgRow(m) {
+    return `<div class="mrow${m.seed ? '' : ' new'}" data-id="${m.id}">
+      <div class="mrow-top"><span class="t mono">${hhmm(m.at)}</span><span class="who">${esc(m.who)}</span><span class="muted">to Operations</span>${m.u ? `<span class="badge urg-${m.u}">${stepLabel(m.u)}</span>` : ''}${m.stuck ? `<span class="badge stuck">${STUCK.badge}</span>` : ''}</div>
+      <div class="mrow-text">${esc(m.text)}</div>
+      <div class="mrow-state">${m.acked ? `<span class="ack ok">All 1 acknowledged · ${hhmm(m.acked)}</span>` : '<span class="ack wait">Waiting on Operations</span>'}${m.acked ? '' : `<button class="btn sm" type="button" data-act="ack" data-id="${m.id}">Acknowledge</button>`}${m.loc ? '<button class="btn sm" type="button" data-act="show">Show on map</button>' : ''}</div>
+    </div>`;
+  }
+  function reqCard(r) {
+    const open = r.status === 'asked' || r.status === 'approved' || r.status === 'ordered';
+    return `<div class="req req-${r.status} urg-${r.u || 'none'}" data-id="${r.id}">
+      <div class="req-top">${r.u ? `<span class="badge urg-${r.u}">${stepLabel(r.u)}</span>` : ''}${r.stuck ? `<span class="badge stuck">${STUCK.badge}</span>` : ''}<span class="badge st-req-${r.status}">${STATUS[r.status]}</span><span class="muted">${hhmm(r.at)} · ${esc(r.who)}${r.zone ? ' · ' + esc(r.zone) : ''}</span></div>
+      <div class="req-line">${esc(requestLine(r))}</div>
+      ${r.note ? `<div class="muted" style="font-size:12.5px">${esc(r.note)}</div>` : ''}
+      ${r.answer ? `<div style="font-size:12.5px">${esc(r.answer)}${r.statusAt ? ' · ' + hhmm(r.statusAt) : ''}</div>` : ''}
+      ${r.status === 'asked' ? `<div class="req-answer"><input placeholder="Who is coming and when" maxlength="200" data-in="ans-${r.id}"><button class="btn sm pri" type="button" data-act="approve" data-id="${r.id}">Approve</button><button class="btn sm" type="button" data-act="decline">Can't fill</button></div>` : ''}
+      ${open && r.who === UNIT ? '<button class="btn sm" type="button" data-act="show" style="align-self:flex-start">Show on map</button>' : ''}
+    </div>`;
+  }
+  function baseHtml() {
+    const msgs = S.messages.slice().sort((a, b) => b.at - a.at);
+    $('basemsgs').innerHTML = `<div class="k">Messages</div>${msgs.map(msgRow).join('')}`;
+    const open = sortReq(S.requests.filter((r) => r.status !== 'filled' && r.status !== 'declined'));
+    const now = open.filter((r) => r.u === 'now' || r.stuck).length;
+    $('basereqs').innerHTML = `<div class="d-row"><span class="k" style="margin:0;flex:1">Requests (213RR) · ${open.length} open</span>${now ? `<span class="badge urg-now">${now} to act on now</span>` : ''}</div>${open.map(reqCard).join('')}`;
+    const lines = S.log.slice().sort((a, b) => b.at - a.at);
+    $('baselog').innerHTML = `<div class="k">214 · the activity log</div><div class="log">${lines.map((l) => `<div class="log-row${l.seed ? '' : ' new'}"><span class="t">${hhmm(l.at)}</span><span class="x">${esc(l.text)}</span><span class="llink">open</span></div>`).join('')}</div>
+      <div class="k" style="margin-top:14px">Resources needed · the briefing and the sitrep</div>
+      <div class="brief">${open.map((r) => `<p>${esc(requestLine(r))}${r.zone ? ' for ' + esc(r.zone) : ''}${r.u || r.stuck ? ', ' + esc(urgencyWords(r.u, r.stuck)) : ''} · ${STATUS[r.status].toLowerCase()}${r.answer ? ', ' + esc(r.answer) : ''}</p>`).join('') || '<p class="muted">None stated</p>'}</div>`;
+  }
+
+  function draw() {
+    $('clock').textContent = hhmm(S.clock);
+    for (const id of ['m-light', 'm-dark']) $(id).innerHTML = msgHtml();
+    for (const id of ['a-light', 'a-dark']) $(id).innerHTML = askHtml();
+    baseHtml();
+  }
+
+  // ---- typing: the state follows, the twin frame follows, nothing is redrawn under the finger
+  document.addEventListener('input', (e) => {
+    const el = e.target.closest('[data-in]');
+    if (!el) return;
+    const key = el.dataset.in;
+    if (key === 'msg-text') S.msg.text = el.value;
+    else if (key === 'ask-qty') S.ask.qty = Math.max(1, Number(el.value) || 1);
+    else if (key === 'ask-what') S.ask.what = el.value;
+    else if (key === 'ask-note') S.ask.note = el.value;
+    else return;
+    for (const other of document.querySelectorAll(`[data-in="${key}"]`)) if (other !== el) other.value = el.value;
+    if (key === 'msg-text') for (const q of document.querySelectorAll('#m-light .quick, #m-dark .quick')) q.hidden = S.msg.text.trim() !== '';
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act, sheet = btn.dataset.sheet;
+    const st = sheet === 'ask' ? S.ask : S.msg;
+    switch (act) {
+      case 'reset': reset(); toast('Back to 17:52'); break;
+      case 'u': st.u = st.u === btn.dataset.v ? '' : btn.dataset.v; draw(); break;
+      case 'stuck': st.stuck = !st.stuck; draw(); break;
+      case 'loc': st.loc = !st.loc; draw(); break;
+      case 'quick': S.msg.text = btn.dataset.text; draw(); break;
+      case 'kind': S.ask.kind = S.ask.kind === btn.dataset.v ? '' : btn.dataset.v; draw(); break;
+      case 'help': toast('Opens Need help now: untouched, red, one tap'); break;
+      case 'cancel-msg': S.msg = { text: '', u: '', stuck: false, loc: true }; draw(); toast('Back to the inbox'); break;
+      case 'cancel-ask': S.ask = { kind: '', qty: 1, what: '', note: '', u: '', stuck: false, loc: true }; draw(); toast('Back to the inbox'); break;
+      case 'send-msg': {
+        const text = S.msg.text.trim();
+        if (!text) { toast('Say something first'); break; }
+        tick();
+        S.messages.push({ id: 'm' + Date.now(), at: S.clock, who: UNIT, u: S.msg.u, stuck: S.msg.stuck, text, loc: S.msg.loc, acked: null });
+        const w = urgencyWords(S.msg.u, S.msg.stuck);
+        log(`${UNIT} to Operations${w ? ' (' + w + ')' : ''}: ${text}${S.msg.loc ? ' · location attached' : ''}`);
+        S.msg = { text: '', u: '', stuck: false, loc: true };
+        draw(); toast('Sent to Operations');
+        break;
+      }
+      case 'send-ask': {
+        const a = S.ask;
+        if (!a.kind) { toast('Pick what you need first'); break; }
+        tick();
+        const r = { id: 'r' + Date.now(), at: S.clock, who: UNIT, zone: ZONE.code, kind: a.kind, qty: a.qty, what: a.what.trim() || kindLabel(a.kind).toLowerCase(), note: a.note.trim(), u: a.u, stuck: a.stuck, status: 'asked', answer: '', statusAt: null, loc: a.loc };
+        S.requests.push(r);
+        const w = urgencyWords(r.u, r.stuck);
+        log(`${UNIT} asked for ${requestLine(r)} for ${ZONE.code}${w ? ', ' + w : ''}${r.note ? ': ' + r.note : ''}`);
+        S.ask = { kind: '', qty: 1, what: '', note: '', u: '', stuck: false, loc: true };
+        draw(); toast('Sent to Logistics');
+        break;
+      }
+      case 'ack': { const m = S.messages.find((x) => x.id === btn.dataset.id); if (m && !m.acked) { tick(); m.acked = S.clock; log(`Operations acknowledged ${m.who}: Copy`); draw(); } break; }
+      case 'approve': {
+        const r = S.requests.find((x) => x.id === btn.dataset.id); if (!r) break;
+        const ans = (document.querySelector(`[data-in="ans-${r.id}"]`) || { value: '' }).value.trim();
+        tick(); r.status = 'approved'; r.answer = ans; r.statusAt = S.clock;
+        log(`Request for ${requestLine(r)} (${r.who}) approved${ans ? ': ' + ans : ''}`);
+        draw(); toast('Approved; the phone sees it');
+        break;
+      }
+      case 'decline': toast('Not drawn here: Can\'t fill works as today'); break;
+      case 'show': toast('Pans the map to the spot, as today'); break;
+    }
+  });
+
+  // ---- the page's theme, as the base keeps it
+  const themeBtn = $('theme-btn');
+  const drawTheme = () => { const dark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); themeBtn.textContent = dark ? 'Light' : 'Dark'; };
+  themeBtn.addEventListener('click', () => { const dark = themeBtn.textContent === 'Light'; document.documentElement.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('ic.theme', dark ? 'light' : 'dark'); } catch (e) {} drawTheme(); });
+  drawTheme();
+
+  $('states').innerHTML = statesHtml();
+  reset();
+})();
+</script>
+</body>
+</html>

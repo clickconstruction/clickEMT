@@ -522,6 +522,19 @@ Walk first, then rank, as before.
   overdue in orange or the planned end, the units, the divisions and cleared, the hazards) and a rest of half a second
   or a click opens a card with the whole picture broken out, six rows each with the place it is worked, Start the next
   period on it when overdue; the times, the IC and the base move to the card. No migration; a v60-sized panel.
+- **Incident kinds and starter periods** (Todd, 19 October: offer buttons when making a new period; the user picks
+  natural hazards, human-caused, medical and public health, search and rescue or planned events, then sees options
+  that pre-fill the period; they have not run an incident and want it easy to configure; mock-up
+  `try/mockups/starters.html`, drawn at v76, not built): two rows of buttons on the New incident sheet, the kind then
+  its usual sub-kinds, asked once; a sub-kind gives period 1 a starter, written on open as Operations' own lines (the
+  three standing objectives and three to five for the kind, the safety message, the rotation and the hours on scene,
+  what to bring; the facilities to place first and the unit kinds to expect as words); the Period sheet opens first
+  and says "from the Flood starter", every line edits in place or goes with one press (a removed objective is
+  archived, never deleted). Flood written in full, sixteen more sketched one line each. Would add
+  `ic_incidents.kind` and `ic_objectives.archived_at` (migration 0040, after 0039 on `water-words`), `STARTERS` in
+  rules.js, the rows on the sheet, the writes into `ic_periods` and `ic_objectives` on open. Four decisions on the
+  page, the recommended answers first: once at the opening; the seventeen sub-kinds drawn; facilities named, not
+  placed; one word on the phone's briefing.
 - **The header row grouped** (seen while drawing v58's labels): thirteen buttons in one row is most of "too much going on"; the mock-up at `/try/mockups/#discovery` shows them as This period · Boards · Forms · The day, with the device and the account on the right. Not decided.
 - **A new incident starting emptier** (v58): a fresh incident has no divisions, units or log lines, so its screen is already quieter than the seeded one; the labels could then say "nothing here yet: draw the boundary", and the side panel could lead with the codes.
 - **The front door's screenshots are the base at v33** (`images/front/`): the header has changed since (Public, Transports, v59's row of pills) and the pictures have not. Redoing them needs the html2canvas-pro render CLAUDE.md describes.

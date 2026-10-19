@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: incident kinds and starter periods · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- A click-through mock-up, drawn 19 October 2026 at v76 before anything is built, of the note of 19 October: offer
+     buttons when making a new period; the user picks natural hazards, human-caused, medical and public health, search
+     and rescue or planned events, then sees options that pre-fill the period; they have not run an incident and want
+     it easy to configure. The New incident sheet as built, the same sheet with two rows of kind buttons (press a kind,
+     its sub-kinds appear; press one and the Period sheet below fills from the starter), the Flood starter in full and
+     sixteen more sketched, the thinking, the decisions with the recommended answer first, and what a build would
+     touch. Made-up data (the mock's Cedar Fork Flooding, opened at 19:58). Nothing here writes anywhere. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 13px; }
+  .tabs a:hover { border-color: var(--grey); }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  section.part { margin: 0 0 34px; scroll-margin-top: 70px; }
+  .intro { max-width: 820px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2.sec .sub { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; min-width: 0; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 440px; line-height: 1.45; }
+  .screen > .cap b { color: var(--ink); }
+  .screen.w { flex: 1 1 320px; }
+  .screen.w ul { margin: 6px 0 0; padding-left: 18px; } .screen.w li { margin: 0 0 6px; }
+  .panel { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; box-sizing: border-box; }
+  .panel.wide { width: 100%; }
+  .k { margin: 12px 0 6px; font-weight: 600; } .k:first-child { margin-top: 0; }
+  .k .sub { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12.5px; }   /* shared.css sets .k in small capitals; the subtitle stays plain */
+  .sub { color: var(--muted); font-size: 13px; }
+  .note, .hint { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.4; }
+  .hint { margin: -4px 0 0; }
+  .decisions li { margin: 0 0 8px; line-height: 1.45; }
+  .decisions b { color: var(--ink); }
+  .chosen, .open { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; border-radius: 999px; padding: 1px 8px; vertical-align: 1px; }
+  .chosen { background: var(--tint-green); color: var(--cleared); }
+  .open { background: var(--tint-yellow); color: var(--hazard-ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--toast-bg); color: var(--toast-ink); border-radius: 12px; padding: 10px 16px; font-size: 14px; z-index: 50; max-width: 90vw; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .toast[hidden] { display: none; }
+  .think { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .think .panel { width: auto; }
+  .think ul { margin: 0; padding-left: 18px; } .think li { margin: 0 0 7px; line-height: 1.45; }
+  .think .k { margin-top: 0; }
+  .touch li { margin: 0 0 6px; line-height: 1.45; }
+
+  /* ---- the picker's card, as base.css draws "Open a new incident" (.card, 760 px wide at most) */
+  .sheet { width: 720px; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; box-sizing: border-box; }
+  .sheet h2 { margin: 0; font-size: 15px; }
+  .sheet .form input, .sheet .form textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; }
+  .sheet.still .btn, .sheet.still input { pointer-events: none; } .sheet.still .btn { opacity: .8; }
+  .kind-row, .sub-row, .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kind-row .btn, .sub-row .btn { font: inherit; font-size: 13px; }
+  .sub-row { margin: 2px 0 0 10px; padding-left: 12px; border-left: 2px solid var(--line); }
+  .sub-row[hidden] { display: none; }
+  .lab { font-size: 13px; color: var(--muted); }
+
+  /* ---- the Period sheet (the panel's form at v76, the starter's lines in it) */
+  .from { display: block; font-size: 12.5px; color: var(--accent-text); background: var(--tint-blue); border-radius: 8px; padding: 6px 10px; }
+  .from[hidden] { display: none; }
+  .from b { color: var(--accent-text); }
+  .ptitle { font-size: 16px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .ptitle span { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+  .line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; align-items: end; }
+  .line label { min-width: 0; }
+  .x { border: 0; background: none; color: var(--muted); width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 5px; flex: none; }
+  .x:hover { background: var(--hover); color: var(--danger); }
+  .k2 { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 6px 0 0; }
+  .obj { display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 2px 0; border-top: 1px solid var(--line-soft); }
+  .obj:first-of-type { border-top: 0; }
+  .obj .tick { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--control-border); background: var(--control-bg); box-sizing: border-box; }
+  .obj .n { font-weight: 600; font-size: 13.5px; }
+  .obj input { border: 1px solid transparent; background: none; color: var(--ink); font: inherit; font-size: 14px; padding: 5px 6px; border-radius: 6px; width: 100%; box-sizing: border-box; min-width: 0; }
+  .obj input:hover { border-color: var(--line); }
+  .obj input:focus { outline: 2px solid var(--accent); outline-offset: 0; background: var(--control-bg); }
+  .obj .tag, .tag { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .obj .x { margin-bottom: 0; }
+  .composer { display: flex; gap: 8px; margin-top: 4px; } .composer input { flex: 1; }
+  .empty { color: var(--muted); font-size: 12.5px; }
+  .places { display: flex; flex-wrap: wrap; gap: 8px; }
+  .place { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); border-radius: 999px; padding: 4px 12px 4px 5px; font: inherit; font-size: 13px; cursor: pointer; }
+  .place:hover { border-color: var(--grey); }
+  .fl { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; box-sizing: border-box; }
+  .expect { font-size: 14px; }
+  .seats { opacity: .75; }
+
+  /* ---- where the kind shows afterwards */
+  .ic-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; } .ic-head b { font-size: 14px; }
+  .pick-row { display: flex; gap: 12px; align-items: center; padding: 8px 6px; border-top: 1px solid var(--line-soft); font-size: 14px; }
+  .pick-row .name { font-weight: 600; } .pick-row .sub { font-size: 12.5px; } .pick-row .spacer { flex: 1; }
+  .ph { display: flex; flex-direction: column; gap: 2px; } .ph b { font-size: 18px; } .ph .sub { font-size: 13px; }
+  .set { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .set select { border: 1px solid var(--control-border); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 14px; background: var(--control-bg); color: var(--ink); }
+  .form label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); } .chk input { accent-color: var(--accent); margin: 0; }
+  .was { text-decoration: line-through; color: var(--muted); }
+
+  /* ---- the starters */
+  .st-wrap { overflow-x: auto; }
+  table.st { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 900px; }
+  table.st th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+  table.st td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; line-height: 1.4; }
+  table.st td.g { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding-top: 14px; border-bottom: 0; font-weight: 600; }
+  table.st td b { white-space: nowrap; }
+  table.st .btn { white-space: nowrap; }
+  ol.full { margin: 0; padding-left: 22px; } ol.full li { margin: 0 0 5px; }
+  .full-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 24px; }
+  .full-grid p { margin: 0; }
+  @media (max-width: 720px) { .sheet { padding: 12px; } .obj { grid-template-columns: 22px auto minmax(0, 1fr) auto; } .obj .tag { display: none; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: incident kinds and starter periods</span></div>
+  <div class="tabs">
+    <a href="#today">Today</a>
+    <a href="#sheet">The sheet, live</a>
+    <a href="#starters">The starters</a>
+    <a href="#best">Best we can do?</a>
+    <a href="#decide">Decide</a>
+    <a href="#touch">What it touches</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>Incident kinds and starter periods</h1>
+  The note, 19 October, as the main session relayed it: <q>Offer buttons when making a new period: the user selects natural hazards, human-caused, medical and public health, search and rescue, planned events, and then sees options that pre-fill the period. They have not run an incident and want it easy to configure.</q>
+  Drawn at v76, before anything is built. One piece: two rows of buttons on the New incident sheet, the kind of incident and then its usual sub-kinds, asked once; pressing a sub-kind gives period 1 a starter, a handful of short lines on the Period sheet that Operations can edit or remove with one press. Flood is written in full; the other sixteen are sketched in one line each. Made-up data; press the buttons below and watch the Period sheet fill.
+</div>
+
+<section class="part" id="today">
+  <h2 class="sec">Today, as built <span class="sub">the picker's "Open a new incident" card at v76, and what Create gives</span></h2>
+  <div class="screens">
+    <div class="screen">
+      <div class="sheet still" aria-label="The New incident sheet as built">
+        <h2>Open a new incident</h2>
+        <div class="form">
+          <label>Name <input placeholder="Cedar Fork Flooding" tabindex="-1"></label>
+          <label>Operational period <input placeholder="OP 1 · 07:00 to 19:00" tabindex="-1"></label>
+          <label>Base <input placeholder="Cedar Fork High School" tabindex="-1"></label>
+          <div class="row-2">
+            <label>Map center, latitude <input placeholder="30.2672" tabindex="-1"></label>
+            <label>Longitude <input placeholder="-97.7431" tabindex="-1"></label>
+          </div>
+          <div class="row-btns"><span class="btn sm">Use my location</span><span class="btn pri">Create incident</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen w">
+      <div class="cap"><b>Five boxes and two buttons.</b> Only the name is required. Create opens the incident on the home panel with period 1 empty: no objectives, no safety message, nothing to bring, the rotation and the hours on scene at the settings' defaults (45 minutes, 12 hours), and the Period sheet a button away.
+        <ul>
+          <li><b>For someone who has run incidents</b> that is right: the sheet asks nothing it does not need, and the period is theirs to write.</li>
+          <li><b>For someone who has not</b>, the first screen after Create is a map with nothing on it and a panel that says "nothing here yet". The Period sheet, when they find it, asks "What must be true by the end of the period?" with no example to copy.</li>
+          <li><b>The words that matter most on the first night</b>, the safety message and what to bring, are two boxes at the foot of a long form of seats.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="sheet">
+  <h2 class="sec">The sheet, live <span class="sub">press a kind, then one of its sub-kinds; the Period sheet under it fills from the starter</span></h2>
+  <div class="screens">
+    <div class="screen">
+      <div class="sheet" id="new-sheet" aria-label="The New incident sheet with the kind rows">
+        <h2>Open a new incident</h2>
+        <div class="form">
+          <label>Name <input id="nname" placeholder="Cedar Fork Flooding" value="Cedar Fork Flooding"></label>
+          <label>Kind <span class="kind-row" id="kind-row"></span></label>
+          <div class="sub-row" id="sub-row" hidden></div>
+          <div class="hint" id="kind-hint"></div>
+          <label>Operational period <input placeholder="OP 1 · 07:00 to 19:00"></label>
+          <label>Base <input placeholder="Cedar Fork High School" value="Cedar Fork High School"></label>
+          <div class="row-2">
+            <label>Map center, latitude <input placeholder="30.2672" value="30.2650"></label>
+            <label>Longitude <input placeholder="-97.7431" value="-97.7400"></label>
+          </div>
+          <div class="row-btns"><button type="button" class="btn sm" data-where="your location into the two boxes">Use my location</button><button type="button" class="btn pri" id="create">Create incident</button></div>
+        </div>
+      </div>
+      <div class="cap" style="max-width:720px"><b>Two rows, one press each, both optional.</b> The first row is the five kinds in the note's words. Pressing one shows its usual sub-kinds under it; pressing a sub-kind picks the starter and the hint under the rows says what period 1 will start with. Press a lit button again to unpick it. Nothing else on the sheet moves. Create then opens the incident on the Period sheet, so the first screen is the lines, not an empty map.</div>
+    </div>
+    <div class="screen">
+      <div class="sheet" id="period-sheet" aria-label="The Period sheet, period 1 as it opens after Create">
+        <div class="ptitle">Operational period 1 <span>19:58 to 07:00 · Cedar Fork Flooding</span></div>
+        <div class="from" id="from" hidden></div>
+        <div class="form" id="sheet-body"></div>
+      </div>
+      <div class="cap" style="max-width:720px"><b>The Period sheet, as it opens right after Create.</b> The same sheet as at v76 with the starter's lines in it and one line at the top saying where they came from. Every line is a plain box or objective, the same as one Operations typed: edit it in place, or press × and it goes. Each × on an objective is one press; a cleared box is empty; a cleared rotation or hours reads 0, off. Nothing is locked, and nothing says "template". In the mock-up the sheet fills as you press above, so the words can be judged side by side.</div>
+    </div>
+  </div>
+
+  <div class="screens" style="margin-top:20px">
+    <div class="screen">
+      <div class="panel">
+        <div class="k">Where the kind shows afterwards <span class="sub">one word, in the places that name the incident</span></div>
+        <div class="k2">The incident's card (v76)</div>
+        <div class="ic-head" style="margin:4px 0 10px"><b>Cedar Fork Flooding</b><span class="muted">a flood · since 19:58</span></div>
+        <div class="k2">The picker's row</div>
+        <div class="pick-row" style="margin:4px 0 10px"><span><span class="name">Cedar Fork Flooding</span><br><span class="sub">flood · Operations · opened 19:58</span></span><span class="spacer"></span><span class="btn sm" data-where="the incident">Open</span></div>
+        <div class="k2">The phone's briefing (decision 4)</div>
+        <div class="ph" style="margin:4px 0 10px"><b>Your briefing</b><span class="sub">Cedar Fork Flooding, a flood · Unit 3, swift-water team · 20:14</span></div>
+        <div class="k2">Incident settings</div>
+        <div class="set" style="margin:4px 0 0"><span>Kind</span><select aria-label="Kind"><option>Flood</option><option>Wildfire</option><option>Storm</option><option>Winter storm</option><option>Structure fire</option><option>Hazmat</option><option>Not set</option></select><span class="sub">changes the word; no period is rewritten</span></div>
+      </div>
+      <div class="cap"><b>The line stays as it is.</b> v76 keeps the header's line to what changes during the day; the kind never changes, so it goes on the card's head beside "since 19:58", on the picker's row and, if decision 4 says yes, under the briefing's title on the phone.</div>
+    </div>
+    <div class="screen">
+      <div class="panel">
+        <div class="k">Start period 2 <span class="sub">as today: no kind question (decision 1)</span></div>
+        <div class="form">
+          <div class="row-2"><label>Incident Commander <input value="Dana Ruiz" tabindex="-1"></label><label>Planned end <input value="19:00" tabindex="-1"></label></div>
+          <label class="chk"><input type="checkbox" checked tabindex="-1"> Carry open objectives and assignments into the new period</label>
+          <div class="hint">The seats, the rotation, the hours and what to bring carry as they do today. Period 2 starts from period 1, not from the starter: by then the day has taught the sheet more than the table knows.</div>
+          <div class="row-btns"><span class="btn sm">Cancel</span><span class="btn pri sm">Start period 2</span></div>
+        </div>
+      </div>
+      <div class="cap"><b>The kind is asked once.</b> Start period N+1 is the usual hand-over; the starter was only ever for the first hour. A storm that becomes a flood changes its word in Incident settings and writes its own lines.</div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="starters">
+  <h2 class="sec">The starters <span class="sub">Flood in full; the other sixteen in one line each, each a press away above · <span id="longest"></span></span></h2>
+  <div class="screens">
+    <div class="screen w" style="flex-basis:100%">
+      <div class="panel wide">
+        <div class="k">The Flood starter <span class="sub">· what period 1 gets, line by line; the mock's seed at v4 wrote the same three sentences by hand</span></div>
+        <div class="full-grid" id="flood-full"></div>
+      </div>
+    </div>
+    <div class="screen w" style="flex-basis:100%">
+      <div class="panel wide">
+        <div class="k">The three standing objectives <span class="sub">· on every starter, first; ICS's three priorities in plain words</span></div>
+        <ol class="full" id="standing"></ol>
+        <p class="note">Life safety, stabilisation, property: the order ICS teaches, as three lines a crew can repeat. They come with any kind, even a kind pressed with no sub-kind, so the sheet is never empty once a kind is chosen. A parade may not need the third; it is one press to remove.</p>
+      </div>
+    </div>
+    <div class="screen w" style="flex-basis:100%">
+      <div class="panel wide">
+        <div class="k">The other starters, sketched <span class="sub">· one row each in rules.js, so a wrong word is a one-line change; a crew of each kind should read its row before it ships</span></div>
+        <div class="st-wrap"><table class="st">
+          <thead><tr><th>Starter</th><th>Adds to the standing three</th><th>Safety message</th><th>Water · hours</th><th>Bring</th><th>Place first</th><th>Expect</th><th></th></tr></thead>
+          <tbody id="st-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="best">
+  <h2 class="sec">Is this the best we can do? <span class="sub">what the sheet is for, what a starter is, what was set aside</span></h2>
+  <div class="think">
+    <div class="panel">
+      <div class="k">Who it is for</div>
+      <ul>
+        <li>Someone at a laptop at 19:58 who has never opened an incident, with phones already arriving. The first screen after Create should say what to do tonight, in their own app's words, not in a manual.</li>
+        <li>Two presses, nothing to read first. The kinds are the note's words; the sub-kinds are the ones a county sees.</li>
+        <li>Someone who has run a hundred incidents loses nothing: both rows are optional, and an unpressed sheet is today's.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What a starter is, and is not</div>
+      <ul>
+        <li>A starter is a few short lines in the boxes the sheet already has: objectives, the safety message, the rotation and the hours, what to bring. Nothing new to learn, nothing new to store but the kind.</li>
+        <li>Twelve words at most on a line, two or three short sentences in the safety message: it is read on a phone in the rain, from the briefing.</li>
+        <li>The lines are Operations' own the moment they appear: the same tick, the same edit, the same × as a line they typed. A starter that is wrong is five presses from gone.</li>
+        <li>Place first and Units to expect are words from the table, not records: a press places a facility; a unit kind is what to ask for on a 213RR.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">Set aside</div>
+      <ul>
+        <li><b>A wizard</b>, steps with Next: the sheet is one screen and Create is its one button; a first-timer with phones arriving does not want five screens.</li>
+        <li><b>Templates per period:</b> Start period N+1 already carries the seats, the open objectives, the rotation, the hours and bring; a template applied again would overwrite what the day taught.</li>
+        <li><b>Long canned text:</b> a page of a safety message is not read on a phone and is not Todd's twelve words; the starter's lines are short, and the sheet keeps its boxes short.</li>
+        <li><b>Locking anything:</b> a line that cannot be removed is a rule, and the app's rules live in rules.js and the database, not in a starter.</li>
+        <li><b>A kind on the header's line:</b> v76 keeps the line to what changes; the kind never does.</li>
+        <li><b>A starter that places facilities on the map:</b> four letters on one made-up spot, to be dragged apart by someone who has never dragged one. The sheet names them and each is a press to place (decision 3).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <div class="k">What to watch after</div>
+      <ul>
+        <li>Whether the third standing objective reads as noise on a parade or a game; it is one press to remove, and the planned-event rows could leave it out.</li>
+        <li>Whether seventeen sub-kinds is too many to scan. The groups fold them to four or five at a time; a county that only ever floods presses the same two buttons every time.</li>
+        <li>The words in the sixteen sketches: a crew of each kind has not read its row. Flood's words are the seed's, written at v4 and walked since.</li>
+        <li>Whether the first screen after Create should be the Period sheet (as drawn) or the home panel with the Period button lit.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="part" id="decide">
+  <h2 class="sec">Decided here, and yours to decide</h2>
+  <div class="panel wide">
+    <div class="k">Decided here (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>On the New incident sheet, asked once.</b> The kind is a fact about the incident, like its name and its base; periods carry forward by Start period N+1. <span class="chosen">chosen</span></li>
+      <li><b>Two rows, the kind then its sub-kinds, both optional.</b> A kind alone records the word and starts period 1 with the three standing objectives; a sub-kind adds its own lines; nothing pressed is today's sheet. <span class="chosen">chosen</span></li>
+      <li><b>A starter is rows in one table in rules.js</b> (<span class="mono">STARTERS</span>), read by both views, tested in Node for the twelve-word rule; nothing per period, nothing locked, no template anywhere. <span class="chosen">chosen</span></li>
+      <li><b>The lines are written on open, as Operations' own.</b> Create makes the incident and period 1 as today, then writes the starter into period 1 (the notes, the rotation, the hours, bring) and inserts the objectives; the 214 reads "Incident opened: Cedar Fork Flooding, a flood, operational period 1 from the Flood starter" and then one "Objective N set" line each, as if typed. <span class="chosen">chosen</span></li>
+      <li><b>× on an objective removes it, never deletes it.</b> Nothing the user made is deleted (the repository's rule), so a removed objective is archived (<span class="mono">ic_objectives.archived_at</span>), out of every list and carried nowhere, with a 214 line "Objective 5 removed: …". This also gives a mistyped objective a way out it never had. A cleared box is blank; a cleared rotation or hours is 0. <span class="chosen">chosen</span></li>
+      <li><b>Place first and Units to expect are words, not records.</b> The chips come from the table for the incident's kind and each goes once a facility of its kind is on the map; the unit kinds are a line to read. Nothing written. <span class="chosen">chosen</span></li>
+      <li><b>Create opens the Period sheet when a starter was used</b>, so the lines are the first thing seen; with no starter, the home panel as today. <span class="chosen">chosen</span></li>
+      <li><b>The kind can change in Incident settings.</b> It changes the word on the card, the picker and the briefing; no period is rewritten. <span class="chosen">chosen</span></li>
+    </ul>
+    <div class="k">Yours to decide (recommended first)</div>
+    <ul class="decisions">
+      <li><b>1. Once at the opening, or also on Start period N+1.</b> Recommended: <b>once, on the New incident sheet</b>; Start period N+1 carries the seats, the rotation, the hours, bring and the open objectives as it does today, so nothing the starter gave is lost and nothing the day taught is overwritten. The other way puts a "Start from the Flood starter" box on the hand-over form, off by default, for a period that wants the lines back. <span class="open">open</span></li>
+      <li><b>2. How many sub-kinds.</b> Recommended: <b>the seventeen drawn</b> (four natural, five human-caused, two medical, three search and rescue, three planned), Flood's starter complete and the sixteen others from their one-line rows, each a thin starter rather than an empty sheet; a new one is a row. The other way ships Flood and the five kinds alone, the other sub-kinds added as agencies ask, so no crew is handed words nobody of its kind has read. <span class="open">open</span></li>
+      <li><b>3. Whether a starter seeds facilities on the map or only names them.</b> Recommended: <b>names only</b>: Place first on the Period sheet, a chip per kind, each a press into Place on the map, gone once one is placed; the starter does not know where the boat ramp is. The other way inserts four facilities at the map's centre, named by kind, to drag into place. <span class="open">open</span></li>
+      <li><b>4. Whether the phone's briefing says the kind.</b> Recommended: <b>yes, one word</b> under the briefing's title ("Cedar Fork Flooding, a flood"), nowhere else on the phone: a unit arriving from another county learns what it is walking into before the safety line. The other way leaves the phone untouched, the name usually saying it. <span class="open">open</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="part" id="touch">
+  <h2 class="sec">What a build would touch <span class="sub">a v43-sized release: one migration, rules.js, the base, the phone's one word, the mock, a rule test, two suites</span></h2>
+  <div class="screens">
+    <div class="screen w">
+      <div class="panel wide">
+        <ul class="touch">
+          <li><b>Migration 0040</b> (after 0039, the 214's water words, on branch <span class="mono">water-words</span>): <span class="mono">ic_incidents.kind text not null default ''</span> with a check on the seventeen codes; <span class="mono">ic_create_incident(…, p_kind)</span> from 0004's body, its opening line saying the kind and "from the Flood starter"; <span class="mono">ic_objectives.archived_at</span> with "Objective N removed: …" in <span class="mono">ic_log_objective</span> and the carry-over in <span class="mono">ic_start_period</span> (0029's body, the newest) skipping archived rows; <span class="mono">ic_kind_text(kind)</span> for the log. Rule test <span class="mono">supabase/tests/starters.sql</span>: the check, the opening line, a removal, a carry that leaves the removed one behind.</li>
+          <li><b>rules.js:</b> <span class="mono">INCIDENT_KINDS</span> (the five, each with its sub-kinds, code and label), <span class="mono">STANDING</span>, <span class="mono">STARTERS</span> (per sub-kind: objectives, notes, rotation, scene, bring, places, units), <span class="mono">starterFor(kind)</span>, <span class="mono">incidentKindText(kind)</span> ("a flood"), <span class="mono">placeFirst(kind, facilities)</span>; Node tests in <span class="mono">dev/test-rules.mjs</span>: every objective twelve words or fewer, every place in <span class="mono">FACILITY_KINDS</span>, every unit in <span class="mono">UNIT_KINDS</span>, every code in the SQL check.</li>
+          <li><b>data.js:</b> <span class="mono">createIncident({ …, kind })</span>; <span class="mono">applyStarter(periodId, starter)</span>, one update of the period and the objectives inserted in order; <span class="mono">removeObjective(id)</span>.</li>
+          <li><b>index.html:</b> the two rows on <span class="mono">#new-incident</span> (<span class="mono">.kind-row</span>, <span class="mono">.sub-row</span>, a hidden <span class="mono">kind</span> input, the hint line); the Period sheet's <span class="mono">.from-starter</span> line.</li>
+          <li><b>main.js:</b> the presses on the rows; after Create, the starter applied and <span class="mono">select({ type: 'period' })</span> so the Period sheet opens first; <span class="mono">objective-remove</span>; the picker's row and Incident settings' Kind select.</li>
+          <li><b>ui.js:</b> <span class="mono">periodHtml</span> with the from-starter line, × on each objective, Place first chips (<span class="mono">place-facility</span> with the kind) while the kind's facility is missing, Units to expect; <span class="mono">incidentPopHtml</span>'s head says the kind; the 202 prints the objectives as today.</li>
+          <li><b>The phone</b> (decision 4): one word under the briefing's title in <span class="mono">drawBriefingSheet</span>; later, the check-in's kind chips in the starter's order.</li>
+          <li><b>base.css:</b> <span class="mono">.kind-row</span>, <span class="mono">.sub-row</span>, <span class="mono">.from-starter</span>, <span class="mono">.obj-x</span>, <span class="mono">.place</span>.</li>
+          <li><b>The mock:</b> the column, the check, <span class="mono">archived_at</span>, the opening line, the seed's incident as a flood; <span class="mono">SEED_VERSION</span> up by one after 0039's.</li>
+          <li><b>The suites:</b> <span class="mono">periods</span> opens an incident with a kind and reads the seven objectives, removes one, starts period 2 and reads six; <span class="mono">seeded</span> reads "a flood" on the card's head.</li>
+          <li><b>Docs:</b> a README line, a CLAUDE.md gotcha, the punchlist's section, "Built as vN" here, the re-walk as a first-time Operations; the discover label for the home panel unchanged.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let toastT = null;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
+
+  // ---- the table a build would put in rules.js: the kinds in the note's words, their usual sub-kinds, and a starter per sub-kind
+  const KINDS = [
+    ['natural', 'Natural hazard', [['flood', 'Flood'], ['wildfire', 'Wildfire'], ['storm', 'Storm'], ['winter', 'Winter storm']]],
+    ['human', 'Human-caused', [['fire', 'Structure fire'], ['hazmat', 'Hazmat'], ['collapse', 'Collapse'], ['crash', 'Crash'], ['utility', 'Utility failure']]],
+    ['medical', 'Medical and public health', [['mci', 'Mass casualty'], ['outbreak', 'Outbreak']]],
+    ['sar', 'Search and rescue', [['swift', 'Swift water'], ['wilderness', 'Wilderness'], ['urban', 'Urban']]],
+    ['planned', 'Planned event', [['parade', 'Parade'], ['festival', 'Festival'], ['game', 'Game']]]
+  ];
+  const STANDING = ['Nobody gets hurt, crews or residents', 'Keep it from getting worse', 'Protect property once people are safe'];
+  // FACILITY_KINDS' letters and UNIT_KINDS' plural words, as rules.js has them
+  const FAC = { icp: ['Command post', 'CP'], staging: ['Staging area', 'S'], shelter: ['Shelter', 'SH'], ramp: ['Boat ramp', 'BR'], pod: ['Point of distribution', 'POD'], hospital: ['Hospital', 'H'], helispot: ['Helispot', 'HL'] };
+  const UNITS = { engine: 'engines', boat: 'boat crews', swift_water: 'swift-water teams', high_water: 'high-water vehicles', ambulance: 'ambulances', search: 'search teams', k9: 'K9 teams', drone: 'drone teams', pump: 'pump crews', shelter_desk: 'shelter desks', volunteer: 'volunteers', other: 'a hazmat team (other)' };
+  const STARTERS = {
+    flood: { objectives: ['People off the low ground first', 'Primary search of every flooded structure', 'Every flooded crossing closed and watched', 'Shelter open and staffed before dark'], notes: 'Nobody enters moving water. PFDs on near the water. PAR on the hour.', rotation: 45, scene: 12, bring: 'PFDs and dry bags, a radio each, water for the day', places: ['icp', 'staging', 'ramp', 'shelter'], units: ['boat', 'swift_water', 'high_water', 'engine', 'ambulance', 'pump'] },
+    wildfire: { objectives: ['Homes in the fire’s path emptied first', 'The line held where it can be', 'Every evacuee counted at the shelter'], notes: 'Two ways out and a lookout posted. Watch the wind.', rotation: 0, scene: 16, bring: 'Nomex, a fire shelter, eye protection, water for the day', places: ['icp', 'staging', 'helispot', 'shelter'], units: ['engine', 'drone', 'ambulance', 'volunteer'] },
+    storm: { objectives: ['Downed lines reported and marked', 'Roads open for ambulances', 'Shelter open for homes without power'], notes: 'Every downed line is live. Chainsaw PPE on.', rotation: 0, scene: 12, bring: 'Chainsaw PPE, lights, rain gear, water', places: ['icp', 'staging', 'shelter', 'pod'], units: ['engine', 'search', 'pump', 'volunteer'] },
+    winter: { objectives: ['Warming shelter open and staffed', 'Welfare checks on the list done', 'Roads open for ambulances'], notes: 'Cold kills slowly: rotate crews in. Generators outside, never in.', rotation: 0, scene: 12, bring: 'Layers, hand warmers, chains, a hot drink', places: ['icp', 'shelter', 'pod'], units: ['engine', 'ambulance', 'volunteer', 'shelter_desk'] },
+    fire: { objectives: ['Everyone out and counted', 'The fire kept to the building', 'Utilities off'], notes: 'Collapse zone marked. Air checked. PAR every twenty minutes.', rotation: 0, scene: 12, bring: 'Spare bottles, rehab water', places: ['icp', 'staging'], units: ['engine', 'ambulance'] },
+    hazmat: { objectives: ['Hot, warm and cold zones set and held', 'Downwind homes emptied', 'The product named before anyone goes in'], notes: 'Upwind and uphill. Nobody in without the suit for it.', rotation: 0, scene: 12, bring: 'Binoculars, the ERG, the suits for the level', places: ['icp', 'staging', 'shelter'], units: ['engine', 'ambulance', 'other'] },
+    collapse: { objectives: ['Everyone who was inside accounted for', 'Voids searched and marked', 'Utilities off at the building'], notes: 'A second collapse is likely. Nobody under anything unshored.', rotation: 0, scene: 12, bring: 'Helmets, dust masks, marking paint, lights', places: ['icp', 'staging', 'hospital'], units: ['search', 'k9', 'drone', 'engine', 'ambulance'] },
+    crash: { objectives: ['Every patient triaged and moved', 'The road closed both ways', 'Fuel and the load made safe'], notes: 'Traffic is the second crash. Vests on, a blocker across the lane.', rotation: 0, scene: 12, bring: 'Vests, cones, lights', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'engine'] },
+    utility: { objectives: ['Hospitals and nursing homes on the list checked', 'A warming or cooling shelter open', 'Welfare checks on the list done'], notes: 'Carbon monoxide in homes with generators. Downed lines are live.', rotation: 0, scene: 12, bring: 'CO meters, lights, water', places: ['icp', 'shelter', 'pod'], units: ['volunteer', 'shelter_desk', 'engine'] },
+    mci: { objectives: ['Every patient triaged and tagged', 'Moved by priority, the hospitals told', 'The scene held secure'], notes: 'Scene secure before entry. Gloves and eye protection.', rotation: 0, scene: 12, bring: 'Triage tags, gloves, blankets', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'engine'] },
+    outbreak: { objectives: ['Cases listed and their contacts reached', 'A point of distribution open', 'Shelter staff in the right PPE'], notes: 'Masks and distance. Hands washed between people.', rotation: 0, scene: 12, bring: 'Masks, gloves, sanitiser', places: ['pod', 'shelter', 'hospital'], units: ['volunteer', 'shelter_desk', 'ambulance'] },
+    swift: { objectives: ['The last known point and time set', 'Downstream points watched', 'Crews out of the water on the rotation'], notes: 'Nobody in moving water without a PFD and a line. Rotate.', rotation: 45, scene: 12, bring: 'PFDs, throw bags, dry bags, a radio each', places: ['icp', 'ramp', 'staging'], units: ['swift_water', 'boat', 'drone', 'k9'] },
+    wilderness: { objectives: ['The last known point and time set', 'Segments assigned and walked', 'Trails and roads out watched'], notes: 'Pairs, never alone. Check in on the hour.', rotation: 0, scene: 12, bring: 'Water, layers, a light, a GPS', places: ['icp', 'staging'], units: ['search', 'k9', 'drone', 'volunteer'] },
+    urban: { objectives: ['Every address listed', 'Every structure searched and marked', 'Utilities off where crews go in'], notes: 'Mark every door. Nobody in an unmarked structure alone.', rotation: 0, scene: 12, bring: 'Marking paint, lights, dust masks', places: ['icp', 'staging'], units: ['search', 'k9', 'drone', 'engine'] },
+    parade: { objectives: ['The route closed and held', 'Medical tents staffed along the route', 'Lost children brought to one place'], notes: 'Heat and crowds. Water at every post.', rotation: 0, scene: 12, bring: 'Vests, water, a radio each', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer', 'engine'] },
+    festival: { objectives: ['Gates and exits held open', 'Medical tent staffed through the night', 'Lost children brought to one place'], notes: 'Heat, crowds and alcohol. Count the exits.', rotation: 0, scene: 12, bring: 'Vests, water, lights', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer'] },
+    game: { objectives: ['Traffic routes held before and after', 'Medical posts staffed in the stands', 'Exits clear through the final whistle'], notes: 'Crowds move at once. Keep the exits clear.', rotation: 0, scene: 12, bring: 'Vests, a radio each, water', places: ['icp', 'staging', 'hospital'], units: ['ambulance', 'volunteer', 'engine'] }
+  };
+  const kindLabel = (code) => (KINDS.find((k) => k[0] === code) || [])[1] || '';
+  const subLabel = (code) => { for (const k of KINDS) for (const s of k[2]) if (s[0] === code) return s[1]; return ''; };
+  const groupOf = (code) => (KINDS.find((k) => k[2].some((s) => s[0] === code)) || [])[0] || null;
+  const words = (s) => String(s).trim().split(/\s+/).filter(Boolean).length;
+
+  // ---- the state: the kind pressed, the sub-kind pressed, and period 1 as the sheet would write it
+  let kind = null, sub = null, per = blank();
+  function blank() { return { from: '', objectives: [], notes: '', rotation: 45, scene: 12, bring: '', places: [], units: [] }; }
+  const standing = () => STANDING.map((t) => ({ text: t, tag: 'standing' }));
+  function standingOnly() { return { ...blank(), from: 'standing', objectives: standing() }; }
+  function fromStarter(code) { const s = STARTERS[code]; return { from: code, objectives: standing().concat(s.objectives.map((t) => ({ text: t, tag: code }))), notes: s.notes, rotation: s.rotation, scene: s.scene, bring: s.bring, places: s.places.slice(), units: s.units.slice() }; }
+
+  function drawKinds() {
+    $('kind-row').innerHTML = KINDS.map((k) => `<button type="button" class="btn sm${kind === k[0] ? ' on' : ''}" data-kind="${k[0]}" aria-pressed="${kind === k[0]}">${esc(k[1])}</button>`).join('');
+    const k = KINDS.find((x) => x[0] === kind);
+    $('sub-row').hidden = !k;
+    $('sub-row').innerHTML = k ? k[2].map((s) => `<button type="button" class="btn sm${sub === s[0] ? ' on' : ''}" data-sub="${s[0]}" aria-pressed="${sub === s[0]}">${esc(s[1])}</button>`).join('') : '';
+    const n = per.objectives.length;
+    $('kind-hint').textContent = sub ? `Period 1 starts from the ${subLabel(sub)} starter: ${n} objective${n === 1 ? '' : 's'}, a safety message, the rotation, the hours, what to bring. All of it yours to change on the Period sheet.` : kind ? 'Period 1 starts with the three standing objectives. Pick a kind above for more.' : 'Optional. With no kind, period 1 starts empty, as today.';
+  }
+  function drawSheet() {
+    const p = per, n = p.objectives.length;
+    const x = (what, title) => `<button type="button" class="x" data-x="${what}" title="${esc(title)}" aria-label="${esc(title)}">×</button>`;
+    const fromLine = p.from === 'standing' ? 'The three standing objectives. Pick a kind above for a starter.' : p.from ? `From the <b>${esc(subLabel(p.from))}</b> starter. Edit any line; × removes it.` : '';
+    $('from').hidden = !fromLine; $('from').innerHTML = fromLine;
+    $('sheet-body').innerHTML = `
+      <div class="row-2 seats"><label>Incident Commander <input placeholder="Who holds command" data-still></label><label>Safety Officer <input placeholder="" data-still></label></div>
+      <div class="hint">The seats, the planned end, the chiefs and the agency representatives as today; a starter never names a person.</div>
+      <div class="row-2">
+        <div class="line"><label>Rotation in the water, minutes (0 = off) <input type="number" min="0" max="600" step="5" value="${p.rotation}" data-f="rotation"></label>${x('rotation', 'Turn the rotation off')}</div>
+        <div class="line"><label>Hours on scene before Safety is told (0 = off) <input type="number" min="0" max="72" step="1" value="${p.scene}" data-f="scene"></label>${x('scene', 'Turn the hours off')}</div>
+      </div>
+      <div class="line"><label>Safety message and notes for the period <textarea rows="2" data-f="notes">${esc(p.notes)}</textarea></label>${x('notes', 'Clear the safety message')}</div>
+      <div class="line"><label>What to bring <input maxlength="300" value="${esc(p.bring)}" data-f="bring" placeholder="PFDs, dry bags, a radio each, water for the day"></label>${x('bring', 'Clear what to bring')}</div>
+      ${p.places.length ? `<div class="k2">Place first</div><div class="places">${p.places.map((c) => `<button type="button" class="place" data-place="${c}"><span class="fl">${FAC[c][1]}</span>${esc(FAC[c][0])}</button>`).join('')}</div><div class="hint">Each is a press into Place on the map, and goes once one of its kind is there.</div>` : ''}
+      ${p.units.length ? `<div class="k2">Units to expect</div><div class="expect">${esc(p.units.map((u) => UNITS[u]).join(', '))}</div><div class="hint">What to ask for on a 213RR; the check-in table's kind chips could start with these.</div>` : ''}
+      <div class="k2">Objectives (ICS 202)</div>
+      ${n ? p.objectives.map((o, i) => `<div class="obj"><span class="tick" title="Done"></span><span class="n">${i + 1}.</span><input value="${esc(o.text)}" data-f="obj" data-i="${i}" maxlength="300" aria-label="Objective ${i + 1}"><span class="tag">${o.tag === 'standing' ? 'standing' : o.tag === 'yours' ? 'yours' : esc(subLabel(o.tag).toLowerCase())}</span>${x('obj:' + i, 'Remove objective ' + (i + 1))}</div>`).join('') : `<div class="empty">${p.from ? 'None left. Add one below, or press the kind again to start over.' : 'None yet. What must be true by the end of the period?'}</div>`}
+      <form class="composer" id="composer"><input placeholder="Add an objective" maxlength="300" autocomplete="off" required aria-label="Add an objective"><button class="btn pri sm" type="submit">Add</button></form>
+      <div class="k2">Shift change</div>
+      <div class="btns"><button type="button" class="btn sm" data-where="the shift briefing">Briefing</button><button type="button" class="btn sm" data-where="Start period 2: the hand-over form as today, no kind question">Start period 2</button></div>`;
+  }
+  function draw() { drawKinds(); drawSheet(); }
+
+  // ---- the starters section: Flood in full, the standing three, the sixteen in one line each
+  function drawStarters() {
+    const s = STARTERS.flood;
+    $('flood-full').innerHTML = `
+      <div><div class="k">Objectives (ICS 202) <span class="sub">· the standing three, then four for a flood</span></div><ol class="full">${STANDING.map((t) => `<li>${esc(t)} <span class="tag">standing</span></li>`).join('')}${s.objectives.map((t) => `<li>${esc(t)}</li>`).join('')}</ol></div>
+      <div>
+        <div class="k">Safety message and notes</div><p>${esc(s.notes)}</p>
+        <div class="k">Rotation and hours</div><p>Crews out of the water every ${s.rotation} minutes; Safety is told past ${s.scene} hours on scene. Today's defaults, written on the period so a wildfire can turn the water off.</p>
+        <div class="k">What to bring</div><p>${esc(s.bring)}</p>
+      </div>
+      <div>
+        <div class="k">Place first</div><p>${s.places.map((c) => `<span class="fl" style="margin-right:4px">${FAC[c][1]}</span>${esc(FAC[c][0])}`).join('<br>')}</p>
+        <div class="k">Units to expect</div><p>${esc(s.units.map((u) => UNITS[u]).join(', '))}</p>
+      </div>`;
+    $('standing').innerHTML = STANDING.map((t) => `<li>${esc(t)}</li>`).join('');
+    const rows = [];
+    for (const k of KINDS) {
+      rows.push(`<tr><td class="g" colspan="8">${esc(k[1])}</td></tr>`);
+      for (const [code, label] of k[2]) {
+        const t = STARTERS[code];
+        rows.push(`<tr><td><b>${esc(label)}</b>${code === 'flood' ? '<br><span class="sub">in full above</span>' : ''}</td><td>${t.objectives.map(esc).join('<br>')}</td><td>${esc(t.notes)}</td><td>${t.rotation ? t.rotation + 'm' : 'off'} · ${t.scene}h</td><td>${esc(t.bring)}</td><td>${t.places.map((c) => FAC[c][0]).join(', ')}</td><td>${t.units.map((u) => UNITS[u]).join(', ')}</td><td><button type="button" class="btn sm" data-try="${code}">Try it</button></td></tr>`);
+      }
+    }
+    $('st-body').innerHTML = rows.join('');
+    let longest = 0;
+    for (const t of STANDING) longest = Math.max(longest, words(t));
+    for (const code in STARTERS) for (const t of STARTERS[code].objectives) longest = Math.max(longest, words(t));
+    $('longest').textContent = `the longest objective is ${longest} words`;
+  }
+
+  document.addEventListener('click', (e) => {
+    const kb = e.target.closest('[data-kind]');
+    if (kb) { kind = kind === kb.dataset.kind ? null : kb.dataset.kind; sub = null; per = kind ? standingOnly() : blank(); draw(); return; }
+    const sb = e.target.closest('[data-sub]');
+    if (sb) { sub = sub === sb.dataset.sub ? null : sb.dataset.sub; per = sub ? fromStarter(sub) : standingOnly(); draw(); if (sub) toast('Period 1 filled from the ' + subLabel(sub) + ' starter: ' + per.objectives.length + ' objectives, the safety message, the rotation and hours, what to bring'); return; }
+    const tb = e.target.closest('[data-try]');
+    if (tb) { sub = tb.dataset.try; kind = groupOf(sub); per = fromStarter(sub); draw(); $('sheet').scrollIntoView({ behavior: 'smooth', block: 'start' }); toast('Period 1 filled from the ' + subLabel(sub) + ' starter'); return; }
+    const xb = e.target.closest('[data-x]');
+    if (xb) {
+      const [what, i] = xb.dataset.x.split(':');
+      if (what === 'obj') { per.objectives.splice(Number(i), 1); toast('Objective ' + (Number(i) + 1) + ' removed. Nothing is deleted: the 214 keeps the line'); }
+      else if (what === 'notes') { per.notes = ''; toast('Safety message cleared'); }
+      else if (what === 'bring') { per.bring = ''; toast('What to bring cleared'); }
+      else if (what === 'rotation') { per.rotation = 0; toast('Rotation off'); }
+      else if (what === 'scene') { per.scene = 0; toast('Hours on scene off'); }
+      draw(); return;
+    }
+    const pb = e.target.closest('[data-place]');
+    if (pb) { toast('Would open Place on the map for a ' + FAC[pb.dataset.place][0].toLowerCase() + ' (' + FAC[pb.dataset.place][1] + ')'); return; }
+    const w = e.target.closest('[data-where]');
+    if (w) { toast('Would open ' + w.dataset.where); return; }
+    if (e.target.closest('#create')) {
+      const name = $('nname').value.trim() || 'Cedar Fork Flooding', n = per.objectives.length;
+      const what = sub ? 'a ' + subLabel(sub).toLowerCase() : kind ? 'a ' + kindLabel(kind).toLowerCase() : 'no kind';
+      const bits = [n + ' objective' + (n === 1 ? '' : 's'), per.notes ? 'the safety message' : 'no safety message', per.rotation ? 'rotation ' + per.rotation + 'm' : 'no rotation', per.scene ? 'Safety told past ' + per.scene + 'h' : 'no hours threshold', per.bring ? 'bring set' : 'nothing to bring'];
+      toast('Would open ' + name + ' (' + what + ') on period 1 with ' + bits.join(', ') + (sub ? '; the Period sheet first; the 214: "Incident opened: ' + name + ', ' + what + ', operational period 1 from the ' + subLabel(sub) + ' starter"' : '; the home panel, as today'));
+    }
+  });
+  document.addEventListener('input', (e) => {
+    const f = e.target.dataset && e.target.dataset.f;
+    if (!f) return;
+    if (f === 'obj') { const o = per.objectives[Number(e.target.dataset.i)]; if (o) { o.text = e.target.value; if (o.tag !== 'yours') o.tag = 'yours'; } }
+    else if (f === 'rotation' || f === 'scene') per[f] = Number(e.target.value) || 0;
+    else per[f] = e.target.value;
+  });
+  document.addEventListener('submit', (e) => {
+    if (e.target.id !== 'composer') return;
+    e.preventDefault();
+    const v = e.target.querySelector('input').value.trim();
+    if (!v) return;
+    per.objectives.push({ text: v, tag: 'yours' }); draw();
+  });
+
+  drawStarters();
+  draw();
+
+  const themeNow = () => document.documentElement.dataset.theme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };
+  $('theme-btn').addEventListener('click', () => { const next = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('ic.theme', next); } catch (e) {} drawTheme(); });
+  drawTheme();
+</script>
+</body>
+</html>

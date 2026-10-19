@@ -1013,7 +1013,7 @@ purple, not the board's orange tint, because orange means late on the map; a don
 214 keep it. Not built: a pickup clicked as a point on the map (section 15, from v54), the run on the phone's mini
 map, a trail behind the bus.
 
-**Shipped** 18 October 2026 as `A transport on the map (v70)`: `mapRuns` / `runState` / `runGeometry` / `RUN_FRESH_MS`
+**Shipped** 18 October 2026 as `A transport on the map (v70)` (design record `try/mockups/transports.html`, drawn after the build with the decisions and what is still open): `mapRuns` / `runState` / `runGeometry` / `RUN_FRESH_MS`
 in rules.js (`dev/test-rules.mjs`); `data.mapRuns()` / `data.runOnMap(t)`; `renderRuns`, `fitRun`, `RUN_COLOR` and the
 `runs` layer in js/base/map.js (`setReplay` clears it); `onTransport`, the `tr-show` action, `state.runLit`, Escape and
 the blank click in js/base/main.js; `runShowBtn` on the board's rows and the home panel's `.tr-home` rows in

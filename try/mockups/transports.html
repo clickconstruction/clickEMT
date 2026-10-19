@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock-up: A transport on the map · Incident Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<script>try { var q = new URLSearchParams(location.search).get('theme'); var t = (q === 'light' || q === 'dark') ? q : localStorage.getItem('ic.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/css/shared.css">
+<!-- The record of v70, a transport on the map, drawn 18 October 2026 after the build (the other mock-ups came
+     before theirs): the base's map with the three seeded runs as the app draws them, the board's row and the home
+     panel's line with Show on map, the legend entry, what it is made of, the decisions taken and what is still open.
+     Static: nothing here moves or writes anywhere. Made-up data, the mock's Cedar Fork Flooding. -->
+<style>
+  body { min-height: 100%; }
+  .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  .top .brand { font-weight: 700; }
+  .top .brand span { color: var(--muted); font-weight: 400; }
+  .top .sp { flex: 1; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--control-border); background: var(--control-bg); color: var(--ink); text-decoration: none; font-size: 13px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .intro { max-width: 780px; color: var(--ink-2); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; color: var(--ink); }
+  .intro q { color: var(--ink); }
+  h2.sec { font-size: 18px; margin: 30px 0 10px; }
+  h2.sec .sub { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 8px; }
+  .screens { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .screen { display: flex; flex-direction: column; gap: 8px; max-width: 100%; }
+  .screen > .cap { font-size: 13px; color: var(--muted); max-width: 760px; line-height: 1.4; }
+  .cap b { color: var(--ink); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 13px; }
+  .panel.wide { width: 1100px; max-width: 100%; box-sizing: border-box; }
+  .panel .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 12px 0 6px; }
+  .panel .k:first-child { margin-top: 0; }
+  .decisions li { margin: 0 0 8px; line-height: 1.4; }
+  .decisions b { color: var(--ink); }
+  .chosen { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--cleared-fill); border-radius: 999px; padding: 1px 7px; margin-left: 4px; vertical-align: 1px; }
+  .open { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--hazard-ink); background: var(--tint-orange); border-radius: 999px; padding: 1px 7px; margin-left: 4px; vertical-align: 1px; }
+
+  /* the map sketch: the base's tiles stand in as a tinted panel; the marks are the app's own classes, redrawn here */
+  .mapbox { position: relative; width: 760px; max-width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel-2); background-image: linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px); background-size: 48px 48px; }
+  .mapbox svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mark { position: absolute; transform: translate(-50%, -50%); }
+  .zpill { display: inline-flex; align-items: center; gap: 5px; background: var(--control-bg); border: 1px solid var(--control-border); border-radius: 999px; padding: 2px 8px 2px 2px; font-size: 12px; font-weight: 600; color: var(--ink); min-height: 24px; white-space: nowrap; }
+  .pb { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; }
+  .p1 { background: #B3261E; } .p2 { background: #B86E00; }
+  .udot { width: 14px; height: 14px; border-radius: 7px; background: var(--ink); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .ulab { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .fmark { min-width: 26px; height: 26px; padding: 0 5px; border-radius: 6px; color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); box-sizing: border-box; }
+  .fmark-shelter { background: #2F7A52; } .fmark-hospital { background: #B3261E; }
+  /* the run's pill, as base.css draws it (v70) */
+  .tr-mark { --run: #8F8B82; display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--run); color: #fff; font-size: 11px; font-weight: 700; line-height: 16px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); white-space: nowrap; position: relative; }
+  .tr-mark.veh::after { content: ''; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--run); }
+  .tr-mark.route { border-style: dashed; }
+  .tr-mark.st-loading { --run: #6B5DBF; } .tr-mark.st-en_route { --run: #2F6FB3; } .tr-mark.st-arrived { --run: #2E8B57; } .tr-mark.st-late { --run: #D9822B; color: #1B1B18; }
+  .tr-mark.lit { box-shadow: 0 0 0 3px var(--accent), 0 1px 3px rgba(0,0,0,.4); }
+  .states { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+  .states span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { display: inline-block; width: 14px; height: 10px; border: 1.5px dashed #2F6FB3; background: var(--control-bg); }
+  /* the board's row and the home panel's line, as the base draws them */
+  .tr-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.6fr) minmax(80px, .7fr) minmax(150px, 1.2fr) auto auto; gap: 6px 12px; align-items: center; padding: 8px 12px; border: 1px solid var(--active); border-radius: 10px; font-size: 13px; background: var(--panel-2); width: 1060px; max-width: 100%; box-sizing: border-box; }
+  .tr-row .muted { display: block; font-size: 12px; }
+  .tr-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; background: var(--tint-blue); color: var(--active); }
+  .tr-home { display: flex; align-items: center; gap: 8px; width: 360px; max-width: 100%; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .tr-home .ur-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tr-home .ur-sub { font-size: 12px; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 12px; font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  @media (max-width: 480px) { .panel, .panel.wide { width: 100%; } main { padding: 12px; } .mapbox { height: 320px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Incident Map <span>· mock-up: a transport on the map</span></div>
+  <div class="tabs">
+    <a href="#map">The map</a>
+    <a href="#board">The board and the panel</a>
+    <a href="#made">What it is made of</a>
+    <a href="#decide">Decide</a>
+  </div>
+  <span class="sp"></span>
+  <button class="btn sm" id="theme-btn" type="button">Dark</button>
+  <a class="btn sm" href="index.html">‹ Mock-ups</a>
+  <a class="btn sm" href="/">Front door</a>
+</div>
+<main>
+
+<div class="intro">
+  <h1>A transport on the map</h1>
+  Todd, 18 October, of the transport board at v54: <q>For transports we should make it easy to expose a transport on the map view.</q>
+  A run was a row on the board and a line on the shelter card; the map, which is what Operations watches, showed nothing of it. This page is the record of what was built, drawn after the build: every open run on the base's map, the bus where the driver's phone is. <b>Built as v70</b> (docs/punchlist.md, section 29; the re-walk in docs/walkthroughs.md). Made-up data; nothing here moves.
+</div>
+
+<!-- ============================================================ THE MAP -->
+<section class="part" id="map">
+  <h2 class="sec">The map <span class="sub">the three seeded runs as the base draws them at 1280 wide</span></h2>
+  <div class="screens">
+    <div class="screen">
+      <div class="mapbox" aria-label="A sketch of the base's map with three runs">
+        <svg viewBox="0 0 760 420" aria-hidden="true">
+          <rect x="120" y="60" width="520" height="300" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="10 6" opacity=".7"/>
+          <rect x="430" y="110" width="160" height="80" fill="#2F6FB3" fill-opacity=".22" stroke="#24588F" stroke-width="2"/>
+          <rect x="300" y="120" width="120" height="80" fill="#2F6FB3" fill-opacity=".22" stroke="#D9822B" stroke-width="2" stroke-dasharray="7 4"/>
+          <rect x="200" y="250" width="120" height="70" fill="#2F6FB3" fill-opacity=".22" stroke="#24588F" stroke-width="2"/>
+          <!-- Ambulance 1: A-2's centroid to the hospital, arrived -->
+          <line x1="360" y1="160" x2="640" y2="40" stroke="#2E8B57" stroke-width="3" stroke-dasharray="8 6" opacity=".85"/>
+          <circle cx="360" cy="160" r="5" fill="#fff" stroke="#2E8B57" stroke-width="2"/>
+          <circle cx="640" cy="40" r="15" fill="none" stroke="#2E8B57" stroke-width="2"/>
+          <!-- Bus 3: A-1's centroid to the gym, planned -->
+          <line x1="510" y1="150" x2="330" y2="350" stroke="#8F8B82" stroke-width="3" stroke-dasharray="8 6" opacity=".85"/>
+          <circle cx="510" cy="150" r="5" fill="#fff" stroke="#8F8B82" stroke-width="2"/>
+          <circle cx="330" cy="350" r="15" fill="none" stroke="#8F8B82" stroke-width="2"/>
+          <!-- Bus 2: from the driver's phone (U2) to the gym, en route -->
+          <line x1="262" y1="285" x2="330" y2="350" stroke="#2F6FB3" stroke-width="3" stroke-dasharray="8 6" opacity=".85"/>
+          <circle cx="330" cy="350" r="15" fill="none" stroke="#2F6FB3" stroke-width="2"/>
+        </svg>
+        <div class="mark" style="left:360px;top:160px"><span class="zpill"><span class="pb p1">1</span>A-2</span></div>
+        <div class="mark" style="left:510px;top:150px"><span class="zpill"><span class="pb p1">1</span>A-1</span></div>
+        <div class="mark" style="left:262px;top:285px"><span class="zpill"><span class="pb p2">2</span>B-1</span></div>
+        <div class="mark" style="left:640px;top:40px"><span class="fmark fmark-hospital">H</span></div>
+        <div class="mark" style="left:330px;top:350px"><span class="fmark fmark-shelter">S</span></div>
+        <div class="mark" style="left:560px;top:170px"><span class="udot"></span><span class="ulab">U1</span></div>
+        <div class="mark" style="left:400px;top:180px"><span class="udot"></span><span class="ulab">U3</span></div>
+        <div class="mark" style="left:262px;top:285px"><span class="udot"></span><span class="ulab">U2</span></div>
+        <div class="mark" style="left:262px;top:256px"><span class="tr-mark st-en_route veh" title="Bus 2 · Pecan Park pickup → High school gym · left 17:05 · expected 17:30 · 4 of 40 · Unit 2's phone 17:40">Bus 2</span></div>
+        <div class="mark" style="left:420px;top:250px"><span class="tr-mark st-planned route" title="Bus 3 · A-1 Riverside Drive, east → High school gym · leaves 18:00 · expected 18:25 · 0 of 40">Bus 3</span></div>
+        <div class="mark" style="left:500px;top:100px"><span class="tr-mark st-arrived route" title="Ambulance 1 · A-2 Pecan Mobile Home Park → Dell Seton Medical Center · arrived 17:28 · 1 of 2">Ambulance 1</span></div>
+      </div>
+      <div class="cap"><b>Three open runs over the incident, nothing opened.</b> Bus 2's pill rides on U2, the driver's phone, with a tail down to the dot; its line runs from the phone to the gym's ring, because its pickup is typed words and has no point. Bus 3 and Ambulance 1 have no vehicle on the map, so their pills sit dashed midway along the route, from a white dot at the division's centre to the ring on the facility. Hover any of it: <span class="mono">Bus 2 · Pecan Park pickup → High school gym · left 17:05 · expected 17:30 · 4 of 40 · Unit 2's phone 17:40</span>. A click on the pill, the line or either end opens the board on that run.</div>
+    </div>
+    <div class="screen">
+      <div class="panel">
+        <div class="k">The colour is the state</div>
+        <div class="states">
+          <span><span class="tr-mark st-planned route">Bus 3</span> planned</span>
+          <span><span class="tr-mark st-loading route">Van 4</span> loading</span>
+          <span><span class="tr-mark st-en_route veh">Bus 2</span> en route, on the driver's phone</span>
+          <span><span class="tr-mark st-arrived route">Ambulance 1</span> arrived</span>
+          <span><span class="tr-mark st-late route">Bus 3</span> late</span>
+          <span><span class="tr-mark st-en_route veh lit">Bus 2</span> lit by Show on map</span>
+        </div>
+        <div class="k">The legend's entry</div>
+        <div class="legend"><span><span class="sw"></span>Transport run</span></div>
+        <div class="k">Not drawn</div>
+        <p style="margin:0">A done run and a withdrawn one (the board and the 214 keep them). Everything, while Replay is on: the runs come off with the live units and Close puts them back. The phone's mini map is unchanged.</p>
+      </div>
+      <div class="cap"><b>Late is orange</b> (not left by its planned departure, or not arrived by its expected time, the board's <span class="mono">transportLate</span>), so loading is purple rather than the board's orange tint. The pill's words are the run's label; nothing is typed twice.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ THE BOARD AND THE PANEL -->
+<section class="part" id="board">
+  <h2 class="sec">The board and the panel <span class="sub">Show on map on a run's row, and on the home panel's line</span></h2>
+  <div class="screens">
+    <div class="screen">
+      <div class="tr-row">
+        <span><strong>Bus 2</strong><span class="muted">Bus · Unit 2</span></span>
+        <span>Pecan Park pickup → High school gym</span>
+        <span><strong>4 of 40</strong><span class="muted">1 record</span></span>
+        <span>left 17:05 · expected 17:30</span>
+        <span class="badge">En route</span>
+        <span class="tr-btns"><button class="btn sm" type="button">Arrived</button><button class="btn sm" type="button">Edit</button><button class="btn sm" type="button">Show on map</button><button class="btn sm" type="button">Who is on it</button></span>
+      </div>
+      <div class="cap"><b>The board's row.</b> Show on map sits between Edit and Who is on it, on every row that is on the map (not a done or a withdrawn run). It closes the board, which is a window over the dimmed map, slides the map to the whole run and lights it: a ring on the pill, a heavier line. Escape, a click on blank map or another Show puts the light out.</div>
+    </div>
+    <div class="screen">
+      <div class="panel" style="width:400px;max-width:100%">
+        <div class="k">Transports · the home panel</div>
+        <div class="tr-home"><span class="ur-main"><span>Bus 2 · Pecan Park pickup → High school gym</span><span class="ur-sub">En route · left 17:05 · expected 17:30 · 4 of 40 aboard</span></span><button class="btn sm" type="button">Show on map</button></div>
+        <div class="tr-home"><span class="ur-main"><span>Bus 3 · A-1 Riverside Drive, east → High school gym</span><span class="ur-sub">Planned · leaves 18:00 · expected 18:25 · 0 of 40 aboard</span></span><button class="btn sm" type="button">Show on map</button></div>
+      </div>
+      <div class="cap"><b>The home panel's runs.</b> The line still opens the board; Show on map at its right lights the run as the board's button does.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ WHAT IT IS MADE OF -->
+<section class="part" id="made">
+  <h2 class="sec">What it is made of <span class="sub">no migration; a small release on the base alone</span></h2>
+  <div class="panel wide">
+    <ul class="decisions" style="margin:0;padding-left:18px">
+      <li><b>No new column.</b> The pickup is the facility's spot or the division's centroid, the destination its facility, the vehicle the driver's last <span class="mono">ic_positions</span> row: <span class="mono">runGeometry</span> in rules.js reads them as they are, so nothing changed in the database or on the phone.</li>
+      <li><b>Five minutes.</b> The vehicle shows while the driver's position is fresher than <span class="mono">RUN_FRESH_MS</span>, the division hover card's rule for "in it now"; older than that, the pill goes back to the route.</li>
+      <li><b>One layer.</b> <span class="mono">renderRuns</span> in js/base/map.js redraws the <span class="mono">runs</span> layer on every change like the photos and hazards; <span class="mono">setReplay</span> clears it.</li>
+      <li><b>The words are the board's.</b> The pill is <span class="mono">transportLabel</span>, the hover <span class="mono">runLine</span>, the state <span class="mono">transportLate</span>; the mock's Bus 2 is driven by Unit 2, so its phone is the bus, and the <span class="mono">transports</span> smoke suite moves it.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ DECIDE -->
+<section class="part" id="decide">
+  <h2 class="sec">Decided, and still open</h2>
+  <div class="panel wide">
+    <div class="k">Decided in the build (say if any is wrong)</div>
+    <ul class="decisions">
+      <li><b>Where is the bus?</b> On the driver's phone while its position is under five minutes old; else nowhere, and the pill sits on the route, dashed, which says "no fresh position" without pretending. <span class="chosen">chosen</span> The other way, the pill always on the route, loses the one thing Todd asked to see.</li>
+      <li><b>A pickup typed in words?</b> No dot; the line runs from the vehicle to the destination, and with no vehicle either the pill sits on the destination. <span class="chosen">chosen</span></li>
+      <li><b>Which runs?</b> Every open run: planned, loading, en route and arrived, so a planned run is findable on the map before the bus exists; done and withdrawn come off. <span class="chosen">chosen</span></li>
+      <li><b>Where does a click go?</b> To the board, open on that run; the board stays the place to press buttons. <span class="chosen">chosen</span></li>
+      <li><b>Show on map</b> on the board's rows and the home panel's runs, closing the board since it covers the map. <span class="chosen">chosen</span></li>
+      <li><b>The colours.</b> Planned grey, loading purple, en route blue, arrived green, late orange. <span class="chosen">chosen</span> Loading in the board's orange tint would read as late on the map.</li>
+      <li><b>Replay</b> takes the runs off with the live units. <span class="chosen">chosen</span></li>
+    </ul>
+    <div class="k">Yours to decide (what to do next, recommended first)</div>
+    <ul class="decisions">
+      <li><b>A Runs box in the Layers panel's overlays column?</b> Not built: the runs are few and come off when done. <span class="open">open</span> Recommended: wait for a walk on a busy day; it would be a per-device box like the overlays' show box, one line in the panel and one in <span class="mono">renderRuns</span>.</li>
+      <li><b>A pickup clicked on the map</b> (punchlist section 15, from v54), so a run has a point of its own and the dot and the line start where the bus loads. <span class="open">open</span> Recommended: next, when the crews ask; it is a column and a map mode.</li>
+      <li><b>The run on the phone's mini map</b>, so the driver sees the line to the destination. <span class="open">open</span> Recommended: not yet; the driver has the You are Bus 2 card and the satnav link.</li>
+      <li><b>A trail behind the bus.</b> <span class="open">open</span> Recommended: no; the unit's breadcrumbs already show.</li>
+    </ul>
+    <div class="k">Seen in the re-walk (docs/walkthroughs.md, after v70)</div>
+    <ul class="decisions">
+      <li><b>The pill covers the unit's heading arrow</b> when the same phone is the bus (the pill sits 22 px above the dot, the arrow 17).</li>
+      <li><b>Two runs on one phone</b> stack two pills; the second reads on hover.</li>
+      <li><b>Two runs to one shelter</b> stack two rings on its mark; the colours and the hover tell them apart.</li>
+      <li><b>A run to a closed facility</b> still draws to it.</li>
+    </ul>
+  </div>
+</section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const themeNow = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const drawTheme = () => { $('theme-btn').textContent = themeNow() === 'dark' ? 'Light' : 'Dark'; };
+  $('theme-btn').addEventListener('click', () => { const next = themeNow() === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = next; try { localStorage.setItem('ic.theme', next); } catch (e) {} drawTheme(); });
+  drawTheme();
+</script>
+</body>
+</html>

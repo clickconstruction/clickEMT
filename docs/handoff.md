@@ -2,7 +2,7 @@
 
 For whoever picks up clickEMT next, on another computer. This says where things stand, how to get it running, how
 a change is shipped, how the work was run, and where the open work is, in order. The open work itself is in
-[punchlist.md](punchlist.md). Written 17 October 2026, brought up to date at v74 late on 18 October, and at v80
+[punchlist.md](punchlist.md). New here? Read the one-page [handoff-brief.md](handoff-brief.md) first. Written 17 October 2026, brought up to date at v74 late on 18 October, and at v80
 on the afternoon of 19 October, at v81, for a hand-off to a new person.
 
 ## Start here

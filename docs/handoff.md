@@ -9,8 +9,9 @@ a change is shipped, how the work was run on 18 October, and where the open work
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
-- `main` is at **v77**, "Incident kinds and starter periods", live since the morning of 19 October; v76 (the incident
-  line broken out), v75 (runs that share a point) and the headless smoke runner (`npm run smoke`) landed just before.
+- `main` is at **v78**, "The centre by address", live since the morning of 19 October, right after v77 (incident
+  kinds and starter periods), v76 (the incident line broken out), v75 (runs that share a point) and the headless smoke
+  runner (`npm run smoke`).
 - The first five things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
      `http://localhost:8766/field/?mock` (the phone). No build, no `npm install`, no account.
@@ -45,8 +46,11 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
 
 ## Where things stand
 
-- `main` is at **v77**, "Incident kinds and starter periods" (after v76, The incident line broken out; v75, Runs that
-  share a point; v74, Tell the base). The service worker reads `v77`. The Supabase CLI on the user's Mac reaches the
+- `main` is at **v78**, "The centre by address" (after v77, Incident kinds and starter periods; v76, The incident line
+  broken out; v75, Runs that share a point). The service worker reads `v78`. The address lookup was tried once against
+  Google from a page on localhost:8766 on 19 October: "1200 Mill St Austin" gave five suggestions and the first resolved
+  to its point through Places; the Geocoding web service refuses a referrer-restricted key by design, so the module
+  never calls it. The Supabase CLI on the user's Mac reaches the
   project since 19 October (`supabase login`), so `dev/sbq.py` applies migrations and runs the rule tests there; all
   24 files, 426 checks, passed on 19 October. Neither v75
   nor v76 has a migration; `0038` is still the last applied and `0039` the next free number (a session may be

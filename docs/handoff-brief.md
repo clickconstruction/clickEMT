@@ -6,6 +6,8 @@ clickEMT is an incident map for floods: a base map for the command post and a ph
 
 ## Where it stands
 
+**In flight, 20 October: v84 is not on `main` yet.** `main` and clickemt.com are at v83. v84, the sixteen starters reread, is built on branch `starters-reread` (`a6b9233`, pushed) with check, test and the owner's yes on the words; its full smoke run was 922 of 931. Left: rerun `log`, `walkfix`, `evacuees` and `tags` alone, fill the three «SMOKE» marks, delete this note, then land it. The steps are at the top of "Start here" in [docs/handoff.md](handoff.md#start-here). The rest of this page already reads as it will once v84 lands.
+
 clickemt.com runs v84, released on 19 October 2026. Nothing is waiting on a branch, and no real incident has been run yet.
 
 | Piece | State |

@@ -10,6 +10,21 @@ on the afternoon of 19 October, at v81, for a hand-off to a new person, and at v
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
+- **In flight, 20 October: v84 is not on `main` yet.** `main` and clickemt.com are at v83. v84, "The sixteen
+  starters, reread", is built on branch `starters-reread` (commit `a6b9233`, pushed): the owner read the words on
+  `try/mockups/starters.html` and said yes; `npm run check` and `npm test` pass; the full headless smoke run was 922
+  of 931, the nine misses in `log`, `walkfix`, `evacuees` and `tags`, all four on the known-misses list below. The
+  release text in this file already reads as landed, which it is once these three steps are done:
+  1. Serve the checkout (`npm run serve`; a server may already be up on 8766 from the last session, which serves
+     the same folder). Rerun each missed suite alone, one at a time, since two headless runs at once miss on timing:
+     `python3 dev/smoke-headless.py --url http://localhost:8766/?mock --port 9360 log`, then `walkfix`, `evacuees`
+     and `tags`. A suite counts once it passes alone; `tags` has needed a second run before (v82).
+  2. Replace the three «SMOKE» marks with the counts: punchlist section 43, the Tests line in docs/handoff.md and the
+     Tests row in docs/handoff-brief.md. Delete this note in both files.
+  3. Commit the counts and the deleted note as one `docs:` commit on the branch (the release commit stays as it is),
+     push the branch, open a pull request, fast-forward `main`, push it, and check that https://clickemt.com/sw.js
+     reads v84. The push to `main` needs the owner's word in the chat (see "Working with
+     sessions").
 - `main` is at **v84**, "The sixteen starters, reread", live since the night of 19 October.
   Nothing is waiting on a branch. The next piece is the first item under [Open work, in order](#open-work-in-order).
 - The first six things on a new computer:
@@ -356,7 +371,7 @@ words):
    mock-up page.
 7. One commit titled after the feature with the version in parentheses, matching `sw.js`: `Shelter and evacuee
    records: who was moved where (v26)`, ending with a `Co-Authored-By:` line naming the Claude model that wrote it
-   (Claude Fable 5.1 through the morning of 19 October, Claude Opus 5.5 after). Test-only changes start with `smoke:`
+   (the session's own attribution line says which; it changed more than once on 19 October). Test-only changes start with `smoke:`
    or `dev:`, docs with `docs:`.
 8. Land it: a build session pushes its branch (never `main`); the main session fast-forwards `main` to it (`git merge
    --ff-only`), runs check and test once more, pushes, and checks that `https://clickemt.com/sw.js` reads the new
@@ -400,6 +415,14 @@ know if the next person works the same way:
 - **Two coordinators is one too many.** For a while the audit session (started read-only) also started builds and
   offered sessions to Todd, so two builds of the same two items ran at once and one was dropped. One chat lands
   releases and numbers them; a session that finds `main` has moved under it rebases and renumbers.
+- **What a session may not do on its own** (seen 19 October, in Claude Code's auto mode): its permission check refuses
+  `git push origin main` and any write to the real database (`dev/sbq.py` on a migration) until the owner says so in
+  that chat. Rule tests run, since they roll back; a migration can be tried first inside one rolled-back transaction
+  with every rule test (v82 did). A release's docs are written as landed on its branch, so until the push the branch
+  is ahead of the truth: say so at the top of "Start here", as the in-flight note there does.
+- **A session's memory is per folder.** Claude Code keeps its notes under `~/.claude/projects/<the folder>/memory/`, so a
+  session opened in another folder (a worktree, another repository) does not see them. Anything the next session
+  needs goes in this file.
 
 ## The walk of 18 October, and what is open
 

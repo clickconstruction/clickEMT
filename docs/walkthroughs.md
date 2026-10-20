@@ -1833,3 +1833,26 @@ headless Chrome (`dev/smoke-headless.py`) through the `facilities` suite.
 - **A pick whose address is already the stored one** moves the pin without a 214 line: `ic_facility_after` logs a change of name, kind, contact or address, not of the point.
 - **Place first by address** (decision 10) is still a later step: the chips on the Period sheet arm the map for one click.
 - **The card's hint is one short sentence** where the sheet's says what goes to Google; the words go to Google the same way.
+
+## Re-walk after v84
+
+The sixteen starters, reread: a first-time Operations of each kind pressing their sub-kind on the New incident sheet
+and reading what period 1 will start with, walked on 2026-10-19 in the mock in the Browser pane (every sub-kind's
+hint read through the sheet's own buttons) and in headless Chrome through the `starters` suite; the words themselves
+read against the page's reread section, each beside the line it replaced.
+
+| Item | Who | What they saw | Verdict |
+|---|---|---|---|
+| The hint | every kind | "Period 1 starts from the Wildfire starter: 7 objectives, the safety message, the rotation, the hours on scene, what to bring", and the same for fifteen more; Crash says 6. Flood as it was. | Clear |
+| Wildfire's sheet | a wildfire chief | The safety message is LCES in plain words; the objectives empty homes zone by zone and defend only where crews have a way out. The old "line held where it can be" is gone. | Clear |
+| Storm's sheet | a storm crew | The search of what the wind hit is the first objective; the safety line says to watch for the next cell. | Clear |
+| Collapse and fire | a rescue crew, an engine | Surface victims before the voids, utilities before anyone goes in; primary search first, rehab after two bottles. | Clear |
+| Swift water and mass casualty | a boat crew, a medic | Spotters at every bridge and bend, reach-throw-row-go; the first fifteen minutes, treatment areas, triage and do not treat. | Clear |
+| The planned events | an event medic | Cross streets and an ambulance lane; exits counted, lit and staffed; the field rush and lightning in the stands. | Clear |
+| The rule | the clerk | No line over twelve words on any of the sixteen; the Node test holds it. | Clear |
+
+**Still bites, small:**
+
+- **No crew of these kinds has read its row on a real incident**: the words are an estimator's reading of each doctrine, tightened; the owner read them, a crew should.
+- **The check-in table's kind chips** still start in their fixed order, not with the kinds the starter expects (section 36).
+- **The page's own copy of the starters** (its live sheet) is the v76 drawing, not the built words; the reread section is the record.

@@ -13,7 +13,7 @@ up cold: why it matters, what to build, what was already decided, and how to kno
 Everything here came out of the walk at v37 in [walkthroughs.md](walkthroughs.md) ("Walk at v37: best we can do"):
 all twelve personas plus a newcomer at the check-in table, each job asked "is this the best we can do for this
 person?", with the open items of the re-walks after v25 to v31 and the v24 items never taken up folded in. Take them
-in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v84**, and each new migration takes the
+in order. Each release bumps `VERSION` in `sw.js` by one, so the next is **v85**, and each new migration takes the
 next free number in `supabase/migrations/`, so the next is **0041**. After each release, walk the screens it touched
 again as the personas who hit them and add a "Re-walk after vN" section to `walkthroughs.md`.
 
@@ -61,6 +61,7 @@ again as the personas who hit them and add a "Re-walk after vN" section to `walk
 | 40 | v81 Every time in UTC, and the front door's pictures: the clock's click swaps every time on the screen, a Z on each, the forms' heads say which; the five pictures shot from the mock by a script (built 19 October) | small | v80 | a mutual-aid clerk on Zulu time, the Documentation Unit, every visitor to the front door |
 | 41 | v82 The incident's kind as a column: migration 0040 gives the kind and the starter their columns and an objective × removed its `archived_at`; the opening line, the removal and a change of kind come from the database (built 19 October; migration 0040, applied) | small | v81 | a first-time Operations, Marcus, the clerk, anyone reading the 214 |
 | 42 | v83 The facility card's address box: the sheet's suggestions on every facility card, a pick filling the address, the point and an empty Name, Save moving the pin (built 19 October; no migration) | small | v82 | Marcus, a first-time Operations, the IC and every crew reading Getting there |
+| 43 | v84 The sixteen starters, reread: every thin starter rewritten as a crew of its kind would read it, Flood and the standing three as they were (built 19 October; words only) | small | v83 | a first-time Operations of every kind, and every crew's briefing |
 
 ---
 
@@ -1330,8 +1331,8 @@ starter period 1 came from and the removed objectives live in `ic_incidents.sett
 `ic_objectives.archived_at` and were dropped, and the opening line and an objective's removal come from the database.
 
 *Left open* (the carry-over's copies and the inherited keys went with v82; the numbers keep their gaps on period 1,
-1, 2, 4 …, since they are in the 214's lines): the sixteen thin starters' words have not been read by a crew of their
-kind. The check-in table's kind chips could start with the kinds to expect. The third standing objective may read as
+1, 2, 4 …, since they are in the 214's lines): the sixteen thin starters' words were reread and rewritten as v84 (section 43), a crew of each
+kind still to read its row. The check-in table's kind chips could start with the kinds to expect. The third standing objective may read as
 noise on a parade or a game; it is one press to remove.
 
 **Built** 19 October 2026 as `Incident kinds and starter periods (v77)`: `INCIDENT_KINDS`, `STANDING_OBJECTIVES`,
@@ -1600,6 +1601,34 @@ logs a change of name, kind, contact or address, not of the point; a migration c
 js/base/main.js; `facilityPickText` and the box, the list and the hint in `facilityHtml` in js/base/ui.js; `VERSION`
 v83; the `facilities` suite's eight checks. `npm run check` and `npm test` pass; the full smoke run in headless Chrome from the branch served on 8766, 930 of 932 across 42 suites, the two
 misses the `log` suite's star checks, 23 of 23 alone afterwards; `facilities` and `starters` 54 of 54 together first. No migration, no rule test.
+
+## 43. v84 The sixteen starters, reread
+
+**Why.** v77 wrote the Flood starter in full and sketched the other sixteen one line each, and section 36 left
+them open: no crew of their kind had read them. The owner asked for tighter words on 19 October, read them on the
+mock-up page (today beside the proposal, every line counted, a Why line each) and said yes to the draft as a whole.
+
+**Built.** `STARTERS` in rules.js rewritten for the sixteen, Flood as it was: each read as its crew would, the
+objectives in the order the crew works (a storm's search of what the wind hit; a collapse's surface victims before
+its voids and utilities before anyone goes in; a structure fire's primary search, confinement, utilities and rehab;
+hazmat's product named from a distance, zones, shelter in place, decon), the safety message the phrase the crew
+repeats (LCES for a wildfire; reach, throw, row, go for swift water; triage, do not treat for a mass casualty;
+generators and grills outside for a winter storm), what to bring one line each, the people the incident is about
+put first on a list (oxygen and dialysis homes in a winter storm and a utility failure, symptomatic staff sent home
+in an outbreak), and the planned events' real hazards (cross streets and an ambulance lane, exits counted and lit,
+the field rush and lightning). Place first and Expect adjusted where a kind was missing: ambulances on storms, swift
+water and utility failures, drones on storms, a helispot for a wilderness search, a hospital for hazmat, a command
+post for an outbreak. Numbers unchanged: a wildfire's 16 hours, swift water's 45 minutes.
+
+*Decided:* the draft as a whole, on the page; Flood and the standing three untouched; the numbers untouched; the
+page's v76 copy of `STARTERS` left as the drawing, the reread section the record.
+
+*Left open:* a crew of each kind reading its row on a real incident, which no page can stand in for; the check-in
+table's kind chips starting with the kinds to expect (section 36).
+
+**Built** 19 October 2026 as `The sixteen starters, reread (v84)` on branch `starters-reread`: `STARTERS` and its
+comment in rules.js; the reread section's heads on the page; `VERSION` v84. `npm run check` and `npm test` pass (the
+twelve-word rule, three to five objectives, the kinds' codes on every row); «SMOKE». No migration, no rule test.
 
 ## Done before this list
 

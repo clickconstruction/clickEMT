@@ -293,12 +293,12 @@
 </section>
 
 <section class="part" id="reread">
-  <h2 class="sec">The sixteen starters, reread <span class="sub">drawn 19 October at v83: each thin starter read as a crew of its kind would, today's words beside the proposal, every line counted · <span id="rr-over"></span></span></h2>
+  <h2 class="sec">The sixteen starters, reread <span class="sub">drawn 19 October at v83, <b>built as v84</b>: each thin starter read as a crew of its kind would, the words at v83 beside the ones built, every line counted · <span id="rr-over"></span></span></h2>
   <div class="screens">
     <div class="screen w" style="flex-basis:100%">
       <div class="panel wide">
-        <div class="k">What changes <span class="sub">· Flood stays as it is; the standing three stay first on every starter; nothing is built until these are read</span></div>
-        <p class="note">Each block is one starter: the objectives it adds to the standing three, the safety message, the water rotation and the hours on scene, what to bring, the facilities to place first and the units to expect. Today's words on the left, the proposal on the right with a mark on what changed, and the word count on every line (twelve at most, the rule <span class="mono">dev/test-rules.mjs</span> holds). The line under each block says what a crew of that kind would have missed in today's words. The proposal is this page's data until it is read and said yes to; then it is one edit to <span class="mono">STARTERS</span> in rules.js, a Node test run, and a release of its own.</p>
+        <div class="k">What changed <span class="sub">· Flood as it was; the standing three first on every starter; the right-hand words are rules.js since v84 (docs/punchlist.md, section 43)</span></div>
+        <p class="note">Each block is one starter: the objectives it adds to the standing three, the safety message, the water rotation and the hours on scene, what to bring, the facilities to place first and the units to expect. The words at v83 on the left, the ones built as v84 on the right with a mark on what changed, and the word count on every line (twelve at most, the rule <span class="mono">dev/test-rules.mjs</span> holds). The line under each block says what a crew of that kind would have missed in today's words. The owner read them and said yes on 19 October; they went into <span class="mono">STARTERS</span> in rules.js as v84, the Node test holding every line to twelve words.</p>
         <div id="rr-body"></div>
       </div>
     </div>
@@ -817,7 +817,7 @@
   for (const [group, subs] of ORDER) for (const [code, label] of subs) {
     const t = TODAY[code], p = PROPOSED[code];
     if (!t || !p) continue;
-    blocks.push('<div class="rr"><div class="k">' + esc(label) + ' <span class="sub">· ' + esc(group) + '</span></div><table class="st"><thead><tr><th style="width:13%">Item</th><th style="width:42%">Today</th><th>Proposed</th></tr></thead><tbody>'
+    blocks.push('<div class="rr"><div class="k">' + esc(label) + ' <span class="sub">· ' + esc(group) + '</span></div><table class="st"><thead><tr><th style="width:13%">Item</th><th style="width:42%">At v83</th><th>Built as v84</th></tr></thead><tbody>'
       + row('Adds to the standing three', t.objectives, p.objectives, lines, !same(t.objectives, p.objectives))
       + row('Safety message', t.notes, p.notes, line, t.notes !== p.notes)
       + row('Water · hours', t, p, (x) => esc((x.rotation ? x.rotation + 'm' : 'off') + ' · ' + x.scene + 'h'), t.rotation !== p.rotation || t.scene !== p.scene)

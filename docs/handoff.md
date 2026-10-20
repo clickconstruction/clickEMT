@@ -3,29 +3,14 @@
 For whoever picks up clickEMT next, on another computer. This says where things stand, how to get it running, how
 a change is shipped, how the work was run, and where the open work is, in order. The open work itself is in
 [punchlist.md](punchlist.md). New here? Read the one-page [handoff-brief.md](handoff-brief.md) first. Written 17 October 2026, brought up to date at v74 late on 18 October, and at v80
-on the afternoon of 19 October, at v81, for a hand-off to a new person, and at v82 later that afternoon, at v83 that evening and at v84 later that night.
+on the afternoon of 19 October, at v81, for a hand-off to a new person, and at v82 later that afternoon, at v83 that evening, and at v84 on 20 October.
 
 ## Start here
 
 Two views of one incident: the base (the map at the command post) and the phone app a unit installs. One Supabase
 database, shared with a charity app, holds both. Pushing `main` deploys https://clickemt.com through GitHub Pages.
 
-- **In flight, 20 October: v84 is not on `main` yet.** `main` and clickemt.com are at v83. v84, "The sixteen
-  starters, reread", is built on branch `starters-reread` (commit `a6b9233`, pushed): the owner read the words on
-  `try/mockups/starters.html` and said yes; `npm run check` and `npm test` pass; the full headless smoke run was 922
-  of 931, the nine misses in `log`, `walkfix`, `evacuees` and `tags`, all four on the known-misses list below. The
-  release text in this file already reads as landed, which it is once these three steps are done:
-  1. Serve the checkout (`npm run serve`; a server may already be up on 8766 from the last session, which serves
-     the same folder). Rerun each missed suite alone, one at a time, since two headless runs at once miss on timing:
-     `python3 dev/smoke-headless.py --url http://localhost:8766/?mock --port 9360 log`, then `walkfix`, `evacuees`
-     and `tags`. A suite counts once it passes alone; `tags` has needed a second run before (v82).
-  2. Replace the three «SMOKE» marks with the counts: punchlist section 43, the Tests line in docs/handoff.md and the
-     Tests row in docs/handoff-brief.md. Delete this note in both files.
-  3. Commit the counts and the deleted note as one `docs:` commit on the branch (the release commit stays as it is),
-     push the branch, open a pull request, fast-forward `main`, push it, and check that https://clickemt.com/sw.js
-     reads v84. The push to `main` needs the owner's word in the chat (see "Working with
-     sessions").
-- `main` is at **v84**, "The sixteen starters, reread", live since the night of 19 October.
+- `main` is at **v84**, "The sixteen starters, reread", live since 20 October.
   Nothing is waiting on a branch. The next piece is the first item under [Open work, in order](#open-work-in-order).
 - The first six things on a new computer:
   1. Clone `clickconstruction/clickEMT` and run `npm run serve`; open `http://localhost:8766/?mock` (the base) and
@@ -99,7 +84,7 @@ Live at https://clickemt.com/ (base) and https://clickemt.com/field/ (phone). Th
   `credentials` 50, `decisions` 3, `deputy` 5, `evacuees` 28, `hazards` 5, `ics100` 33, `incidentkind` 22, `invites` 32, `joincount` 10,
   `members` 44, `newcomer` 3, `par` 10, `parbyname` 10, `people` 28, `rewalks` 10, `safetyset` 23, `scene` 9, `tags`
   28, `tellbase` 17, `transports` 33, `walkfix` 10, `waterwords` 13. The full smoke run, in headless Chrome, release
-  by release: v75 822 of 852, v76 817 of 836, v77 891 of 902, v78 913 of 917, v80 918 of 921, v81 914 of 923, v82 913 of 924, v83 930 of 932, «SMOKE». Every missed suite
+  by release: v75 822 of 852, v76 817 of 836, v77 891 of 902, v78 913 of 917, v80 918 of 921, v81 914 of 923, v82 913 of 924, v83 930 of 932, v84 922 of 931. Every missed suite
   passed alone afterwards except one real miss at v80, fixed inside that release (the Public information section
   vanished once a photo was un-cleared). Run every rule test before a release is called done, not only the new one:
   at v55 and v56 two of them failed on the real database without anyone noticing (punchlist section 16).
@@ -392,14 +377,15 @@ know if the next person works the same way:
   checkout at once and collided; worktrees ended that. The worktrees are local to the Mac they ran on.
 - **On 19 October** the same pattern ran from one coordinating chat on the product owner's Mac, with one build
   session per piece. The coordinator landed each release by fast-forward, except v78, which was cherry-picked onto
-  `main` because a docs commit sat on top; so `origin/starters` is not an ancestor of `main`, though everything on it
-  is. The worktrees left on that Mac: `incident-line`, `starters`, `water-words`, `leftovers`.
+  `main` because a docs commit sat on top; so `origin/starters` was not an ancestor of `main`, though everything on it
+  was. No worktree from those days is left: on 20 October the only clickEMT checkout on the owner's Mac was the
+  clone at `~/Documents/GitHub/clickEMT`, and the build branches on `origin` were deleted (below).
 - **Commit as soon as check and test pass, and push the branch.** v81's session stopped on a usage limit with its
   whole release uncommitted in its worktree, where nobody on another computer could have found it. A pushed branch
   loses nothing when a session stops.
-- **Branches on `origin` that can be deleted,** all merged into `main` or carried by it: `claude/credentials-61131d`,
-  `claude/sleepy-rhodes-9aaea0`, `handoff`, `imagery`, `incident-line`, `mayday`, `passwordless`, `starters`,
-  `transports-stacks`, `water-words`, `worktree-transports-211`, `leftovers` (v81), `kind-column` (v82), `facility-address` (v83) and `starters-reread` (v84).
+- **Branches on `origin`:** `main` alone since 20 October. The fifteen build branches, `claude/credentials-61131d` to
+  `starters-reread` (v84), were deleted once v84 landed, every one merged into `main` or, for `starters` (v78,
+  cherry-picked), carried by it. A release's branch can go as soon as `main` holds it and the site reads its version.
 - **Todd types into a build session directly** when he wants to: he approved migration 0036 and the v66 push that
   way, and asked the audit session to start builds. A session's report may therefore carry his words that the
   coordinating chat never saw; read the report before relaying it, and take "Todd said" in it as his unless it
@@ -419,7 +405,7 @@ know if the next person works the same way:
   `git push origin main` and any write to the real database (`dev/sbq.py` on a migration) until the owner says so in
   that chat. Rule tests run, since they roll back; a migration can be tried first inside one rolled-back transaction
   with every rule test (v82 did). A release's docs are written as landed on its branch, so until the push the branch
-  is ahead of the truth: say so at the top of "Start here", as the in-flight note there does.
+  is ahead of the truth: say so at the top of "Start here", as v84's note did until it landed.
 - **A session's memory is per folder.** Claude Code keeps its notes under `~/.claude/projects/<the folder>/memory/`, so a
   session opened in another folder (a worktree, another repository) does not see them. Anything the next session
   needs goes in this file.

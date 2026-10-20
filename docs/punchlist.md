@@ -1628,7 +1628,7 @@ table's kind chips starting with the kinds to expect (section 36).
 
 **Built** 19 October 2026 as `The sixteen starters, reread (v84)` on branch `starters-reread`: `STARTERS` and its
 comment in rules.js; the reread section's heads on the page; `VERSION` v84. `npm run check` and `npm test` pass (the
-twelve-word rule, three to five objectives, the kinds' codes on every row); «SMOKE». No migration, no rule test.
+twelve-word rule, three to five objectives, the kinds' codes on every row); the full smoke run in headless Chrome from the branch served on 8766, 922 of 931 across 42 suites, the nine\nmisses in log, walkfix, evacuees and tags, each passing alone afterwards on 20 October (log 23 of 23, walkfix 46 of\n46, evacuees 54 of 54, tags 37 of 37). No migration, no rule test.
 
 ## Done before this list
 

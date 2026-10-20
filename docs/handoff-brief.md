@@ -1,20 +1,18 @@
 # clickEMT handoff
 
-19 October 2026
+20 October 2026
 
 clickEMT is an incident map for floods: a base map for the command post and a phone app for the crews, live at [clickemt.com](https://clickemt.com). This page gets you from zero to your first release; the full handoff is [docs/handoff.md](handoff.md).
 
 ## Where it stands
 
-**In flight, 20 October: v84 is not on `main` yet.** `main` and clickemt.com are at v83. v84, the sixteen starters reread, is built on branch `starters-reread` (`a6b9233`, pushed) with check, test and the owner's yes on the words; its full smoke run was 922 of 931. Left: rerun `log`, `walkfix`, `evacuees` and `tags` alone, fill the three «SMOKE» marks, delete this note, then land it. The steps are at the top of "Start here" in [docs/handoff.md](handoff.md#start-here). The rest of this page already reads as it will once v84 lands.
-
-clickemt.com runs v84, released on 19 October 2026. Nothing is waiting on a branch, and no real incident has been run yet.
+clickemt.com runs v84, released on 20 October 2026. Nothing is waiting on a branch, and no real incident has been run yet.
 
 | Piece | State |
 | --- | --- |
 | The site | v84 live at [clickemt.com](https://clickemt.com) (the base) and [clickemt.com/field](https://clickemt.com/field/) (the phone). Pushing `main` deploys it through GitHub Pages in about a minute. |
 | The database | Supabase project charity-tooling (`cjwybuhogxyayjnuxpem`), shared with a separate charity app. Migrations 0001 to 0040 are applied by hand; the next free number is 0041. |
-| Tests | `npm run check` and `npm test` pass. The 26 rule-test files, 461 checks, pass on the real database. The browser smoke suite was «SMOKE» at v84, and every missed suite passed alone. |
+| Tests | `npm run check` and `npm test` pass. The 26 rule-test files, 461 checks, pass on the real database. The browser smoke suite was 922 of 931 at v84, and every missed suite passed alone. |
 | Google Maps | A browser key in `config.js`, limited to clickemt.com and localhost:8766. The Google map layers and the address box work. |
 | Sign-in by a code | Built (v73) but not live: the shared Supabase project still needs an SMS provider, the code in its email template, and real SMTP. |
 | Real use | No real incident, invitation email or sign-in code has run yet. |
